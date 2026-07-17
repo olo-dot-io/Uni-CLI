@@ -1,11 +1,11 @@
 /**
  * @owner       src::commands::ai
- * @does        Provides registry-driven AI/AI-infrastructure search, source discovery, cross-source normalization, provenance, deduplication, and structured document reading.
- * @needs       src/commands/ai-content.ts, adapter registry, shared kernel execution, web.read
- * @feeds       Agent AI-infrastructure research loops through `unicli ai search|read|sources`
+ * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, normalization, provenance, deduplication, and structured reading.
+ * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter registry, shared kernel execution, web.read
+ * @feeds       Agent AI research loops through `unicli ai search|pulse|read|sources|landscape|profiles`
  * @breaks      Missing ai.* capability tags, weak URL canonicalization, silent source failures, or lossy normalization make current evidence undiscoverable or untraceable.
  * @invariants  Search executes only registered read-only ai.search source commands after the outer orchestrator is authorized; internal fan-out passes only declared args; partial failures are counted on every row and detailed once per response; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
- * @side-effects Search and read execute registered read-only adapters; sources is network-free.
+ * @side-effects Search, pulse, and read execute registered read-only adapters; sources, landscape, and profiles are network-free.
  * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; normalization and reciprocal-rank fusion are O(S * R).
  * @concurrency Independent source invocations run in a bounded worker pool; each owns an abort signal and result state.
  * @test        tests/unit/commands/ai.test.ts, tests/unit/adapters/ai-intelligence.test.ts, plus live ai/hf/gh/web probes
@@ -23,6 +23,14 @@ import {
   type AiContentSource,
   type AiVendor,
 } from "./ai-content.js";
+import {
+  AUTHENTICATED_AI_SOURCE_REFS,
+  listAiLandscapeRows,
+  listAiProfileRows,
+  resolveAiRoleProfile,
+  selectAiOfficialDomains,
+  type AiRoleProfileId,
+} from "./ai-landscape.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { buildCommandContract } from "../core/command-contract.js";
@@ -61,6 +69,22 @@ export interface AiSearchOptions {
   sort?: string;
   since?: string;
   limit?: string | number;
+  profile?: string;
+}
+
+export interface AiPulseOptions {
+  profile?: string;
+  query?: string;
+  sources?: string;
+  window?: string;
+  includeAuth?: boolean;
+  limit?: string | number;
+}
+
+export interface AiPulseResult extends AiSearchResult {
+  pulse_profile: AiRoleProfileId;
+  pulse_window: string;
+  pulse_queries: string[];
 }
 
 export interface AiSearchResult extends AiContentRecord {
@@ -96,36 +120,8 @@ export class AiCommandFailure extends Error {
   }
 }
 
-const DEFAULT_AI_SOURCE_REFS = [
-  "duckduckgo.search",
-  "yahoo.search",
-  "gh.search-repos",
-  "gh.search-issues",
-  "gh.search-prs",
-  "hf.models",
-  "hf.datasets",
-  "hf.spaces",
-  "hf.community",
-  "huggingface-papers.search",
-  "arxiv.search",
-  "semantic-scholar.search",
-  "hackernews.search",
-  "stackoverflow.search",
-  "lobsters.search",
-] as const;
-
 const AI_SOURCE_CONCURRENCY = 6;
 const AI_SOURCE_TIMEOUT_MS = 20_000;
-
-export const OFFICIAL_AI_INFRA_DOMAINS = [
-  "docs.nvidia.com",
-  "developer.nvidia.com",
-  "rocm.docs.amd.com",
-  "amd.com",
-  "hiascend.com",
-  "huggingface.co/docs",
-  "docs.github.com",
-] as const;
 
 const VENDOR_CONFIG: Record<
   Exclude<AiVendor, "hugging-face" | "github" | "unknown">,
@@ -143,6 +139,46 @@ const VENDOR_CONFIG: Record<
     terms: ["Huawei Ascend", "昇腾", "CANN", "MindIE"],
     domains: ["hiascend.com", "huawei.com"],
   },
+  "intel-ai": {
+    terms: ["Intel Gaudi", "Habana", "oneAPI", "oneDNN"],
+    domains: ["docs.habana.ai", "intel.com", "oneapi.io"],
+  },
+  "aws-neuron": {
+    terms: ["AWS Neuron", "Trainium", "Inferentia"],
+    domains: [
+      "awsdocs-neuron.readthedocs-hosted.com",
+      "docs.aws.amazon.com",
+      "aws.amazon.com",
+    ],
+  },
+  "google-tpu": {
+    terms: ["Google Cloud TPU", "TPU", "XLA"],
+    domains: ["cloud.google.com", "docs.cloud.google.com"],
+  },
+  cerebras: {
+    terms: ["Cerebras", "Wafer Scale Engine", "WSE"],
+    domains: ["docs.cerebras.net", "cerebras.ai"],
+  },
+  groq: {
+    terms: ["Groq LPU", "GroqCloud"],
+    domains: ["console.groq.com", "groq.com"],
+  },
+  tenstorrent: {
+    terms: ["Tenstorrent", "TT-Metal"],
+    domains: ["docs.tenstorrent.com", "tenstorrent.com"],
+  },
+  sambanova: {
+    terms: ["SambaNova", "SN40L"],
+    domains: ["docs.sambanova.ai", "sambanova.ai"],
+  },
+  "apple-mlx": {
+    terms: ["Apple MLX", "Metal"],
+    domains: ["ml-explore.github.io", "developer.apple.com"],
+  },
+  "qualcomm-ai": {
+    terms: ["Qualcomm AI", "Hexagon NPU", "Cloud AI 100"],
+    domains: ["docs.qualcomm.com", "qualcomm.com"],
+  },
 };
 
 const AI_CONTENT_KINDS = new Set<string>([
@@ -156,6 +192,11 @@ const AI_CONTENT_KINDS = new Set<string>([
   "dataset",
   "space",
   "paper",
+  "release",
+  "commit",
+  "post",
+  "video",
+  "benchmark",
   "community",
 ]);
 
@@ -214,6 +255,7 @@ function commandCanRun(
     (arg) =>
       !arg.required ||
       arg.name === "query" ||
+      arg.name === "keyword" ||
       arg.name === "limit" ||
       (arg.name === "repo" && hasRepository),
   );
@@ -234,7 +276,7 @@ function resolveAiSources(opts: AiSearchOptions): AiSourceCommand[] {
   let selected: AiSourceCommand[];
 
   if (requested.length === 0) {
-    const refs: string[] = [...DEFAULT_AI_SOURCE_REFS];
+    const refs: string[] = [...resolveAiRoleProfile(opts.profile).sourceRefs];
     if (opts.repo) refs.push("gh.discussions");
     selected = refs
       .map((ref) => byRef.get(ref))
@@ -297,6 +339,9 @@ function parseVendors(
     }
     if (normalized === "nvidia" || normalized === "amd") return normalized;
     if (normalized === "huawei-ascend") return normalized;
+    if (normalized in VENDOR_CONFIG) {
+      return normalized as keyof typeof VENDOR_CONFIG;
+    }
     throw new Error(`unsupported AI infrastructure vendor: ${value}`);
   });
 }
@@ -330,7 +375,7 @@ function searchQueryForSource(
         ? explicitDomains
         : vendorDomains.length > 0
           ? vendorDomains
-          : [...OFFICIAL_AI_INFRA_DOMAINS];
+          : selectAiOfficialDomains(query, opts.profile);
     const vendorQuery = vendorTerms.length === 1 ? `(${vendorScope})` : "";
     scoped = `${query} ${vendorQuery} (${domains.map((domain) => `site:${domain}`).join(" OR ")})`;
   }
@@ -356,6 +401,8 @@ function sourceSort(source: AiSourceCommand, mode: string): string {
     if (source.site === "arxiv") return "submittedDate";
     if (source.site === "stackoverflow") return "activity";
     if (source.site === "lobsters") return "newest";
+    if (source.site === "bluesky") return "latest";
+    if (source.site === "opencsg") return "recently_update";
   }
   if (source.site === "hackernews" || source.site === "arxiv") {
     return "relevance";
@@ -364,6 +411,8 @@ function sourceSort(source: AiSourceCommand, mode: string): string {
     return "relevance";
   }
   if (source.site === "gh") return "updated";
+  if (source.site === "bluesky") return "top";
+  if (source.site === "opencsg") return "trending";
   return "lastModified";
 }
 
@@ -407,6 +456,7 @@ function retryAiSearchCommand(
     "sort",
     "since",
     "limit",
+    "profile",
   ] as const) {
     if (omitSince && name === "since") continue;
     const value = opts[name];
@@ -435,10 +485,12 @@ async function runAiSource(
   const sourceQuery = searchQueryForSource(source, query, opts);
   const args = declaredArgs(source.command, {
     query: sourceQuery,
+    keyword: sourceQuery,
     repo: opts.repo,
     limit: perSourceLimit,
     sort: sourceSort(source, opts.sort ?? "relevance"),
     order: "desc",
+    since: opts.since ? `${opts.since}T00:00:00.000Z` : undefined,
   });
   const invocation = buildInvocation(
     "cli",
@@ -535,6 +587,27 @@ function timestampMillis(record: AiContentRecord): number | undefined {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+function filterProfilePhraseNoise(
+  rows: AiContentRecord[],
+  query: string,
+  profileValue: string | undefined,
+): AiContentRecord[] {
+  const normalizedQuery = query.toLowerCase().replaceAll(/\s+/g, " ");
+  const phrases = resolveAiRoleProfile(profileValue).keywords.filter(
+    (keyword) =>
+      keyword.includes(" ") && normalizedQuery.includes(keyword.toLowerCase()),
+  );
+  if (phrases.length === 0) return rows;
+  const communityKinds = new Set(["community", "discussion", "post", "video"]);
+  return rows.filter((row) => {
+    if (!communityKinds.has(row.kind)) return true;
+    const corpus = `${row.title} ${row.summary} ${row.tags.join(" ")}`
+      .toLowerCase()
+      .replaceAll(/\s+/g, " ");
+    return phrases.some((phrase) => corpus.includes(phrase.toLowerCase()));
+  });
+}
+
 export async function searchAiContent(
   query: string,
   opts: AiSearchOptions = {},
@@ -554,6 +627,7 @@ export async function searchAiContent(
 
   let sources: AiSourceCommand[];
   try {
+    resolveAiRoleProfile(opts.profile);
     sources = resolveAiSources(opts);
     parseVendors(opts.vendors);
   } catch (error) {
@@ -598,6 +672,7 @@ export async function searchAiContent(
     recordLists,
     recordLists.reduce((sum, records) => sum + records.length, 0),
   );
+  rows = filterProfilePhraseNoise(rows, normalizedQuery, opts.profile);
 
   const requestedDomains = parseCsv(opts.domains).map((domain) =>
     domain.toLowerCase(),
@@ -684,6 +759,128 @@ export async function searchAiContent(
     next_read: `unicli ai read ${shellQuote(row.url)}`,
   }));
 }
+
+function pulseSince(window: string, now: Date): string | undefined {
+  if (window === "all") return undefined;
+  const days = window === "day" ? 1 : window === "week" ? 7 : 30;
+  const start = new Date(now);
+  start.setUTCDate(start.getUTCDate() - days);
+  return start.toISOString().slice(0, 10);
+}
+
+export async function pulseAiContent(
+  opts: AiPulseOptions = {},
+): Promise<AiPulseResult[]> {
+  const profile = resolveAiRoleProfile(opts.profile);
+  const window = opts.window ?? "week";
+  if (!["day", "week", "month", "all"].includes(window)) {
+    throw invalidSearchInput(`unsupported AI pulse window: ${window}`);
+  }
+  const limit = parseLimit(opts.limit, 20);
+  const customQuery = opts.query?.trim();
+  const queries = customQuery ? [customQuery] : profile.pulseQueries;
+  if (queries.some((query) => !query)) {
+    throw invalidSearchInput("pulse query cannot be empty.");
+  }
+  const requestedSources = parseCsv(opts.sources);
+  const baseSources =
+    requestedSources.length > 0 ? requestedSources : profile.sourceRefs;
+  const sourceRefs = [
+    ...new Set([
+      ...baseSources,
+      ...(opts.includeAuth ? AUTHENTICATED_AI_SOURCE_REFS : []),
+    ]),
+  ];
+  const since = pulseSince(window, new Date());
+  const outcomes = await mapConcurrent(queries, 2, async (query) => {
+    try {
+      const rows = await searchAiContent(query, {
+        profile: profile.id,
+        sources: sourceRefs.join(","),
+        sort: "latest",
+        since,
+        limit: Math.min(Math.max(limit * 2, 20), 100),
+      });
+      return { rows, error: undefined };
+    } catch (error) {
+      const failure =
+        error instanceof AiCommandFailure
+          ? error
+          : new AiCommandFailure({
+              code: "pulse_query_failed",
+              message: error instanceof Error ? error.message : String(error),
+              suggestion: `Retry the pulse lane with \`unicli ai search ${shellQuote(query)} --profile ${profile.id}\`.`,
+            });
+      return {
+        rows: [] as AiSearchResult[],
+        error: {
+          ref: `ai.pulse:${query}`,
+          code: failure.code,
+          message: failure.message,
+          suggestion: failure.suggestion,
+          retryable: failure.retryable,
+          alternatives: failure.alternatives,
+          retry_command: `unicli ai search ${shellQuote(query)} --profile ${profile.id}`,
+        } satisfies AiSourceError,
+      };
+    }
+  });
+  const errors = [
+    ...new Map(
+      outcomes
+        .flatMap((outcome) => [
+          ...(outcome.rows[0]?.source_errors ?? []),
+          ...(outcome.error ? [outcome.error] : []),
+        ])
+        .map((error) => [`${error.ref}:${error.code}:${error.message}`, error]),
+    ).values(),
+  ];
+  let rows = reciprocalRankFuse(
+    outcomes.map((outcome) => outcome.rows),
+    outcomes.reduce((count, outcome) => count + outcome.rows.length, 0),
+  );
+  rows.sort((left, right) => {
+    const byTime =
+      (timestampMillis(right) ?? Number.NEGATIVE_INFINITY) -
+      (timestampMillis(left) ?? Number.NEGATIVE_INFINITY);
+    return byTime || (right.rrf_score ?? 0) - (left.rrf_score ?? 0);
+  });
+  if (new Set(rows.map((row) => row.source_adapter)).size > 1) {
+    const perSourceLimit = Math.max(2, Math.ceil(limit / 2));
+    const sourceCounts = new Map<string, number>();
+    rows = rows.filter((row) => {
+      const count = sourceCounts.get(row.source_adapter) ?? 0;
+      if (count >= perSourceLimit) return false;
+      sourceCounts.set(row.source_adapter, count + 1);
+      return true;
+    });
+  }
+  rows = rows.slice(0, limit);
+  if (rows.length === 0) {
+    throw new AiCommandFailure({
+      code: "empty_result",
+      message: `No timestamp-verifiable ${profile.name} pulse results matched the ${window} window.`,
+      suggestion:
+        "Broaden --window, provide --query, or inspect `unicli ai sources` for source-specific recovery.",
+      retryable: errors.some((error) => error.retryable === true),
+      alternatives: ["unicli ai sources", "unicli ai pulse --window all"],
+    });
+  }
+  return rows.map((row, index) => ({
+    ...row,
+    source_errors: index === 0 ? errors : undefined,
+    partial_failure_count: errors.length,
+    freshness_mode: "latest",
+    source_timestamp: row.updated_at || row.published_at,
+    freshness_verifiable: timestampMillis(row) !== undefined,
+    next_read: `unicli ai read ${shellQuote(row.url)}`,
+    pulse_profile: profile.id,
+    pulse_window: window,
+    pulse_queries: queries,
+  }));
+}
+
+export { listAiLandscapeRows, listAiProfileRows };
 
 export async function readAiContent(
   url: string,

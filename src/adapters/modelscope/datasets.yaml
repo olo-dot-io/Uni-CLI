@@ -1,0 +1,48 @@
+site: modelscope
+name: datasets
+description: Search live ModelScope dataset metadata through the public OpenAPI
+type: web-api
+domain: modelscope.cn
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Dataset name, organization, tag, or free-text query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://modelscope.cn/openapi/v1/datasets
+      params:
+        search: ${{ args.query }}
+        page_number: "1"
+        page_size: ${{ args.limit }}
+
+  - select: data.datasets
+
+  - map:
+      id: ${{ item.id }}
+      title: "${{ item.display_name || item.id }}"
+      description: "${{ item.description || '' }}"
+      downloads: "${{ item.downloads || 0 }}"
+      likes: "${{ item.likes || 0 }}"
+      created_at: "${{ item.created_at || '' }}"
+      updated_at: "${{ item.last_modified || '' }}"
+      tags: "${{ (item.tags || []).slice(0, 12).join(', ') }}"
+      url: "${{ 'https://modelscope.cn/datasets/' + item.id }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, title, downloads, likes, updated_at, url]
+
+capabilities: ["http.fetch", "ai.search", "ai.dataset"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -1,0 +1,59 @@
+site: bluesky
+name: search-posts
+description: Search the current public Bluesky post index with a plain query and one bounded result page
+type: web-api
+domain: api.bsky.app
+strategy: public
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Plain post search query; boolean OR syntax is not promised
+  sort:
+    type: str
+    default: latest
+    choices: [latest, top]
+  since:
+    type: str
+    format: date-time
+    description: Optional inclusive RFC 3339 lower time bound
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://api.bsky.app/xrpc/app.bsky.feed.searchPosts
+      params:
+        q: ${{ args.query }}
+        sort: ${{ args.sort }}
+        since: ${{ args.since }}
+        limit: ${{ args.limit }}
+
+  - select: posts
+
+  - map:
+      id: "${{ item.uri.split('/').pop() }}"
+      title: "${{ (item.record?.text || '').slice(0, 160) }}"
+      text: "${{ item.record?.text || '' }}"
+      author: "${{ item.author?.handle || '' }}"
+      created_at: "${{ item.record?.createdAt || '' }}"
+      updated_at: "${{ item.indexedAt || '' }}"
+      likes: "${{ item.likeCount || 0 }}"
+      reposts: "${{ item.repostCount || 0 }}"
+      replies: "${{ item.replyCount || 0 }}"
+      url: "${{ 'https://bsky.app/profile/' + item.author.handle + '/post/' + item.uri.split('/').pop() }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [author, title, created_at, likes, reposts, replies, url]
+
+capabilities: ["http.fetch", "ai.search", "ai.community", "ai.post"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -17,7 +17,7 @@ pipeline:
         - --limit
         - ${{ args.limit }}
         - --json
-        - tagName,name,publishedAt,isPrerelease
+        - tagName,name,publishedAt,isPrerelease,url
       parse: json
       timeout: 30000
 
@@ -32,10 +32,10 @@ args:
     default: 10
     description: Maximum number of releases to return
 
-columns: [tagName, name, publishedAt, isPrerelease]
+columns: [tagName, name, publishedAt, isPrerelease, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
+capabilities: ["subprocess.exec", "ai.search", "ai.release"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

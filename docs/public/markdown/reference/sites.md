@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
+This catalog is generated from the adapter manifest: 323 sites, 1813 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -25,7 +25,7 @@ This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
 | 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
 | acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
-| ai | web-api | 3 | no | unicli ai search<br>unicli ai read<br>unicli ai sources |
+| ai | web-api | 6 | no | unicli ai search<br>unicli ai pulse<br>unicli ai read |
 | aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -47,7 +47,7 @@ This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
 | biorxiv | web-api | 5 | no | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
 | blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 12 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 13 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -188,6 +188,7 @@ This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
 | meituan | web-api | 1 | yes | unicli meituan search |
 | mermaid | desktop | 1 | no | unicli mermaid render |
 | minimax | web-api | 3 | yes | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
+| modelscope | web-api | 2 | no | unicli modelscope datasets<br>unicli modelscope models |
 | moegirl | web-api | 3 | no | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | no | unicli motion-studio component-get |
 | mubu | web-api | 6 | yes | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
@@ -213,6 +214,7 @@ This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
 | ones | web-api | 11 | yes | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
 | openalex | web-api | 3 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | opencode | bridge | 1 | no | unicli opencode version |
+| opencsg | web-api | 2 | no | unicli opencsg datasets<br>unicli opencsg models |
 | openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openharness | desktop | 2 | no | unicli openharness memory-read<br>unicli openharness skills-list |
 | openreview | web-api | 7 | no | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |

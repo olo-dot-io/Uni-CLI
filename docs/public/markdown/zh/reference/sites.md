@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：321 个站点，1805 条命令。
+这个目录来自适配器 manifest：323 个站点，1813 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -22,7 +22,7 @@
 | 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
 | acl-anthology | web-api | 3 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | 否 | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
-| ai | web-api | 3 | 否 | unicli ai search<br>unicli ai read<br>unicli ai sources |
+| ai | web-api | 6 | 否 | unicli ai search<br>unicli ai pulse<br>unicli ai read |
 | aibase | web-api | 1 | 否 | unicli aibase news |
 | amazon | web-api | 8 | 是 | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | anilist | web-api | 5 | 否 | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -44,7 +44,7 @@
 | biorxiv | web-api | 5 | 否 | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
 | blender | desktop | 13 | 否 | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | 否 | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 12 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 13 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | 是 | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | 否 | unicli brave search |
 | chaoxing | web-api | 2 | 是 | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -185,6 +185,7 @@
 | meituan | web-api | 1 | 是 | unicli meituan search |
 | mermaid | desktop | 1 | 否 | unicli mermaid render |
 | minimax | web-api | 3 | 是 | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
+| modelscope | web-api | 2 | 否 | unicli modelscope datasets<br>unicli modelscope models |
 | moegirl | web-api | 3 | 否 | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | 否 | unicli motion-studio component-get |
 | mubu | web-api | 6 | 是 | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
@@ -210,6 +211,7 @@
 | ones | web-api | 11 | 是 | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
 | openalex | web-api | 3 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | opencode | bridge | 1 | 否 | unicli opencode version |
+| opencsg | web-api | 2 | 否 | unicli opencsg datasets<br>unicli opencsg models |
 | openfda | web-api | 2 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
 | openharness | desktop | 2 | 否 | unicli openharness memory-read<br>unicli openharness skills-list |
 | openreview | web-api | 7 | 否 | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |

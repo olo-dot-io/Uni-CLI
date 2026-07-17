@@ -15,6 +15,11 @@
 
 import { createHash } from "node:crypto";
 
+import {
+  identifyAiPrimarySource,
+  type AiOrganizationType,
+} from "./ai-landscape.js";
+
 export type AiContentKind =
   | "docs"
   | "repository"
@@ -25,12 +30,26 @@ export type AiContentKind =
   | "dataset"
   | "space"
   | "paper"
+  | "release"
+  | "commit"
+  | "post"
+  | "video"
+  | "benchmark"
   | "community";
 
 export type AiVendor =
   | "nvidia"
   | "amd"
   | "huawei-ascend"
+  | "intel-ai"
+  | "aws-neuron"
+  | "google-tpu"
+  | "cerebras"
+  | "groq"
+  | "tenstorrent"
+  | "sambanova"
+  | "apple-mlx"
+  | "qualcomm-ai"
   | "hugging-face"
   | "github"
   | "unknown";
@@ -57,6 +76,9 @@ export interface AiContentRecord {
   vendor: AiVendor;
   vendors: AiVendor[];
   publisher: string;
+  organization: string;
+  organization_type: AiOrganizationType | "unknown";
+  primary_source_id: string;
   source_class: AiSourceClass;
   source_adapter: string;
   source_command: string;
@@ -82,6 +104,7 @@ const KIND_BY_REF: Readonly<Record<string, AiContentKind>> = {
   "gh.search-issues": "issue",
   "gh.search-prs": "pull-request",
   "gh.discussions": "discussion",
+  "gh.release": "release",
   "hf.models": "model",
   "hf.datasets": "dataset",
   "hf.spaces": "space",
@@ -89,6 +112,22 @@ const KIND_BY_REF: Readonly<Record<string, AiContentKind>> = {
   "huggingface-papers.search": "paper",
   "arxiv.search": "paper",
   "semantic-scholar.search": "paper",
+  "openreview.search": "paper",
+  "openalex.search": "paper",
+  "crossref.search": "paper",
+  "acl-anthology.search": "paper",
+  "modelscope.models": "model",
+  "modelscope.datasets": "dataset",
+  "opencsg.models": "model",
+  "opencsg.datasets": "dataset",
+  "openrouter.search": "model",
+  "bluesky.search-posts": "post",
+  "twitter.search": "post",
+  "reddit.search": "post",
+  "linux-do.search": "post",
+  "zhihu.search": "post",
+  "youtube.search": "video",
+  "bilibili.search": "video",
   "hackernews.search": "community",
   "lobsters.search": "community",
   "stackoverflow.search": "community",
@@ -109,6 +148,13 @@ export function inferAiSourceKind(
   if (known) return known;
   if (capabilities.includes("ai.docs")) return "docs";
   if (capabilities.includes("ai.paper")) return "paper";
+  if (capabilities.includes("ai.model")) return "model";
+  if (capabilities.includes("ai.dataset")) return "dataset";
+  if (capabilities.includes("ai.post")) return "post";
+  if (capabilities.includes("ai.video")) return "video";
+  if (capabilities.includes("ai.release")) return "release";
+  if (capabilities.includes("ai.commit")) return "commit";
+  if (capabilities.includes("ai.benchmark")) return "benchmark";
   if (capabilities.includes("ai.artifacts")) return "repository";
   return "community";
 }
@@ -261,6 +307,22 @@ export function inferAiVendors(url: string, text: string): AiVendor[] {
   if (/(^|\.)(hiascend|huawei)\.com$/.test(domain)) {
     return ["huawei-ascend"];
   }
+  if (/(^|\.)(intel|habana)\.(?:com|ai)$/.test(domain)) return ["intel-ai"];
+  if (/(^|\.)aws\.amazon\.com$/.test(domain)) return ["aws-neuron"];
+  if (
+    /(^|\.)(cloud\.google|google\.com)$/.test(domain) &&
+    /\btpu\b/i.test(corpus)
+  ) {
+    return ["google-tpu"];
+  }
+  if (/(^|\.)cerebras\.(?:ai|net)$/.test(domain)) return ["cerebras"];
+  if (/(^|\.)groq\.com$/.test(domain)) return ["groq"];
+  if (/(^|\.)tenstorrent\.com$/.test(domain)) return ["tenstorrent"];
+  if (/(^|\.)sambanova\.ai$/.test(domain)) return ["sambanova"];
+  if (/(^|\.)apple\.com$/.test(domain) && /\b(?:mlx|metal)\b/i.test(corpus)) {
+    return ["apple-mlx"];
+  }
+  if (/(^|\.)qualcomm\.com$/.test(domain)) return ["qualcomm-ai"];
   const vendors: AiVendor[] = [];
   if (/\b(NVIDIA|CUDA|TensorRT|DGX)\b/i.test(corpus)) vendors.push("nvidia");
   if (
@@ -283,6 +345,27 @@ export function inferAiVendors(url: string, text: string): AiVendor[] {
   ) {
     vendors.push("huawei-ascend");
   }
+  if (/\b(?:Intel Gaudi|Habana|oneAPI|oneDNN)\b/i.test(corpus)) {
+    vendors.push("intel-ai");
+  }
+  if (/\b(?:AWS Neuron|Trainium|Inferentia|NeuronX)\b/i.test(corpus)) {
+    vendors.push("aws-neuron");
+  }
+  if (/\b(?:Google Cloud TPU|TPU v\d|XLA TPU)\b/i.test(corpus)) {
+    vendors.push("google-tpu");
+  }
+  if (/\b(?:Cerebras|Wafer Scale Engine|WSE-\d)\b/i.test(corpus)) {
+    vendors.push("cerebras");
+  }
+  if (/\b(?:GroqCloud|Groq LPU)\b/i.test(corpus)) vendors.push("groq");
+  if (/\bTenstorrent\b/i.test(corpus)) vendors.push("tenstorrent");
+  if (/\bSambaNova\b/i.test(corpus)) vendors.push("sambanova");
+  if (/\b(?:Apple MLX|MLX LM|Metal Performance Shaders)\b/i.test(corpus)) {
+    vendors.push("apple-mlx");
+  }
+  if (/\b(?:Qualcomm AI|Hexagon NPU|Cloud AI 100)\b/i.test(corpus)) {
+    vendors.push("qualcomm-ai");
+  }
   if (vendors.length > 0) return vendors;
   if (/(^|\.)huggingface\.co$/.test(domain)) return ["hugging-face"];
   if (/(^|\.)github\.com$/.test(domain)) return ["github"];
@@ -294,30 +377,11 @@ export function inferAiVendor(url: string, text: string): AiVendor {
   return vendors.length === 1 ? vendors[0] : "unknown";
 }
 
-function officialDomain(domain: string): boolean {
-  return [
-    "nvidia.com",
-    "amd.com",
-    "hiascend.com",
-    "huawei.com",
-    "docs.github.com",
-  ].some(
-    (candidate) => domain === candidate || domain.endsWith(`.${candidate}`),
-  );
-}
-
 function officialSource(url: string): boolean {
   const domain = domainOf(url);
-  if (officialDomain(domain)) return true;
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.hostname === "huggingface.co" &&
-      (parsed.pathname === "/docs" || parsed.pathname.startsWith("/docs/"))
-    );
-  } catch {
-    return false;
-  }
+  if (domain === "docs.github.com") return true;
+  const target = identifyAiPrimarySource(url);
+  return target !== undefined && target.type !== "community";
 }
 
 function tagsOf(value: unknown): string[] {
@@ -338,6 +402,11 @@ function numericMetrics(row: Record<string, unknown>): Record<string, number> {
     "score",
     "views",
     "replies",
+    "reposts",
+    "repostCount",
+    "likeCount",
+    "replyCount",
+    "play",
     "stargazersCount",
     "forksCount",
     "upvotes",
@@ -421,6 +490,7 @@ export function coerceAiContentRecords(
       firstString(row, ["title", "name", "fullName", "modelId", "id"]) ||
       titleFromUrl(url);
     const domain = domainOf(url);
+    const primarySource = identifyAiPrimarySource(url);
     const summary = firstString(row, [
       "summary",
       "description",
@@ -488,8 +558,12 @@ export function coerceAiContentRecords(
       vendors,
       publisher:
         firstString(row, ["repository", "publisher"]) ||
+        (primarySource?.type !== "community" ? primarySource?.name : "") ||
         author ||
         (vendor !== "unknown" ? vendor : domain),
+      organization: primarySource?.name ?? "",
+      organization_type: primarySource?.type ?? "unknown",
+      primary_source_id: primarySource?.id ?? "",
       source_class: sourceClass,
       source_adapter: source.site,
       source_command: source.name,
@@ -539,8 +613,18 @@ export function reciprocalRankFuse(
               : "",
           ]
         : [];
+    const normalizedTitle = record.title
+      .toLowerCase()
+      .replaceAll(/\s+/g, " ")
+      .trim();
+    const syndicatedTitle =
+      ["post", "community", "video"].includes(record.kind) &&
+      normalizedTitle.length >= 80
+        ? `syndicated:title:${normalizedTitle}`
+        : "";
     return [
       ...persistent,
+      syndicatedTitle,
       record.url ? `${record.kind}:url:${record.url}` : "",
       persistent.every((alias) => !alias) && !record.url
         ? `${record.kind}:title:${record.title.toLowerCase()}`

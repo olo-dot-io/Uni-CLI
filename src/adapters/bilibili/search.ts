@@ -1,7 +1,16 @@
 /**
- * Bilibili video search adapter — WBI-signed keyword search.
- *
- * Endpoint: /x/web-interface/wbi/search/type
+ * @owner       src::adapters::bilibili::search
+ * @does        Searches Bilibili videos through its WBI-signed search API.
+ * @needs       Current WBI keys and the Bilibili video search response.
+ * @feeds       Bilibili workflows and opt-in registry-driven Chinese AI video intelligence.
+ * @breaks      WBI signing or response drift surfaces as an explicit adapter error.
+ * @invariants  Every returned video carries a canonical Bilibili URL and source timestamp when supplied.
+ * @side-effects Authenticated HTTPS read only.
+ * @perf        Maps one bounded search page.
+ * @concurrency safe across invocations.
+ * @test        Bilibili adapter tests and tests/unit/commands/ai.test.ts
+ * @stability   experimental
+ * @since       2026-07-17
  */
 
 import { cli, Strategy } from "../../registry.js";
@@ -12,6 +21,9 @@ interface SearchResult {
   author: string;
   play: number;
   bvid: string;
+  description: string;
+  published_at: number;
+  url: string;
 }
 
 interface SearchResponse {
@@ -21,11 +33,12 @@ interface SearchResponse {
       author: string;
       play: number;
       bvid: string;
+      description?: string;
+      pubdate?: number;
     }>;
   };
 }
 
-/** Strip HTML tags from Bilibili search result titles. */
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, "");
 }
@@ -50,7 +63,8 @@ cli({
       description: "Number of results",
     },
   ],
-  columns: ["rank", "title", "author", "play", "bvid"],
+  columns: ["rank", "title", "author", "play", "published_at", "bvid", "url"],
+  capabilities: ["http.fetch", "ai.search", "ai.community", "ai.video"],
   func: async (_page, kwargs) => {
     const keyword = String(kwargs.keyword);
     const limit = Number(kwargs.limit) || 20;
@@ -73,6 +87,9 @@ cli({
       author: item.author,
       play: item.play,
       bvid: item.bvid,
+      description: stripHtml(item.description ?? ""),
+      published_at: item.pubdate ?? 0,
+      url: `https://www.bilibili.com/video/${item.bvid}`,
     }));
 
     return results.slice(0, limit);

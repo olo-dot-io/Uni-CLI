@@ -74,11 +74,11 @@ describe("adapter loader", () => {
     expect(cmds).toContain("user");
   });
 
-  it("loads bluesky adapter with all 12 commands", () => {
+  it("loads bluesky adapter with all 13 commands", () => {
     const adapters = getAllAdapters();
     const bsky = adapters.find((a) => a.name === "bluesky");
     expect(bsky).toBeDefined();
-    expect(Object.keys(bsky!.commands).length).toBe(12);
+    expect(Object.keys(bsky!.commands).length).toBe(13);
   });
 
   it("parses adapter args correctly", () => {

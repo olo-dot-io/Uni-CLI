@@ -1,9 +1,16 @@
 /**
- * @owner   src/adapters/openreview/papers.ts
- * @does    Register agent-facing OpenReview search, paper, author, venue, reviews, PDF download, and PDF text extraction commands.
- * @needs   Public api2.openreview.net notes API, optional browser-issued clearance cookie, openreview.net PDF URLs, pdftotext for read, forum/profile id validation, note content normalization.
- * @feeds   surface coverage ledger, scholarly review workflow, agent-readable paper/review rows, local PDF/fulltext workflow.
- * @breaks  OpenReview challenge-envelope or API drift, clearance-cookie filtering, content.value parsing, PDF download failure, pdftotext absence, or silent empty threads hide paper review state.
+ * @owner       src::adapters::openreview::papers
+ * @does        Registers OpenReview search, paper, author, venue, review, PDF-download, and PDF-text commands.
+ * @needs       api2.openreview.net, optional clearance cookies, OpenReview PDFs, and pdftotext.
+ * @feeds       Scholar workflows and registry-driven AI literature intelligence through scholar.* and ai.* capabilities.
+ * @breaks      API drift, challenge envelopes, content normalization, or PDF failures must surface instead of hiding review state.
+ * @invariants  Search results retain source URLs and review records stay attached to their forum identity.
+ * @side-effects HTTPS reads; download/read write PDFs and execute pdftotext.
+ * @perf        Bounded API/PDF work by command limits.
+ * @concurrency safe across invocations.
+ * @test        src/adapters/openreview/papers.test.ts and tests/unit/adapters/scholar-sources.test.ts
+ * @stability   experimental
+ * @since       2026-05-19
  */
 
 import { execFile } from "node:child_process";
@@ -545,7 +552,13 @@ cli({
     "pdf_url",
     "source_url",
   ],
-  capabilities: ["http.fetch", "scholar.search", "scholar.review"],
+  capabilities: [
+    "http.fetch",
+    "scholar.search",
+    "scholar.review",
+    "ai.search",
+    "ai.paper",
+  ],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("openreview search query cannot be empty.");

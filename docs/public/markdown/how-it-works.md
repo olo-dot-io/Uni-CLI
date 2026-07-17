@@ -44,6 +44,34 @@ The catalog search layer is not a plain site-name lookup. It combines bilingual 
 
 The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
 
+### AI primary-source intelligence
+
+`unicli ai` applies the same operation contract to AI research and engineering
+signals. `ai profiles` describes what foundation-model, training, inference,
+world-model, embodied-AI, hardware, agent, evaluation, and research roles watch
+daily. `ai landscape` projects the maintained laboratory, vendor, runtime,
+model-hub, venue, benchmark, robotics, and community directory. `ai search`
+uses that role to select live native adapters and relevant first-party domains;
+`ai pulse` executes the role's bounded queries and fuses timestamp-verifiable
+results. ModelScope, OpenCSG, Bluesky posts, OpenReview, OpenAlex, Crossref, ACL
+Anthology, YouTube, and the existing GitHub/Hugging Face/web/community adapters
+share one normalized provenance contract.
+
+These commands fetch upstream state when invoked; they do not imply a
+background crawler or invent freshness. Authenticated X, Reddit, Linux.do,
+Zhihu, and Bilibili sources are visible in `ai sources` and require explicit
+selection (or `ai pulse --include-auth`). A community platform URL remains
+community evidence even when the platform itself is listed in the landscape;
+only a matched maintainer-owned domain or exact GitHub repository is labeled
+first-party.
+
+```bash
+unicli ai profiles -f json
+unicli ai landscape --profile world-models -f json
+unicli ai pulse --profile inference --window week -f json
+unicli ai search "KV cache scheduler" --profile inference --sort latest -f json
+```
+
 ## Internal authoring format: YAML adapters
 
 YAML adapters are the default way to author reusable operation contracts. They are not the platform identity; they are the cheap, inspectable format that lets agents read, patch, and verify many substrate paths. Here's a complete adapter for a public RSS feed:
@@ -118,7 +146,7 @@ Live browser/CDP acquisition remains in process memory. Only explicit
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1805<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1813<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -214,8 +242,8 @@ $ unicli hackernews top -n 10 -f json \
 That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
 shape across
-<span><!-- STATS:site_count -->321<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1805<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->323<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1813<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading

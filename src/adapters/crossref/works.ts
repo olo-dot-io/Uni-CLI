@@ -2,7 +2,7 @@
  * @owner       src::adapters::crossref::works
  * @does        Registers Crossref REST work search and DOI lookup commands for publisher metadata.
  * @needs       api.crossref.org REST API, optional CROSSREF_MAILTO, src/registry.ts
- * @feeds       src/commands/scholar.ts via scholar.search and scholar.get
+ * @feeds       src/commands/scholar.ts and registry-driven AI literature intelligence through scholar.* and ai.* capabilities
  * @breaks      Crossref response-shape drift or rate limiting surfaces as explicit adapter errors.
  * @invariants  DOI lookup accepts only DOI-shaped references; output maps to ScholarlyWorkRecord.
  * @side-effects HTTPS egress to api.crossref.org only
@@ -163,7 +163,7 @@ cli({
     { name: "limit", type: "int", default: 20 },
   ],
   columns: ["id", "title", "authors", "year", "venue", "doi", "source_url"],
-  capabilities: ["http.fetch", "scholar.search"],
+  capabilities: ["http.fetch", "scholar.search", "ai.search", "ai.paper"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("crossref search query cannot be empty.");

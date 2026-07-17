@@ -4,7 +4,7 @@ import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { searchAiContent } from "../../../src/commands/ai.js";
+import { pulseAiContent, searchAiContent } from "../../../src/commands/ai.js";
 import { listCoreDiscoveryCommands } from "../../../src/discovery/core-catalog.js";
 import {
   loadAllAdapters,
@@ -52,6 +52,9 @@ describe("AI intelligence transport parity", () => {
     expect(resolveCommand("ai", "search")).toBeDefined();
     expect(resolveCommand("ai", "read")).toBeDefined();
     expect(resolveCommand("ai", "sources")).toBeDefined();
+    expect(resolveCommand("ai", "pulse")).toBeDefined();
+    expect(resolveCommand("ai", "landscape")).toBeDefined();
+    expect(resolveCommand("ai", "profiles")).toBeDefined();
     expect(
       listCoreDiscoveryCommands().filter((command) => command.site === "ai"),
     ).toEqual([]);
@@ -62,7 +65,7 @@ describe("AI intelligence transport parity", () => {
       readManifest()
         .sites.ai?.commands.map((command) => command.name)
         .sort(),
-    ).toEqual(["read", "search", "sources"]);
+    ).toEqual(["landscape", "profiles", "pulse", "read", "search", "sources"]);
   });
 
   it("exposes AI commands in expanded and deferred MCP profiles", () => {
@@ -144,6 +147,233 @@ describe("AI intelligence bilingual discovery", () => {
 });
 
 describe("AI source precision contracts", () => {
+  it("normalizes ModelScope public OpenAPI model rows with first-party attribution", async () => {
+    let requestedUrl = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        requestedUrl = String(input);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              models: [
+                {
+                  id: "lab/world-model",
+                  display_name: "World Model",
+                  description: "Interactive environment model",
+                  downloads: 12,
+                  likes: 3,
+                  created_at: "2026-07-15T00:00:00Z",
+                  last_modified: "2026-07-17T00:00:00Z",
+                  tags: ["video-generation"],
+                },
+              ],
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+
+    const rows = await searchAiContent("world model", {
+      sources: "modelscope.models",
+      limit: 2,
+    });
+
+    expect(new URL(requestedUrl).pathname).toBe("/openapi/v1/models");
+    expect(new URL(requestedUrl).searchParams.get("search")).toBe(
+      "world model",
+    );
+    expect(rows[0]).toMatchObject({
+      title: "World Model",
+      kind: "model",
+      organization: "ModelScope",
+      source_class: "official",
+      updated_at: "2026-07-17T00:00:00Z",
+      metrics: { downloads: 12, likes: 3 },
+    });
+  });
+
+  it("normalizes OpenCSG model rows and forwards its current sort vocabulary", async () => {
+    let requestedUrl = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        requestedUrl = String(input);
+        return new Response(
+          JSON.stringify({
+            msg: "OK",
+            data: [
+              {
+                path: "lab/world-model",
+                nickname: "World Model",
+                description: "A spatial model",
+                downloads: 8,
+                likes: 2,
+                created_at: "2026-07-15T00:00:00Z",
+                updated_at: "2026-07-17T00:00:00Z",
+                license: "apache-2.0",
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+
+    const rows = await searchAiContent("world model", {
+      sources: "opencsg.models",
+      sort: "latest",
+      limit: 2,
+    });
+
+    expect(new URL(requestedUrl).pathname).toBe("/api/v1/models");
+    expect(new URL(requestedUrl).searchParams.get("sort")).toBe(
+      "recently_update",
+    );
+    expect(rows[0]).toMatchObject({
+      kind: "model",
+      organization: "OpenCSG",
+      updated_at: "2026-07-17T00:00:00Z",
+    });
+  });
+
+  it("uses Bluesky's public app view for one bounded latest-post page", async () => {
+    let requestedUrl = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        requestedUrl = String(input);
+        return new Response(
+          JSON.stringify({
+            posts: [
+              {
+                uri: "at://did:plc:noise/app.bsky.feed.post/3noise",
+                author: { handle: "noise.bsky.social" },
+                record: {
+                  text: "A model prediction surprised the world",
+                  createdAt: "2026-07-17T02:00:00Z",
+                },
+                indexedAt: "2026-07-17T02:01:00Z",
+                likeCount: 40,
+                repostCount: 20,
+                replyCount: 10,
+              },
+              {
+                uri: "at://did:plc:one/app.bsky.feed.post/3abc",
+                author: { handle: "researcher.bsky.social" },
+                record: {
+                  text: "New interactive world model",
+                  createdAt: "2026-07-17T01:00:00Z",
+                },
+                indexedAt: "2026-07-17T01:01:00Z",
+                likeCount: 4,
+                repostCount: 2,
+                replyCount: 1,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+
+    const rows = await searchAiContent("world model", {
+      sources: "bluesky.search-posts",
+      sort: "latest",
+      since: "2026-07-01",
+      limit: 2,
+    });
+
+    const url = new URL(requestedUrl);
+    expect(url.hostname).toBe("api.bsky.app");
+    expect(url.searchParams.get("sort")).toBe("latest");
+    expect(url.searchParams.get("since")).toBe("2026-07-01T00:00:00.000Z");
+    expect(rows[0]).toMatchObject({
+      kind: "post",
+      source_class: "community",
+      published_at: "2026-07-17T01:00:00Z",
+      metrics: { likes: 4, reposts: 2, replies: 1 },
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it("builds a role-labelled current pulse from a bounded explicit source", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              hits: [
+                {
+                  objectID: "pulse-1",
+                  title: "vLLM scheduler update",
+                  created_at: "2026-07-17T01:00:00Z",
+                  url: "https://example.com/vllm",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const rows = await pulseAiContent({
+      profile: "inference",
+      query: "vLLM",
+      sources: "hackernews.search",
+      window: "all",
+      limit: 1,
+    });
+
+    expect(rows[0]).toMatchObject({
+      title: "vLLM scheduler update",
+      pulse_profile: "inference",
+      pulse_window: "all",
+      pulse_queries: ["vLLM"],
+      freshness_mode: "latest",
+    });
+  });
+
+  it("reports a repeated provider failure once across profile pulse queries", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        if (String(input).includes("hn.algolia.com")) {
+          const query = new URL(String(input)).searchParams.get("query") ?? "";
+          return new Response(
+            JSON.stringify({
+              hits: [
+                {
+                  objectID: `pulse-${query}`,
+                  title: `${query} current update`,
+                  created_at: "2026-07-17T01:00:00Z",
+                  url: `https://example.com/inference/${encodeURIComponent(query)}`,
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("unavailable", { status: 503 });
+      }),
+    );
+
+    const rows = await pulseAiContent({
+      profile: "inference",
+      sources: "hackernews.search,semantic-scholar.search",
+      window: "all",
+      limit: 2,
+    });
+
+    expect(rows[0].source_errors).toEqual([
+      expect.objectContaining({ ref: "semantic-scholar.search" }),
+    ]);
+    expect(rows[0].partial_failure_count).toBe(1);
+  });
+
   it("keeps Hacker News query relevance when the aggregator invokes it", async () => {
     let requestedUrl = "";
     vi.stubGlobal(

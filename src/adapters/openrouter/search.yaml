@@ -26,13 +26,14 @@ pipeline:
       context: "${{ item.context_length || '' }}"
       prompt_price: "${{ item.pricing?.prompt || '' }}"
       completion_price: "${{ item.pricing?.completion || '' }}"
+      url: "${{ 'https://openrouter.ai/' + item.id }}"
 
   - limit: 20
 
-columns: [id, name, context, prompt_price, completion_price]
+columns: [id, name, context, prompt_price, completion_price, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.model"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

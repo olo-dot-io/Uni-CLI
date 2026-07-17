@@ -1,7 +1,7 @@
 {
-  "generated": "2026-07-17T12:59:03.672Z",
-  "total_sites": 321,
-  "total_commands": 1805,
+  "generated": "2026-07-17T13:59:47.721Z",
+  "total_sites": 323,
+  "total_commands": 1813,
   "sites": [
     {
       "site": "12306",
@@ -247,12 +247,17 @@
       "type": "web-api",
       "auth": false,
       "strategy": "public",
-      "command_count": 3,
+      "command_count": 6,
       "commands": [
         {
           "name": "search",
           "description": "Search live AI infrastructure with provenance and recovery",
           "command": "unicli ai search"
+        },
+        {
+          "name": "pulse",
+          "description": "Fetch a current role-specific AI field pulse across first-party docs, code, papers, model hubs, and communities",
+          "command": "unicli ai pulse"
         },
         {
           "name": "read",
@@ -263,6 +268,16 @@
           "name": "sources",
           "description": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O",
           "command": "unicli ai sources"
+        },
+        {
+          "name": "landscape",
+          "description": "List the maintained first-party AI lab, hardware, runtime, model-hub, research, benchmark, world-model, robotics, and community target directory",
+          "command": "unicli ai landscape"
+        },
+        {
+          "name": "profiles",
+          "description": "List what AI practitioners monitor daily and the live source/query bundle for each role",
+          "command": "unicli ai profiles"
         }
       ]
     },
@@ -1148,7 +1163,7 @@
       "domain": "public.api.bsky.app",
       "auth": true,
       "strategy": "public",
-      "command_count": 12,
+      "command_count": 13,
       "commands": [
         {
           "name": "feeds",
@@ -1184,6 +1199,11 @@
           "name": "profile",
           "description": "Get Bluesky user profile info",
           "command": "unicli bluesky profile"
+        },
+        {
+          "name": "search-posts",
+          "description": "Search the current public Bluesky post index with a plain query and one bounded result page",
+          "command": "unicli bluesky search-posts"
         },
         {
           "name": "search",
@@ -6376,6 +6396,26 @@
       ]
     },
     {
+      "site": "modelscope",
+      "type": "web-api",
+      "domain": "modelscope.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "datasets",
+          "description": "Search live ModelScope dataset metadata through the public OpenAPI",
+          "command": "unicli modelscope datasets"
+        },
+        {
+          "name": "models",
+          "description": "Search live ModelScope model metadata through the public OpenAPI",
+          "command": "unicli modelscope models"
+        }
+      ]
+    },
+    {
       "site": "moegirl",
       "type": "web-api",
       "domain": "zh.moegirl.org.cn",
@@ -7327,6 +7367,26 @@
           "name": "version",
           "description": "Check OpenCode CLI version",
           "command": "unicli opencode version"
+        }
+      ]
+    },
+    {
+      "site": "opencsg",
+      "type": "web-api",
+      "domain": "hub.opencsg.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "datasets",
+          "description": "Search live OpenCSG dataset metadata through the public CSGHub API",
+          "command": "unicli opencsg datasets"
+        },
+        {
+          "name": "models",
+          "description": "Search live OpenCSG model metadata through the public CSGHub API",
+          "command": "unicli opencsg models"
         }
       ]
     },

@@ -2,7 +2,7 @@
  * @owner       src::adapters::openalex::works
  * @does        Registers agent-facing OpenAlex work search, detail, and source PDF read commands.
  * @needs       Public OpenAlex API, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
- * @feeds       src/commands/scholar.ts via scholar.* capability tags, surface coverage ledger, scholarly work rows
+ * @feeds       src/commands/scholar.ts and registry-driven AI literature intelligence through scholar.* and ai.* capabilities
  * @breaks      OpenAlex API envelope drift, weak DOI/id parsing, missing OA PDF URLs, or abstract reconstruction errors surface as explicit adapter errors.
  * @invariants  Work references normalize to OpenAlex W ids or doi: refs; read requires a source-provided PDF URL before text is claimed.
  * @side-effects HTTPS egress to api.openalex.org and source PDF hosts; read writes one PDF and executes pdftotext.
@@ -351,7 +351,7 @@ cli({
     "doi",
     "url",
   ],
-  capabilities: ["http.fetch", "scholar.search"],
+  capabilities: ["http.fetch", "scholar.search", "ai.search", "ai.paper"],
   func: async (_page, kwargs) => {
     const query = requireOpenAlexString(kwargs.query, "query");
     const limit = requireOpenAlexLimit(kwargs.limit);

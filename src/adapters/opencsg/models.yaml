@@ -1,0 +1,54 @@
+site: opencsg
+name: models
+description: Search live OpenCSG model metadata through the public CSGHub API
+type: web-api
+domain: hub.opencsg.com
+strategy: public
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Model name, namespace, tag, or free-text query
+  sort:
+    type: str
+    default: trending
+    choices:
+      [trending, recently_update, most_download, most_favorite, most_star]
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - fetch:
+      url: https://hub.opencsg.com/api/v1/models
+      params:
+        search: ${{ args.query }}
+        sort: ${{ args.sort }}
+        page: "1"
+        per: ${{ args.limit }}
+
+  - select: data
+
+  - map:
+      id: ${{ item.path }}
+      title: "${{ item.nickname || item.name || item.path }}"
+      description: "${{ item.description || '' }}"
+      downloads: "${{ item.downloads || 0 }}"
+      likes: "${{ item.likes || 0 }}"
+      created_at: "${{ item.created_at || '' }}"
+      updated_at: "${{ item.updated_at || '' }}"
+      tags: "${{ item.license || '' }}"
+      url: "${{ 'https://opencsg.com/models/' + item.path }}"
+
+  - limit: ${{ args.limit }}
+
+columns: [id, title, downloads, likes, updated_at, url]
+
+capabilities: ["http.fetch", "ai.search", "ai.model"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

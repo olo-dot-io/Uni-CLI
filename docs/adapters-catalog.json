@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.400.0",
-  "generated": "2026-07-17T12:59:03.672Z",
-  "total_sites": 321,
-  "total_commands": 1805,
+  "generated": "2026-07-17T13:59:47.721Z",
+  "total_sites": 323,
+  "total_commands": 1813,
   "adapters": [
     {
       "site": "12306",
@@ -1163,6 +1163,13 @@
               "description": "AI or AI-infrastructure search query / AI 基础设施检索词"
             },
             {
+              "name": "profile",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Practitioner role profile for sources and official domains"
+            },
+            {
               "name": "sources",
               "type": "str",
               "required": false,
@@ -1181,7 +1188,7 @@
               "type": "str",
               "required": false,
               "positional": false,
-              "description": "nvidia, amd, huawei-ascend"
+              "description": "nvidia, amd, huawei-ascend, intel-ai, aws-neuron, google-tpu, cerebras, groq, tenstorrent, sambanova, apple-mlx, qualcomm-ai"
             },
             {
               "name": "domains",
@@ -1210,6 +1217,69 @@
               "required": false,
               "positional": false,
               "description": "Require a verifiable published/updated timestamp on or after YYYY-MM-DD"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum fused records (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "pulse",
+          "description": "Fetch a current role-specific AI field pulse across first-party docs, code, papers, model hubs, and communities; 获取大模型、世界模型、推理、训练、硬件与具身智能从业者的一手实时信息流。",
+          "when_to_use": "Fetch a current role-specific AI field pulse across first-party docs, code, papers, model hubs, and communities; 获取大模型、世界模型、推理、训练、硬件与具身智能从业者的一手实时信息流。",
+          "command": "unicli ai pulse",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "kind",
+            "organization",
+            "source_class",
+            "source_adapter",
+            "source_timestamp",
+            "url",
+            "summary"
+          ],
+          "args": [
+            {
+              "name": "profile",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Practitioner role to monitor"
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional custom pulse query instead of profile defaults"
+            },
+            {
+              "name": "sources",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional comma-separated source refs/sites"
+            },
+            {
+              "name": "window",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Strict source-timestamp freshness window"
+            },
+            {
+              "name": "include_auth",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Opt in to authenticated X, Reddit, Linux.do, Zhihu, and Bilibili"
             },
             {
               "name": "limit",
@@ -1268,6 +1338,50 @@
             "required_args",
             "auth",
             "domain"
+          ]
+        },
+        {
+          "name": "landscape",
+          "description": "List the maintained first-party AI lab, hardware, runtime, model-hub, research, benchmark, world-model, robotics, and community target directory; 列出 AI 一手信息源全景。",
+          "when_to_use": "List the maintained first-party AI lab, hardware, runtime, model-hub, research, benchmark, world-model, robotics, and community target directory; 列出 AI 一手信息源全景。",
+          "command": "unicli ai landscape",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "type",
+            "roles",
+            "domains",
+            "repositories",
+            "channels"
+          ],
+          "args": [
+            {
+              "name": "profile",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional practitioner role filter"
+            }
+          ]
+        },
+        {
+          "name": "profiles",
+          "description": "List what AI practitioners monitor daily and the live source/query bundle for each role; 列出大模型、世界模型、训练、推理、硬件、Agent 等从业者每日关注项。",
+          "when_to_use": "List what AI practitioners monitor daily and the live source/query bundle for each role; 列出大模型、世界模型、训练、推理、硬件、Agent 等从业者每日关注项。",
+          "command": "unicli ai profiles",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "profile",
+            "name",
+            "description",
+            "daily_concerns",
+            "live_sources",
+            "pulse_queries"
           ]
         }
       ]
@@ -3671,7 +3785,15 @@
           "auth": true,
           "strategy": "cookie",
           "browser": false,
-          "columns": ["rank", "title", "author", "play", "bvid"],
+          "columns": [
+            "rank",
+            "title",
+            "author",
+            "play",
+            "published_at",
+            "bvid",
+            "url"
+          ],
           "args": [
             {
               "name": "keyword",
@@ -5044,6 +5166,52 @@
               "required": true,
               "positional": true,
               "description": "Bluesky handle (e.g. bsky.app, jay.bsky.team)"
+            }
+          ]
+        },
+        {
+          "name": "search-posts",
+          "description": "Search the current public Bluesky post index with a plain query and one bounded result page",
+          "when_to_use": "When you need to search bluesky for a specific query.",
+          "command": "unicli bluesky search-posts",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "author",
+            "title",
+            "created_at",
+            "likes",
+            "reposts",
+            "replies",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Plain post search query; boolean OR syntax is not promised"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional inclusive RFC 3339 lower time bound"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         },
@@ -15307,7 +15475,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["tagName", "name", "publishedAt", "isPrerelease"],
+          "columns": ["tagName", "name", "publishedAt", "isPrerelease", "url"],
           "args": [
             {
               "name": "repo",
@@ -25037,6 +25205,65 @@
       ]
     },
     {
+      "site": "modelscope",
+      "type": "web-api",
+      "domain": "modelscope.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "datasets",
+          "description": "Search live ModelScope dataset metadata through the public OpenAPI",
+          "when_to_use": "Search live ModelScope dataset metadata through the public OpenAPI",
+          "command": "unicli modelscope datasets",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "downloads", "likes", "updated_at", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Dataset name, organization, tag, or free-text query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "models",
+          "description": "Search live ModelScope model metadata through the public OpenAPI",
+          "when_to_use": "Search live ModelScope model metadata through the public OpenAPI",
+          "command": "unicli modelscope models",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "downloads", "likes", "updated_at", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Model name, organization, tag, or free-text query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "moegirl",
       "type": "web-api",
       "domain": "zh.moegirl.org.cn",
@@ -28338,6 +28565,77 @@
       ]
     },
     {
+      "site": "opencsg",
+      "type": "web-api",
+      "domain": "hub.opencsg.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "datasets",
+          "description": "Search live OpenCSG dataset metadata through the public CSGHub API",
+          "when_to_use": "Search live OpenCSG dataset metadata through the public CSGHub API",
+          "command": "unicli opencsg datasets",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "downloads", "likes", "updated_at", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Dataset name, namespace, tag, or free-text query"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "models",
+          "description": "Search live OpenCSG model metadata through the public CSGHub API",
+          "when_to_use": "Search live OpenCSG model metadata through the public CSGHub API",
+          "command": "unicli opencsg models",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["id", "title", "downloads", "likes", "updated_at", "url"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Model name, namespace, tag, or free-text query"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "openfda",
       "type": "web-api",
       "domain": "fda.gov",
@@ -28796,7 +29094,8 @@
             "name",
             "context",
             "prompt_price",
-            "completion_price"
+            "completion_price",
+            "url"
           ],
           "args": [
             {
@@ -42917,7 +43216,15 @@
           "auth": true,
           "strategy": "cookie",
           "browser": false,
-          "columns": ["type", "title", "excerpt", "voteup", "author"],
+          "columns": [
+            "type",
+            "title",
+            "excerpt",
+            "voteup",
+            "author",
+            "updated_at",
+            "url"
+          ],
           "args": [
             {
               "name": "query",

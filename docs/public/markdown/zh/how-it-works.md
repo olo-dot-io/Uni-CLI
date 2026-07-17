@@ -44,6 +44,30 @@ Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态�
 
 同一条规则也避免泛查询被误导。只有查询里明确出现 ACG、论文、wiki、tag、游戏、动画、漫画、美少女游戏等领域词时，领域 boost 才生效；普通查询仍然按 Web、开发、财经或 App 命令自己的证据排序。
 
+### AI 一手信息情报
+
+`unicli ai` 把同一个 operation contract 用在 AI 研究与工程信号上。
+`ai profiles` 列出大模型、训练、推理、世界模型、具身智能、硬件、Agent、
+评测安全与研究岗位每天关注什么；`ai landscape` 给出维护中的实验室、厂商、
+runtime、模型社区、论文平台、benchmark、机器人与社区全景；`ai search` 根据
+岗位选择原生实时 adapter 和相关官方域名；`ai pulse` 执行有界岗位查询并融合
+带可验证时间戳的结果。ModelScope、OpenCSG、Bluesky 帖子、OpenReview、
+OpenAlex、Crossref、ACL Anthology、YouTube，以及已有的 GitHub、Hugging Face、
+Web 与社区 adapter 都进入同一个来源和归属合同。
+
+这些命令在调用时获取上游当前状态，不声称后台爬虫或零索引延迟，也不会补造
+时间戳。X、Reddit、Linux.do、知乎和哔哩哔哩在 `ai sources` 中可见，但必须
+显式选择，或使用 `ai pulse --include-auth`。社区平台被列入全景不等于平台上的
+任意帖子是一手官方内容；只有匹配维护者官方域名或精确 GitHub 仓库时才标成
+first-party。
+
+```bash
+unicli ai profiles -f json
+unicli ai landscape --profile world-models -f json
+unicli ai pulse --profile inference --window week -f json
+unicli ai search "KV cache scheduler" --profile inference --sort latest -f json
+```
+
 ## 内部作者格式：YAML adapter
 
 YAML adapter 是默认的可复用 operation contract 作者格式。它不是平台身份；它是便宜、可检查的格式，让 Agent 能读、能改、能验证很多 substrate 路径。下面是一个公开 RSS 订阅的完整适配器：
@@ -113,7 +137,7 @@ live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1805<!-- /STATS --></span> 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1813<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -203,7 +227,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状跨 <span><!-- STATS:site_count -->321<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1805<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状跨 <span><!-- STATS:site_count -->323<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1813<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 

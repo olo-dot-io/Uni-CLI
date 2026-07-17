@@ -2,7 +2,7 @@
  * @owner       src::adapters::acl-anthology::papers
  * @does        Registers ACL Anthology paper search, metadata lookup, PDF download, and PDF text-read commands from official Anthology pages.
  * @needs       aclanthology.org static search/paper HTML, scholar-artifacts PDF reader, src/registry.ts
- * @feeds       src/commands/scholar.ts via scholar.search, scholar.get, scholar.pdf, scholar.fulltext, and scholar.venue
+ * @feeds       src/commands/scholar.ts and registry-driven AI literature intelligence through scholar.* and ai.* capabilities
  * @breaks      ACL Anthology markup drift, denied PDF downloads, missing pdftotext, or empty PDF text surfaces as source read failure.
  * @invariants  Paper URLs/PDF URLs are absolutized against aclanthology.org; read output labels `text_source=pdf`.
  * @side-effects HTTPS egress to aclanthology.org; read writes PDFs under the requested output directory and executes pdftotext.
@@ -363,7 +363,13 @@ cli({
     { name: "limit", type: "int", default: 20 },
   ],
   columns: ["id", "title", "authors", "year", "venue", "pdf_url", "source_url"],
-  capabilities: ["http.fetch", "scholar.search", "scholar.pdf"],
+  capabilities: [
+    "http.fetch",
+    "scholar.search",
+    "scholar.pdf",
+    "ai.search",
+    "ai.paper",
+  ],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("acl-anthology search query cannot be empty.");

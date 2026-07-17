@@ -1,3 +1,18 @@
+/**
+ * @owner       src::adapters::linux-do::search
+ * @does        Searches Linux.do topics through the authenticated Discourse JSON surface.
+ * @needs       A user-owned browser session and current Discourse search response fields.
+ * @feeds       Linux.do workflows and opt-in registry-driven Chinese AI community intelligence.
+ * @breaks      Authentication or Discourse response drift surfaces as an explicit adapter error.
+ * @invariants  This authenticated source is discoverable but never part of unauthenticated AI defaults.
+ * @side-effects Reads the forum without mutating user or topic state.
+ * @perf        Maps at most 100 topics.
+ * @concurrency One browser page per invocation.
+ * @test        Linux.do adapter tests and tests/unit/commands/ai.test.ts
+ * @stability   experimental
+ * @since       2026-07-17
+ */
+
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
 
@@ -69,6 +84,13 @@ cli({
     },
   ],
   columns: ["rank", "title", "views", "likes", "replies", "url"],
+  capabilities: [
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
+    "ai.search",
+    "ai.community",
+    "ai.post",
+  ],
   func: async (page, kwargs) => {
     const query = String(kwargs.query ?? "");
     const limit = limitOf(kwargs.limit);

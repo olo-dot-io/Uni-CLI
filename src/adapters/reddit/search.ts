@@ -1,3 +1,18 @@
+/**
+ * @owner       src::adapters::reddit::search
+ * @does        Searches Reddit posts through the authenticated browser JSON boundary.
+ * @needs       A user-owned Reddit browser session and shared Reddit JSON mapping utilities.
+ * @feeds       Reddit research workflows and opt-in registry-driven AI community intelligence.
+ * @breaks      Authentication, JSON shape, or listing drift surfaces as an explicit adapter error.
+ * @invariants  This authenticated source is discoverable but never part of unauthenticated AI defaults.
+ * @side-effects Reads Reddit without mutating account or post state.
+ * @perf        Bounded to the normalized requested limit.
+ * @concurrency One browser page per invocation.
+ * @test        src/adapters/reddit/account.test.ts and tests/unit/commands/ai.test.ts
+ * @stability   experimental
+ * @since       2026-07-17
+ */
+
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
 import {
@@ -51,6 +66,13 @@ cli({
     },
   ],
   columns: ["title", "subreddit", "author", "score", "comments", "url"],
+  capabilities: [
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
+    "ai.search",
+    "ai.community",
+    "ai.post",
+  ],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const query = String(kwargs.query ?? "");

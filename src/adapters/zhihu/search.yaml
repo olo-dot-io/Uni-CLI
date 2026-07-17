@@ -35,13 +35,15 @@ pipeline:
       excerpt: ${{ (item.object?.excerpt || '') | strip_html | slice(0, 150) }}
       voteup: ${{ item.object?.voteup_count || 0 }}
       author: ${{ item.object?.author?.name || '' }}
+      updated_at: "${{ item.object?.updated_time || item.object?.created_time || '' }}"
+      url: "${{ item.object?.url || item.object?.question?.url || '' }}"
 
   - limit: ${{ args.limit }}
 
-columns: [type, title, excerpt, voteup, author]
+columns: [type, title, excerpt, voteup, author, updated_at, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.community", "ai.post"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

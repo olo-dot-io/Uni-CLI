@@ -313,3 +313,95 @@ list JSON`, `AI agents`, `pagination`.
 - Unsupported states stay explicit: GitHub discussions require `OWNER/REPO`;
   private/authenticated content stays at its owning auth boundary; upstream
   rate limits are reported rather than silently replaced.
+
+### Broad practitioner-source follow-up
+
+- The registry had substantially more useful AI surfaces than `ai sources`
+  exposed. OpenReview, OpenAlex, Crossref, ACL Anthology, X, Reddit, YouTube,
+  Linux.do, Zhihu, Bilibili, and OpenRouter already had owned commands but no
+  `ai.*` capability identity. The source federation now discovers them from
+  registry metadata instead of duplicating their transport logic.
+- Ten role profiles encode the recurring information needs observed in live
+  source probes: foundation-model architecture/releases and post-training;
+  training data/parallelism/optimizers/checkpoints; inference latency,
+  throughput, KV cache, batching, quantization, kernels and schedulers; world
+  models' video/3D/4D state, physics, interactive environments and spatial
+  planning; embodied policies, simulation and deployment; hardware drivers,
+  SDKs, compilers, memory/interconnect, compatibility, MLPerf and advisories;
+  agent tool use/memory/protocols; evaluation/safety/security; and paper,
+  review, rebuttal, code/data and reproducibility evidence.
+- The maintained landscape covers 100 maintainer-owned targets across
+  frontier and regional labs, model hubs, NVIDIA/AMD/Ascend and nine additional
+  hardware ecosystems, training/inference runtimes, world-model and robotics
+  organizations, literature venues, benchmarks, and community platforms. It
+  selects a bounded set of primary domains by query and role. A platform's own
+  catalog membership does not make arbitrary X, Reddit, YouTube, or other
+  community posts first-party; exact maintainer domains and known GitHub
+  repositories own that attribution.
+- Uni-CLI live-read probes succeeded against 27 additional first-party landing
+  surfaces spanning Runway, Luma, Pika, Kling, Moonvalley, Decart, Odyssey,
+  Waabi, Field AI, Figure, 1X, Together, Fireworks, CoreWeave, Lambda, Nebius,
+  Modal, Baseten, EleutherAI, Cambricon, Biren, Moore Threads, d-Matrix,
+  Etched, FuriosaAI, Rebellions, and Graphcore. These verified domains extend
+  the directory's world-model, robotics, AI-cloud, and accelerator coverage;
+  they do not masquerade as dedicated native APIs where none was proven.
+- Live Hugging Face daily papers, OpenReview world-model submissions, OpenAlex
+  inference-system works, YouTube systems talks, Hacker News runtime/kernel
+  posts, and authenticated X results proved that practitioners need papers,
+  reviews, code changes, model/dataset cards, official documentation and
+  release notes, talks, and high-signal discussion together. Reddit, Linux.do,
+  and Zhihu correctly exposed their authentication boundaries rather than
+  silently degrading to a different source.
+- ModelScope's public OpenAPI returned current model and dataset rows from
+  `/openapi/v1/models|datasets`. Its official SDK source was inspected at
+  commit `a54673c25033b7edb7220f08525668d9bbcebddf`:
+  <https://github.com/modelscope/modelscope_hub/blob/a54673c25033b7edb7220f08525668d9bbcebddf/src/modelscope_hub/_openapi.py>.
+  Search terms: `openapi v1 models datasets search page_number page_size`.
+- OpenCSG's public CSGHub API returned current model rows from
+  `/api/v1/models|datasets` with the supported `trending`, `recently_update`,
+  `most_download`, `most_favorite`, and `most_star` ordering vocabulary. The
+  owning server was inspected at commit
+  `f90524f09c9619167cdffd5ff5ba63843e3629fd`:
+  <https://github.com/OpenCSGs/csghub-server/tree/f90524f09c9619167cdffd5ff5ba63843e3629fd/api>.
+  Search terms: `api v1 models datasets search sort per page`.
+- Bluesky's official `app.bsky.feed.searchPosts` lexicon was inspected at
+  commit `0af78cf2b15a2b541f0f1889178ae64086d982f3`:
+  <https://github.com/bluesky-social/atproto/blob/0af78cf2b15a2b541f0f1889178ae64086d982f3/lexicons/app/bsky/feed/searchPosts.json>.
+  The working public app-view host in the observed environment was
+  `api.bsky.app`; `public.api.bsky.app` returned HTTP 403 for this method.
+  Upstream issues document incomplete OR behavior
+  (<https://github.com/bluesky-social/atproto/issues/3751>), missing feed
+  filtering (<https://github.com/bluesky-social/atproto/issues/3739>), omitted
+  bridged accounts (<https://github.com/bluesky-social/atproto/issues/3968>),
+  and cursor/403 failure states
+  (<https://github.com/bluesky-social/atproto/issues/3583>,
+  <https://github.com/bluesky-social/atproto/issues/3891>). The adapter therefore
+  promises only one bounded plain-query page with source-provided timestamps.
+- Replicate's former public `/api/v1/models?query=` boundary is no longer a
+  valid unauthenticated model-search surface. Its official search announcement
+  requires `GET https://api.replicate.com/v1/search` with a bearer token:
+  <https://replicate.com/blog/new-search-api>. Replicate remains in the target
+  directory but is not mislabeled as a working public federated source.
+- `ai pulse` is deliberately an on-demand live snapshot, not a background
+  monitor. A strict window retains only source- or explicitly index-dated rows;
+  `--include-auth` is the explicit boundary for X, Reddit, Linux.do, Zhihu, and
+  Bilibili. This gives agents current execution-time evidence without claiming
+  zero upstream indexing delay or inventing timestamps.
+- The completed built surface returns 10 practitioner profiles, 100 maintained
+  primary-source targets, and 35 registry-discovered AI capability rows. Live
+  ModelScope model/dataset, OpenCSG model, and Bluesky post probes returned
+  structured current records; an empty OpenCSG dataset result remained a valid
+  empty upstream state rather than a fabricated fallback.
+- The live world-model pulse returned current Bluesky, Hacker News, and
+  ModelScope evidence after phrase-noise filtering, cross-URL syndicated-title
+  deduplication, and per-source diversity limiting. The live inference pulse
+  completed in 14.17 seconds with five current results while preserving Brave,
+  Yahoo, and OpenReview failures as structured partial errors.
+- The full verification contract passed: 277 unit files with 3,064 tests
+  passed and 3 skipped; 17 integration files passed with 94 tests passed and
+  14 skipped; 170 adapter files passed with 6,515 tests; performance and
+  targeted 100% coverage checks passed; all 992 adapters linted; adapter-test
+  coverage was 74; stats, truth, conformance, exports, changesets, and the
+  public boundary guard passed. The final catalog invariant refinement then
+  passed its 28 focused command tests plus a fresh build, generated-doc check,
+  stats check, format check, boundary check, and `git diff --check`.
