@@ -2,7 +2,7 @@
   "version": "0.400.0",
   "codename": "Apollo · Young",
   "date": "2026-07-17",
-  "status": "local",
+  "status": "published",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
   "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.0",
@@ -12,13 +12,13 @@
       "Uni-CLI 0.400.0 delivers one shared, background-first Browser Runtime Broker for managed, existing-Chrome, and remote providers with explicit Agent session and target ownership.",
       "The generic computer-use profile exposes 16 direct browser tools alongside 16 computer controls for state, screenshots, navigation, trusted refs, input, tabs, dialogs, downloads, search, and foreground presence.",
       "Bounded open-tab and history search runs without debugger attachment, focus changes, navigation, target claims, or persistent page-content indexing; sensitive and Agent-owned visual content stays excluded.",
-      "This metadata describes a locally built and verified release. It does not claim npm or GitHub Release publication."
+      "Published from annotated tag v0.400.0 through GitHub Actions run 29568815086 using npm Trusted Publishers with verified SLSA provenance and matching x64/arm64 Windows Release assets."
     ],
     "zh": [
       "Uni-CLI 0.400.0 交付一个共享、后台优先的 Browser Runtime Broker，统一托管 managed、现有 Chrome 与 remote provider，并显式隔离 Agent session 与 target ownership。",
       "通用 computer-use profile 现提供 16 个直接浏览器工具与 16 个电脑控制工具，覆盖 state、screenshot、navigation、可信 ref、input、tab、dialog、download、search 与前台 presence。",
       "有界的打开标签页与历史搜索不会附加 debugger、改变焦点、导航、认领 target 或持久索引页面内容；敏感内容和 Agent 自有视觉元素不会进入感知结果。",
-      "这里描述的是已在本机构建并验证的版本，不代表 npm 或 GitHub Release 已发布。"
+      "已从 annotated tag v0.400.0 通过 GitHub Actions run 29568815086 发布；npm Trusted Publishers 的 SLSA provenance 已验证，GitHub Release 的 x64/arm64 Windows 资产与 npm 包逐字节一致。"
     ]
   }
 }

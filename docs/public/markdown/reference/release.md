@@ -54,16 +54,20 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 
 ## Historical Release Audit
 
-The public git/tag history starts in 2026 with the `0.200.x` line. The
-`0.400.0` delivery is local: package and documentation metadata identify it
-as locally built and verified, not as an npm or GitHub publication.
+The public git/tag history starts in 2026 with the `0.200.x` line. Release
+`0.400.0 — Apollo · Young` is published on npm and GitHub from the exact
+annotated tag recorded below.
 
 Release facts:
 
-- npm registry state before local delivery:
-  `@zenalexa/unicli@latest` is `0.227.1`;
-- local package target: `0.400.0`; no release tag or remote publication is
-  represented;
+- npm registry state after publication:
+  `@zenalexa/unicli@latest` is `0.400.0`;
+- annotated tag `v0.400.0` resolves to main commit
+  `3e4d555c9641cc2dfd541373c391970d9d0972da`;
+- GitHub Actions run `29568815086` published through npm Trusted Publishers
+  without a fallback token, and the installed package verifies SLSA provenance;
+- the GitHub Release contains x64 and arm64 Windows process-owner executables
+  that are byte-identical to the corresponding files in the npm tarball;
 - the shared Browser Runtime Broker owns provider lifetime, Agent sessions,
   target leases, visibility, cancellation, and cleanup;
 - the generic computer-use profile exposes direct browser state, navigation,
@@ -151,16 +155,19 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.400 line, the release label format is unchanged. The local release
-label is `Apollo · Young`.
+For the 0.400 line, the release label format is unchanged. The published
+release label is `Apollo · Young`.
 
-Local delivery uses an explicit `local` status. This is also the default, so
-generated docs cannot turn an unobserved npm or GitHub Release event into a
-publication claim:
+Candidate delivery uses the default `local` status, so generated docs cannot
+turn an unobserved npm or GitHub Release event into a publication claim. Only
+after both public endpoints are verified should metadata move to `published`:
 
 ```bash
-npx tsx scripts/release.ts --codename "Apollo · Young" --status local
+npx tsx scripts/release.ts --codename "Apollo · Young" --status published
 ```
+
+For `0.400.0`, that transition followed registry, provenance, Release asset,
+installed CLI, search, and stopped-browser doctor probes.
 
 ## Substantive Commits
 
@@ -230,7 +237,8 @@ To ship a release:
    `npm publish --dry-run`, and `npm run docs:check-public`.
 5. Commit the release candidate to `main`.
 6. Push `main`.
-7. Create the release tag with `git tag vX.Y.Z`.
+7. Create the annotated release tag with
+   `git tag -a vX.Y.Z -m "vX.Y.Z — Program · Astronaut"`.
 8. Push the tag with `git push origin vX.Y.Z`.
 9. Watch **Actions → Release**. The workflow checks out the tag, verifies the
    package surface, publishes to npm with provenance, and creates the GitHub
