@@ -28,6 +28,10 @@
 - Browser, compute, MCP, subprocess, overlay, and sidecar operations now share
   bounded cancellation, exact action settlement, deny-first permissions,
   process-tree containment, and fresh snapshot-ref generation.
+- The tag workflow cross-builds x64 and arm64 Windows Job Object owners from
+  the locked Rust workspace, validates their PE payloads, bundles both into the
+  provenance-signed npm artifact, and exposes architecture-labelled Release
+  assets; clean installs no longer depend on unpublished platform packages.
 - Release metadata now distinguishes a complete local delivery from an npm or
   GitHub publication, so generated documentation cannot claim an event that did
   not occur.

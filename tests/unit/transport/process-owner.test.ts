@@ -121,12 +121,29 @@ describe("process owner", () => {
     },
   );
 
-  it("resolves the Windows owner from explicit, package, user, then PATH locations", () => {
+  it("resolves the Windows owner from explicit, bundled, package, user, then PATH locations", () => {
     const explicit = resolveProcessOwnerBinary({
       platform: "win32",
       env: { UNICLI_PROCESS_OWNER: "D:\\tools\\owner.exe" },
     });
     expect(explicit).toBe("D:\\tools\\owner.exe");
+
+    const bundled = win32.join(
+      "C:\\repo",
+      "packages",
+      "sidecars",
+      "unicli-process-owner-win32-arm64",
+      "unicli-process-owner.exe",
+    );
+    expect(
+      resolveProcessOwnerBinary({
+        platform: "win32",
+        arch: "arm64",
+        env: {},
+        bundledRoot: "C:\\repo",
+        exists: (path) => path === bundled,
+      }),
+    ).toBe(bundled);
 
     const packageJson =
       "C:\\repo\\node_modules\\@zenalexa\\unicli-process-owner-win32-x64\\package.json";
