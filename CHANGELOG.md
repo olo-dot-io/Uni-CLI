@@ -38,6 +38,9 @@
 
 ### Fixed
 
+- The npm lock retains DocSearch's complete optional React peer closure, and
+  the release truth gate now rejects future npm 11 pruning that would make
+  clean Node 22/npm 10 installs fail before verification starts.
 - Background Chrome allocation preserves the active tab, focused window, and
   foreground app; doctor/status/session probes start neither providers nor
   placeholder targets.
