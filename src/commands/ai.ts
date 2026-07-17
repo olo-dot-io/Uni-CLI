@@ -1,17 +1,21 @@
 /**
  * @owner       src::commands::ai
  * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, normalization, provenance, deduplication, and structured reading.
- * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter registry, shared kernel execution, web.read
+ * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter registry, shared kernel execution, web/Jina/Defuddle readers, scholar-artifacts PDF reader, pdftotext
  * @feeds       Agent AI research loops through `unicli ai search|pulse|read|sources|landscape|profiles`
- * @breaks      Missing ai.* capability tags, weak URL canonicalization, silent source failures, or lossy normalization make current evidence undiscoverable or untraceable.
- * @invariants  Search executes only registered read-only ai.search source commands after the outer orchestrator is authorized; internal fan-out passes only declared args; partial failures are counted on every row and detailed once per response; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
- * @side-effects Search, pulse, and read execute registered read-only adapters; sources, landscape, and profiles are network-free.
- * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; normalization and reciprocal-rank fusion are O(S * R).
+ * @breaks      Missing ai.* capability tags, weak URL canonicalization, binary/challenge false success, silent source failures, or lossy normalization make current evidence undiscoverable or untraceable.
+ * @invariants  Search executes only registered read-only ai.search source commands after the outer orchestrator is authorized; internal fan-out passes only declared args; partial failures are counted on every row and detailed once per response; PDF/challenge/binary inputs never become successful Markdown; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
+ * @side-effects Search and pulse execute registered read-only adapters; read may create and remove one temporary PDF artifact while extracting text; sources, landscape, and profiles are network-free.
+ * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; HTML readers are bounded to 30 seconds and PDF extraction to 60 seconds; normalization and reciprocal-rank fusion are O(S * R).
  * @concurrency Independent source invocations run in a bounded worker pool; each owns an abort signal and result state.
  * @test        tests/unit/commands/ai.test.ts, tests/unit/adapters/ai-intelligence.test.ts, plus live ai/hf/gh/web probes
  * @stability   experimental
  * @since       2026-07-17
  */
+
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   coerceAiContentRecords,
@@ -25,6 +29,7 @@ import {
 } from "./ai-content.js";
 import {
   AUTHENTICATED_AI_SOURCE_REFS,
+  identifyAiPrimarySource,
   listAiLandscapeRows,
   listAiProfileRows,
   resolveAiRoleProfile,
@@ -122,6 +127,8 @@ export class AiCommandFailure extends Error {
 
 const AI_SOURCE_CONCURRENCY = 6;
 const AI_SOURCE_TIMEOUT_MS = 20_000;
+const AI_READ_TIMEOUT_MS = 30_000;
+const AI_PDF_READ_TIMEOUT_MS = 60_000;
 
 const VENDOR_CONFIG: Record<
   Exclude<AiVendor, "hugging-face" | "github" | "unknown">,
@@ -178,6 +185,18 @@ const VENDOR_CONFIG: Record<
   "qualcomm-ai": {
     terms: ["Qualcomm AI", "Hexagon NPU", "Cloud AI 100"],
     domains: ["docs.qualcomm.com", "qualcomm.com"],
+  },
+  "alibaba-thead": {
+    terms: ["Alibaba T-Head", "平头哥", "含光", "Hanguang"],
+    domains: ["developer.t-head.cn", "t-head.cn"],
+  },
+  kunlunxin: {
+    terms: ["Kunlunxin", "昆仑芯", "Kunlun XPU"],
+    domains: ["kunlunxin.com", "paddlepaddle.org.cn"],
+  },
+  cambricon: {
+    terms: ["Cambricon", "寒武纪", "MLU", "MagicMind", "BANG C"],
+    domains: ["developer.cambricon.com", "cambricon.com"],
   },
 };
 
@@ -339,11 +358,52 @@ function parseVendors(
     }
     if (normalized === "nvidia" || normalized === "amd") return normalized;
     if (normalized === "huawei-ascend") return normalized;
+    if (
+      ["t-head", "thead", "hanguang", "平头哥", "含光"].includes(normalized)
+    ) {
+      return "alibaba-thead";
+    }
+    if (["kunlun", "kunlunxin", "昆仑", "昆仑芯"].includes(normalized)) {
+      return "kunlunxin";
+    }
+    if (["cambricon", "寒武纪", "mlu"].includes(normalized)) {
+      return "cambricon";
+    }
     if (normalized in VENDOR_CONFIG) {
       return normalized as keyof typeof VENDOR_CONFIG;
     }
     throw new Error(`unsupported AI infrastructure vendor: ${value}`);
   });
+}
+
+function inferVendorScopeFromQuery(query: string): string | undefined {
+  const matches = [
+    {
+      vendor: "nvidia",
+      pattern: /\b(?:nvidia|cuda|nvlink|nvswitch|nvml|nvls|dcgm|dgx)\b/i,
+    },
+    { vendor: "amd", pattern: /\b(?:amd|rocm|instinct)\b/i },
+    {
+      vendor: "huawei-ascend",
+      pattern: /(?:华为昇腾|昇腾|\bascend\b|\bmindie\b|\bcann\b)/i,
+    },
+    {
+      vendor: "alibaba-thead",
+      pattern: /(?:平头哥|含光|玄铁|\bt-?head\b|\bhanguang\b)/i,
+    },
+    {
+      vendor: "kunlunxin",
+      pattern: /(?:昆仑芯|\bkunlunxin\b|\bkunlun xpu\b)/i,
+    },
+    {
+      vendor: "cambricon",
+      pattern:
+        /(?:寒武纪|\bcambricon\b|\bmagicmind\b|\bneuware\b|\bbang c\b|\bmlu[- ]?\d*\b)/i,
+    },
+  ]
+    .filter(({ pattern }) => pattern.test(query))
+    .map(({ vendor }) => vendor);
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 function searchQueryForSource(
@@ -363,7 +423,7 @@ function searchQueryForSource(
   const vendorScope = vendorTerms
     .map((term) => (term.includes(" ") ? `"${term}"` : term))
     .join(" OR ");
-  let scoped = vendorTerms.length === 1 ? `${query} ${vendorTerms[0]}` : query;
+  let scoped = query;
 
   if (source.kind === "docs") {
     const explicitDomains = parseCsv(opts.domains);
@@ -587,6 +647,18 @@ function timestampMillis(record: AiContentRecord): number | undefined {
   return Number.isNaN(parsed) ? undefined : parsed;
 }
 
+function scholarlyReadRef(row: AiContentRecord): string {
+  if (row.arxiv_id) return `arxiv:${row.arxiv_id}`;
+  if (row.doi) return row.doi;
+  return row.title;
+}
+
+function nextReadCommand(row: AiContentRecord): string {
+  return row.kind === "paper"
+    ? `unicli scholar read ${shellQuote(scholarlyReadRef(row))}`
+    : `unicli ai read ${shellQuote(row.url)}`;
+}
+
 function filterProfilePhraseNoise(
   rows: AiContentRecord[],
   query: string,
@@ -624,12 +696,18 @@ export async function searchAiContent(
   if (opts.repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(opts.repo)) {
     throw invalidSearchInput("repo must use OWNER/REPO syntax.");
   }
+  const inferredVendor = opts.vendors
+    ? undefined
+    : inferVendorScopeFromQuery(normalizedQuery);
+  const effectiveOpts = inferredVendor
+    ? { ...opts, vendors: inferredVendor }
+    : opts;
 
   let sources: AiSourceCommand[];
   try {
-    resolveAiRoleProfile(opts.profile);
-    sources = resolveAiSources(opts);
-    parseVendors(opts.vendors);
+    resolveAiRoleProfile(effectiveOpts.profile);
+    sources = resolveAiSources(effectiveOpts);
+    parseVendors(effectiveOpts.vendors);
   } catch (error) {
     if (error instanceof AiCommandFailure) throw error;
     throw invalidSearchInput(
@@ -649,12 +727,12 @@ export async function searchAiContent(
   }
 
   const retrievedAt = new Date().toISOString();
-  const vendorScopes = parseVendors(opts.vendors);
+  const vendorScopes = parseVendors(effectiveOpts.vendors);
   const sourceRuns = sources.flatMap((source) => {
     const scopes =
       source.kind === "docs" && vendorScopes.length > 1
-        ? vendorScopes.map((vendor) => ({ ...opts, vendors: vendor }))
-        : [opts];
+        ? vendorScopes.map((vendor) => ({ ...effectiveOpts, vendors: vendor }))
+        : [effectiveOpts];
     return scopes.map((sourceScope) => ({ source, sourceScope }));
   });
   const outcomes = await mapConcurrent(
@@ -674,7 +752,7 @@ export async function searchAiContent(
   );
   rows = filterProfilePhraseNoise(rows, normalizedQuery, opts.profile);
 
-  const requestedDomains = parseCsv(opts.domains).map((domain) =>
+  const requestedDomains = parseCsv(effectiveOpts.domains).map((domain) =>
     domain.toLowerCase(),
   );
   if (requestedDomains.length > 0) {
@@ -684,7 +762,7 @@ export async function searchAiContent(
       ),
     );
   }
-  const requestedVendors = parseVendors(opts.vendors);
+  const requestedVendors = parseVendors(effectiveOpts.vendors);
   if (requestedVendors.length > 0) {
     rows = rows.filter((row) =>
       requestedVendors.some((vendor) => row.vendors.includes(vendor)),
@@ -756,7 +834,7 @@ export async function searchAiContent(
     freshness_mode: freshnessMode,
     source_timestamp: row.updated_at || row.published_at,
     freshness_verifiable: timestampMillis(row) !== undefined,
-    next_read: `unicli ai read ${shellQuote(row.url)}`,
+    next_read: nextReadCommand(row),
   }));
 }
 
@@ -873,7 +951,7 @@ export async function pulseAiContent(
     freshness_mode: "latest",
     source_timestamp: row.updated_at || row.published_at,
     freshness_verifiable: timestampMillis(row) !== undefined,
-    next_read: `unicli ai read ${shellQuote(row.url)}`,
+    next_read: nextReadCommand(row),
     pulse_profile: profile.id,
     pulse_window: window,
     pulse_queries: queries,
@@ -884,10 +962,33 @@ export { listAiLandscapeRows, listAiProfileRows };
 
 export async function readAiContent(
   url: string,
-  opts: { maxCharsK?: string | number; maxLinks?: string | number } = {},
+  opts: {
+    maxCharsK?: string | number;
+    maxLinks?: string | number;
+    reader?: string;
+    firstPage?: string | number;
+    lastPage?: string | number;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const maxChars = parseLimit(opts.maxCharsK, 100, "max_chars_k") * 1_000;
   const maxLinks = parseLimit(opts.maxLinks, 100, "max_links");
+  const firstPage = parseLimit(opts.firstPage, 1, "first_page");
+  const lastPage = parseLimit(opts.lastPage, 20, "last_page");
+  if (lastPage < firstPage) {
+    throw new AiCommandFailure({
+      code: "invalid_input",
+      message: "last_page must be greater than or equal to first_page.",
+      suggestion: "Choose an inclusive PDF page range from 1 to 100.",
+    });
+  }
+  const reader = opts.reader ?? "direct";
+  if (!new Set(["direct", "jina", "defuddle"]).has(reader)) {
+    throw new AiCommandFailure({
+      code: "invalid_input",
+      message: "reader must be direct, jina, or defuddle.",
+      suggestion: "Use --reader direct, --reader jina, or --reader defuddle.",
+    });
+  }
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(url);
@@ -906,35 +1007,246 @@ export async function readAiContent(
     });
   }
 
-  const resolved = getAllAdapters().find((adapter) => adapter.name === "web");
+  const githubThreadMatch =
+    parsedUrl.hostname.toLowerCase() === "github.com"
+      ? /^\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)\/?$/.exec(parsedUrl.pathname)
+      : null;
+  if (githubThreadMatch) {
+    const commandName =
+      githubThreadMatch[3] === "issues" ? "issue-thread" : "pr-thread";
+    const resolved = getAllAdapters().find((adapter) => adapter.name === "gh");
+    const command = resolved?.commands[commandName];
+    if (!resolved || !command) {
+      throw new AiCommandFailure({
+        code: "AI_THREAD_READ_UNAVAILABLE",
+        message: `Registered gh.${commandName} command is unavailable.`,
+        suggestion: `Restore the GitHub thread reader or run \`unicli gh ${commandName} ${shellQuote(url)}\`.`,
+      });
+    }
+    const invocation = buildInvocation(
+      "cli",
+      "gh",
+      commandName,
+      {
+        args: declaredArgs(command, { ref: parsedUrl.toString() }),
+        source: "internal",
+      },
+      { approved: true, signal: AbortSignal.timeout(AI_READ_TIMEOUT_MS) },
+    );
+    if (!invocation) {
+      throw new AiCommandFailure({
+        code: "AI_THREAD_READ_UNAVAILABLE",
+        message: `Could not build gh.${commandName} invocation.`,
+        suggestion: `Run \`unicli describe gh ${commandName}\` to inspect the adapter contract.`,
+      });
+    }
+    const result = await execute(invocation);
+    if (result.error) {
+      throw new AiCommandFailure({
+        code: result.error.code,
+        message: result.error.message,
+        suggestion:
+          result.error.suggestion ??
+          "Retry the public GitHub thread or authenticate gh.",
+        retryable: result.error.retryable ?? false,
+        alternatives: [
+          ...(result.error.alternatives ?? []),
+          `unicli gh ${commandName} ${shellQuote(url)}`,
+        ],
+      });
+    }
+    const thread = result.results.find(
+      (value): value is Record<string, unknown> =>
+        typeof value === "object" && value !== null,
+    );
+    if (!thread) {
+      throw new AiCommandFailure({
+        code: "AI_READ_EMPTY",
+        message: `gh.${commandName} returned no structured thread.`,
+        suggestion:
+          "Verify that the GitHub issue or pull request still exists.",
+      });
+    }
+    const primarySource = identifyAiPrimarySource(parsedUrl.toString());
+    const sourceClass =
+      primarySource && primarySource.type !== "community"
+        ? "official"
+        : "community";
+    return {
+      ...thread,
+      source_class: sourceClass,
+      organization: sourceClass === "official" ? primarySource?.name : "",
+      organization_type:
+        sourceClass === "official" ? primarySource?.type : "unknown",
+      primary_source_id: sourceClass === "official" ? primarySource?.id : "",
+      source_adapter: "gh",
+      source_command: commandName,
+      content_format: "github-thread",
+      retrieved_at: new Date().toISOString(),
+      next_search: `unicli ai search ${shellQuote(String(thread.title ?? ""))} --repo ${githubThreadMatch[1]}/${githubThreadMatch[2]}`,
+    };
+  }
+
+  const readPdf = async (): Promise<Record<string, unknown>> => {
+    const resolved = getAllAdapters().find(
+      (adapter) => adapter.name === "scholar-artifacts",
+    );
+    const command = resolved?.commands["read-pdf"];
+    if (!resolved || !command) {
+      throw new AiCommandFailure({
+        code: "AI_PDF_READ_UNAVAILABLE",
+        message:
+          "Registered scholar-artifacts.read-pdf command is unavailable.",
+        suggestion: "Restore the PDF artifact adapter before retrying.",
+      });
+    }
+    const output = mkdtempSync(join(tmpdir(), "unicli-ai-pdf-"));
+    try {
+      const invocation = buildInvocation(
+        "cli",
+        "scholar-artifacts",
+        "read-pdf",
+        {
+          args: declaredArgs(command, {
+            pdf_url: parsedUrl.toString(),
+            output,
+            "first-page": firstPage,
+            "last-page": lastPage,
+            "max-chars": maxChars,
+          }),
+          source: "internal",
+        },
+        {
+          approved: true,
+          signal: AbortSignal.timeout(AI_PDF_READ_TIMEOUT_MS),
+        },
+      );
+      if (!invocation) {
+        throw new AiCommandFailure({
+          code: "AI_PDF_READ_UNAVAILABLE",
+          message: "Could not build scholar-artifacts.read-pdf invocation.",
+          suggestion:
+            "Run `unicli describe scholar-artifacts read-pdf` to inspect the adapter contract.",
+        });
+      }
+      const result = await execute(invocation);
+      if (result.error) {
+        throw new AiCommandFailure({
+          code: result.error.code,
+          message: result.error.message,
+          suggestion:
+            result.error.suggestion ??
+            "Retry the PDF URL or inspect the PDF extraction adapter.",
+          retryable: result.error.retryable ?? false,
+          alternatives: [
+            ...(result.error.alternatives ?? []),
+            `unicli scholar-artifacts read-pdf ${shellQuote(url)}`,
+          ],
+        });
+      }
+      const artifact = result.results.find(
+        (value): value is Record<string, unknown> =>
+          typeof value === "object" && value !== null,
+      );
+      const text = typeof artifact?.text === "string" ? artifact.text : "";
+      if (!text.trim()) {
+        throw new AiCommandFailure({
+          code: "AI_READ_EMPTY",
+          message: "PDF extraction returned no text.",
+          suggestion:
+            "Choose a text-bearing page range or use an OCR-capable document tool.",
+        });
+      }
+      const row = structureAiDocument(
+        parsedUrl.toString(),
+        text,
+        new Date().toISOString(),
+        maxChars,
+        maxLinks,
+      );
+      const arxivId =
+        /(?:^|\.)arxiv\.org$/i.test(parsedUrl.hostname) &&
+        /^\/(?:pdf|abs)\/([^/?#]+?)(?:\.pdf)?$/.exec(parsedUrl.pathname)?.[1];
+      const title = arxivId ? `arXiv ${arxivId}` : String(row.title);
+      const originalCharCount =
+        typeof artifact?.text_chars === "number"
+          ? artifact.text_chars
+          : row.original_char_count;
+      const truncated =
+        typeof artifact?.text_truncated === "boolean"
+          ? artifact.text_truncated
+          : row.truncated;
+      return {
+        ...row,
+        title,
+        original_char_count: originalCharCount,
+        truncated,
+        content_format: "pdf-text",
+        page_range: { first: firstPage, last: lastPage },
+        text_chars: artifact?.text_chars,
+        text_truncated: artifact?.text_truncated,
+        next_search: arxivId
+          ? `unicli scholar read ${shellQuote(arxivId)}`
+          : `unicli ai search ${shellQuote(title)} --domains ${String(row.domain)}`,
+      };
+    } finally {
+      rmSync(output, { recursive: true, force: true });
+    }
+  };
+
+  if (/\.pdf(?:$|[?#])/i.test(parsedUrl.toString())) {
+    return readPdf();
+  }
+
+  const resolved = getAllAdapters().find(
+    (adapter) => adapter.name === (reader === "direct" ? "web" : reader),
+  );
   const command = resolved?.commands.read;
   if (!resolved || !command) {
     throw new AiCommandFailure({
       code: "AI_READ_UNAVAILABLE",
-      message: "Registered web.read command is unavailable.",
-      suggestion: "Repair or restore the web.read adapter before retrying.",
+      message: `Registered ${reader}.read command is unavailable.`,
+      suggestion: `Repair or restore the ${reader}.read adapter before retrying.`,
     });
   }
   const invocation = buildInvocation(
     "cli",
-    "web",
+    resolved.name,
     "read",
     {
       args: declaredArgs(command, { url: parsedUrl.toString() }),
       source: "internal",
     },
-    { approved: true },
+    { approved: true, signal: AbortSignal.timeout(AI_READ_TIMEOUT_MS) },
   );
   if (!invocation) {
     throw new AiCommandFailure({
       code: "AI_READ_UNAVAILABLE",
-      message: "Could not build web.read invocation.",
-      suggestion:
-        "Run `unicli describe web read` to inspect the adapter contract.",
+      message: `Could not build ${resolved.name}.read invocation.`,
+      suggestion: `Run \`unicli describe ${resolved.name} read\` to inspect the adapter contract.`,
     });
   }
   const result = await execute(invocation);
   if (result.error) {
+    if (
+      reader === "direct" &&
+      result.error.code === "unsupported_content_type" &&
+      (result.error.alternatives ?? []).some((command) =>
+        command.includes("scholar-artifacts read-pdf"),
+      )
+    ) {
+      return readPdf();
+    }
+    const alternatives = [
+      ...(result.error.alternatives ?? []),
+      `unicli ${resolved.name} read ${shellQuote(url)}`,
+    ];
+    if (reader === "direct") {
+      alternatives.push(
+        `unicli ai read ${shellQuote(url)} --reader jina`,
+        `unicli ai read ${shellQuote(url)} --reader defuddle`,
+      );
+    }
     throw new AiCommandFailure({
       code: result.error.code,
       message: result.error.message,
@@ -942,7 +1254,7 @@ export async function readAiContent(
         result.error.suggestion ??
         "Retry the canonical source URL or use an authenticated site adapter.",
       retryable: result.error.retryable ?? false,
-      alternatives: [`unicli web read ${shellQuote(url)}`],
+      alternatives,
     });
   }
   const markdown = result.results
@@ -953,9 +1265,8 @@ export async function readAiContent(
   if (!markdown) {
     throw new AiCommandFailure({
       code: "AI_READ_EMPTY",
-      message: "web.read returned no document content.",
-      suggestion:
-        "Try the canonical documentation URL or inspect `unicli repair web read`.",
+      message: `${resolved.name}.read returned no document content.`,
+      suggestion: `Try the canonical documentation URL or inspect \`unicli repair ${resolved.name} read\`.`,
     });
   }
   const row = structureAiDocument(

@@ -39,3 +39,41 @@ MCP. Make source expansion data-driven, select official domains by query and
 role, reuse native adapters before adding code, and reject unsupported or
 undated states explicitly. This is smaller and more robust than copying one
 scraper per laboratory, product, or documentation site.
+
+## 2026-07-17 — Agent dogfood hardening boundary
+
+**DECISION**
+
+Treat the three independent NVLink, domestic-accelerator, and deep-algorithm
+consumer rehearsals as disproving experiments against the unified `ai search`
+and `ai read` contract. Fix failures at those two owning boundaries rather
+than teaching agents a growing collection of raw fallback commands.
+
+The immediate contract is:
+
+1. binary/PDF and anti-bot challenge responses fail closed or route through a
+   declared artifact reader; they never become successful Markdown;
+2. exact vendor/entity queries select only matched maintainer domains before a
+   profile fallback is considered;
+3. hosted papers, models, and datasets retain their platform provenance but
+   are not mislabeled as platform-maintained official content;
+4. paper results route to the scholarly full-text boundary, and GitHub issue
+   or PR URLs route to structured thread readers;
+5. deep AI-hardware and algorithm vocabulary discovers the unified `ai`
+   commands without requiring the caller to know the product category name.
+
+**SCOPE**
+
+This change closes machine-readable retrieval defects demonstrated by the
+dogfood runs. Diagram OCR, equation/table anchors, commit-pinned code line
+retrieval, and a complete paper/repository/review/benchmark evidence graph
+remain explicit unsupported states; they are not simulated with generic HTML
+or inferred metadata.
+
+**BEST PATH**
+
+Reuse the existing PDF, scholarly, GitHub CLI, registry, and error-envelope
+boundaries. Add only missing structured GitHub thread commands, two missing
+domestic vendor identities, and semantic discovery vocabulary. Do not add one
+scraper per product or silently send protected pages through third-party
+readers.

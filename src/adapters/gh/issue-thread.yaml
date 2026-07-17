@@ -1,0 +1,35 @@
+site: gh
+name: issue-thread
+description: Read one GitHub issue with its complete structured comment thread
+type: bridge
+strategy: public
+binary: gh
+detect: which gh
+
+args:
+  ref:
+    type: str
+    required: true
+    positional: true
+    description: GitHub issue URL or OWNER/REPO#NUMBER reference
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - issue
+        - view
+        - ${{ args.ref }}
+        - --json
+        - author,body,closed,closedAt,comments,createdAt,id,labels,milestone,number,reactionGroups,state,stateReason,title,updatedAt,url
+      parse: json
+      timeout: 30000
+
+columns: [number, title, state, author, createdAt, updatedAt, url, comments]
+
+capabilities: ["subprocess.exec", "auth.executable.gh", "ai.read", "ai.thread"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

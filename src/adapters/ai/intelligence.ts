@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::ai::intelligence
  * @does        Registers profile-aware AI search/pulse/read and source/target/profile discovery as ordinary adapter commands across CLI and MCP transports.
- * @needs       src/commands/ai.ts orchestration services and the adapter registry
+ * @needs       src/commands/ai.ts orchestration services, PDF extraction, optional Jina/Defuddle readers, and the adapter registry
  * @feeds       `unicli ai search|pulse|read|sources|landscape|profiles` on every supported transport
  * @breaks      Registering these as Commander-only commands makes MCP discovery advertise commands it cannot execute.
  * @invariants  Every surface resolves ai.* through the shared invocation kernel; search and read remain read-only; provider failures stay structured in results or errors.
- * @side-effects search/pulse/read fan out to declared read-only adapters; discovery commands are network-free.
+ * @side-effects search/pulse/read fan out to declared read-only adapters; PDF reads create and delete one temporary artifact; discovery commands are network-free.
  * @perf        Delegates to bounded AI orchestration limits (1-100 results).
  * @concurrency safe across invocations; each invocation owns its orchestration state.
  * @test        tests/unit/adapters/ai-intelligence.test.ts and tests/unit/commands/ai.test.ts
@@ -99,7 +99,7 @@ cli({
       name: "vendors",
       type: "str",
       description:
-        "nvidia, amd, huawei-ascend, intel-ai, aws-neuron, google-tpu, cerebras, groq, tenstorrent, sambanova, apple-mlx, qualcomm-ai",
+        "nvidia, amd, huawei-ascend, alibaba-thead, kunlunxin, cambricon, intel-ai, aws-neuron, google-tpu, cerebras, groq, tenstorrent, sambanova, apple-mlx, qualcomm-ai",
     },
     {
       name: "domains",
@@ -284,13 +284,43 @@ cli({
       default: 100,
       description: "Maximum structured links (1-100)",
     },
+    {
+      name: "reader",
+      type: "str",
+      default: "direct",
+      choices: ["direct", "jina", "defuddle"],
+      description:
+        "Explicit HTML reader; third-party readers receive the source URL",
+    },
+    {
+      name: "first_page",
+      type: "int",
+      default: 1,
+      description: "First PDF page to extract (1-100)",
+    },
+    {
+      name: "last_page",
+      type: "int",
+      default: 20,
+      description: "Last PDF page to extract (1-100)",
+    },
   ],
-  capabilities: ["http.fetch", "ai.intelligence", "ai.docs"],
+  capabilities: [
+    "http.fetch",
+    "http.download",
+    "subprocess.exec",
+    "ai.intelligence",
+    "ai.docs",
+  ],
+  executables: ["pdftotext"],
   minimum_capability: "http.fetch",
   func: async (_page, kwargs) =>
     readAiContent(text(kwargs.url) ?? "", {
       maxCharsK: text(kwargs.max_chars_k),
       maxLinks: text(kwargs.max_links),
+      reader: text(kwargs.reader),
+      firstPage: text(kwargs.first_page),
+      lastPage: text(kwargs.last_page),
     }),
 });
 

@@ -405,3 +405,52 @@ list JSON`, `AI agents`, `pagination`.
   public boundary guard passed. The final catalog invariant refinement then
   passed its 28 focused command tests plus a fresh build, generated-doc check,
   stats check, format check, boundary check, and `git diff --check`.
+
+## Agent dogfood hardening — 2026-07-17
+
+- Three independent synthetic consumer rehearsals executed 37 deep tasks across
+  NVLink/NVSwitch/NVML/Fabric Manager, Ascend/T-Head/Kunlunxin/Cambricon and
+  deep-algorithm/paper/review/code workflows. They are agent role-play
+  experiments, not real-user feedback. The runs found PDF and verification-page
+  false success, unrelated hardware-domain fallback, incomplete domestic
+  accelerator identity, host-versus-maintainer provenance confusion, abstract-
+  only paper follow-up, and GitHub threads that omitted comments/reviews.
+- Exact entity routing now resolves T-Head, Kunlunxin, Cambricon, Ascend, NVIDIA,
+  and AMD before hardware-profile fallback. A live T-Head query returned five
+  T-Head-owned results, including `t-head.cn`, `developer.t-head.cn`, and
+  `yoc.docs.t-head.cn`, with no unrelated hardware vendor.
+- `ai read` is now MIME-aware and deadline-bounded. A live read of the NVIDIA
+  DGX H100 datasheet returned `content_format=pdf-text`, pages 1–2, title
+  `DATASHEET`, and 7,345 structured characters. `fetch_text` rejects declared
+  binary MIME types and `%PDF-` magic; OpenReview's verification page now
+  returns `challenge_required` instead of successful paper content.
+- Third-party Jina and Defuddle readers remain explicit `--reader` choices so a
+  protected source URL is never silently disclosed to another service.
+- GitHub issue and pull-request URLs now route through structured `gh` readers.
+  A live read of NVIDIA/nccl#1672 returned its title, `OPEN` state, and all 16
+  comments as `github-thread` content instead of stopping at the issue body.
+- Paper search results now route to `scholar read` full-text resolution. Shared
+  hosts such as Hugging Face, ModelScope, OpenCSG, arXiv, Semantic Scholar, and
+  OpenReview retain `hosting_platform` but are classified `hosted-artifact`
+  unless the artifact itself is maintained by that platform.
+- The deep-algorithm rehearsal still disproved equation/table anchors,
+  commit-pinned source lines, diagram OCR, query relaxation, paper version
+  comparison, and a full paper↔code↔review↔benchmark graph. Those states remain
+  explicitly unsupported rather than being represented as completed work.
+- An independent post-implementation reviewer then found eight P1 boundary
+  defects: vendor marketing terms over-constrained GitHub queries, catalog repo
+  ownership was dropped by vendor filtering, PDF cancellation was not propagated,
+  PDF truncation metadata contradicted itself, arbitrary GitHub threads were
+  promoted to official, challenge detection overmatched prose, binary MIME
+  coverage was denylist-based, and generic hardware fallback excluded the new
+  domestic vendors. All were repaired and re-reviewed; the final independent
+  review reported no remaining P0/P1.
+- A real `openC910 --vendors alibaba-thead` repository search now returns
+  `XUANTIE-RV/openc910` as official without injecting marketing terms into the
+  GitHub query. The same catalog ownership path covers KunlunxinAD and Cambricon
+  repositories while keeping unrelated repositories community evidence.
+- Kernel cancellation now reaches TypeScript command functions and both the
+  PDF download and `pdftotext` pipelines. Text reads use an allowlist that
+  accepts HTML/plain text, JSON/XML families, YAML, TOML, NDJSON, JSON-seq,
+  CSV, Markdown and SQL, while rejecting non-text MIME and recognizable
+  PDF/ZIP/GZIP/7z/RAR/WASM/OLE/ELF signatures.

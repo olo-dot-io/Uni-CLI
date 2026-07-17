@@ -1,13 +1,13 @@
 /**
  * @owner       src::adapters::scholar-artifacts::pdf
  * @does        Registers source-agnostic scholarly PDF artifact download and text extraction commands.
- * @needs       src/engine/executor.ts download/exec steps, pdftotext, scholarly adapters that expose pdf_url
+ * @needs       kernel CommandExecutionContext cancellation, src/engine/executor.ts download/exec steps, pdftotext, scholarly adapters that expose pdf_url
  * @feeds       src/commands/scholar.ts generic scholar download/read workflows
  * @breaks      PDF URL drift, denied download paths, missing pdftotext, or empty extracted text stop the artifact loop.
- * @invariants  PDF bytes are downloaded through pipeline resource guards; text extraction uses the same pdftotext contract as pdf/read.
+ * @invariants  PDF bytes are downloaded through pipeline resource guards; caller cancellation reaches download and pdftotext; text extraction uses the same pdftotext contract as pdf/read.
  * @side-effects HTTPS egress to the supplied PDF URL; writes PDF files under the requested output directory; executes pdftotext for read-pdf.
  * @perf        O(PDF bytes + extracted pages); page range defaults to the first 20 pages.
- * @concurrency safe — each command invocation writes one deterministic PDF path
+ * @concurrency Caller-provided unique output directories isolate invocations; the same ref/output pair shares one deterministic artifact path.
  * @test        tests/unit/adapters/scholar-artifacts.test.ts
  * @stability   experimental
  * @since       2026-06-26
@@ -70,10 +70,11 @@ cli({
   ],
   capabilities: ["http.download"],
   minimum_capability: "http.download",
-  func: async (_page, kwargs) => [
+  func: async (_page, kwargs, context) => [
     await downloadScholarPdf(kwargs, {
       ...SCHOLAR_ARTIFACT_PDF_OPTIONS,
       command: "download-pdf",
+      signal: context.signal,
     }),
   ],
 });
@@ -127,7 +128,10 @@ cli({
   capabilities: ["http.download", "subprocess.exec"],
   executables: ["pdftotext"],
   minimum_capability: "subprocess.exec",
-  func: async (_page, kwargs) => [
-    await readScholarPdf(kwargs, SCHOLAR_ARTIFACT_PDF_OPTIONS),
+  func: async (_page, kwargs, context) => [
+    await readScholarPdf(kwargs, {
+      ...SCHOLAR_ARTIFACT_PDF_OPTIONS,
+      signal: context.signal,
+    }),
   ],
 });

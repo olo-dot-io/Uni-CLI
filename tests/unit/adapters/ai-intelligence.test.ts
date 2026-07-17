@@ -55,6 +55,8 @@ describe("AI intelligence transport parity", () => {
     expect(resolveCommand("ai", "pulse")).toBeDefined();
     expect(resolveCommand("ai", "landscape")).toBeDefined();
     expect(resolveCommand("ai", "profiles")).toBeDefined();
+    expect(resolveCommand("gh", "issue-thread")).toBeDefined();
+    expect(resolveCommand("gh", "pr-thread")).toBeDefined();
     expect(
       listCoreDiscoveryCommands().filter((command) => command.site === "ai"),
     ).toEqual([]);
@@ -188,8 +190,9 @@ describe("AI source precision contracts", () => {
     expect(rows[0]).toMatchObject({
       title: "World Model",
       kind: "model",
-      organization: "ModelScope",
-      source_class: "official",
+      organization: "",
+      hosting_platform: "ModelScope",
+      source_class: "hosted-artifact",
       updated_at: "2026-07-17T00:00:00Z",
       metrics: { downloads: 12, likes: 3 },
     });
@@ -234,7 +237,9 @@ describe("AI source precision contracts", () => {
     );
     expect(rows[0]).toMatchObject({
       kind: "model",
-      organization: "OpenCSG",
+      organization: "",
+      hosting_platform: "OpenCSG",
+      source_class: "hosted-artifact",
       updated_at: "2026-07-17T00:00:00Z",
     });
   });

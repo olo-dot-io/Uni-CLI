@@ -1,3 +1,13 @@
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -148,12 +158,131 @@ describe("AI source discovery", () => {
       "community",
     );
     expect(
+      identifyAiPrimarySource(
+        "https://github.com/random-user/random-repo/issues/1",
+      ),
+    ).toBeUndefined();
+    expect(
+      identifyAiPrimarySource("https://github.com/XUANTIE-RV/openc910/issues/1")
+        ?.id,
+    ).toBe("alibaba-thead");
+    expect(
       selectAiOfficialDomains("site:docs.nvidia.com CUDA", "hardware"),
     ).toEqual(["docs.nvidia.com"]);
     expect(selectAiOfficialDomains("world model", "world-models")).toEqual(
       expect.arrayContaining(["deepmind.google", "worldlabs.ai"]),
     );
   });
+
+  it("routes domestic accelerator entities only to their matched first-party packs", () => {
+    const ids = listAiLandscapeRows("hardware").map((row) => row.id);
+
+    expect(ids).toEqual(
+      expect.arrayContaining(["alibaba-thead", "kunlunxin", "cambricon"]),
+    );
+    expect(selectAiOfficialDomains("平头哥 含光 800", "hardware")).toEqual([
+      "t-head.cn",
+      "developer.t-head.cn",
+    ]);
+    expect(selectAiOfficialDomains("寒武纪 BANG C MLU", "hardware")).toEqual([
+      "developer.cambricon.com",
+      "cambricon.com",
+    ]);
+    expect(selectAiOfficialDomains("昆仑芯 XPU", "hardware")).toEqual([
+      "kunlunxin.com",
+      "paddlepaddle.org.cn",
+    ]);
+    expect(
+      selectAiOfficialDomains("general accelerator overview", "hardware"),
+    ).toEqual(
+      expect.arrayContaining([
+        "t-head.cn",
+        "kunlunxin.com",
+        "developer.cambricon.com",
+      ]),
+    );
+  });
+
+  it("keeps verified accelerator repositories and removes invalid catalog paths", () => {
+    const repositories = AI_PRIMARY_SOURCES.flatMap(
+      (source) => source.repositories,
+    );
+
+    expect(repositories).toEqual(
+      expect.arrayContaining([
+        "Ascend/pytorch",
+        "mindspore-ai/mindspore",
+        "XUANTIE-RV/openc910",
+        "KunlunxinAD/xav-dsal-open",
+        "Cambricon/torch_mlu",
+      ]),
+    );
+    expect(repositories).not.toEqual(
+      expect.arrayContaining(["Ascend/torch_npu", "MindSpore/mindspore"]),
+    );
+    expect(
+      inferAiVendor("https://github.com/XUANTIE-RV/openc910", "openC910"),
+    ).toBe("alibaba-thead");
+    expect(
+      inferAiVendor(
+        "https://github.com/KunlunxinAD/xav-dsal-open",
+        "XPU library",
+      ),
+    ).toBe("kunlunxin");
+    expect(
+      inferAiVendor("https://github.com/Cambricon/torch_mlu", "torch_mlu"),
+    ).toBe("cambricon");
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "keeps vendor marketing terms out of GitHub repository queries",
+    async () => {
+      const directory = mkdtempSync(join(tmpdir(), "unicli-ai-gh-"));
+      const executable = join(directory, "gh");
+      const captured = join(directory, "args.txt");
+      const previousPath = process.env.PATH;
+      const previousCapture = process.env.UNICLI_TEST_GH_ARGS;
+      // REASON: Stub only the external gh boundary while exercising the real registry, pipeline, query planner, and normalization chain.
+      writeFileSync(
+        executable,
+        `#!/bin/sh
+printf '%s\\n' "$@" > "$UNICLI_TEST_GH_ARGS"
+cat <<'JSON'
+[{"fullName":"XUANTIE-RV/openc910","description":"Open C910 processor","stargazersCount":1,"forksCount":1,"language":"Verilog","url":"https://github.com/XUANTIE-RV/openc910","updatedAt":"2026-07-17T00:00:00Z"}]
+JSON
+`,
+      );
+      chmodSync(executable, 0o755);
+      process.env.PATH = `${directory}:${previousPath ?? ""}`;
+      process.env.UNICLI_TEST_GH_ARGS = captured;
+      try {
+        const rows = await searchAiContent("openC910", {
+          sources: "gh.search-repos",
+          kind: "repository",
+          vendors: "alibaba-thead",
+          limit: 1,
+        });
+
+        expect(rows[0]).toMatchObject({
+          title: "XUANTIE-RV/openc910",
+          vendor: "alibaba-thead",
+          source_class: "official",
+        });
+        const args = readFileSync(captured, "utf8");
+        expect(args).toContain("openC910");
+        expect(args).not.toContain("Alibaba T-Head");
+      } finally {
+        if (previousPath === undefined) delete process.env.PATH;
+        else process.env.PATH = previousPath;
+        if (previousCapture === undefined) {
+          delete process.env.UNICLI_TEST_GH_ARGS;
+        } else {
+          process.env.UNICLI_TEST_GH_ARGS = previousCapture;
+        }
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("rejects an impossible freshness date before source I/O", async () => {
     await expect(
@@ -245,7 +374,7 @@ describe("AI content normalization", () => {
     );
   });
 
-  it("attributes first-party model hubs while keeping social-platform posts community evidence", () => {
+  it("separates hosting-platform provenance from artifact ownership", () => {
     const model = coerceAiContentRecords(
       [
         {
@@ -283,15 +412,17 @@ describe("AI content normalization", () => {
     )[0];
 
     expect(model).toMatchObject({
-      source_class: "official",
-      primary_source_id: "modelscope",
-      organization: "ModelScope",
-      organization_type: "model-hub",
+      source_class: "hosted-artifact",
+      primary_source_id: "",
+      organization: "",
+      organization_type: "unknown",
+      hosting_platform: "ModelScope",
     });
     expect(post).toMatchObject({
       source_class: "community",
-      primary_source_id: "x",
-      organization_type: "community",
+      primary_source_id: "",
+      organization_type: "unknown",
+      hosting_platform: "X / Twitter",
     });
   });
 
@@ -346,6 +477,44 @@ describe("AI content normalization", () => {
     expect(inferAiVendor("https://example.org/post", "CANN 9 and 昇腾")).toBe(
       "huawei-ascend",
     );
+  });
+
+  it.each([
+    ["https://t-head.cn/product", "含光 800", "alibaba-thead"],
+    ["https://kunlunxin.com/product", "XPU SDK", "kunlunxin"],
+    ["https://developer.cambricon.com/", "BANG C", "cambricon"],
+  ])(
+    "recognizes domestic accelerator ownership for %s",
+    (url, text, vendor) => {
+      expect(inferAiVendor(url, text)).toBe(vendor);
+    },
+  );
+
+  it("labels paper-host mirrors as hosted artifacts rather than publisher-official", () => {
+    const record = coerceAiContentRecords(
+      [
+        {
+          title: "A research paper",
+          url: "https://huggingface.co/papers/2607.00001",
+        },
+      ],
+      {
+        ref: "huggingface-papers.search",
+        site: "huggingface-papers",
+        name: "search",
+        kind: "paper",
+        sourceClass: "community",
+      },
+      "research paper",
+      "2026-07-17T00:00:00Z",
+    )[0];
+
+    expect(record).toMatchObject({
+      source_class: "hosted-artifact",
+      hosting_platform: "Hugging Face",
+      organization: "",
+      primary_source_id: "",
+    });
   });
 
   it.each([

@@ -1,10 +1,10 @@
 /**
  * @owner src/registry.ts
  * @does Owns the in-process adapter registry and TypeScript adapter registration helper.
- * @needs src/types, src/discovery/aliases, src/core/auth-contract
+ * @needs src/types command execution context, src/discovery/aliases, src/core/auth-contract
  * @feeds src/discovery/loader.ts, src/commands/dispatch.ts, src/discovery/search.ts, MCP and ACP command surfaces
  * @breaks Propagates malformed adapter command metadata to command resolution and invocation callers.
- * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths are preserved unless the adapter sets one explicitly.
+ * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths are preserved unless the adapter sets one explicitly; TypeScript functions receive the kernel execution context.
  * @side-effects Mutates the process-local adapter registry map.
  * @perf O(1) registration and command lookup; O(commands) listing.
  * @concurrency Not thread-safe; Node module registry is process-local and loader imports TS adapters sequentially.
@@ -26,6 +26,7 @@ import type {
   TargetSurface,
   SocialCapability,
   BrowserSessionPreference,
+  CommandExecutionContext,
 } from "./types.js";
 
 export { Strategy };
@@ -213,7 +214,11 @@ export interface CliRegistration {
   executables?: readonly string[];
   /** Schema-v2 minimum-capability token; defaults to `http.fetch`. */
   minimum_capability?: string;
-  func: (page: unknown, kwargs: Record<string, unknown>) => Promise<unknown>;
+  func: (
+    page: unknown,
+    kwargs: Record<string, unknown>,
+    context: CommandExecutionContext,
+  ) => Promise<unknown>;
 }
 
 export function cli(config: CliRegistration): void {

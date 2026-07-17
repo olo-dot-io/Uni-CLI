@@ -113,6 +113,22 @@ describe("error next_actions", () => {
     expect(commands).toContain(retry);
   });
 
+  it("propagates concrete AI source recovery instead of repairing the aggregator", () => {
+    const sourceRetry =
+      "unicli yahoo search 'site:docs.nvidia.com NVLink bandwidth'";
+    const commands = defaultErrorNextActions(
+      "ai",
+      "search",
+      "upstream_error",
+      undefined,
+      { alternatives: [sourceRetry, "unicli ai sources"] },
+    ).map((action) => action.command);
+
+    expect(commands).toContain(sourceRetry);
+    expect(commands).toContain("unicli ai sources");
+    expect(commands).not.toContain("unicli repair ai search");
+  });
+
   it("routes a keyless DuckDuckGo challenge to usable search adapters", () => {
     const commands = defaultErrorNextActions(
       "duckduckgo",
@@ -129,5 +145,20 @@ describe("error next_actions", () => {
     expect(
       commands.every((command) => !command.includes("browser cookies")),
     ).toBe(true);
+  });
+
+  it("routes an AI read challenge to explicit readers rather than ai.com", () => {
+    const jina =
+      "unicli ai read 'https://openreview.net/forum?id=paper' --reader jina";
+    const commands = defaultErrorNextActions(
+      "ai",
+      "read",
+      "challenge_required",
+      "ai.com",
+      { alternatives: [jina] },
+    ).map((action) => action.command);
+
+    expect(commands).toContain(jina);
+    expect(commands.every((command) => !command.includes("ai.com"))).toBe(true);
   });
 });

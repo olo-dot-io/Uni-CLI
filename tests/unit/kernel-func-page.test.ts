@@ -20,6 +20,36 @@ import { buildInvocation, execute } from "../../src/engine/kernel/execute.js";
 import { cli, getAdapter, Strategy } from "../../src/registry.js";
 
 describe("kernel func execution", () => {
+  it("passes invocation cancellation to TypeScript command functions", async () => {
+    loadAllAdapters();
+    const controller = new AbortController();
+    let receivedSignal: AbortSignal | undefined;
+
+    cli({
+      site: "unit-cancellable-func",
+      name: "inspect",
+      description: "Inspect invocation cancellation",
+      strategy: Strategy.PUBLIC,
+      func: async (_page, _kwargs, context) => {
+        receivedSignal = context.signal;
+        return [{ ok: true }];
+      },
+    });
+    primeKernelCache();
+
+    const invocation = buildInvocation(
+      "cli",
+      "unit-cancellable-func",
+      "inspect",
+      { args: {}, source: "internal" },
+      { signal: controller.signal },
+    );
+    const result = await execute(invocation!);
+
+    expect(result.exitCode).toBe(0);
+    expect(receivedSignal).toBe(controller.signal);
+  });
+
   it("passes an acquired page to browser-backed TypeScript commands", async () => {
     loadAllAdapters();
     browserMock.calls.length = 0;

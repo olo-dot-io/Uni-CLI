@@ -50,11 +50,18 @@ export type AiVendor =
   | "sambanova"
   | "apple-mlx"
   | "qualcomm-ai"
+  | "alibaba-thead"
+  | "kunlunxin"
+  | "cambricon"
   | "hugging-face"
   | "github"
   | "unknown";
 
-export type AiSourceClass = "official" | "community" | "search-index";
+export type AiSourceClass =
+  | "official"
+  | "hosted-artifact"
+  | "community"
+  | "search-index";
 
 export interface AiContentSource {
   ref: string;
@@ -76,6 +83,7 @@ export interface AiContentRecord {
   vendor: AiVendor;
   vendors: AiVendor[];
   publisher: string;
+  hosting_platform: string;
   organization: string;
   organization_type: AiOrganizationType | "unknown";
   primary_source_id: string;
@@ -95,6 +103,24 @@ export interface AiContentRecord {
   source_refs?: string[];
   rrf_score?: number;
 }
+
+const HARDWARE_VENDOR_IDS = new Set<AiVendor>([
+  "nvidia",
+  "amd",
+  "huawei-ascend",
+  "intel-ai",
+  "aws-neuron",
+  "google-tpu",
+  "cerebras",
+  "groq",
+  "tenstorrent",
+  "sambanova",
+  "apple-mlx",
+  "qualcomm-ai",
+  "alibaba-thead",
+  "kunlunxin",
+  "cambricon",
+]);
 
 const KIND_BY_REF: Readonly<Record<string, AiContentKind>> = {
   "duckduckgo.search": "docs",
@@ -302,11 +328,18 @@ function normalizeArxivId(value: unknown): string {
 export function inferAiVendors(url: string, text: string): AiVendor[] {
   const domain = domainOf(url);
   const corpus = `${domain} ${text}`;
+  const catalogOwner = identifyAiPrimarySource(url);
+  if (catalogOwner && HARDWARE_VENDOR_IDS.has(catalogOwner.id as AiVendor)) {
+    return [catalogOwner.id as AiVendor];
+  }
   if (/(^|\.)nvidia\.com$/.test(domain)) return ["nvidia"];
   if (/(^|\.)amd\.com$/.test(domain)) return ["amd"];
   if (/(^|\.)(hiascend|huawei)\.com$/.test(domain)) {
     return ["huawei-ascend"];
   }
+  if (/(^|\.)t-head\.cn$/.test(domain)) return ["alibaba-thead"];
+  if (/(^|\.)kunlunxin\.com$/.test(domain)) return ["kunlunxin"];
+  if (/(^|\.)cambricon\.com$/.test(domain)) return ["cambricon"];
   if (/(^|\.)(intel|habana)\.(?:com|ai)$/.test(domain)) return ["intel-ai"];
   if (/(^|\.)aws\.amazon\.com$/.test(domain)) return ["aws-neuron"];
   if (
@@ -366,6 +399,21 @@ export function inferAiVendors(url: string, text: string): AiVendor[] {
   if (/\b(?:Qualcomm AI|Hexagon NPU|Cloud AI 100)\b/i.test(corpus)) {
     vendors.push("qualcomm-ai");
   }
+  if (
+    /\b(?:Alibaba T-Head|T-Head|Hanguang)\b/i.test(corpus) ||
+    /平头哥|含光/.test(corpus)
+  ) {
+    vendors.push("alibaba-thead");
+  }
+  if (/\b(?:Kunlunxin|Kunlun XPU)\b/i.test(corpus) || /昆仑芯/.test(corpus)) {
+    vendors.push("kunlunxin");
+  }
+  if (
+    /\b(?:Cambricon|MagicMind|Neuware|BANG C|MLU\d*)\b/i.test(corpus) ||
+    /寒武纪/.test(corpus)
+  ) {
+    vendors.push("cambricon");
+  }
   if (vendors.length > 0) return vendors;
   if (/(^|\.)huggingface\.co$/.test(domain)) return ["hugging-face"];
   if (/(^|\.)github\.com$/.test(domain)) return ["github"];
@@ -377,9 +425,60 @@ export function inferAiVendor(url: string, text: string): AiVendor {
   return vendors.length === 1 ? vendors[0] : "unknown";
 }
 
-function officialSource(url: string): boolean {
+function hostedArtifact(url: string, kind?: AiContentKind): boolean {
+  const domain = domainOf(url);
+  const artifactKind =
+    kind !== undefined && ["paper", "model", "dataset", "space"].includes(kind);
+  if (
+    artifactKind &&
+    [
+      "huggingface.co",
+      "openreview.net",
+      "openalex.org",
+      "arxiv.org",
+      "semanticscholar.org",
+      "aclanthology.org",
+      "doi.org",
+      "modelscope.cn",
+      "modelscope.ai",
+      "opencsg.com",
+      "hub.opencsg.com",
+      "openrouter.ai",
+      "kaggle.com",
+    ].some((host) => domain === host || domain.endsWith(`.${host}`))
+  ) {
+    return true;
+  }
+  try {
+    const parsed = new URL(url);
+    if (
+      domain === "huggingface.co" &&
+      /^\/(?:papers|models|datasets|spaces)\//.test(parsed.pathname)
+    ) {
+      return true;
+    }
+    if (
+      domain === "openreview.net" &&
+      /^\/(?:forum|pdf)(?:\/|$)/.test(parsed.pathname)
+    ) {
+      return true;
+    }
+    if (
+      domain === "arxiv.org" &&
+      /^\/(?:abs|pdf)(?:\/|$)/.test(parsed.pathname)
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function officialSource(url: string, kind?: AiContentKind): boolean {
   const domain = domainOf(url);
   if (domain === "docs.github.com") return true;
+  if (hostedArtifact(url, kind)) return false;
   const target = identifyAiPrimarySource(url);
   return target !== undefined && target.type !== "community";
 }
@@ -506,7 +605,12 @@ export function coerceAiContentRecords(
       `${title} ${summary} ${tagsOf(row.tags).join(" ")}`,
     );
     const vendor = vendors.length === 1 ? vendors[0] : "unknown";
-    const sourceClass = officialSource(url) ? "official" : source.sourceClass;
+    const isOfficial = officialSource(url, source.kind);
+    const sourceClass = isOfficial
+      ? "official"
+      : hostedArtifact(url, source.kind)
+        ? "hosted-artifact"
+        : source.sourceClass;
     const nativeId = firstString(row, ["id", "number", "objectID", "fullName"]);
     const doi = normalizeDoi(row.doi);
     const arxivId = normalizeArxivId(
@@ -558,12 +662,15 @@ export function coerceAiContentRecords(
       vendors,
       publisher:
         firstString(row, ["repository", "publisher"]) ||
-        (primarySource?.type !== "community" ? primarySource?.name : "") ||
+        (isOfficial ? primarySource?.name : "") ||
         author ||
         (vendor !== "unknown" ? vendor : domain),
-      organization: primarySource?.name ?? "",
-      organization_type: primarySource?.type ?? "unknown",
-      primary_source_id: primarySource?.id ?? "",
+      hosting_platform: primarySource?.name ?? source.site,
+      organization: isOfficial ? (primarySource?.name ?? "") : "",
+      organization_type: isOfficial
+        ? (primarySource?.type ?? "unknown")
+        : "unknown",
+      primary_source_id: isOfficial ? (primarySource?.id ?? "") : "",
       source_class: sourceClass,
       source_adapter: source.site,
       source_command: source.name,
@@ -728,7 +835,7 @@ function extractMarkdownLinks(
     try {
       if (match[1].trim().startsWith("![")) continue;
       const url = canonicalizeAiUrl(new URL(match[2], baseUrl).toString());
-      if (!url || seen.has(url)) continue;
+      if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) continue;
       seen.add(url);
       links.push({ text: match[1].trim(), url });
       if (links.length >= limit) break;
@@ -782,7 +889,11 @@ export function structureAiDocument(
     domain,
     vendor,
     vendors,
-    source_class: officialSource(canonicalUrl) ? "official" : "community",
+    source_class: officialSource(canonicalUrl)
+      ? "official"
+      : hostedArtifact(canonicalUrl)
+        ? "hosted-artifact"
+        : "community",
     content_format: "markdown",
     headings: allHeadings.slice(0, 200),
     heading_count: allHeadings.length,

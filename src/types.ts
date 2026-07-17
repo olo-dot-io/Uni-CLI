@@ -5,10 +5,10 @@
  * @needs       TypeScript standard types only.
  * @feeds       Every adapter, engine, browser provider, command, and transport.
  * @breaks      Compile-time contract mismatches across public Uni-CLI surfaces.
- * @invariants  Every potentially blocking page operation accepts request cancellation without making cleanup cancellable.
+ * @invariants  Every potentially blocking page operation and TypeScript command function accepts caller-owned request cancellation without making cleanup cancellable.
  * @side-effects none
  * @perf        Type-only declarations.
- * @concurrency AbortSignal parameters carry caller ownership across asynchronous page operations.
+ * @concurrency AbortSignal parameters carry caller ownership across asynchronous page and command operations.
  * @test        npm run typecheck and browser/engine behavior suites
  * @stability   stable
  * @since       2026-04-01
@@ -39,6 +39,10 @@ export enum Strategy {
 
 export type TargetSurface = "web" | "desktop" | "system" | "mobile";
 export type BrowserSessionPreference = "auto" | "user" | "cdp";
+
+export interface CommandExecutionContext {
+  signal?: AbortSignal;
+}
 
 export type SocialCapability =
   | "read"
@@ -181,7 +185,11 @@ export interface AdapterCommand {
   browserSession?: BrowserSessionPreference;
   domain?: string;
   base?: string;
-  func?: (page: IPage, kwargs: Record<string, unknown>) => Promise<unknown>;
+  func?: (
+    page: IPage,
+    kwargs: Record<string, unknown>,
+    context: CommandExecutionContext,
+  ) => Promise<unknown>;
 
   // For web-api type
   method?: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";

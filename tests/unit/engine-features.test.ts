@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { runPipeline } from "../../src/engine/executor.js";
 import { htmlToMarkdown } from "../../src/engine/html-to-markdown.js";
+import { isHtmlVerificationChallenge } from "../../src/engine/steps/html-to-md.js";
 import "../../src/engine/steps/index.js";
 
 // --- Echo server: returns request info as JSON ---
@@ -32,6 +33,14 @@ beforeAll(async () => {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
         "<style>.noise-rule{color:red}</style><h1>Title</h1><script>window.__noise=true</script><p>Hello <strong>world</strong></p><ul><li>item 1</li><li>item 2</li></ul>",
+      );
+      return;
+    }
+
+    if (req.url === "/challenge") {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(
+        `<html><head><title>Verifying your browser</title></head><body><h1>Verifying your browser</h1><p>Please enable JavaScript and cookies to continue.</p></body></html>`,
       );
       return;
     }
@@ -345,6 +354,28 @@ describe.skipIf(skipOnWindows)("exec output_file", () => {
 // --- html_to_md step ---
 
 describe("html_to_md step", () => {
+  it("does not mistake browser-troubleshooting prose for a live challenge", () => {
+    expect(
+      isHtmlVerificationChallenge(
+        `<html><head><title>Browser automation guide</title></head><body><article><h1>Troubleshooting</h1><p>If a site says it is checking your browser, inspect the response and complete the upstream login.</p></article></body></html>`,
+      ),
+    ).toBe(false);
+  });
+
+  it("fails closed on browser-verification challenge pages", async () => {
+    await expect(
+      runPipeline(
+        [{ fetch_text: { url: `${baseUrl}/challenge` } }, { html_to_md: {} }],
+        { args: {}, source: "internal" },
+      ),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "challenge_required",
+        preserveErrorCode: true,
+      }),
+    });
+  });
+
   it("converts HTML to markdown", async () => {
     const steps = [
       { fetch_text: { url: `${baseUrl}/html` } },

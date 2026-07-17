@@ -1,9 +1,9 @@
 //! @owner       src::engine::steps::fetch_text
-//! @does        HTTP request returning raw text; optional session-cookie capture and bounded endpoint rotation
+//! @does        HTTP request returning validated textual content; rejects binary MIME/magic before downstream text conversion, with optional session-cookie capture and bounded endpoint rotation
 //! @needs       ./fetch (FetchConfig), ../proxy, ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
 //! @feeds       ./index (barrel), pipeline executor via registry "fetch_text"
-//! @breaks      PipelineError on http_error / network_error after retries
-//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; cookie capture is host-scoped; rotation is bounded
+//! @breaks      PipelineError on HTTP/network failures or unsupported binary content
+//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; non-text MIME and recognizable binary responses never become successful text; cookie capture is host-scoped; rotation is bounded
 //! @side-effects network I/O
 //! @perf        one fetch per attempt; rotation adds at most rotate_urls.length fetches
 //! @concurrency stateless per call
@@ -39,6 +39,63 @@ interface TextResult {
   setCookieLines: string[];
 }
 
+const TEXTUAL_CONTENT_TYPE =
+  /^(?:text\/|application\/(?:json|xml|xhtml\+xml|javascript|x-javascript|graphql|yaml|x-yaml|toml|x-toml|ndjson|x-ndjson|json-seq|csv|markdown|sql|x-www-form-urlencoded|[a-z0-9.+-]+\+(?:json|xml))$)/i;
+
+const BINARY_SIGNATURES: ReadonlyArray<{
+  bytes: readonly number[];
+  contentType: string;
+}> = [
+  { bytes: [0x25, 0x50, 0x44, 0x46, 0x2d], contentType: "application/pdf" },
+  { bytes: [0x50, 0x4b, 0x03, 0x04], contentType: "application/zip" },
+  { bytes: [0x1f, 0x8b], contentType: "application/gzip" },
+  {
+    bytes: [0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c],
+    contentType: "application/x-7z-compressed",
+  },
+  { bytes: [0x52, 0x61, 0x72, 0x21], contentType: "application/vnd.rar" },
+  { bytes: [0x00, 0x61, 0x73, 0x6d], contentType: "application/wasm" },
+  {
+    bytes: [0xd0, 0xcf, 0x11, 0xe0],
+    contentType: "application/x-ole-storage",
+  },
+  { bytes: [0x7f, 0x45, 0x4c, 0x46], contentType: "application/x-elf" },
+];
+
+function binarySignature(bytes: Uint8Array): string | undefined {
+  return BINARY_SIGNATURES.find(({ bytes: signature }) =>
+    signature.every((byte, index) => bytes[index] === byte),
+  )?.contentType;
+}
+
+function unsupportedContentTypeError(
+  requestUrl: string,
+  contentType: string,
+  stepIndex: number,
+): PipelineError {
+  const isPdf = /^application\/pdf\b/i.test(contentType);
+  return new PipelineError(
+    `fetch_text rejected non-text content type "${contentType || "unknown binary"}" from ${requestUrl}.`,
+    {
+      step: stepIndex,
+      action: "fetch_text",
+      config: { url: requestUrl },
+      errorType: "unsupported_content_type",
+      url: requestUrl,
+      suggestion: isPdf
+        ? "Use the registered PDF reader so page text is extracted instead of decoding binary bytes."
+        : "Use a registered reader for this content type; fetch_text accepts textual responses only.",
+      retryable: false,
+      alternatives: isPdf
+        ? [
+            `unicli scholar-artifacts read-pdf '${requestUrl.replaceAll("'", "'\\''")}'`,
+          ]
+        : [],
+      preserveErrorCode: true,
+    },
+  );
+}
+
 /** Append resolved `params` to a URL, preserving an existing query string. */
 function withParams(
   url: string,
@@ -71,7 +128,23 @@ async function fetchTextOnce(
     try {
       const resp = await fetchWithProxy(requestUrl, fetchInit);
       if (resp.ok) {
-        const text = await resp.text();
+        const contentType = (resp.headers.get("content-type") ?? "")
+          .split(";", 1)[0]
+          .trim();
+        if (contentType && !TEXTUAL_CONTENT_TYPE.test(contentType)) {
+          await resp.body?.cancel();
+          throw unsupportedContentTypeError(requestUrl, contentType, stepIndex);
+        }
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        const inferredBinaryType = binarySignature(bytes);
+        if (inferredBinaryType) {
+          throw unsupportedContentTypeError(
+            requestUrl,
+            `${inferredBinaryType} (magic bytes)`,
+            stepIndex,
+          );
+        }
+        const text = new TextDecoder().decode(bytes);
         const getSetCookie = (
           resp.headers as Headers & { getSetCookie?: () => string[] }
         ).getSetCookie;

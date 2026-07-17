@@ -499,7 +499,7 @@ export async function executeKernelCommand(
         ctx.key,
         canMutate,
         inv.signal,
-        () => commandFunc(page as never, inv.bag.args),
+        () => commandFunc(page as never, inv.bag.args, { signal: inv.signal }),
       );
       return Array.isArray(raw) ? raw : [raw];
     } finally {

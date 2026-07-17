@@ -101,6 +101,23 @@ export function defaultErrorNextActions(
     );
   }
 
+  if (site === "ai" && cmdName === "search" && errCode !== "empty_result") {
+    const sourceRecovery = [...new Set(auth?.alternatives ?? [])]
+      .filter(
+        (command) =>
+          command.startsWith("unicli ") &&
+          !command.startsWith("unicli repair ai search"),
+      )
+      .slice(0, 3);
+    actions.push(
+      ...sourceRecovery.map((command) => ({
+        command,
+        description:
+          "Retry the concrete source boundary reported by the AI aggregator",
+      })),
+    );
+  }
+
   if (site === "duckduckgo" && errCode === "challenge_required") {
     actions.push(
       {
@@ -118,6 +135,20 @@ export function defaultErrorNextActions(
           query: { description: "The original web search query" },
         },
       },
+    );
+    return actions;
+  }
+
+  if (site === "ai" && cmdName === "read" && errCode === "challenge_required") {
+    const readerAlternatives = [...new Set(auth?.alternatives ?? [])].filter(
+      (command) => command.startsWith("unicli "),
+    );
+    actions.push(
+      ...readerAlternatives.map((command) => ({
+        command,
+        description:
+          "Retry through the concrete reader or source boundary reported by ai.read",
+      })),
     );
     return actions;
   }
@@ -191,7 +222,7 @@ export function defaultErrorNextActions(
 
   if (
     isAdapterRepairCandidate(errCode) &&
-    !(site === "ai" && cmdName === "search" && errCode === "empty_result")
+    !(site === "ai" && cmdName === "search")
   ) {
     actions.push({
       command: `unicli repair ${site} ${cmdName}`,

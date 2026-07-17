@@ -284,6 +284,18 @@ describe("search", () => {
     expect(categories).toContain("finance");
   });
 
+  it.each([
+    "NVLink bandwidth and NVSwitch topology",
+    "平头哥 含光 昆仑芯 寒武纪 加速卡算子",
+    "PagedAttention RoPE YaRN world model",
+  ])("discovers the unified AI intelligence entry for %s", (query) => {
+    const commands = search(query, 5).map(
+      (result) => `${result.site}/${result.command}`,
+    );
+
+    expect(commands).toContain("ai/search");
+  });
+
   it("finds bilibili for B站弹幕", () => {
     const results = search("B站弹幕", 5);
     expect(results.length).toBeGreaterThan(0);

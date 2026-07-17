@@ -1,13 +1,13 @@
 /**
  * @owner       src::adapters::scholar-artifacts::pdf-read
- * @does        Provides side-effect-free scholarly PDF download and pdftotext extraction helpers for source adapters.
- * @needs       src/engine/executor.ts download/exec steps, src/engine/download.ts, pdftotext
+ * @does        Provides source-agnostic scholarly PDF download and pdftotext extraction helpers for source adapters.
+ * @needs       src/engine/executor.ts cancellable download/exec steps, src/engine/download.ts, pdftotext
  * @feeds       src/adapters/scholar-artifacts/pdf.ts and source-specific scholarly read commands
  * @breaks      Invalid PDF URLs, denied download paths, missing pdftotext, or empty extracted text throw before claim text reaches agents.
- * @invariants  Helpers register no commands; callers pass the owning site/command so operation policy and resource attribution stay source-scoped.
+ * @invariants  Helpers register no commands; callers pass the owning site/command and cancellation signal so operation policy, deadlines, and resource attribution stay source-scoped.
  * @side-effects HTTPS/HTTP egress to the supplied PDF URL; writes one PDF under the requested output directory; executes pdftotext.
  * @perf        O(PDF bytes + extracted page range); page range defaults to first 20 pages.
- * @concurrency safe — each invocation writes one deterministic artifact path.
+ * @concurrency Caller-provided unique output directories isolate invocations; the same ref/output pair shares one deterministic artifact path.
  * @test        tests/unit/adapters/scholar-artifacts.test.ts
  * @stability   experimental
  * @since       2026-06-27
@@ -34,6 +34,7 @@ export interface ScholarPdfReadOptions {
   command: string;
   defaultOutput: string;
   userAgent: string;
+  signal?: AbortSignal;
 }
 
 function stringField(value: unknown): string {
@@ -187,6 +188,7 @@ export async function downloadScholarPdf(
       strategy: Strategy.PUBLIC,
       domain: new URL(pdfUrl).hostname,
       surface: "cli",
+      signal: options.signal,
     },
   );
   const row = rows[0];
@@ -258,6 +260,7 @@ export async function readScholarPdf(
       command: options.command,
       strategy: Strategy.PUBLIC,
       surface: "cli",
+      signal: options.signal,
     },
   );
   const extracted = stringField(text);

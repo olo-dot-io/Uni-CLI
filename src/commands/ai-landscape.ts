@@ -592,9 +592,8 @@ export const AI_PRIMARY_SOURCES: readonly AiPrimarySource[] = [
       domains: ["hiascend.com", "huawei.com"],
       repositories: [
         "Ascend/pytorch",
-        "Ascend/torch_npu",
         "Ascend/ModelZoo-PyTorch",
-        "MindSpore/mindspore",
+        "mindspore-ai/mindspore",
       ],
       topics: [
         "huawei ascend",
@@ -776,13 +775,69 @@ export const AI_PRIMARY_SOURCES: readonly AiPrimarySource[] = [
     },
   ),
   source(
+    "alibaba-thead",
+    "Alibaba T-Head / Hanguang",
+    "hardware",
+    ["hardware", "inference"],
+    {
+      domains: ["t-head.cn", "developer.t-head.cn"],
+      repositories: ["XUANTIE-RV/thead-extension-spec", "XUANTIE-RV/openc910"],
+      topics: [
+        "alibaba t-head",
+        "平头哥",
+        "含光",
+        "hanguang",
+        "xuantie",
+        "玄铁",
+      ],
+      channels: [
+        "hardware-docs",
+        "developer-docs",
+        "software-guides",
+        "github-releases",
+      ],
+    },
+  ),
+  source(
+    "kunlunxin",
+    "Kunlunxin",
+    "hardware",
+    ["hardware", "llm-training", "inference"],
+    {
+      domains: ["kunlunxin.com", "paddlepaddle.org.cn"],
+      repositories: [
+        "KunlunxinAD/xav-models-tutorials",
+        "KunlunxinAD/xav-dsal-open",
+      ],
+      topics: [
+        "kunlunxin",
+        "昆仑芯",
+        "kunlun xpu",
+        "xpu",
+        "xre",
+        "xpu runtime",
+      ],
+      channels: [
+        "hardware-docs",
+        "xpu-docs",
+        "model-tutorials",
+        "github-releases",
+      ],
+    },
+  ),
+  source(
     "cambricon",
     "Cambricon",
     "hardware",
     ["hardware", "llm-training", "inference"],
     {
-      domains: ["cambricon.com"],
-      repositories: ["Cambricon/CNStream"],
+      domains: ["developer.cambricon.com", "cambricon.com"],
+      repositories: [
+        "Cambricon/mlu-ops",
+        "Cambricon/torch_mlu",
+        "Cambricon/vllm-mlu",
+        "Cambricon/CNStream",
+      ],
       topics: ["cambricon", "寒武纪", "mlu", "neuware", "magicmind"],
       channels: ["hardware-docs", "sdk-docs", "release-notes", "github"],
     },
@@ -1761,6 +1816,12 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
       "memory",
       "interconnect",
       "mlperf",
+      "nvlink",
+      "nvswitch",
+      "fabric manager",
+      "hanguang",
+      "kunlunxin",
+      "mlu",
     ],
     sourceRefs: [
       "yahoo.search",
@@ -1947,30 +2008,35 @@ function sourceScore(
   profile: AiRoleProfile,
 ): number {
   const corpus = normalized(query);
-  let score =
-    profile.id !== "all" && sourceEntry.roles.includes(profile.id) ? 8 : 0;
-  if (sourceEntry.roles.includes("all")) score += 1;
+  let queryScore = 0;
   for (const term of [
     sourceEntry.id,
     sourceEntry.name,
     ...sourceEntry.topics,
   ]) {
     const token = normalized(term);
-    if (token && corpus.includes(token)) score += token.split(" ").length + 6;
+    if (token && corpus.includes(token)) {
+      queryScore += token.split(" ").length + 6;
+    }
   }
   for (const domain of sourceEntry.domains) {
-    if (query.toLowerCase().includes(domain.toLowerCase())) score += 20;
+    if (query.toLowerCase().includes(domain.toLowerCase())) queryScore += 20;
   }
   for (const repository of sourceEntry.repositories) {
-    if (query.toLowerCase().includes(repository.toLowerCase())) score += 20;
+    if (query.toLowerCase().includes(repository.toLowerCase())) {
+      queryScore += 20;
+    }
   }
-  return score;
+  if (queryScore === 0) return 0;
+  const profilePrior =
+    profile.id !== "all" && sourceEntry.roles.includes(profile.id) ? 8 : 0;
+  return queryScore + profilePrior;
 }
 
 export function selectAiOfficialDomains(
   query: string,
   profileValue?: string,
-  limit = 12,
+  limit = 16,
 ): string[] {
   const explicit = explicitSiteDomains(query);
   if (explicit.length > 0) return [...new Set(explicit)].slice(0, limit);
@@ -1979,7 +2045,12 @@ export function selectAiOfficialDomains(
     candidate,
     score: sourceScore(candidate, query, profile),
   }))
-    .filter(({ candidate, score }) => candidate.domains.length > 0 && score > 0)
+    .filter(
+      ({ candidate, score }) =>
+        candidate.type !== "community" &&
+        candidate.domains.length > 0 &&
+        score > 0,
+    )
     .sort(
       (left, right) =>
         right.score - left.score ||

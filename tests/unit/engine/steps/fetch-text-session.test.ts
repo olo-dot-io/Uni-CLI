@@ -26,6 +26,105 @@ function mockOnce(handler: (url: string, init: RequestInit) => Response): {
 }
 
 describe("fetch_text capture_cookies", () => {
+  it.each([
+    "application/yaml",
+    "application/x-yaml",
+    "application/toml",
+    "application/x-ndjson",
+    "application/json-seq",
+  ])("accepts structured textual MIME type %s", async (contentType) => {
+    mockOnce(
+      () =>
+        new Response("name: model", {
+          status: 200,
+          headers: { "content-type": contentType },
+        }),
+    );
+
+    const out = await stepFetchText(ctx(), {
+      url: "https://example.com/manifest",
+    });
+
+    expect(out.data).toBe("name: model");
+  });
+
+  it.each([
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/epub+zip",
+    "application/wasm",
+    "application/x-protobuf",
+  ])("rejects non-text MIME type %s", async (contentType) => {
+    mockOnce(
+      () =>
+        new Response("binary", {
+          status: 200,
+          headers: { "content-type": contentType },
+        }),
+    );
+
+    await expect(
+      stepFetchText(ctx(), { url: "https://example.com/artifact" }),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "unsupported_content_type",
+      }),
+    });
+  });
+
+  it("rejects a declared PDF before binary bytes enter text pipelines", async () => {
+    mockOnce(
+      () =>
+        new Response("%PDF-1.7 binary", {
+          status: 200,
+          headers: { "content-type": "application/pdf" },
+        }),
+    );
+
+    await expect(
+      stepFetchText(ctx(), { url: "https://example.com/manual.pdf" }),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "unsupported_content_type",
+        preserveErrorCode: true,
+      }),
+    });
+  });
+
+  it("rejects PDF magic bytes when a server lies about the MIME type", async () => {
+    mockOnce(
+      () =>
+        new Response("%PDF-1.7 binary", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        }),
+    );
+
+    await expect(
+      stepFetchText(ctx(), { url: "https://example.com/download" }),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "unsupported_content_type",
+      }),
+    });
+  });
+
+  it("rejects recognizable binary magic when the server omits MIME", async () => {
+    mockOnce(
+      () =>
+        new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00]), {
+          status: 200,
+        }),
+    );
+
+    await expect(
+      stepFetchText(ctx(), { url: "https://example.com/download" }),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "unsupported_content_type",
+      }),
+    });
+  });
+
   it("resolves header templates before sending the request", async () => {
     const previousToken = process.env.UNICLI_TEST_TEXT_AUTH;
     process.env.UNICLI_TEST_TEXT_AUTH = "unit-text-token";
