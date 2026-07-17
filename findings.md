@@ -133,3 +133,34 @@ repository synchronization rather than runner configuration.
   28.33 ms warm p50, and 35.36 ms warm maximum in this acceptance environment.
   This is an installed-artifact probe, not a replacement for the separately
   labeled benchmark matrix.
+
+## v0.400.0 Windows Native Messaging closure
+
+- **Chromium source:** commit
+  `1cb6db540b81d9c2ba3a5e3c1cc383f3871856e8`,
+  [`launch_context.cc`](https://chromium.googlesource.com/chromium/src/+/1cb6db540b81d9c2ba3a5e3c1cc383f3871856e8/chrome/browser/extensions/api/messaging/launch_context.cc)
+  and
+  [`launch_context_win.cc`](https://chromium.googlesource.com/chromium/src/+/1cb6db540b81d9c2ba3a5e3c1cc383f3871856e8/chrome/browser/extensions/api/messaging/launch_context_win.cc),
+  search terms `AppendArg origin parent-window`,
+  `LaunchNativeHostViaCmd`, `start_hidden`, and `named pipe`. Chromium passes
+  origin first and `--parent-window` second. Its default Windows path wraps the
+  absolute host command with `%COMSPEC% /d /s /c`, redirects two byte-mode
+  named pipes, sets the executable directory as cwd, and hides startup.
+- **Platform source:** Microsoft
+  [moving/replacing files](https://learn.microsoft.com/en-us/windows/win32/fileio/moving-and-replacing-files)
+  and
+  [`MoveFileEx`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-movefileexa),
+  search terms `replace existing executable`, `sharing violation`, and `open
+handle`. An executing image cannot be the in-place update boundary.
+- **Review threads:** PR #109
+  [Windows launcher review](https://github.com/olo-dot-io/Uni-CLI/pull/109#discussion_r3600827828)
+  and
+  [`target_unusable` review](https://github.com/olo-dot-io/Uni-CLI/pull/109#discussion_r3600827830).
+  They became a real architecture-matched PE launcher, one strict shared error
+  validator, and fail-closed target invalidation without reconnecting the host.
+- **Local prevention:** Windows publishes the launcher and strict Node config
+  as one immutable content-addressed generation-directory rename. Competing
+  installers validate the winner; reinstall and upgrade never replace a
+  running image. Windows CI exercises direct launch, Chromium's default
+  `cmd.exe` plus two named-pipe route in both directions, two-process first
+  install convergence, active-host reinstall, and side-by-side upgrade.

@@ -75,13 +75,13 @@ describe("Browser Runtime Broker real process ownership", () => {
       let unexpectedOwnership: KernelFileLock | null = null;
       let contentionError: unknown;
       try {
-        unexpectedOwnership = acquireKernelFileLock(
+        unexpectedOwnership = await acquireKernelFileLock(
           browserBrokerPaths(runtime.runtimeRoot).guardPath,
         );
       } catch (error) {
         contentionError = error;
       } finally {
-        unexpectedOwnership?.release();
+        await unexpectedOwnership?.release();
       }
       expect(unexpectedOwnership).toBeNull();
       expect(contentionError).toMatchObject({ code: "contended" });

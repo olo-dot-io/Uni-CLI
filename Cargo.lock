@@ -1258,6 +1258,8 @@ dependencies = [
 name = "unicli-process-owner"
 version = "0.218.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "windows",
 ]
 

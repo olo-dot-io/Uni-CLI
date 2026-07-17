@@ -124,6 +124,22 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
+默认 managed provider 隐藏运行，并由机器级 Browser Runtime Broker 复用。若要在
+不为默认 profile 开启 CDP 的情况下控制已经打开且有登录态的 Chromium 浏览器，先
+安装 Native Messaging 注册，再一次性加载随包发布的扩展：
+
+```bash
+unicli browser native-host install --browser chrome
+unicli browser native-host extension-path
+unicli browser native-host status --browser chrome --json
+```
+
+把 `extension-path` 输出的目录作为 unpacked extension 加载到所选浏览器。控制现有
+Chrome 时必须显式使用 `--background` 或 `--focus`；background 动作只创建或认领
+inactive tab，并验证 active tab 与前台窗口没有变化。broker、status 和 session probe
+不会分配 target，也不会打开浏览器窗口。Windows 安装和升级会在运行中的 host 旁边
+发布架构匹配的新 native-host generation，而不是替换正在执行的文件。
+
 浏览器动作可以附带前后证据、stale-ref 细节、移动维度、watchdog 结果、
 session lease、tab 目标身份、cookie 姿态和 render-aware 读取，方便审查。
 设置分数阈值时，replay 和 compare 会输出 `gate` 对象，里面有阈值、实际分数和失败的 gate。

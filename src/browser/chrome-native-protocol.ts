@@ -1,12 +1,12 @@
 /**
  * @owner       src/browser/chrome-native-protocol.ts
- * @does        Define the versioned Chrome extension/native-host command, result, durable target inventory, tab, bounded content-search, and error contract shared by broker, host, extension, and tests.
+ * @does        Define and validate the versioned Chrome extension/native-host command, result, durable target inventory, tab, bounded content-search, and error contract shared by broker, host, extension, and tests.
  * @needs       src/browser/runtime-protocol.ts (type only)
  * @feeds       src/browser/chrome-provider.ts, native-host-main.ts, extension/src/background.ts, extension/src/chrome-controller.ts
- * @breaks      Consumers reject unknown product/protocol/version, malformed commands/results, mismatched request ids, and unsupported visibility states.
- * @invariants  Native messages are request-correlated; hello reports the extension's reconciled target ledger; background is explicit; provider-wide content search never claims a target; target allocation/claim/finalization is separate from page mutation; extension and host abandon a command generation before the broker's consumer deadline.
- * @side-effects none (constants and types only)
- * @perf        O(1) serialization shape; native framing enforces the byte limit separately.
+ * @breaks      Consumers reject unknown product/protocol/version, malformed commands/results/errors, mismatched request ids, and unsupported visibility states.
+ * @invariants  Native messages are request-correlated; extension errors have one strict bounded shape at both host and broker boundaries; hello reports the extension's reconciled target ledger; background is explicit; provider-wide content search never claims a target; target allocation/claim/finalization is separate from page mutation; extension and host abandon a command generation before the broker's consumer deadline.
+ * @side-effects none
+ * @perf        O(error key count + bounded error-code length) validation; native framing enforces the byte limit separately.
  * @concurrency One native host executes commands sequentially while the broker preserves per-target ordering.
  * @test        tests/unit/chrome-native-framing.test.ts, tests/integration/browser-extension-background.test.ts
  * @stability   experimental
@@ -163,6 +163,47 @@ export interface ChromeNativeError {
   retryable: boolean;
   outcome_ambiguous?: boolean;
   target_unusable?: boolean;
+}
+
+const CHROME_NATIVE_ERROR_KEYS = new Set<keyof ChromeNativeError>([
+  "code",
+  "message",
+  "suggestion",
+  "retryable",
+  "outcome_ambiguous",
+  "target_unusable",
+]);
+
+export function isChromeNativeError(
+  value: unknown,
+): value is ChromeNativeError {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  if (
+    !Object.keys(record).every((key) =>
+      CHROME_NATIVE_ERROR_KEYS.has(key as keyof ChromeNativeError),
+    )
+  ) {
+    return false;
+  }
+  const code = record.code;
+  return (
+    typeof code === "string" &&
+    code.length >= 1 &&
+    code.length <= 256 &&
+    code === code.trim() &&
+    typeof record.message === "string" &&
+    record.message.length <= 16_384 &&
+    typeof record.suggestion === "string" &&
+    record.suggestion.length <= 16_384 &&
+    typeof record.retryable === "boolean" &&
+    (record.outcome_ambiguous === undefined ||
+      typeof record.outcome_ambiguous === "boolean") &&
+    (record.target_unusable === undefined ||
+      typeof record.target_unusable === "boolean")
+  );
 }
 
 interface ChromeNativeResultBase {

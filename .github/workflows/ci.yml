@@ -119,6 +119,10 @@ jobs:
         if: matrix.profile == 'full' || matrix.profile == 'node-compat' || matrix.profile == 'windows-smoke'
         run: npm run test
 
+      - name: Windows native host integration
+        if: matrix.profile == 'windows-smoke'
+        run: npx vitest run --project integration tests/integration/browser-native-host.test.ts --maxWorkers=1 --reporter=dot
+
       - name: Integration tests
         if: matrix.profile == 'full' || matrix.profile == 'node-compat'
         run: npm run test:integration

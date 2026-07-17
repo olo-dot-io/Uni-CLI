@@ -40,7 +40,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9454<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> 个 surface · <!-- STATS:test_count -->9459<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -475,9 +475,12 @@ columns: [title, url]
   `unicli auth import` 和 `unicli browser cookies <domain> --profile-id <id>`
   是显式 plaintext-JSON 持久化路径：`~/.unicli/cookies/<site>.json`
   （POSIX 目录 `0700`、文件 `0600`）。
-- Browser adapter 默认使用可验证身份的 Chrome/CDP：如果已有暴露 CDP 的登录
-  profile 就 attach，否则从首选本地 Chrome profile 播种 Uni-CLI 自有
-  automation profile。空 profile 必须显式使用
+- Browser adapter 共用一个 owner-only Browser Runtime Broker。默认 managed
+  provider 隐藏运行，并使用 Uni-CLI 自有 automation profile；Agent session 分别
+  持有 target，也可以显式共享登录/存储 partition。控制现有 Chrome 需要先运行
+  `unicli browser native-host install --browser chrome`，再用
+  `unicli browser native-host extension-path` 定位 unpacked extension，并显式选择
+  background 或 foreground visibility。空 profile 必须显式使用
   `unicli browser start --ephemeral` 或 `UNICLI_BROWSER_EPHEMERAL=1`。
   Chrome 136+ 仍然禁止 default user-data-dir 上的 remote debugging；
   `RemoteDebuggingAllowed` 只能整体禁用本地 CDP，不能让 default profile CDP

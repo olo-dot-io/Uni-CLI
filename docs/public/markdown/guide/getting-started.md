@@ -150,6 +150,25 @@ unicli operate type --ref 7 --text "hello"
 unicli operate screenshot --path ./page.png
 ```
 
+The default managed provider is hidden and shared by the machine-scoped Browser
+Runtime Broker. To control an already open, signed-in Chromium browser without
+enabling CDP on its default profile, install the Native Messaging registration
+and load the shipped extension once:
+
+```bash
+unicli browser native-host install --browser chrome
+unicli browser native-host extension-path
+unicli browser native-host status --browser chrome --json
+```
+
+Load the directory printed by `extension-path` as an unpacked extension in the
+selected browser. Existing-Chrome actions require explicit `--background` or
+`--focus`; background actions create or claim an inactive tab and verify that
+the active tab and focused window did not change. Broker/status/session probes
+allocate no target and open no browser window. On Windows, install and upgrade
+publish architecture-matched native-host generations beside a running host
+rather than replacing its executable.
+
 Browser actions can attach before/after evidence, stale-ref detail, movement
 dimensions, watchdog results, session lease metadata, tab target identity,
 cookie posture, and render-aware reads when a command needs reviewable proof.
