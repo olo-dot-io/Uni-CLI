@@ -1,10 +1,10 @@
 /**
  * @owner       src::transport::process-owner
  * @does        Spawn commands inside a verifiable POSIX process group or Windows kill-on-close Job Object and terminate that saved ownership identity independently of leader liveness.
- * @needs       node child_process/fs/module/os/path, optional unicli-process-owner Windows package
+ * @needs       node child_process/fs/module/os/path/url, release-bundled or optional unicli-process-owner Windows binary
  * @feeds       contained commands, native sidecars, browser broker launch, managed Chromium, and explicit CDP application launch
  * @breaks      Direct Windows spawn has no race-free descendant containment; signalling only a POSIX leader allows same-group descendants to mutate after settlement; a POSIX group that remains observable after both termination budgets fails containment even when kill(2) reported partial permission.
- * @invariants  POSIX commands are group leaders and containment succeeds only after the saved group is no longer observable; macOS partial-group EPERM is verified by the same bounded postcondition instead of being treated as success or immediate failure; Windows commands are children of a wrapper that joins a kill-on-close Job before spawning; an unowned Windows child is never reported contained; report identity must match the wrapper PID; every exposed ownership promise is internally observed even when a caller needs only the child stream.
+ * @invariants  POSIX commands are group leaders and containment succeeds only after the saved group is no longer observable; macOS partial-group EPERM is verified by the same bounded postcondition instead of being treated as success or immediate failure; Windows commands are children of a wrapper that joins a kill-on-close Job before spawning; explicit override precedes the same-release bundled wrapper, then optional package, user install, and PATH; an unowned Windows child is never reported contained; report identity must match the wrapper PID; every exposed ownership promise is internally observed even when a caller needs only the child stream.
  * @side-effects Spawns processes, reads/removes optional owner reports, signals process groups, and terminates Job-owning wrappers.
  * @perf        Healthy spawn adds no process on POSIX and one small waiting wrapper on Windows; termination polling is bounded.
  * @concurrency Ownership metadata is child-object scoped; report listeners and timers are removed exactly once.
@@ -22,7 +22,8 @@ import {
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, platform as hostPlatform } from "node:os";
-import { win32 } from "node:path";
+import { dirname, resolve, win32 } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export type ProcessOwnerIdentity =
   | { kind: "posix-process-group"; owner_pid: number; process_group_id: number }
@@ -49,6 +50,7 @@ export interface ResolveProcessOwnerOptions {
   exists?: (path: string) => boolean;
   requireResolve?: (id: string) => string;
   homeDir?: string;
+  bundledRoot?: string;
 }
 
 interface WindowsOwnerReport {
@@ -64,6 +66,11 @@ const PROCESS_TERM_GRACE_MS = 200;
 const PROCESS_KILL_GRACE_MS = 2_000;
 const PROCESS_POLL_MS = 10;
 const DEFAULT_REPORT_TIMEOUT_MS = 5_000;
+const BUNDLED_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+);
 
 export function spawnOwnedProcess(
   command: string,
@@ -225,6 +232,14 @@ export function resolveProcessOwnerBinary(
       ? `@zenalexa/unicli-process-owner-win32-${arch}`
       : undefined;
   if (packageName) {
+    const bundledCommand = win32.join(
+      options.bundledRoot ?? BUNDLED_ROOT,
+      "packages",
+      "sidecars",
+      `unicli-process-owner-win32-${arch}`,
+      "unicli-process-owner.exe",
+    );
+    if (exists(bundledCommand)) return bundledCommand;
     try {
       const packageJson = requireResolve(`${packageName}/package.json`);
       return win32.join(win32.dirname(packageJson), "unicli-process-owner.exe");

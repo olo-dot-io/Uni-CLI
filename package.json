@@ -16,6 +16,8 @@
     "extension/manifest.json",
     "extension/dist/",
     "crates/",
+    "packages/sidecars/unicli-process-owner-win32-arm64/unicli-process-owner.exe",
+    "packages/sidecars/unicli-process-owner-win32-x64/unicli-process-owner.exe",
     "docs/operate/",
     "docs/mcp/clients/",
     "src/adapters/",
@@ -256,10 +258,6 @@
     "ws": "^8.21.0",
     "yaml": "^2.8.3",
     "zod": "^4.4.3"
-  },
-  "optionalDependencies": {
-    "@zenalexa/unicli-process-owner-win32-arm64": "0.218.0",
-    "@zenalexa/unicli-process-owner-win32-x64": "0.218.0"
   },
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^2.0.41",

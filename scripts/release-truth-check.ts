@@ -19,10 +19,13 @@ interface WorkflowStep {
   name?: string;
   run?: string;
   if?: string;
+  uses?: string;
   env?: Record<string, unknown>;
+  with?: Record<string, unknown>;
 }
 
 interface WorkflowJob {
+  needs?: string | string[];
   strategy?: { matrix?: { include?: Array<Record<string, unknown>> } };
   steps?: WorkflowStep[];
 }
@@ -35,6 +38,8 @@ interface PackageManifest {
   name: string;
   engines?: { node?: string };
   dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  files?: string[];
   scripts?: Record<string, string>;
 }
 
@@ -99,6 +104,64 @@ if (!hasRun(allSteps(ci), integrationCommand)) {
 }
 if (!hasRun(allSteps(release), "npm run verify")) {
   fail("release workflow does not execute the canonical npm run verify gate");
+}
+
+const processOwnerPaths = [
+  "packages/sidecars/unicli-process-owner-win32-x64/unicli-process-owner.exe",
+  "packages/sidecars/unicli-process-owner-win32-arm64/unicli-process-owner.exe",
+];
+for (const path of processOwnerPaths) {
+  if (!manifest.files?.includes(path)) {
+    fail(`published package omits bundled process owner: ${path}`);
+  }
+}
+for (const name of [
+  "@zenalexa/unicli-process-owner-win32-x64",
+  "@zenalexa/unicli-process-owner-win32-arm64",
+]) {
+  if (manifest.optionalDependencies?.[name]) {
+    fail(`root package still depends on unpublished process owner: ${name}`);
+  }
+}
+const processOwnerJob = release.jobs?.["build-process-owner"];
+const processOwnerTargets =
+  processOwnerJob?.strategy?.matrix?.include?.map((entry) => entry.target) ??
+  [];
+for (const target of ["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"]) {
+  if (!processOwnerTargets.includes(target)) {
+    fail(`release workflow does not build process owner target ${target}`);
+  }
+}
+if (
+  !hasRun(
+    processOwnerJob?.steps ?? [],
+    "cargo build --locked -p unicli-process-owner",
+  )
+) {
+  fail("release workflow does not build the locked process owner crate");
+}
+const releaseJob = release.jobs?.release;
+const releaseNeeds = Array.isArray(releaseJob?.needs)
+  ? releaseJob.needs
+  : releaseJob?.needs
+    ? [releaseJob.needs]
+    : [];
+if (!releaseNeeds.includes("build-process-owner")) {
+  fail("npm publication is not gated on process owner builds");
+}
+const releaseSteps = releaseJob?.steps ?? [];
+const bundledVerification = releaseSteps.find(
+  (step) => step.name === "Verify bundled process owners",
+);
+for (const path of processOwnerPaths) {
+  if (!bundledVerification?.run?.includes(path)) {
+    fail(`release workflow does not verify bundled process owner: ${path}`);
+  }
+}
+for (const name of ["process-owner-win32-x64", "process-owner-win32-arm64"]) {
+  if (!releaseSteps.some((step) => step.with?.name === name)) {
+    fail(`release workflow does not download artifact ${name}`);
+  }
 }
 
 const benchmarkSteps = ci.jobs?.["benchmark-evidence"]?.steps ?? [];
