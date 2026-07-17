@@ -4,7 +4,7 @@
  * @needs       node child_process types and src/transport/process-owner.ts
  * @feeds       subprocess, macOS AX, and explicit CDP app launch transports
  * @breaks      Killing only the launcher PID lets same-group descendants mutate the host after an Agent turn has ended; arbitrary commands can still daemonize outside the group and must be classified ambiguous by callers.
- * @invariants  Every child has a saved POSIX process-group or Windows Job owner identity; abort and timeout await owner termination and stdio close; early stdin EPIPE defers to the authoritative child exit; both abort and timeout remain outcome-ambiguous for commands capable of external delivery.
+ * @invariants  Every child has a saved POSIX process-group or Windows Job owner identity; abort and timeout await owner termination and stdio close; platform broken-pipe errors on early stdin closure defer to the authoritative child exit; both abort and timeout remain outcome-ambiguous for commands capable of external delivery.
  * @side-effects Spawns and terminates owned native process trees.
  * @perf        Buffers stdout/stderr once; cancellation adds at most the bounded termination interval.
  * @concurrency Every runner owns its listeners, timers, child, and process group; no request state is global.
@@ -124,7 +124,7 @@ export async function runContainedProcess(
   const failed = new Promise<never>((_resolve, reject) => {
     child.once("error", reject);
     child.stdin?.once("error", (error: NodeJS.ErrnoException) => {
-      if (error.code !== "EPIPE") reject(error);
+      if (!isClosedInputPipeError(error)) reject(error);
     });
   });
   let abortListener: (() => void) | undefined;
@@ -264,6 +264,10 @@ function spawnOptions(
     ...(options.env ? { env: options.env } : {}),
     stdio: ["pipe", "pipe", "pipe"],
   };
+}
+
+function isClosedInputPipeError(error: NodeJS.ErrnoException): boolean {
+  return error.code === "EPIPE" || error.code === "EOF";
 }
 
 async function waitForPromise<T>(

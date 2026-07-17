@@ -285,15 +285,26 @@ describe("StdioSidecarClient", () => {
     const directory = mkdtempSync(join(tmpdir(), "unicli-sidecar-timeout-"));
     const firstGenerationMarker = join(directory, "first-generation.txt");
     const lateMutationMarker = join(directory, "late-mutation.txt");
-    const client = new StdioSidecarClient(process.execPath, [
-      "-e",
-      `
+    const client = new StdioSidecarClient(
+      process.execPath,
+      [
+        "-e",
+        `
         const fs = require("node:fs");
         const readline = require("node:readline");
         const first = ${JSON.stringify(firstGenerationMarker)};
         const late = ${JSON.stringify(lateMutationMarker)};
         readline.createInterface({ input: process.stdin }).on("line", (line) => {
           const req = JSON.parse(line);
+          if (req.kind === "initialize") {
+            process.stdout.write(JSON.stringify({
+              id: req.id,
+              kind: req.kind,
+              ok: true,
+              data: { initialized: true },
+            }) + "\\n");
+            return;
+          }
           if (!fs.existsSync(first)) {
             fs.writeFileSync(first, String(process.pid));
             setTimeout(() => {
@@ -315,7 +326,11 @@ describe("StdioSidecarClient", () => {
           }) + "\\n");
         });
       `,
-    ]);
+      ],
+      {
+        initialize: { kind: "initialize" },
+      },
+    );
 
     try {
       await expect(

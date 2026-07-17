@@ -4,10 +4,10 @@
  * @needs   node:fs, node:os, node:path, src/browser/kernel-file-lock.ts, src/browser/local-profiles.ts
  * @feeds   src/browser/launcher.ts, src/browser/doctor.ts, src/commands/browser/index.ts, scripts/browser-auth-default-acceptance.ts, tests/unit/profile-seed.test.ts
  * @breaks  BrowserProfileSeedError throws on unsupported platforms, missing cookie stores, ownership contention/identity failure, source races, manifest corruption, and copy failures.
- * @invariants Seeded profiles live outside real browser user-data dirs; the process performing the copy owns a kernel advisory lock for its entire lifetime; interrupted backup publication is recovered before another seed; manifest paths use portable POSIX separators; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
- * @side-effects Retains one process-owned kernel lock descriptor, creates/replaces files under Uni-CLI-owned automation profile directories, and removes interrupted staging directories while holding that lock.
+ * @invariants Seeded profiles live outside real browser user-data dirs; the process performing the copy owns a kernel ownership lock for its entire lifetime; interrupted backup publication is recovered before another seed; manifest paths use portable POSIX separators; manifest is written only after all required files copy, and fresh seeds require target files to still exist.
+ * @side-effects Retains one process-owned kernel lock handle, creates/replaces files under Uni-CLI-owned automation profile directories, and removes interrupted staging directories while holding that lock.
  * @perf    Copies only Local State, profile preferences, and cookie stores instead of whole browser profiles; an already-fresh inspection pays one local lock acquisition.
- * @concurrency The caller owns the kernel-locked open file description for the entire seed, so pausing it retains ownership and termination releases ownership atomically without a guardian process.
+ * @concurrency The caller owns the platform kernel lock handle for the entire seed, so pausing it retains ownership and termination releases ownership atomically without a guardian process.
  * @test    tests/unit/profile-seed.test.ts
  * @stability experimental
  * @since   2026-06-29
@@ -471,11 +471,11 @@ function seedProfileOnce(
   }
 }
 
-function runProfileSeedUnderKernelLock(
+async function runProfileSeedUnderKernelLock(
   profile: LocalBrowserProfile,
   targetUserDataDir: string,
   opts: { platform: string; force: boolean },
-): AutomationProfileSeedResult {
+): Promise<AutomationProfileSeedResult> {
   const lockPath = `${targetUserDataDir}.seed.lock`;
   mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
   if (existsSync(lockPath) && statSync(lockPath).isDirectory()) {
@@ -486,7 +486,7 @@ function runProfileSeedUnderKernelLock(
   }
   let lock: KernelFileLock;
   try {
-    lock = acquireKernelFileLock(lockPath);
+    lock = await acquireKernelFileLock(lockPath);
   } catch (error) {
     if (error instanceof KernelFileLockError && error.code === "contended") {
       throw new BrowserProfileSeedError(
@@ -513,7 +513,7 @@ function runProfileSeedUnderKernelLock(
     operationError = error;
   }
   try {
-    lock.release();
+    await lock.release();
   } catch (releaseError) {
     throw new BrowserProfileSeedError(
       "copy-failed",

@@ -10,16 +10,16 @@ if ((mode !== "hold" && mode !== "once") || !path) {
 }
 
 try {
-  const lock = acquireKernelFileLock(path);
+  const lock = await acquireKernelFileLock(path);
   process.stdout.write(
     `${JSON.stringify({ status: "acquired", pid: process.pid })}\n`,
   );
   if (mode === "once") {
-    lock.release();
+    await lock.release();
     process.exit(0);
   }
-  process.on("SIGTERM", () => {
-    lock.release();
+  process.on("SIGTERM", async () => {
+    await lock.release();
     process.exit(0);
   });
   setInterval(() => undefined, 1_000);
