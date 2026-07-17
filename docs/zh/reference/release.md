@@ -39,14 +39,18 @@ npm run release:check
 
 ## 历史发布审计
 
-当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.400.0` 是本机交付：
-package 与文档元数据只将它标记为已在本机构建并验证，不表示 npm 或 GitHub
-Release 已发布。
+当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.400.0 — Apollo · Young`
+已经从下述精确 annotated tag 发布到 npm 与 GitHub。
 
 交付事实：
 
-- 本机交付前，npm registry 上 `@zenalexa/unicli@latest` 是 `0.227.1`；
-- 本机 package 目标为 `0.400.0`；没有创建远端 tag，也没有表示已完成远端发布；
+- 发布后，npm registry 上 `@zenalexa/unicli@latest` 是 `0.400.0`；
+- annotated tag `v0.400.0` 指向 main commit
+  `3e4d555c9641cc2dfd541373c391970d9d0972da`；
+- GitHub Actions run `29568815086` 通过 npm Trusted Publishers 发布，没有使用
+  fallback token；安装后的包已通过 SLSA provenance 验证；
+- GitHub Release 中的 x64 与 arm64 Windows process-owner 可执行文件，与 npm
+  tarball 内对应文件逐字节一致；
 - 共享 Browser Runtime Broker 统一负责 provider 生命周期、Agent session、target lease、可见性、取消和清理；
 - 通用 computer-use profile 暴露直接的浏览器 state、navigation、可信 input、tab、有界内容/历史搜索、dialog、download 和显式前台 presence；
 - Windows Native Messaging 使用架构匹配的 PE launcher 和不可变、并行存在的 generation，重装或升级不会替换活跃 Chrome host 正在使用的可执行文件；
@@ -98,7 +102,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.400.0` 的本机发布 label 是 `Apollo · Young`。
+`0.400.0` 的已发布 label 是 `Apollo · Young`。
 
 ## 发布步骤
 
@@ -117,11 +121,16 @@ npm run docs:check-public
 - changelog 说清楚用户能得到什么。
 - 产品模型重塑发布要更新本页的历史发布审计。
 
-本机交付使用显式 `local` 状态；`scripts/release.ts` 默认也是 `local`，因此生成文档不会把尚未发生的 npm 或 GitHub Release 事件写成既成事实：
+候选交付使用默认的 `local` 状态，因此生成文档不会把尚未发生的 npm 或 GitHub
+Release 写成既成事实。只有两个公开端点都验证通过后，元数据才切换到
+`published`：
 
 ```bash
-npx tsx scripts/release.ts --codename "Apollo · Young" --status local
+npx tsx scripts/release.ts --codename "Apollo · Young" --status published
 ```
+
+`0.400.0` 的切换发生在 registry、provenance、Release asset、安装后 CLI、搜索和
+浏览器保持 stopped 的 doctor probe 全部通过之后。
 
 真实发布步骤：
 
@@ -130,7 +139,7 @@ git status --short
 git add <release files>
 git commit -m "chore(release): vX.Y.Z"
 git push origin main
-git tag vX.Y.Z
+git tag -a vX.Y.Z -m "vX.Y.Z — Program · Astronaut"
 git push origin vX.Y.Z
 ```
 

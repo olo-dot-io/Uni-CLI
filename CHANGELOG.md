@@ -2,8 +2,9 @@
 
 ## [0.400.0] — 2026-07-17 — Apollo · Young
 
-> Local release: built and verified on this machine; no npm publication,
-> GitHub Release, or remote tag is represented.
+> Published from annotated tag `v0.400.0` at commit `3e4d555c` through GitHub
+> Actions run `29568815086`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
 
 ### Added
 

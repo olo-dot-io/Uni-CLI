@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Local release: v0.400.0 · Apollo · Young.
+Latest: v0.400.0 · Apollo · Young.
 
 ## Agent Index
 
