@@ -1,8 +1,8 @@
 {
   "source": "unicli@0.400.0",
-  "generated": "2026-07-17T04:47:00.034Z",
-  "total_sites": 320,
-  "total_commands": 1798,
+  "generated": "2026-07-17T12:59:03.672Z",
+  "total_sites": 321,
+  "total_commands": 1805,
   "adapters": [
     {
       "site": "12306",
@@ -1130,6 +1130,149 @@
       ]
     },
     {
+      "site": "ai",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search live AI infrastructure with provenance and recovery; 实时 搜索 英伟达 NVIDIA AMD ROCm 华为昇腾 CANN GitHub Hugging Face 最新 AI 基础设施 技术文档 社区 论文 模型 数据",
+          "when_to_use": "When you need to search ai for a specific query.",
+          "command": "unicli ai search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "kind",
+            "vendor",
+            "source_class",
+            "source_adapter",
+            "updated_at",
+            "freshness_verifiable",
+            "url",
+            "summary"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "AI or AI-infrastructure search query / AI 基础设施检索词"
+            },
+            {
+              "name": "sources",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated source refs/sites, or all"
+            },
+            {
+              "name": "kind",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Structured AI content kind"
+            },
+            {
+              "name": "vendors",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "nvidia, amd, huawei-ascend"
+            },
+            {
+              "name": "domains",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Restrict results to exact domain suffixes"
+            },
+            {
+              "name": "repo",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "GitHub OWNER/REPO scope"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Rank by source relevance or by the newest verifiable source timestamp"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Require a verifiable published/updated timestamp on or after YYYY-MM-DD"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum fused records (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "read",
+          "description": "Read and structure a live AI/AI-infrastructure source with clean Markdown, headings, links, provenance, timestamp, and content hash; 精确读取并结构化处理 AI 技术文档。",
+          "when_to_use": "Read and structure a live AI/AI-infrastructure source with clean Markdown, headings, links, provenance, timestamp, and content hash; 精确读取并结构化处理 AI 技术文档。",
+          "command": "unicli ai read",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Public HTTP(S) source URL"
+            },
+            {
+              "name": "max_chars_k",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum Markdown size in thousands of characters (1-100)"
+            },
+            {
+              "name": "max_links",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum structured links (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "sources",
+          "description": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O; 列出实时 AI 基础设施检索来源矩阵。",
+          "when_to_use": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O; 列出实时 AI 基础设施检索来源矩阵。",
+          "command": "unicli ai sources",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "source",
+            "kind",
+            "source_class",
+            "capabilities",
+            "required_args",
+            "auth",
+            "domain"
+          ]
+        }
+      ]
+    },
+    {
       "site": "aibase",
       "type": "web-api",
       "domain": "www.aibase.com",
@@ -2035,6 +2178,13 @@
               "required": false,
               "positional": false,
               "description": "Max results"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort by relevance or newest submission"
             }
           ]
         },
@@ -15032,9 +15182,50 @@
     {
       "site": "gh",
       "type": "bridge",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "commands": [
+        {
+          "name": "discussions",
+          "description": "Search discussions in one GitHub repository through the gh discussion command",
+          "when_to_use": "Search discussions in one GitHub repository through the gh discussion command",
+          "command": "unicli gh discussions",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "number",
+            "title",
+            "author",
+            "category",
+            "createdAt",
+            "updatedAt",
+            "answeredAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "repo",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Repository in OWNER/REPO form"
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": false,
+              "description": "Discussion search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
         {
           "name": "issue",
           "description": "List GitHub issues for a repository",
@@ -15187,11 +15378,80 @@
           ]
         },
         {
+          "name": "search-issues",
+          "description": "Search current GitHub issues across repositories",
+          "when_to_use": "When you need to search gh for a specific query.",
+          "command": "unicli gh search-issues",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "repository",
+            "number",
+            "title",
+            "state",
+            "author",
+            "updatedAt",
+            "comments",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "GitHub issue search query; raw qualifiers such as repo:OWNER/REPO are supported"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search-prs",
+          "description": "Search current GitHub pull requests across repositories",
+          "when_to_use": "When you need to search gh for a specific query.",
+          "command": "unicli gh search-prs",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "repository",
+            "number",
+            "title",
+            "state",
+            "draft",
+            "author",
+            "updatedAt",
+            "comments",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "GitHub pull-request search query; raw qualifiers such as repo:OWNER/REPO are supported"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
           "name": "search-repos",
           "description": "Search GitHub repositories",
           "when_to_use": "When you need to search gh for a specific query.",
           "command": "unicli gh search-repos",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -16854,7 +17114,16 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["rank", "title", "score", "author", "comments"],
+          "columns": [
+            "rank",
+            "title",
+            "score",
+            "author",
+            "comments",
+            "created_at",
+            "updated_at",
+            "url"
+          ],
           "args": [
             {
               "name": "query",
@@ -17063,7 +17332,14 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["id", "downloads", "likes", "tags"],
+          "columns": [
+            "id",
+            "author",
+            "downloads",
+            "likes",
+            "lastModified",
+            "url"
+          ],
           "args": [
             {
               "name": "query",
@@ -17077,25 +17353,51 @@
               "type": "int",
               "required": false,
               "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         },
         {
           "name": "models",
-          "description": "Search HuggingFace models",
-          "when_to_use": "Search HuggingFace models",
+          "description": "Search live Hugging Face model metadata through the public Hub API",
+          "when_to_use": "Search live Hugging Face model metadata through the public Hub API",
           "command": "unicli hf models",
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["modelId", "author", "downloads", "likes"],
+          "columns": [
+            "id",
+            "author",
+            "pipeline_tag",
+            "downloads",
+            "likes",
+            "lastModified",
+            "url"
+          ],
           "args": [
             {
               "name": "query",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "Search query for models"
+              "description": "Model name, organization, tag, or free-text query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false
             }
           ]
         },
@@ -17107,7 +17409,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["id", "likes", "sdk", "url"],
+          "columns": ["id", "author", "likes", "sdk", "lastModified", "url"],
           "args": [
             {
               "name": "query",
@@ -17119,6 +17421,12 @@
             {
               "name": "limit",
               "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
               "required": false,
               "positional": false
             }
@@ -17165,6 +17473,42 @@
               "required": false,
               "positional": false,
               "description": "Date (YYYY-MM-DD), defaults to today"
+            }
+          ]
+        },
+        {
+          "name": "community",
+          "description": "Search current Hugging Face forum discussions and posts",
+          "when_to_use": "Search current Hugging Face forum discussions and posts",
+          "command": "unicli hf community",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "author",
+            "createdAt",
+            "updatedAt",
+            "likes",
+            "replies",
+            "views",
+            "url",
+            "summary"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Free-text forum search query"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum matching posts (1-100)"
             }
           ]
         },
@@ -22103,7 +22447,15 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "score", "author", "comments", "tags"],
+          "columns": [
+            "title",
+            "score",
+            "author",
+            "comments",
+            "created_at",
+            "tags",
+            "url"
+          ],
           "args": [
             {
               "name": "query",
@@ -22114,6 +22466,12 @@
             {
               "name": "limit",
               "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "sort",
+              "type": "str",
               "required": false,
               "positional": false
             }
@@ -34188,7 +34546,14 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "score", "answers", "url"],
+          "columns": [
+            "title",
+            "score",
+            "answers",
+            "created_at",
+            "updated_at",
+            "url"
+          ],
           "args": [
             {
               "name": "query",
@@ -34203,6 +34568,13 @@
               "required": false,
               "positional": false,
               "description": "Max number of results"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort by relevance, latest activity, or creation time"
             }
           ]
         },

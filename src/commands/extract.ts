@@ -4,7 +4,7 @@
  *               adapter awareness. Stateless agent verb: fetch + render in a
  *               single CLI call, no browser session, no auth, no pipeline
  *               composition required.
- * @needs        turndown, commander, src/engine/ssrf, src/engine/proxy,
+ * @needs        commander, src/engine/html-to-markdown, src/engine/ssrf, src/engine/proxy,
  *               src/output/{envelope,formatter}, src/constants
  * @feeds        src/cli.ts agent entrypoint; agents that want "fetch this URL
  *               as Markdown" without composing a fetch_text + html_to_md
@@ -31,7 +31,7 @@
  */
 
 import { Command } from "commander";
-import TurndownService from "turndown";
+import { htmlToMarkdown } from "../engine/html-to-markdown.js";
 import { assertSafeRequestUrl } from "../engine/ssrf.js";
 import { describeNetworkFailure, fetchWithProxy } from "../engine/proxy.js";
 import { USER_AGENT } from "../constants.js";
@@ -189,11 +189,7 @@ export function registerExtractCommand(program: Command): void {
 
       let content: string;
       if (renderAs === "markdown") {
-        const turndown = new TurndownService({
-          headingStyle: "atx",
-          codeBlockStyle: "fenced",
-        });
-        content = turndown.turndown(html);
+        content = htmlToMarkdown(html);
       } else if (renderAs === "text") {
         content = stripTags(html);
       } else {

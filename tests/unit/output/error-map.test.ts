@@ -230,6 +230,18 @@ describe("errorTypeToCode — generic Error message matching", () => {
 });
 
 describe("mapErrorToExitCode", () => {
+  it("returns USAGE_ERROR for actionable invalid input", () => {
+    const err = Object.assign(new Error("invalid limit"), {
+      code: "invalid_input",
+    });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.USAGE_ERROR);
+  });
+
+  it("returns AUTH_REQUIRED for an executable auth PipelineError", () => {
+    const err = makePipelineError({ errorType: "auth_required" });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
+  });
+
   it("returns AUTH_REQUIRED for PipelineError with 401", () => {
     const err = makePipelineError({ statusCode: 401 });
     expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
@@ -242,6 +254,18 @@ describe("mapErrorToExitCode", () => {
 
   it("returns EMPTY_RESULT for PipelineError with empty_result errorType", () => {
     const err = makePipelineError({ errorType: "empty_result" });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.EMPTY_RESULT);
+  });
+
+  it("returns AUTH_REQUIRED for PipelineError with challenge_required", () => {
+    const err = makePipelineError({ errorType: "challenge_required" });
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.AUTH_REQUIRED);
+  });
+
+  it("returns EMPTY_RESULT for an actionable empty_result Error", () => {
+    const err = Object.assign(new Error("no records"), {
+      code: "empty_result",
+    });
     expect(mapErrorToExitCode(err)).toBe(ExitCode.EMPTY_RESULT);
   });
 

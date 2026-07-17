@@ -1,7 +1,7 @@
 /**
  * @owner src/registry.ts
  * @does Owns the in-process adapter registry and TypeScript adapter registration helper.
- * @needs src/types, src/discovery/aliases
+ * @needs src/types, src/discovery/aliases, src/core/auth-contract
  * @feeds src/discovery/loader.ts, src/commands/dispatch.ts, src/discovery/search.ts, MCP and ACP command surfaces
  * @breaks Propagates malformed adapter command metadata to command resolution and invocation callers.
  * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths are preserved unless the adapter sets one explicitly.
@@ -15,6 +15,10 @@
 
 import { AdapterType, Strategy } from "./types.js";
 import { SITE_CATEGORIES } from "./discovery/aliases.js";
+import {
+  metadataAuthSetupCommand,
+  metadataRequiresAuth,
+} from "./core/auth-contract.js";
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -92,8 +96,21 @@ export function commandRequiresAuth(
   adapter: AdapterManifest,
   command: AdapterCommand,
 ): boolean {
-  const strategy = commandStrategy(adapter, command);
-  return strategy !== undefined && strategy !== Strategy.PUBLIC;
+  return metadataRequiresAuth(
+    commandStrategy(adapter, command),
+    command.capabilities,
+  );
+}
+
+export function commandAuthSetupCommand(
+  adapter: AdapterManifest,
+  command: AdapterCommand,
+): string | undefined {
+  return metadataAuthSetupCommand(
+    adapter.name,
+    commandStrategy(adapter, command),
+    command.capabilities,
+  );
 }
 
 export function commandUsesBrowser(

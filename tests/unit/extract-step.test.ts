@@ -6,7 +6,14 @@ import {
   runBrowserInvocation,
 } from "../../src/browser/invocation-scope.js";
 import type { ResolvedArgs } from "../../src/engine/args.js";
-import { runPipeline } from "../../src/engine/executor.js";
+import {
+  runPipeline,
+  type PipelineContext,
+} from "../../src/engine/executor.js";
+import {
+  extractHtmlRows,
+  stepExtract,
+} from "../../src/engine/steps/extract.js";
 import "../../src/engine/steps/index.js";
 import type { PipelineStep } from "../../src/types.js";
 import { InMemoryBrowserRuntimeHarness } from "../helpers/in-memory-browser-runtime.js";
@@ -124,6 +131,22 @@ describe("broker-backed extract pipeline step", () => {
     expect(expression).toContain("innerHTML");
   });
 
+  it("generates ordered one-to-many text extraction", async () => {
+    const { result, expression } = await runExtract(
+      {
+        extract: {
+          from: ".story",
+          fields: { tags: { selector: ".tag", multiple: true } },
+        },
+      },
+      [{ tags: ["api", "graphics"] }],
+    );
+
+    expect(result).toEqual([{ tags: ["api", "graphics"] }]);
+    expect(expression).toContain("querySelectorAll");
+    expect(expression).toContain(".tag");
+  });
+
   it("generates capture-group text extraction", async () => {
     const { result, expression } = await runExtract(
       {
@@ -160,20 +183,116 @@ describe("broker-backed extract pipeline step", () => {
     expect(result).toEqual([]);
   });
 
-  it("contains malformed page JSON as an empty extraction result", async () => {
-    const { result } = await runExtract(
-      {
-        extract: {
-          from: ".item",
-          fields: { title: { selector: ".title" } },
+  it("surfaces malformed page serialization instead of faking an empty result", async () => {
+    await expect(
+      runExtract(
+        {
+          extract: {
+            from: ".item",
+            fields: { title: { selector: ".title" } },
+          },
         },
-      },
-      "not valid json",
-    );
-
-    expect(result).toEqual([]);
+        "not valid json",
+      ),
+    ).rejects.toThrow();
   });
 });
+
+describe("HTTP HTML extract pipeline contract", () => {
+  it("extracts text, attributes, HTML, numbers, and capture groups without a page", () => {
+    const rows = extractHtmlRows(
+      `<article class="item"><a href="/a"><span class="title">Alpha</span></a><div class="body"><b>Fast</b></div><span class="count">42 stars</span><span class="meta">ID: 17</span></article>`,
+      "article.item",
+      {
+        title: { selector: ".title" },
+        url: { selector: "a", type: "attribute" },
+        body: { selector: ".body", type: "html" },
+        count: { selector: ".count", type: "number" },
+        id: { selector: ".meta", pattern: "ID:\\s*(\\d+)" },
+        tags: { selector: ".tag", multiple: true },
+      },
+    );
+
+    expect(rows).toEqual([
+      {
+        title: "Alpha",
+        url: "/a",
+        body: "<b>Fast</b>",
+        count: 42,
+        id: "17",
+        tags: [],
+      },
+    ]);
+  });
+
+  it("surfaces a configured anti-bot challenge instead of false empty success", async () => {
+    const context = staticHtmlContext(
+      `<form id="challenge-form"><div data-testid="anomaly-modal">Verify you are human</div></form>`,
+    );
+
+    await expect(
+      stepExtract(
+        context,
+        {
+          from: "div.result",
+          challenge_selector: "#challenge-form",
+          challenge_suggestion: "Use another registered public source.",
+          empty_selector: ".result--no-result",
+          required: true,
+          fields: { title: { selector: ".title" } },
+        },
+        2,
+      ),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        step: 2,
+        errorType: "challenge_required",
+        preserveErrorCode: true,
+        suggestion: "Use another registered public source.",
+      }),
+    });
+  });
+
+  it("distinguishes a configured legitimate empty page from selector drift", async () => {
+    const config = {
+      from: "div.result:not(.result--no-result)",
+      challenge_selector: "#challenge-form",
+      empty_selector: ".result--no-result",
+      required: true,
+      fields: { title: { selector: ".title" } },
+    };
+    const legitimateEmpty = await stepExtract(
+      staticHtmlContext(
+        `<div class="result result--no-result"><p>No results found</p></div>`,
+      ),
+      config,
+      1,
+    );
+
+    expect(legitimateEmpty.data).toEqual([]);
+    await expect(
+      stepExtract(
+        staticHtmlContext(`<main>Changed result markup</main>`),
+        config,
+        1,
+      ),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        errorType: "selector_miss",
+        preserveErrorCode: true,
+      }),
+    });
+  });
+});
+
+function staticHtmlContext(html: string): PipelineContext {
+  return {
+    data: html,
+    args: {},
+    vars: {},
+    canMutate: false,
+  };
+}
 
 async function runExtract(
   step: PipelineStep,

@@ -26,6 +26,51 @@ export interface ExecConfig {
   output_file?: string;
 }
 
+interface ExecFailure {
+  errorType: string;
+  suggestion: string;
+  retryable: boolean;
+  alternatives: string[];
+  preserveErrorCode?: boolean;
+}
+
+export function classifyExecFailure(
+  command: string,
+  error: unknown,
+): ExecFailure {
+  const detail = error as {
+    code?: string | number;
+    stderr?: string | Buffer;
+  };
+  const message = error instanceof Error ? error.message : String(error);
+  const stderr = detail?.stderr ? String(detail.stderr) : "";
+  const corpus = `${message}\n${stderr}`;
+  if (
+    (command === "gh" && Number(detail?.code) === 4) ||
+    /\bgh auth login\b|\bnot logged in\b|\bauthentication required\b|\bunauthorized\b|\bcredentials? (?:are )?required\b/i.test(
+      corpus,
+    )
+  ) {
+    return {
+      errorType: "auth_required",
+      suggestion:
+        command === "gh"
+          ? "Authenticate GitHub CLI with `gh auth login`, then verify with `gh auth status`."
+          : `Authenticate ${command}, then retry the command.`,
+      retryable: false,
+      alternatives: command === "gh" ? ["gh auth login", "gh auth status"] : [],
+      preserveErrorCode: true,
+    };
+  }
+  const transient = /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(corpus);
+  return {
+    errorType: transient ? "timeout" : "parse_error",
+    suggestion: `Check that "${command}" is installed and accessible. Run: which ${command}`,
+    retryable: transient,
+    alternatives: [],
+  };
+}
+
 function resolveTimeout(
   ctx: PipelineContext,
   timeout: number | string | undefined,
@@ -129,6 +174,7 @@ export async function stepExec(
         const child = spawn(cmd, execArgs, {
           timeout,
           env: envOption,
+          signal: ctx.signal,
           stdio: ["pipe", "pipe", "pipe"],
         });
 
@@ -160,11 +206,13 @@ export async function stepExec(
         timeout: number;
         maxBuffer: number;
         env?: NodeJS.ProcessEnv;
+        signal?: AbortSignal;
       } = {
         timeout,
         maxBuffer: 10 * 1024 * 1024,
       };
       if (envOption) opts.env = envOption;
+      if (ctx.signal) opts.signal = ctx.signal;
       ({ stdout } = await execFileAsync(cmd, execArgs, opts));
     }
 
@@ -225,18 +273,24 @@ export async function stepExec(
     return { ...ctx, data };
   } catch (err) {
     if (err instanceof PipelineError) throw err;
+    if (ctx.signal?.aborted) {
+      throw new PipelineError(`exec "${cmd}" timed out or was cancelled`, {
+        step: stepIndex,
+        action: "exec",
+        config: { command: cmd, args: execArgs },
+        errorType: "timeout",
+        suggestion: `Retry ${cmd} after checking the executable and upstream service.`,
+        retryable: true,
+        alternatives: [],
+      });
+    }
     const msg = err instanceof Error ? err.message : String(err);
-    const isExecTransient = /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(
-      msg,
-    );
+    const failure = classifyExecFailure(cmd, err);
     throw new PipelineError(`exec "${cmd}" failed: ${msg}`, {
       step: stepIndex,
       action: "exec",
       config: { command: cmd, args: execArgs },
-      errorType: isExecTransient ? "timeout" : "parse_error",
-      suggestion: `Check that "${cmd}" is installed and accessible. Run: which ${cmd}`,
-      retryable: isExecTransient,
-      alternatives: [],
+      ...failure,
     });
   }
 }

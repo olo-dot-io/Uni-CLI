@@ -28,24 +28,29 @@ args:
 
 pipeline:
   - fetch_text:
-      url: "https://search.brave.com/search?q=${{ args.query | url_encode }}&source=web"
+      url: "https://search.brave.com/search?q=${{ args.query | urlencode }}&source=web"
       headers:
         User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
         Accept: "text/html,application/xhtml+xml"
 
   - extract:
-      selector: "div.snippet[data-type='web']"
+      from: "div.snippet[data-type='web']"
       fields:
-        title: "div.snippet-title"
-        url: "a@href"
-        snippet: ".snippet-description"
+        title:
+          selector: ".title.search-snippet-title"
+        url:
+          selector: "a"
+          type: attribute
+          attribute: href
+        snippet:
+          selector: ".generic-snippet .content"
 
   - limit: ${{ args.limit }}
 
 columns: [title, url, snippet]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.docs"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

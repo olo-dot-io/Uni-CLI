@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
+This catalog is generated from the adapter manifest: 321 sites, 1805 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -25,6 +25,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
 | acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
+| ai | web-api | 3 | no | unicli ai search<br>unicli ai read<br>unicli ai sources |
 | aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -116,7 +117,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
-| gh | bridge | 6 | no | unicli gh issue<br>unicli gh pr<br>unicli gh release |
+| gh | bridge | 9 | yes | unicli gh discussions<br>unicli gh issue<br>unicli gh pr |
 | gimp | desktop | 12 | no | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
 | gitee | web-api | 4 | no | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
 | github-trending | web-api | 3 | no | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
@@ -132,7 +133,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | grok | web-api | 8 | yes | unicli grok ask<br>unicli grok read<br>unicli grok history |
 | hackernews | web-api | 11 | no | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
 | hermes | desktop | 3 | no | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
-| hf | web-api | 5 | no | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
+| hf | web-api | 6 | no | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
 | homebrew | web-api | 5 | no | unicli homebrew info<br>unicli homebrew search<br>unicli homebrew formula |
 | huggingface-papers | web-api | 2 | no | unicli huggingface-papers daily<br>unicli huggingface-papers search |
 | hupu | web-api | 7 | yes | unicli hupu detail<br>unicli hupu hot<br>unicli hupu like |

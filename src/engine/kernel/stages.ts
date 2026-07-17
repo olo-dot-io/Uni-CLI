@@ -20,7 +20,7 @@ import {
   errorToAgentFields,
   mapErrorToExitCode,
 } from "../../output/error-map.js";
-import { commandStrategy } from "../../registry.js";
+import { commandAuthSetupCommand, commandStrategy } from "../../registry.js";
 import type { AgentError } from "../../output/envelope.js";
 import {
   ExitCode,
@@ -196,6 +196,13 @@ function errorResult(input: {
               input.inv.cmdName,
               input.nextActionCode,
               input.inv.command.domain ?? input.inv.adapter.domain,
+              {
+                setupCommand: commandAuthSetupCommand(
+                  input.inv.adapter,
+                  input.inv.command,
+                ),
+                alternatives: input.error.alternatives,
+              },
             ),
           }
         : {}),

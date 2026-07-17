@@ -116,7 +116,7 @@ Live browser/CDP acquisition remains in process memory. Only explicit
 
 Every command returns a v2 AgentEnvelope — the same shape on success or failure.
 Agents parse one schema across
-<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands.
+<span><!-- STATS:command_count -->1805<!-- /STATS --></span> commands.
 
 ```json
 {
@@ -212,8 +212,8 @@ $ unicli hackernews top -n 10 -f json \
 That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
 shape across
-<span><!-- STATS:site_count -->320<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands. One error
+<span><!-- STATS:site_count -->321<!-- /STATS --></span> sites and
+<span><!-- STATS:command_count -->1805<!-- /STATS --></span> commands. One error
 envelope across every failure. One self-repair path across every adapter.
 
 ## Further reading

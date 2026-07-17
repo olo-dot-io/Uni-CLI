@@ -29,24 +29,33 @@ args:
 
 pipeline:
   - fetch_text:
-      url: "https://html.duckduckgo.com/html/?q=${{ args.query | url_encode }}"
+      url: "https://html.duckduckgo.com/html/?q=${{ args.query | urlencode }}"
       headers:
         User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
         Accept: "text/html,application/xhtml+xml"
 
   - extract:
-      selector: "div.result"
+      from: "div.result:not(.result--no-result)"
+      challenge_selector: "#challenge-form, [data-testid='anomaly-modal']"
+      challenge_suggestion: "DuckDuckGo blocked this public HTTP request; retry the query through yahoo.search or brave.search."
+      empty_selector: ".result--no-result, .no-results"
+      required: true
       fields:
-        title: "h2.result__title a"
-        url: "h2.result__title a@href"
-        snippet: "a.result__snippet"
+        title:
+          selector: "h2.result__title a"
+        url:
+          selector: "h2.result__title a"
+          type: attribute
+          attribute: href
+        snippet:
+          selector: "a.result__snippet"
 
   - limit: ${{ args.limit }}
 
 columns: [title, url, snippet]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.docs"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

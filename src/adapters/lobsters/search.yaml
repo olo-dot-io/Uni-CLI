@@ -14,29 +14,52 @@ args:
   limit:
     type: int
     default: 20
+  sort:
+    type: str
+    default: relevance
+    choices: [relevance, newest, score]
 
 pipeline:
-  - fetch:
-      url: https://lobste.rs/search.json
+  - fetch_text:
+      url: https://lobste.rs/search
       params:
         q: "${{ args.query }}"
         what: stories
-        order: relevance
+        order: "${{ args.sort }}"
+      headers:
+        Accept: text/html
 
-  - map:
-      title: ${{ item.title }}
-      score: ${{ item.score }}
-      author: "${{ item.submitter_user ? item.submitter_user.username : '' }}"
-      comments: ${{ item.comment_count }}
-      tags: "${{ (item.tags || []).join(', ') }}"
-      url: ${{ item.url }}
+  - extract:
+      from: li.story
+      fields:
+        title:
+          selector: a.u-url
+        url:
+          selector: a.u-url
+          type: attribute
+          attribute: href
+        score:
+          selector: .voters .upvoter
+          type: number
+        author:
+          selector: ".byline > a:not([aria-hidden='true'])"
+        comments:
+          selector: .comments_label a
+          type: number
+        created_at:
+          selector: time
+          type: attribute
+          attribute: data-at-unix
+        tags:
+          selector: .tags .tag
+          multiple: true
 
   - limit: ${{ args.limit }}
 
-columns: [title, score, author, comments, tags]
+columns: [title, score, author, comments, created_at, tags, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.community"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

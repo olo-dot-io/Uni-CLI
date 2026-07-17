@@ -1,0 +1,66 @@
+site: gh
+name: discussions
+description: Search discussions in one GitHub repository through the gh discussion command
+type: bridge
+strategy: public
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  repo:
+    type: str
+    required: true
+    positional: true
+    description: Repository in OWNER/REPO form
+  query:
+    type: str
+    required: true
+    description: Discussion search query
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - discussion
+        - list
+        - --repo
+        - ${{ args.repo }}
+        - --search
+        - ${{ args.query }}
+        - --state
+        - all
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - number,title,url,author,body,category,createdAt,updatedAt,answerChosenAt
+      parse: json
+      timeout: 30000
+
+  - select: discussions
+
+  - map:
+      id: ${{ item.number }}
+      number: ${{ item.number }}
+      title: ${{ item.title }}
+      author: "${{ item.author ? item.author.login : '' }}"
+      category: "${{ item.category ? item.category.name : '' }}"
+      createdAt: ${{ item.createdAt }}
+      updatedAt: ${{ item.updatedAt }}
+      answeredAt: ${{ item.answerChosenAt }}
+      summary: "${{ (item.body || '').slice(0,4000) }}"
+      url: ${{ item.url }}
+
+columns:
+  [number, title, author, category, createdAt, updatedAt, answeredAt, url]
+
+capabilities:
+  ["subprocess.exec", "auth.executable.gh", "ai.search", "ai.community"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

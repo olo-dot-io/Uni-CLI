@@ -1,7 +1,7 @@
 /**
  * @owner   src/fast-path/handlers/discovery.ts
  * @does    Serve list/search/describe/repair from the generated manifest plus user-repaired adapters without booting Commander.
- * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../engine/repair/plan, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
+ * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../core/auth-contract, ../../engine/repair/plan, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
  * @feeds   src/fast-path.ts
  * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors; skips malformed user-adapter YAML.
  * @invariants Fast-path search shares the canonical scorer and owns manifest-to-document and user-adapter-to-document projection.
@@ -25,6 +25,10 @@ import {
   type CoreDiscoveryCommand,
 } from "../../discovery/core-catalog.js";
 import { buildCoreCommandContract } from "../../core/command-contract.js";
+import {
+  metadataAuthSetupCommand,
+  metadataRequiresAuth,
+} from "../../core/auth-contract.js";
 import {
   buildMacosDynamicCommands,
   discoverMacosDynamicData,
@@ -98,7 +102,9 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
         const category = info.category ?? "other";
         const strategy = command.strategy ?? "public";
         const tags: string[] = [];
-        if (strategy !== "public") tags.push("[auth]");
+        if (metadataRequiresAuth(strategy, command.capabilities)) {
+          tags.push("[auth]");
+        }
         if (command.quarantined === true) tags.push("[quarantined]");
         return {
           site,
@@ -402,15 +408,24 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   }
 
   if (!cmdName) {
-    const commands = info.commands.map((command) => ({
-      name: command.name,
-      description: command.description ?? "",
-      quarantined: command.quarantined === true,
-      strategy: command.strategy ?? "public",
-      auth: (command.strategy ?? "public") !== "public",
-      browser: command.browser === true,
-      args: summarizeArgs(command.args),
-    }));
+    const commands = info.commands.map((command) => {
+      const strategy = command.strategy ?? "public";
+      const authSetup = metadataAuthSetupCommand(
+        site,
+        strategy,
+        command.capabilities,
+      );
+      return {
+        name: command.name,
+        description: command.description ?? "",
+        quarantined: command.quarantined === true,
+        strategy,
+        auth: metadataRequiresAuth(strategy, command.capabilities),
+        ...(authSetup ? { auth_setup: authSetup } : {}),
+        browser: command.browser === true,
+        args: summarizeArgs(command.args),
+      };
+    });
     io.stdout(
       JSON.stringify(
         {
@@ -458,14 +473,22 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   });
   if (!operationPolicy) return true;
 
+  const strategy = command.strategy ?? "public";
+  const authSetup = metadataAuthSetupCommand(
+    site,
+    strategy,
+    command.capabilities,
+  );
+
   io.stdout(
     JSON.stringify(
       {
         command: `unicli ${site} ${cmdName}`,
         description: command.description ?? "",
         quarantined: command.quarantined === true,
-        strategy: command.strategy ?? "public",
-        auth: (command.strategy ?? "public") !== "public",
+        strategy,
+        auth: metadataRequiresAuth(strategy, command.capabilities),
+        ...(authSetup ? { auth_setup: authSetup } : {}),
         browser: command.browser === true,
         target_surface: targetSurface,
         adapter_path: adapterPath,

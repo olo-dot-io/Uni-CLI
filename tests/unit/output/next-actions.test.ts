@@ -39,6 +39,31 @@ describe("error next_actions", () => {
     ).toBe(true);
   });
 
+  it("uses executable-native auth commands without cookie guidance", () => {
+    const commands = defaultErrorNextActions(
+      "gh",
+      "search-repos",
+      "auth_required",
+      "github.com",
+      {
+        setupCommand: "gh auth login",
+        alternatives: ["gh auth login", "gh auth status"],
+      },
+    ).map((action) => action.command);
+
+    expect(commands).toContain("gh auth login");
+    expect(commands).toContain("gh auth status");
+    expect(commands.every((command) => !command.includes("auth import"))).toBe(
+      true,
+    );
+    expect(commands.every((command) => !command.includes("--auth-retry"))).toBe(
+      true,
+    );
+    expect(commands.every((command) => !command.includes("browser open"))).toBe(
+      true,
+    );
+  });
+
   it("never recommends adapter repair for network or authentication failures", () => {
     for (const code of ["network_error", "rate_limited", "auth_required"]) {
       const commands = defaultErrorNextActions("hackernews", "top", code).map(
@@ -58,5 +83,51 @@ describe("error next_actions", () => {
     expect(action?.description).toContain(
       "Verify an evidence-backed adapter fix",
     );
+  });
+
+  it("offers source inspection and broader search for an empty AI window", () => {
+    const commands = defaultErrorNextActions(
+      "ai",
+      "search",
+      "empty_result",
+    ).map((action) => action.command);
+
+    expect(commands).toContain("unicli ai sources");
+    expect(commands).toContain(
+      "unicli ai search <broader-query> --sources all",
+    );
+    expect(commands).not.toContain("unicli repair ai search");
+  });
+
+  it("preserves the exact no-since retry for timestamp-unverifiable AI results", () => {
+    const retry =
+      "unicli ai search 'CANN release notes' --sources 'yahoo.search' --sort 'latest'";
+    const commands = defaultErrorNextActions(
+      "ai",
+      "search",
+      "empty_result",
+      undefined,
+      { alternatives: [retry, "unicli ai sources"] },
+    ).map((action) => action.command);
+
+    expect(commands).toContain(retry);
+  });
+
+  it("routes a keyless DuckDuckGo challenge to usable search adapters", () => {
+    const commands = defaultErrorNextActions(
+      "duckduckgo",
+      "search",
+      "challenge_required",
+      "html.duckduckgo.com",
+    ).map((action) => action.command);
+
+    expect(commands).toContain("unicli yahoo search <query>");
+    expect(commands).toContain("unicli brave search <query>");
+    expect(commands.every((command) => !command.includes("auth-retry"))).toBe(
+      true,
+    );
+    expect(
+      commands.every((command) => !command.includes("browser cookies")),
+    ).toBe(true);
   });
 });

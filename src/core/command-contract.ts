@@ -8,6 +8,7 @@
 
 import {
   commandRequiresAuth,
+  commandAuthSetupCommand,
   commandStrategy,
   commandUsesBrowser,
 } from "../registry.js";
@@ -254,6 +255,7 @@ export function buildCommandContract(
   const args = command.adapterArgs ?? [];
   const strategy = commandStrategy(adapter, command);
   const authRequired = commandRequiresAuth(adapter, command);
+  const authSetupCommand = commandAuthSetupCommand(adapter, command);
   const targetSurface = resolveOperationTargetSurface({
     adapterType: adapter.type,
     targetSurface: command.target_surface,
@@ -314,9 +316,7 @@ export function buildCommandContract(
     auth: {
       strategy: strategy ?? "public",
       required: authRequired,
-      ...(authRequired
-        ? { setup_command: `unicli auth setup ${adapter.name}` }
-        : {}),
+      ...(authSetupCommand ? { setup_command: authSetupCommand } : {}),
     },
     governance: {
       dimensions: policy.capability_scope.dimensions,

@@ -13,6 +13,10 @@ args:
   limit:
     type: int
     default: 20
+  sort:
+    type: str
+    default: lastModified
+    choices: [lastModified, createdAt, likes]
 
 pipeline:
   - fetch:
@@ -20,21 +24,26 @@ pipeline:
       params:
         search: "${{ args.query || '' }}"
         limit: "${{ args.limit }}"
-        sort: likes
+        sort: "${{ args.sort }}"
         direction: "-1"
 
   - map:
       id: ${{ item.id }}
+      title: ${{ item.id }}
+      author: "${{ item.author || item.id.split('/')[0] || '' }}"
       likes: "${{ item.likes || 0 }}"
       sdk: "${{ item.sdk || '' }}"
+      createdAt: "${{ item.createdAt || '' }}"
+      lastModified: "${{ item.lastModified || '' }}"
+      tags: "${{ (item.tags || []).slice(0,8).join(', ') }}"
       url: "${{ 'https://huggingface.co/spaces/' + item.id }}"
 
   - limit: ${{ args.limit }}
 
-columns: [id, likes, sdk, url]
+columns: [id, author, likes, sdk, lastModified, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.artifacts"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

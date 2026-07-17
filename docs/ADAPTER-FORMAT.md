@@ -111,6 +111,28 @@ The most common ones:
 | `snapshot`     | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
 | `visual_click` | visual                            | Coordinate-level click via Visual backend.             |
 
+#### HTML extraction response states
+
+`extract` uses the same `from`/`fields` contract for fetched HTML and CDP
+DOMs. When zero matched records is ambiguous, declare the response states
+instead of treating every selector miss as `[]`:
+
+```yaml
+- extract:
+    from: "div.result:not(.result--no-result)"
+    fields:
+      title: { selector: "h2" }
+    challenge_selector: "#challenge-form"
+    challenge_suggestion: "Retry through another registered public source."
+    empty_selector: ".result--no-result"
+    required: true
+```
+
+`challenge_selector` emits `challenge_required`; `empty_selector` identifies a
+legitimate empty response; and `required: true` turns every other zero match
+into `selector_miss`. Omit these fields only when an unqualified empty array is
+the upstream command's complete and unambiguous contract.
+
 Each step has a typed schema; unknown fields are rejected at load time.
 
 ---

@@ -16,10 +16,15 @@ args:
     type: int
     default: 10
     description: Max number of results
+  sort:
+    type: str
+    default: relevance
+    choices: [relevance, activity, creation]
+    description: Sort by relevance, latest activity, or creation time
 
 pipeline:
   - fetch:
-      url: https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${{ args.query | urlencode }}&site=stackoverflow
+      url: https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=${{ args.sort }}&q=${{ args.query | urlencode }}&site=stackoverflow
 
   - select: items
 
@@ -27,14 +32,16 @@ pipeline:
       title: ${{ item.title }}
       score: ${{ item.score }}
       answers: ${{ item.answer_count }}
+      created_at: ${{ item.creation_date }}
+      updated_at: ${{ item.last_activity_date }}
       url: ${{ item.link }}
 
   - limit: ${{ args.limit }}
 
-columns: [title, score, answers, url]
+columns: [title, score, answers, created_at, updated_at, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.community"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

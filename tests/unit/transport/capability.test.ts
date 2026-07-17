@@ -58,10 +58,13 @@ describe("stepSupportedBy", () => {
       "press",
       "scroll",
       "snapshot",
-      "extract",
     ]) {
       expect(stepSupportedBy(step), step).toEqual(["cdp-browser"]);
     }
+  });
+
+  it("extract uses the same field contract for fetched HTML and CDP DOM", () => {
+    expect(stepSupportedBy("extract")).toEqual(["http", "cdp-browser"]);
   });
 
   it("generic wait keeps subprocess as the non-browser timer fallback", () => {

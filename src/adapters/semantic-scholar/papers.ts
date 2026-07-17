@@ -2,7 +2,7 @@
  * @owner       src::adapters::semantic-scholar::papers
  * @does        Registers Semantic Scholar Graph API paper search, detail, citations, references, and source PDF read commands.
  * @needs       api.semanticscholar.org Graph v1, optional SEMANTIC_SCHOLAR_API_KEY, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
- * @feeds       src/commands/scholar.ts via scholar.* capability tags
+ * @feeds       src/commands/scholar.ts via scholar.* capability tags and AI paper intelligence via ai.* tags
  * @breaks      Graph API rate limits, response-shape drift, missing OA PDF URLs, or pdftotext failures surface as explicit adapter errors; no cached fallback is used.
  * @invariants  Paper references are normalized to Semantic Scholar's accepted DOI:/ARXIV:/paperId formats; read requires openAccessPdf.url before text is claimed.
  * @side-effects HTTPS egress to api.semanticscholar.org and source PDF hosts; read writes one PDF and executes pdftotext.
@@ -18,6 +18,7 @@ import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
 
 const API = "https://api.semanticscholar.org/graph/v1";
+const REQUEST_TIMEOUT_MS = 15_000;
 const FIELDS = [
   "paperId",
   "title",
@@ -99,7 +100,10 @@ function headers(): Record<string, string> {
 }
 
 async function fetchS2(path: string, label: string): Promise<unknown> {
-  const response = await fetch(`${API}${path}`, { headers: headers() });
+  const response = await fetch(`${API}${path}`, {
+    headers: headers(),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
   if (response.status === 404) throw new Error(`${label} returned no result.`);
   if (response.status === 429) {
     throw new Error(
@@ -205,7 +209,7 @@ cli({
     "pdf_url",
     "source_url",
   ],
-  capabilities: ["http.fetch", "scholar.search"],
+  capabilities: ["http.fetch", "scholar.search", "ai.search", "ai.paper"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query)
@@ -215,10 +219,7 @@ cli({
       `/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=${encodeURIComponent(FIELDS)}`,
       "semantic-scholar search",
     )) as { data?: S2Paper[] };
-    const out = rows(body.data);
-    if (out.length === 0)
-      throw new Error(`No Semantic Scholar papers matched "${query}".`);
-    return out;
+    return rows(body.data);
   },
 });
 

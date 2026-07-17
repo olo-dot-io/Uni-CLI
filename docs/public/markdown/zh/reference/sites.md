@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：320 个站点，1798 条命令。
+这个目录来自适配器 manifest：321 个站点，1805 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -22,6 +22,7 @@
 | 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
 | acl-anthology | web-api | 3 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | 否 | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
+| ai | web-api | 3 | 否 | unicli ai search<br>unicli ai read<br>unicli ai sources |
 | aibase | web-api | 1 | 否 | unicli aibase news |
 | amazon | web-api | 8 | 是 | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | anilist | web-api | 5 | 否 | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -113,7 +114,7 @@
 | freepatentsonline-web | web-api | 2 | 否 | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | 是 | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | 是 | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
-| gh | bridge | 6 | 否 | unicli gh issue<br>unicli gh pr<br>unicli gh release |
+| gh | bridge | 9 | 是 | unicli gh discussions<br>unicli gh issue<br>unicli gh pr |
 | gimp | desktop | 12 | 否 | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
 | gitee | web-api | 4 | 否 | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
 | github-trending | web-api | 3 | 否 | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
@@ -129,7 +130,7 @@
 | grok | web-api | 8 | 是 | unicli grok ask<br>unicli grok read<br>unicli grok history |
 | hackernews | web-api | 11 | 否 | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
 | hermes | desktop | 3 | 否 | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
-| hf | web-api | 5 | 否 | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
+| hf | web-api | 6 | 否 | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
 | homebrew | web-api | 5 | 否 | unicli homebrew info<br>unicli homebrew search<br>unicli homebrew formula |
 | huggingface-papers | web-api | 2 | 否 | unicli huggingface-papers daily<br>unicli huggingface-papers search |
 | hupu | web-api | 7 | 是 | unicli hupu detail<br>unicli hupu hot<br>unicli hupu like |

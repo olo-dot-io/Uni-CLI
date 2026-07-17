@@ -208,6 +208,15 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = strictMap([
   ["脸书", "facebook"],
 
   // AI platforms
+  ["AI基础设施", "ai"],
+  ["AI Infra", "ai"],
+  ["英伟达", "ai"],
+  ["NVIDIA", "ai"],
+  ["AMD", "ai"],
+  ["ROCm", "ai"],
+  ["华为昇腾", "ai"],
+  ["昇腾", "ai"],
+  ["CANN", "ai"],
   ["deepseek", "deepseek"],
   ["豆包", "doubao"],
   ["豆包桌面", "doubao-app"],
@@ -1302,6 +1311,9 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
 // Site → category for category-based boosting in search results
 
 export const SITE_CATEGORIES: ReadonlyMap<string, string> = strictMap([
+  // AI intelligence orchestration
+  ["ai", "ai"],
+
   // Social
   ["twitter", "social"],
   ["weibo", "social"],

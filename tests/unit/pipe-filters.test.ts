@@ -427,4 +427,28 @@ describe("RSS parser", () => {
       },
     ]);
   });
+
+  it("joins repeated nested Atom fields without leaking XML tags", () => {
+    const ctx = stepParseRss(
+      {
+        data: `
+          <feed>
+            <entry>
+              <title>Inference paper</title>
+              <author><name>Clara Mohri</name></author>
+              <author><name>Heming Xia</name></author>
+            </entry>
+          </feed>
+        `,
+      },
+      { fields: { title: "title", authors: "author.name" } },
+    );
+
+    expect(ctx.data).toEqual([
+      {
+        title: "Inference paper",
+        authors: "Clara Mohri, Heming Xia",
+      },
+    ]);
+  });
 });

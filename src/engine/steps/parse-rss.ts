@@ -1,3 +1,18 @@
+/**
+ * @owner src/engine/steps/parse-rss.ts
+ * @does Parses RSS and Atom entries, including repeated nested fields declared with dot paths.
+ * @needs Pipeline context, XML text normalization, step registry.
+ * @feeds RSS/Atom adapter pipelines including arXiv scholarly search.
+ * @breaks Lossy repeated-field extraction drops authors and other structured Atom metadata.
+ * @invariants Simple field tags preserve first-match behavior; dot paths join every matching nested leaf in document order.
+ * @side-effects Registers the parse_rss step at module load.
+ * @perf O(entries * configured fields * XML length).
+ * @concurrency Safe after module registration.
+ * @test tests/unit/pipe-filters.test.ts, src/adapters/arxiv/search.test.ts
+ * @stability stable
+ * @since 2026-07-17
+ */
+
 import { registerStep, type StepHandler } from "../step-registry.js";
 import type { PipelineContext } from "../executor.js";
 import { normalizeXmlText } from "../text-normalize.js";
@@ -25,7 +40,7 @@ export function stepParseRss(
     if (config?.fields) {
       const row: Record<string, string> = {};
       for (const [key, tag] of Object.entries(config.fields)) {
-        row[key] = extractXmlTag(block, tag);
+        row[key] = extractXmlField(block, tag);
       }
       if (row.link && !row.url) row.url = row.link;
       items.push(row);
@@ -75,6 +90,23 @@ function extractXmlCdata(xml: string, tag: string): string {
 function extractXmlTag(xml: string, tag: string): string {
   const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`));
   return m ? normalizeXmlText(m[1]) : "";
+}
+
+function extractXmlField(xml: string, field: string): string {
+  const path = field.split(".").filter(Boolean);
+  if (path.length <= 1) return extractXmlTag(xml, field);
+  let fragments = [xml];
+  for (const tag of path) {
+    const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const expression = new RegExp(
+      `<${escaped}[^>]*>([\\s\\S]*?)</${escaped}>`,
+      "g",
+    );
+    fragments = fragments.flatMap((fragment) =>
+      [...fragment.matchAll(expression)].map((match) => match[1]),
+    );
+  }
+  return fragments.map(normalizeXmlText).filter(Boolean).join(", ");
 }
 
 registerStep("parse_rss", stepParseRss as StepHandler);

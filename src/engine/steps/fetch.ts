@@ -17,6 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { USER_AGENT } from "../../constants.js";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
@@ -119,7 +120,13 @@ export async function stepFetch(
             ...config,
             headers: resolveHeaderTemplates(config.headers, itemCtx),
           };
-      return fetchJson(itemUrl, resolvedConfig, ctx.cookieHeader, stepIndex);
+      return fetchJson(
+        itemUrl,
+        resolvedConfig,
+        ctx.cookieHeader,
+        stepIndex,
+        ctx.signal,
+      );
     });
     return { ...ctx, data: results };
   }
@@ -147,6 +154,7 @@ export async function stepFetch(
       resolvedConfig,
       ctx.cookieHeader,
       stepIndex,
+      ctx.signal,
     );
     return { ...ctx, data };
   } catch (err) {
@@ -170,6 +178,7 @@ export async function stepFetch(
             resolvedConfig,
             fallbackCookie,
             stepIndex,
+            ctx.signal,
           );
           return { ...ctx, data, cookieHeader: fallbackCookie };
         }
@@ -236,6 +245,7 @@ async function fetchJson(
   config: FetchConfig,
   cookieHeader?: string,
   stepIndex = -1,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const method = config.method ?? "GET";
 
@@ -254,7 +264,7 @@ async function fetchJson(
     headers["Cookie"] = cookieHeader;
   }
 
-  const init: RequestInit = { method, headers };
+  const init: RequestInit = { method, headers, signal };
   if (config.body && method !== "GET") {
     headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(config.body);
@@ -269,9 +279,7 @@ async function fetchJson(
     } catch (error) {
       const isLastAttempt = attempt === maxAttempts;
       if (!isLastAttempt) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay * 2 ** (attempt - 1)),
-        );
+        await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
         continue;
       }
       throw new PipelineError(
@@ -299,7 +307,7 @@ async function fetchJson(
     const isLastAttempt = attempt === maxAttempts;
 
     if (isRetryable && !isLastAttempt) {
-      await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+      await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
       continue;
     }
 

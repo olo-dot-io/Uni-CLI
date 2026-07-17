@@ -7,7 +7,10 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { findAmbiguousLongOptionPositional } from "../../../src/commands/dispatch.js";
+import {
+  findAmbiguousLongOptionPositional,
+  normalizeAdapterOptionValues,
+} from "../../../src/commands/dispatch.js";
 
 describe("CLI dispatch positional helpers", () => {
   it("ignores omitted optional positionals when checking long-option ambiguity", () => {
@@ -17,5 +20,18 @@ describe("CLI dispatch positional helpers", () => {
     expect(findAmbiguousLongOptionPositional([undefined, "--flag"])).toBe(
       "--flag",
     );
+  });
+});
+
+describe("CLI dispatch option normalization", () => {
+  it("maps canonical hyphenated flags and legacy underscored flags to adapter arg names", () => {
+    const args = [{ name: "max_chars_k", type: "int" as const }];
+
+    expect(normalizeAdapterOptionValues({ maxCharsK: "2" }, args)).toEqual({
+      max_chars_k: "2",
+    });
+    expect(normalizeAdapterOptionValues({ max_chars_k: "3" }, args)).toEqual({
+      max_chars_k: "3",
+    });
   });
 });

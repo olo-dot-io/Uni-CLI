@@ -79,6 +79,7 @@ export interface AdapterArg {
   format?:
     | "uri"
     | "uuid"
+    | "date"
     | "date-time"
     | "email"
     | "hostname"

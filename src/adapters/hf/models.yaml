@@ -1,35 +1,52 @@
 site: hf
 name: models
-description: Search HuggingFace models
-type: bridge
+description: Search live Hugging Face model metadata through the public Hub API
+type: web-api
+domain: huggingface.co
 strategy: public
-binary: huggingface-cli
-detect: which huggingface-cli
-autoInstall: pip install huggingface_hub[cli]
 
 args:
   query:
     type: str
     required: true
     positional: true
-    description: Search query for models
+    description: Model name, organization, tag, or free-text query
+  limit:
+    type: int
+    default: 20
+  sort:
+    type: str
+    default: lastModified
+    choices: [lastModified, createdAt, downloads, likes]
 
 pipeline:
-  - exec:
-      command: huggingface-cli
-      args:
-        - search
-        - ${{ args.query }}
-        - --json
-      parse: json
-      timeout: 30000
+  - fetch:
+      url: https://huggingface.co/api/models
+      params:
+        search: "${{ args.query }}"
+        limit: "${{ args.limit }}"
+        sort: "${{ args.sort }}"
+        direction: "-1"
 
-columns: [modelId, author, downloads, likes]
+  - map:
+      id: ${{ item.id }}
+      title: ${{ item.id }}
+      author: "${{ item.author || item.id.split('/')[0] || '' }}"
+      pipeline_tag: "${{ item.pipeline_tag || '' }}"
+      downloads: "${{ item.downloads || 0 }}"
+      likes: "${{ item.likes || 0 }}"
+      createdAt: "${{ item.createdAt || '' }}"
+      lastModified: "${{ item.lastModified || '' }}"
+      tags: "${{ (item.tags || []).slice(0,8).join(', ') }}"
+      url: "${{ 'https://huggingface.co/' + item.id }}"
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
-minimum_capability: subprocess.exec
-trust: user
+  - limit: ${{ args.limit }}
+
+columns: [id, author, pipeline_tag, downloads, likes, lastModified, url]
+
+capabilities: ["http.fetch", "ai.search", "ai.artifacts"]
+minimum_capability: http.fetch
+trust: public
 confidentiality: public
 quarantine: false
 schema_version: v2

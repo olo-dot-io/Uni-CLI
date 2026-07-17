@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { runPipeline } from "../../src/engine/executor.js";
+import { htmlToMarkdown } from "../../src/engine/html-to-markdown.js";
 import "../../src/engine/steps/index.js";
 
 // --- Echo server: returns request info as JSON ---
@@ -30,8 +31,19 @@ beforeAll(async () => {
     if (req.url === "/html") {
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(
-        "<h1>Title</h1><p>Hello <strong>world</strong></p><ul><li>item 1</li><li>item 2</li></ul>",
+        "<style>.noise-rule{color:red}</style><h1>Title</h1><script>window.__noise=true</script><p>Hello <strong>world</strong></p><ul><li>item 1</li><li>item 2</li></ul>",
       );
+      return;
+    }
+
+    if (req.url === "/slow" || req.url === "/slow-text") {
+      setTimeout(() => {
+        res.writeHead(200, {
+          "Content-Type":
+            req.url === "/slow" ? "application/json" : "text/plain",
+        });
+        res.end(req.url === "/slow" ? JSON.stringify({ ok: true }) : "ok");
+      }, 500);
       return;
     }
 
@@ -343,6 +355,43 @@ describe("html_to_md step", () => {
     expect(md).toContain("Title");
     expect(md).toContain("**world**");
     expect(md).toContain("item 1");
+    expect(md).not.toContain("window.__noise");
+    expect(md).not.toContain(".noise-rule");
+  });
+
+  it.each([
+    {
+      name: "article-based NVIDIA docs",
+      html: `<html><head><title>CUDA Guide</title></head><body><nav>Products Drivers</nav><article><h1>CUDA Guide</h1><p>Install the toolkit.</p></article><footer>Legal links</footer></body></html>`,
+      expected: "Install the toolkit.",
+    },
+    {
+      name: "main-based ROCm docs",
+      html: `<html><head><title>ROCm Install</title></head><body><aside>Versions</aside><main><h1>ROCm Install <a class="headerlink" title="Permalink">#</a></h1><p>Deploy on Instinct accelerators.</p></main></body></html>`,
+      expected: "Deploy on Instinct accelerators.",
+    },
+    {
+      name: "role-main Ascend docs",
+      html: `<html><head><title>CANN Reference</title></head><body><div role="navigation">Documentation tree</div><div role="main"><h1>CANN Reference</h1><p>[object Object]undefined</p><a href="%5Bobject%20Object%5D">[object Object]</a><p>Configure the Ascend runtime.</p><a href="#top">返回顶部</a></div></body></html>`,
+      expected: "Configure the Ascend runtime.",
+    },
+  ])("extracts the semantic body from $name", ({ html, expected }) => {
+    const markdown = htmlToMarkdown(html);
+
+    expect(markdown).toContain(expected);
+    expect(markdown).not.toMatch(
+      /Products Drivers|Legal links|Versions|Documentation tree|Permalink|\[object Object\]|undefined/,
+    );
+    expect(markdown.trimStart()).toMatch(/^# /);
+  });
+
+  it("preserves legitimate undefined documentation without serialization evidence", () => {
+    const markdown = htmlToMarkdown(
+      `<html><head><title>JavaScript Values</title></head><body><article><h1>JavaScript Values</h1><p>undefined</p><p>An undefined symbol remains meaningful.</p></article></body></html>`,
+    );
+
+    expect(markdown).toContain("undefined");
+    expect(markdown).toContain("An undefined symbol remains meaningful.");
   });
 });
 
@@ -436,6 +485,30 @@ describe("retry with backoff", () => {
   });
 });
 
+describe("request cancellation", () => {
+  it.each(["fetch", "fetch_text"])(
+    "aborts an in-flight %s request at the invocation boundary",
+    async (action) => {
+      const startedAt = Date.now();
+      await expect(
+        runPipeline(
+          [
+            {
+              [action]: {
+                url: `${baseUrl}/${action === "fetch" ? "slow" : "slow-text"}`,
+              },
+            },
+          ],
+          { args: {}, source: "internal" },
+          undefined,
+          { signal: AbortSignal.timeout(25) },
+        ),
+      ).rejects.toMatchObject({ detail: { errorType: "network_error" } });
+      expect(Date.now() - startedAt).toBeLessThan(400);
+    },
+  );
+});
+
 describe("step error metadata", () => {
   it("reports fetch HTTP errors with the pipeline step index", async () => {
     await expect(
@@ -477,6 +550,19 @@ describe("step error metadata", () => {
 });
 
 describe.skipIf(skipOnWindows)("exec error metadata", () => {
+  it("aborts the child process when the invocation deadline expires", async () => {
+    const startedAt = Date.now();
+    await expect(
+      runPipeline(
+        [{ exec: { command: "sh", args: ["-c", "sleep 5"] } }],
+        { args: {}, source: "internal" },
+        undefined,
+        { signal: AbortSignal.timeout(25) },
+      ),
+    ).rejects.toMatchObject({ detail: { errorType: "timeout" } });
+    expect(Date.now() - startedAt).toBeLessThan(400);
+  });
+
   it("reports exec timeout parse errors with the pipeline step index", async () => {
     await expect(
       runPipeline(

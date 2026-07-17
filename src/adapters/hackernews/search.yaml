@@ -29,21 +29,26 @@ pipeline:
         query: ${{ args.query }}
         tags: story
         hitsPerPage: ${{ args.limit }}
+        typoTolerance: false
 
   - select: hits
 
   - map:
       rank: ${{ index + 1 }}
+      id: ${{ item.objectID }}
       title: ${{ item.title }}
       score: ${{ item.points }}
       author: ${{ item.author }}
       comments: ${{ item.num_comments }}
-      url: ${{ item.url }}
+      created_at: ${{ item.created_at }}
+      updated_at: ${{ item.updated_at }}
+      external_url: ${{ item.url }}
+      url: "${{ 'https://news.ycombinator.com/item?id=' + item.objectID }}"
 
-columns: [rank, title, score, author, comments]
+columns: [rank, title, score, author, comments, created_at, updated_at, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.community"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

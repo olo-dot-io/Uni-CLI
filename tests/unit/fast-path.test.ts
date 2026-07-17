@@ -84,6 +84,42 @@ describe("CLI fast path", () => {
     expect(env.data.some((row) => row.site === "scholar-artifacts")).toBe(true);
   });
 
+  it("keeps the AI orchestrator discoverable through the AI category", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "list", "--category", "ai"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{ site: string; command: string; category: string }>;
+    };
+    expect(env.data).toContainEqual(
+      expect.objectContaining({
+        site: "ai",
+        command: "search",
+        category: "ai",
+      }),
+    );
+  });
+
+  it("describes executable-native authentication from manifest capabilities", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "describe", "gh", "search-repos"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    expect(JSON.parse(stdout.join(""))).toMatchObject({
+      auth: true,
+      auth_setup: "gh auth login",
+    });
+  });
+
   it("lists core compute commands from the same discovery surface as adapters", () => {
     const { stdout, io } = makeIo();
 

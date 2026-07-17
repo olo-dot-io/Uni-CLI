@@ -1,7 +1,7 @@
 /**
  * @owner       src::output::next-actions
  * @does        Builds bounded HATEOAS command hints for success and failure envelopes.
- * @needs       auth guidance and canonical adapter-repair eligibility
+ * @needs       auth guidance, executable-auth metadata, and canonical adapter-repair eligibility
  * @feeds       default AgentEnvelope next_actions across adapter commands
  * @breaks      Misclassified hints can send agents into retries or source edits that cannot fix the owning failure.
  * @invariants  Auth/network/rate-limit failures never recommend adapter repair; drift classes describe repair as verification only.
@@ -45,6 +45,7 @@ export function defaultSuccessNextActions(
       },
     },
   ];
+
   if (opts?.supportsPagination) {
     actions.push({
       command: `unicli ${site} ${cmdName} --cursor <next_cursor>`,
@@ -60,6 +61,10 @@ export function defaultErrorNextActions(
   cmdName: string,
   errCode: string,
   domain?: string,
+  auth?: {
+    setupCommand?: string;
+    alternatives?: readonly string[];
+  },
 ): AgentNextAction[] {
   const actions: AgentNextAction[] = [
     {
@@ -68,6 +73,54 @@ export function defaultErrorNextActions(
         "Read the exact schema the command expects (often resolves invalid_input)",
     },
   ];
+
+  if (site === "ai" && cmdName === "search" && errCode === "empty_result") {
+    const exactRetries = (auth?.alternatives ?? []).filter((command) =>
+      command.startsWith("unicli ai search "),
+    );
+    actions.push(
+      ...exactRetries.map((command) => ({
+        command,
+        description:
+          "Retry the same AI scope with the unsupported strict freshness bound removed",
+      })),
+      {
+        command: "unicli ai sources",
+        description:
+          "Inspect the live AI source matrix and choose a wider scope",
+      },
+      {
+        command: "unicli ai search <broader-query> --sources all",
+        description: "Broaden the query across every registered AI source",
+        params: {
+          "broader-query": {
+            description: "A broader AI or AI-infrastructure search query",
+          },
+        },
+      },
+    );
+  }
+
+  if (site === "duckduckgo" && errCode === "challenge_required") {
+    actions.push(
+      {
+        command: "unicli yahoo search <query>",
+        description:
+          "Retry through a keyless public web index that is not challenge-blocked",
+        params: {
+          query: { description: "The original web search query" },
+        },
+      },
+      {
+        command: "unicli brave search <query>",
+        description: "Try the other registered keyless public web index",
+        params: {
+          query: { description: "The original web search query" },
+        },
+      },
+    );
+    return actions;
+  }
 
   if (
     errCode === "invalid_input" ||
@@ -81,7 +134,25 @@ export function defaultErrorNextActions(
     });
   }
 
-  if (errCode === "auth_required" || errCode === "not_authenticated") {
+  const isAuthenticationFailure =
+    errCode === "auth_required" || errCode === "not_authenticated";
+  const exactAuthCommands = Array.from(
+    new Set(
+      [auth?.setupCommand, ...(auth?.alternatives ?? [])].filter(
+        (command): command is string => Boolean(command),
+      ),
+    ),
+  );
+
+  if (isAuthenticationFailure && exactAuthCommands.length > 0) {
+    actions.push(
+      ...exactAuthCommands.map((command) => ({
+        command,
+        description:
+          "Authenticate at the command's declared credential boundary",
+      })),
+    );
+  } else if (isAuthenticationFailure) {
     actions.push({
       command: authImportCommand(site, domain),
       description:
@@ -90,8 +161,7 @@ export function defaultErrorNextActions(
   }
 
   if (
-    errCode === "auth_required" ||
-    errCode === "not_authenticated" ||
+    (isAuthenticationFailure && exactAuthCommands.length === 0) ||
     errCode === "challenge_required"
   ) {
     actions.push({
@@ -119,7 +189,10 @@ export function defaultErrorNextActions(
     });
   }
 
-  if (isAdapterRepairCandidate(errCode)) {
+  if (
+    isAdapterRepairCandidate(errCode) &&
+    !(site === "ai" && cmdName === "search" && errCode === "empty_result")
+  ) {
     actions.push({
       command: `unicli repair ${site} ${cmdName}`,
       description:

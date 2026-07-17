@@ -1,7 +1,7 @@
 {
-  "generated": "2026-07-17T04:47:00.034Z",
-  "total_sites": 320,
-  "total_commands": 1798,
+  "generated": "2026-07-17T12:59:03.672Z",
+  "total_sites": 321,
+  "total_commands": 1805,
   "sites": [
     {
       "site": "12306",
@@ -239,6 +239,30 @@
           "name": "toggle",
           "description": "Enable or disable AdGuard Home DNS filtering protection",
           "command": "unicli adguardhome toggle"
+        }
+      ]
+    },
+    {
+      "site": "ai",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search live AI infrastructure with provenance and recovery",
+          "command": "unicli ai search"
+        },
+        {
+          "name": "read",
+          "description": "Read and structure a live AI/AI-infrastructure source with clean Markdown, headings, links, provenance, timestamp, and content hash",
+          "command": "unicli ai read"
+        },
+        {
+          "name": "sources",
+          "description": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O",
+          "command": "unicli ai sources"
         }
       ]
     },
@@ -3827,10 +3851,15 @@
     {
       "site": "gh",
       "type": "bridge",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
-      "command_count": 6,
+      "command_count": 9,
       "commands": [
+        {
+          "name": "discussions",
+          "description": "Search discussions in one GitHub repository through the gh discussion command",
+          "command": "unicli gh discussions"
+        },
         {
           "name": "issue",
           "description": "List GitHub issues for a repository",
@@ -3855,6 +3884,16 @@
           "name": "run",
           "description": "List GitHub Actions workflow runs for a repository",
           "command": "unicli gh run"
+        },
+        {
+          "name": "search-issues",
+          "description": "Search current GitHub issues across repositories",
+          "command": "unicli gh search-issues"
+        },
+        {
+          "name": "search-prs",
+          "description": "Search current GitHub pull requests across repositories",
+          "command": "unicli gh search-prs"
         },
         {
           "name": "search-repos",
@@ -4329,7 +4368,7 @@
       "domain": "huggingface.co",
       "auth": false,
       "strategy": "public",
-      "command_count": 5,
+      "command_count": 6,
       "commands": [
         {
           "name": "datasets",
@@ -4338,7 +4377,7 @@
         },
         {
           "name": "models",
-          "description": "Search HuggingFace models",
+          "description": "Search live Hugging Face model metadata through the public Hub API",
           "command": "unicli hf models"
         },
         {
@@ -4350,6 +4389,11 @@
           "name": "top",
           "description": "Top upvoted Hugging Face papers (daily)",
           "command": "unicli hf top"
+        },
+        {
+          "name": "community",
+          "description": "Search current Hugging Face forum discussions and posts",
+          "command": "unicli hf community"
         },
         {
           "name": "paper",

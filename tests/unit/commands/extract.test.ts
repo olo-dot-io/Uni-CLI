@@ -119,7 +119,7 @@ afterEach(() => {
 describe("unicli extract <url> — success path", () => {
   it("renders HTML to Markdown by default and emits a valid envelope", async () => {
     routes.set("/page", {
-      body: "<html><body><h1>Hello</h1><p>World</p></body></html>",
+      body: "<html><head><style>.noise-rule{color:red}</style></head><body><h1>Hello</h1><script>window.__noise=true</script><p>World</p></body></html>",
     });
     const cap = captureStdout();
     try {
@@ -145,6 +145,8 @@ describe("unicli extract <url> — success path", () => {
     expect(env.data.truncated).toBe(false);
     expect(env.data.content).toMatch(/^# Hello/);
     expect(env.data.content).toContain("World");
+    expect(env.data.content).not.toContain("window.__noise");
+    expect(env.data.content).not.toContain(".noise-rule");
     expect(env.next_actions).toBeDefined();
     expect(env.next_actions.length).toBeGreaterThan(0);
   });

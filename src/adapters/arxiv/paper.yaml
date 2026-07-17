@@ -21,7 +21,7 @@ pipeline:
       fields:
         id: id
         title: title
-        authors: author
+        authors: author.name
         published: published
         summary: summary
 

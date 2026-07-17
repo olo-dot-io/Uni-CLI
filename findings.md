@@ -164,3 +164,152 @@ handle`. An executing image cannot be the in-place update boundary.
   running image. Windows CI exercises direct launch, Chromium's default
   `cmd.exe` plus two named-pipe route in both directions, two-process first
   install convergence, active-host reinstall, and side-by-side upgrade.
+
+## 2026-07-17 AI/AI-infrastructure retrieval closure
+
+### Local root causes
+
+- The three keyless public-search adapters used a nonexistent `url_encode`
+  template filter and then supplied the obsolete scalar `extract.selector`
+  schema. Fixing only the filter exposed the deeper boundary defect: the
+  engine's `extract` action always acquired a browser even when its input was
+  fetched HTML. The owning fix gives the existing action transport-parity for
+  HTTP HTML and CDP DOM extraction, with one typed field contract.
+- `hf.models` delegated to a removed `huggingface-cli search` command. The
+  Hugging Face Hub public APIs already expose models, datasets, and Spaces
+  with sortable `createdAt`/`lastModified` metadata, so those APIs now own the
+  adapter boundary. The public Discourse JSON search owns forum retrieval.
+- GitHub's adapter exposed repository search but not global issue/PR search or
+  repository-scoped discussion search, despite current `gh` supporting all
+  three with structured JSON.
+- Turndown received complete application HTML, including script/style/template
+  branches. A shared converter now removes non-content DOM branches before
+  both `web.read` pipelines and the one-shot `extract` command render Markdown.
+- AI retrieval was individually callable but not discoverable or composable.
+  `unicli ai` now discovers commands from `ai.*` capability tags, fans out
+  through the shared kernel, canonicalizes and fuses records, preserves
+  provenance/retrieval time, and turns every partial source failure into an
+  exact retry action.
+- The first orchestration draft was Commander-only, so MCP advertised AI
+  commands that its shared invocation kernel could not execute. The final
+  boundary is an ordinary TypeScript adapter: CLI, default/expanded/deferred
+  MCP, discovery, contracts, and source execution now resolve the same three
+  commands.
+- Authentication metadata originally inferred only browser/cookie strategy.
+  GitHub search is public data behind the user-owned `gh` credential boundary,
+  so executable capability metadata now drives discovery, exit 77, setup, and
+  next actions (`gh auth login` / `gh auth status`) without invented cookies or
+  `ai.com` guidance.
+- Sequential, unbounded fan-out let one raw fetch stall an entire Agent task.
+  Source calls now run in a six-worker pool with per-source abort deadlines;
+  HTTP text/JSON and child-process pipeline boundaries propagate cancellation
+  instead of leaving background work alive.
+- URL-only fusion cannot identify the same paper across Hugging Face, arXiv,
+  and Semantic Scholar. Canonical records now retain DOI, normalized arXiv,
+  and Semantic Scholar identifiers and merge overlapping identifier aliases;
+  author arrays/objects/strings, year, citation/reference metrics, and Atom
+  repeated `author.name` fields normalize without XML leakage.
+- Lobsters' `/search.json` currently returns HTTP 400 because the Rails search
+  controller rejects the injected format parameter. The adapter now owns the
+  supported HTML `/search` boundary and extracts semantic story records from
+  the live DOM rather than accepting a permanent default-source error.
+- A current network call proves retrieval time, not source publication time.
+  `ai search` now exposes an explicit `--sort latest` mode, a strict
+  `--since YYYY-MM-DD` filter, normalized source timestamps, and a
+  `freshness_verifiable` flag. Timestamp-capable sources request their newest
+  ordering and the fusion layer reorders a bounded relevance window; undated
+  records remain honest in latest mode and are excluded when `--since` makes a
+  verifiable time bound mandatory. `ai read` remains the content-refresh step
+  for canonical documentation URLs whose search-index titles can lag.
+- Search-index documentation dates are now accepted only from an anchored,
+  explicit date prefix and marked `timestamp_origin: search-index-snippet`;
+  native provider timestamps remain `source-field`. A strict `--since` window
+  that sees only undated candidates exits 66 with the exact no-`--since` retry
+  instead of either fabricating a date or reporting generic adapter failure.
+- DuckDuckGo can return HTTP 202 challenge markup with no results. The shared
+  `extract` step now distinguishes configured challenge, legitimate-empty, and
+  required-selector-miss states. The live challenge exits 77 and routes to
+  Yahoo/Brave rather than returning a false successful empty array or proposing
+  a cookie flow the public HTTP adapter cannot consume.
+- Algolia typo tolerance made latest Hacker News searches for `ROCm` rank
+  `Roman` and unrelated rocky-planet stories. The adapter now disables typo
+  tolerance for both relevance and date endpoints; the live latest probe
+  returned MI355X, AMD GPU, and exact ROCm evidence.
+- Repeating every partial failure on every fused row caused output growth of
+  O(results \* failures). Every row now carries the failure count while only
+  the first row carries the structured source-error detail. A live empty-GitHub
+  config probe returned five Hacker News rows, one auth error object, and the
+  same count on all rows.
+- Semantic Scholar zero-hit responses are valid search results, not runtime
+  failures. They now return an empty list so the AI aggregator can distinguish
+  a legitimate empty window from provider failure. Vendor precision likewise
+  requires AMD or MI-series context for `Instinct`, preventing ordinary
+  "human instinct" prose from being labeled AMD.
+
+### First-party and upstream evidence
+
+- NVIDIA's current CUDA release notes are live at
+  <https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html>; AMD's
+  ROCm release stream is at
+  <https://rocm.docs.amd.com/en/latest/about/release-notes.html>; Huawei Ascend
+  publishes its document surface at <https://www.hiascend.com/document>.
+  Live reads proved all three were retrievable but previously polluted by
+  embedded application code or styles.
+- Hugging Face documents Hub models, datasets, Spaces, and community surfaces
+  at <https://huggingface.co/docs>; live calls to
+  <https://huggingface.co/api/models> and
+  <https://discuss.huggingface.co/search.json> returned current structured
+  records without a browser or API key.
+- GitHub's current REST documentation is at
+  <https://docs.github.com/en/rest>; `gh` 2.96 exposed structured
+  `search issues`, `search prs`, and preview `discussion list` in the observed
+  environment.
+- Upstream GitHub CLI issue
+  <https://github.com/cli/cli/issues/8867> records the discussion-search gap
+  and GraphQL search path. Design issue
+  <https://github.com/cli/cli/issues/12810> specifies agent-friendly
+  discussion command envelopes and pagination. Merged pull request
+  <https://github.com/cli/cli/pull/13084> implements `discussion list`, JSON,
+  search, pagination, explicit disabled-state handling, and tests. Repository:
+  `cli/cli`; merge commit:
+  `2bb24f9e7537464055d8471ddc9e9cc39a485d32`; observed branch/release
+  environment: `gh` 2.96.0; search terms: `discussion search`, `discussion
+list JSON`, `AI agents`, `pagination`.
+- Lobsters' current search controller only permits the query, scope, order,
+  page, and authenticity-token parameters; its HTML `/search` route is the
+  verified public boundary used locally. Source inspected at commit
+  `472c98ee42c8fa235d4649406298489166c40f6a`:
+  <https://github.com/lobsters/lobsters/blob/472c98ee42c8fa235d4649406298489166c40f6a/app/controllers/search_controller.rb>.
+
+### Local prevention
+
+- Behavior tests lock HTTP extraction, browser extraction, malformed browser
+  serialization, script/style removal, redirect canonicalization, vendor and
+  source classification, reciprocal-rank fusion, source discovery, document
+  structure, and Hugging Face forum topic/post joins.
+- Regression tests also lock bilingual top-ranked discovery, AI category
+  fast-path discovery, CLI/MCP transport parity, executable-auth metadata and
+  guidance, filter-before-limit overfetch, community timestamps, paper
+  identifier equivalence, repeated Atom authors, semantic document-body
+  selection, and cancellation of HTTP/child-process work.
+- Live freshness probes returned ISO source times from Hacker News, Lobsters,
+  Stack Overflow, GitHub, Hugging Face, arXiv, and Semantic Scholar; a
+  multi-community query with `--sort latest --since 2026-01-01` returned only
+  timestamp-verifiable records in descending time order. Vendor negative
+  probes prevent author-name `Cann`, ordinary English `ascend`, and continuous
+  attractor neural-network `CANN` terminology from entering Huawei hardware
+  results, while `CANN 8.5`, `Ascend 910 NPU`, MindIE, and official domains
+  remain recognized.
+- Live official-document freshness probes returned timestamp-verifiable 2026
+  records for NVIDIA release notes and AMD ROCm/driver release notes. Huawei
+  CANN 9.0 official results currently expose versioned content but no date in
+  Yahoo's row; strict `--since` therefore reports that unsupported freshness
+  state and offers an undated inspection/read path. The CANN 9.0 live read
+  retained the actual release body while removing all observed
+  `[object Object]`/`undefined` framework placeholders.
+- Live probes lock the operational path for official NVIDIA documents,
+  Hugging Face Hub/forum records, GitHub issues/discussions, keyless search,
+  top-level discovery, structured reads, and partial-failure recovery.
+- Unsupported states stay explicit: GitHub discussions require `OWNER/REPO`;
+  private/authenticated content stays at its owning auth boundary; upstream
+  rate limits are reported rather than silently replaced.

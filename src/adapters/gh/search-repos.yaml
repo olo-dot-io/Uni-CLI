@@ -24,6 +24,8 @@ pipeline:
         - ${{ args.order }}
         - --language
         - ${{ args.language }}
+        - --visibility
+        - public
       parse: json
       timeout: 30000
 
@@ -55,7 +57,8 @@ args:
 columns:
   [fullName, description, stargazersCount, forksCount, language, url, updatedAt]
 
-capabilities: ["subprocess.exec"]
+capabilities:
+  ["subprocess.exec", "auth.executable.gh", "ai.search", "ai.artifacts"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

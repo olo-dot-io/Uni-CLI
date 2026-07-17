@@ -96,7 +96,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   rate_limit: { transports: [...TRANSPORT_KINDS] },
   assert: { transports: [...TRANSPORT_KINDS] },
   extract: {
-    transports: ["cdp-browser"],
+    transports: ["http", "cdp-browser"],
   },
 
   // --- Visual family (screenshot + VLM coord action) ---

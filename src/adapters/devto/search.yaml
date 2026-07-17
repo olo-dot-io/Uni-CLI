@@ -35,7 +35,7 @@ pipeline:
 columns: [title, author, reactions, comments, published]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.community"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

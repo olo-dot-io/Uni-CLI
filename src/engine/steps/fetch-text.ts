@@ -12,6 +12,7 @@
 //! @since       2026-05-30 (capture/rotation added)
 
 import { USER_AGENT } from "../../constants.js";
+import { setTimeout as delay } from "node:timers/promises";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
@@ -58,9 +59,10 @@ async function fetchTextOnce(
   config: FetchConfig,
   headers: Record<string, string>,
   stepIndex: number,
+  signal?: AbortSignal,
 ): Promise<TextResult> {
   const method = config.method ?? "GET";
-  const fetchInit: RequestInit = { method, headers };
+  const fetchInit: RequestInit = { method, headers, signal };
 
   const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
@@ -91,7 +93,7 @@ async function fetchTextOnce(
         resp.status === 503;
       const isLastAttempt = attempt === maxAttempts;
       if (retryable && !isLastAttempt) {
-        await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+        await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
         continue;
       }
 
@@ -133,7 +135,7 @@ async function fetchTextOnce(
           },
         );
       }
-      await new Promise((r) => setTimeout(r, baseDelay * 2 ** (attempt - 1)));
+      await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
     }
   }
 
@@ -190,7 +192,13 @@ export async function stepFetchText(
     });
 
     if (cookieHeader) headers["Cookie"] = cookieHeader;
-    const result = await fetchTextOnce(requestUrl, config, headers, stepIndex);
+    const result = await fetchTextOnce(
+      requestUrl,
+      config,
+      headers,
+      stepIndex,
+      ctx.signal,
+    );
     lastResult = result;
 
     // Capture session cookies (host-scoped) so later steps can send them.

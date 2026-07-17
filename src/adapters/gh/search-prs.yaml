@@ -1,0 +1,64 @@
+site: gh
+name: search-prs
+description: Search current GitHub pull requests across repositories
+type: bridge
+strategy: public
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: GitHub pull-request search query; raw qualifiers such as repo:OWNER/REPO are supported
+  limit:
+    type: int
+    default: 20
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - search
+        - prs
+        - ${{ args.query }}
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - number,title,state,author,createdAt,updatedAt,closedAt,url,repository,body,commentsCount,isDraft
+        - --sort
+        - updated
+        - --order
+        - desc
+        - --visibility
+        - public
+      parse: json
+      timeout: 30000
+
+  - map:
+      id: ${{ item.id || item.number }}
+      number: ${{ item.number }}
+      title: ${{ item.title }}
+      state: ${{ item.state }}
+      draft: ${{ item.isDraft }}
+      author: "${{ item.author ? item.author.login : '' }}"
+      repository: "${{ item.repository ? item.repository.nameWithOwner : '' }}"
+      createdAt: ${{ item.createdAt }}
+      updatedAt: ${{ item.updatedAt }}
+      closedAt: ${{ item.closedAt }}
+      comments: ${{ item.commentsCount }}
+      summary: "${{ (item.body || '').slice(0,4000) }}"
+      url: ${{ item.url }}
+
+columns:
+  [repository, number, title, state, draft, author, updatedAt, comments, url]
+
+capabilities:
+  ["subprocess.exec", "auth.executable.gh", "ai.search", "ai.community"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

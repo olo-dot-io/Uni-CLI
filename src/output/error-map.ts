@@ -68,6 +68,7 @@ export function errorTypeToCode(err: unknown): string {
     if (preserveErrorCode) return errorType;
     if (isChallengeMessage(err.message)) return "challenge_required";
     if (
+      errorType === "auth_required" ||
       statusCode === 401 ||
       statusCode === 403 ||
       (errorType === "http_error" &&
@@ -99,7 +100,9 @@ export function errorTypeToCode(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (isChallengeMessage(message)) return "challenge_required";
   if (
-    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(message)
+    /timeout|timed out|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(
+      message,
+    )
   )
     return "network_error";
   if (isAuthMessage(message)) return "auth_required";
@@ -114,6 +117,8 @@ export function mapErrorToExitCode(err: unknown): number {
   if (err instanceof PipelineError) {
     const { errorType, statusCode } = err.detail;
     if (
+      errorType === "auth_required" ||
+      errorType === "challenge_required" ||
       statusCode === 401 ||
       statusCode === 403 ||
       (errorType === "http_error" && isAuthMessage(err.message))
@@ -130,6 +135,8 @@ export function mapErrorToExitCode(err: unknown): number {
   if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
   if (err instanceof Error) {
     const code = (err as ActionableError).code;
+    if (code === "invalid_input") return ExitCode.USAGE_ERROR;
+    if (code === "empty_result") return ExitCode.EMPTY_RESULT;
     if (
       code === "auth_required" ||
       code === "challenge_required" ||
@@ -140,7 +147,7 @@ export function mapErrorToExitCode(err: unknown): number {
   }
   const message = err instanceof Error ? err.message : String(err);
   if (
-    /ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
+    /timeout|timed out|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
       message,
     )
   )

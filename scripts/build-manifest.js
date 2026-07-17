@@ -159,6 +159,7 @@ const CATEGORIES = {
     "openharness",
   ],
   ai: [
+    "ai",
     "ollama",
     "openrouter",
     "hf",

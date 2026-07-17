@@ -27,24 +27,29 @@ args:
 
 pipeline:
   - fetch_text:
-      url: "https://search.yahoo.com/search?p=${{ args.query | url_encode }}"
+      url: "https://search.yahoo.com/search?p=${{ args.query | urlencode }}"
       headers:
         User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
         Accept: "text/html,application/xhtml+xml"
 
   - extract:
-      selector: "div.algo"
+      from: "div.algo"
       fields:
-        title: "h3.title"
-        url: "h3.title a@href"
-        snippet: "div.compText"
+        title:
+          selector: "h3.title"
+        url:
+          selector: "div.compTitle > a"
+          type: attribute
+          attribute: href
+        snippet:
+          selector: "div.compText"
 
   - limit: ${{ args.limit }}
 
 columns: [title, url, snippet]
 
 # schema-v2 metadata
-capabilities: ["http.fetch"]
+capabilities: ["http.fetch", "ai.search", "ai.docs"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

@@ -17,7 +17,7 @@
  *   - Usage-ledger recording
  */
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import chalk from "chalk";
 import { commandStrategy, getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
@@ -60,6 +60,24 @@ export function findAmbiguousLongOptionPositional(
   return positionals.find(
     (arg): arg is string => typeof arg === "string" && arg.startsWith("--"),
   );
+}
+
+export function normalizeAdapterOptionValues(
+  values: Record<string, string>,
+  args: readonly AdapterArg[],
+): Record<string, string> {
+  const normalized = { ...values };
+  for (const arg of args) {
+    if (arg.positional || !arg.name.includes("_")) continue;
+    const canonicalAttribute = arg.name.replace(/_([a-z0-9])/g, (_, char) =>
+      String(char).toUpperCase(),
+    );
+    if (values[canonicalAttribute] !== undefined) {
+      normalized[arg.name] = values[canonicalAttribute];
+    }
+    delete normalized[canonicalAttribute];
+  }
+  return normalized;
 }
 
 /**
@@ -110,13 +128,15 @@ export function registerAdapterDispatch(program: Command): void {
 
       for (const arg of adapterArgs) {
         if (!arg.positional && !registeredOpts.has(arg.name)) {
-          const flag = `--${arg.name} <value>`;
+          const canonicalName = arg.name.replaceAll("_", "-");
+          const flag = `--${canonicalName} <value>`;
           const desc = arg.description ?? "";
           registeredOpts.add(arg.name);
-          if (arg.default !== undefined) {
-            subCmd.option(flag, desc, String(arg.default));
-          } else {
-            subCmd.option(flag, desc);
+          subCmd.option(flag, desc);
+          if (canonicalName !== arg.name) {
+            subCmd.addOption(
+              new Option(`--${arg.name} <value>`, desc).hideHelp(),
+            );
           }
         }
       }
@@ -168,10 +188,10 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         // Commander passes positional args first, then opts object, then Command
-        const opts = actionArgs[actionArgs.length - 2] as Record<
-          string,
-          string
-        >;
+        const opts = normalizeAdapterOptionValues(
+          actionArgs[actionArgs.length - 2] as Record<string, string>,
+          adapterArgs,
+        );
         const positionals = actionArgs
           .slice(0, actionArgs.length - 2)
           .filter((arg): arg is string => typeof arg === "string");

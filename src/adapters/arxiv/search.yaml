@@ -16,6 +16,11 @@ args:
     type: int
     default: 10
     description: Max results
+  sort:
+    type: str
+    default: relevance
+    choices: [relevance, submittedDate]
+    description: Sort by relevance or newest submission
 
 pipeline:
   - fetch_text:
@@ -23,13 +28,15 @@ pipeline:
       params:
         search_query: "all:${{ args.query }}"
         max_results: "${{ args.limit }}"
-        sortBy: relevance
+        sortBy: "${{ args.sort }}"
+        sortOrder: descending
 
   - parse_rss:
       fields:
         id: id
+        url: id
         title: title
-        authors: author
+        authors: author.name
         published: published
         summary: summary
 
@@ -38,7 +45,7 @@ pipeline:
 columns: [title, authors, published, id]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "scholar.search"]
+capabilities: ["http.fetch", "scholar.search", "ai.search", "ai.paper"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
