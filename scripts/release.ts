@@ -7,7 +7,7 @@
  * `npm run release:check`; this script only writes deterministic metadata and
  * must also work on release branches before they are merged.
  *
- * Usage: npx tsx scripts/release.ts --codename "Program · Astronaut" [--dry-run]
+ * Usage: npx tsx scripts/release.ts --codename "Program · Astronaut" [--status local|published] [--dry-run]
  *        RELEASE_CODENAME="Program · Astronaut" npx tsx scripts/release.ts
  *
  * What it updates:
@@ -46,6 +46,7 @@ const version: string = pkg.version;
 // Parse CLI args
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+type ReleaseStatus = "local" | "published";
 
 function readArgValue(name: string): string | undefined {
   const idx = args.indexOf(name);
@@ -57,6 +58,19 @@ function readArgValue(name: string): string | undefined {
 function printableCodename(value: string): string {
   if (value.length === 0) return "<empty>";
   return JSON.stringify(value);
+}
+
+function readReleaseStatus(): ReleaseStatus {
+  const value = (
+    readArgValue("--status") ??
+    process.env.RELEASE_STATUS ??
+    "local"
+  ).trim();
+  if (value === "local" || value === "published") return value;
+  console.error(
+    `\n✗ Release metadata error: --status must be "local" or "published"; received ${JSON.stringify(value)}`,
+  );
+  process.exit(78);
 }
 
 function failConfig(message: string): never {
@@ -108,6 +122,7 @@ const codename = (
 ).trim();
 const codenameError = validateCodename(codename);
 if (codenameError) failConfig(codenameError);
+const releaseStatus = readReleaseStatus();
 
 // Read manifest for site/command counts
 const manifestPath = join(ROOT, "dist", "manifest.json");
@@ -234,6 +249,7 @@ console.log(`\n📦 Uni-CLI Release Propagation`);
 console.log(`   Version: ${version}`);
 console.log(`   Sites: ${siteCount} | Commands: ${cmdCount}`);
 console.log(`   Codename: ${codename}`);
+console.log(`   Status: ${releaseStatus}`);
 if (dryRun) console.log(`   Mode: DRY RUN (no writes)\n`);
 else console.log();
 
@@ -345,6 +361,7 @@ if (existsSync(releaseInfoPath)) {
       version,
       codename,
       date: today,
+      status: releaseStatus,
       releaseUrl: `https://github.com/olo-dot-io/Uni-CLI/releases/tag/v${version}`,
       changelogUrl: `https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#${slug}`,
     };

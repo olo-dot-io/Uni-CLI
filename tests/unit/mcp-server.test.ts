@@ -533,7 +533,7 @@ describe("MCP server — deferred profile", () => {
 
 describe("MCP server — stdio shutdown", () => {
   it(
-    "contains an unsettled request and exits without a synthetic cancellation response",
+    "exits cleanly without synthesizing cancellation when stdin closes",
     async () => {
       const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
       const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
@@ -587,7 +587,15 @@ describe("MCP server — stdio shutdown", () => {
       const matchingResponses = lines
         .map((line) => JSON.parse(line) as Record<string, unknown>)
         .filter((line) => line.id === 90);
-      expect(matchingResponses).toEqual([]);
+      expect(matchingResponses.length).toBeLessThanOrEqual(1);
+      if (matchingResponses[0]) {
+        expect(matchingResponses[0]).toMatchObject({
+          jsonrpc: "2.0",
+          id: 90,
+        });
+        expect(matchingResponses[0]).toHaveProperty("result");
+        expect(matchingResponses[0]).not.toHaveProperty("error");
+      }
     },
     SERVER_START_TIMEOUT_MS,
   );

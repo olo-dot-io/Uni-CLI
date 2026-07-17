@@ -62,10 +62,13 @@ type Stats = {
   test_count?: number;
 };
 
+type ReleaseStatus = "local" | "published";
+
 type ReleaseInfo = {
   version: string;
   codename: string;
   date: string;
+  status: ReleaseStatus;
   npmPackage: string;
   npmUrl: string;
   releaseUrl: string;
@@ -199,9 +202,15 @@ function readStats(): Stats {
 }
 
 function readReleaseInfo(): ReleaseInfo {
-  return JSON.parse(
+  const releaseInfo = JSON.parse(
     readFileSync(resolve("docs/release-info.json"), "utf-8"),
   ) as ReleaseInfo;
+  if (releaseInfo.status !== "local" && releaseInfo.status !== "published") {
+    throw new Error(
+      'docs/release-info.json status must be "local" or "published"',
+    );
+  }
+  return releaseInfo;
 }
 
 function toProjectPath(filePath: string): string {
@@ -268,14 +277,29 @@ function renderVersionNotice(
   locale: LocaleKey,
 ): string {
   const isZh = locale === "zh";
+  const isPublished = releaseInfo.status === "published";
   const highlights = releaseInfo.highlights[locale] ?? [];
+  const versionSummary = isPublished
+    ? isZh
+      ? `v${releaseInfo.version}（${releaseInfo.codename}）已于 ${releaseInfo.date} 发布到 npm，${releaseInfo.npmPackage} 的 latest 当前指向这个版本。`
+      : `v${releaseInfo.version} (${releaseInfo.codename}) shipped to npm on ${releaseInfo.date}; the ${releaseInfo.npmPackage} latest tag now points to this release.`
+    : isZh
+      ? `v${releaseInfo.version}（${releaseInfo.codename}）已于 ${releaseInfo.date} 在本机完成构建与验证；该版本未标记为 npm 或 GitHub Release 已发布。`
+      : `v${releaseInfo.version} (${releaseInfo.codename}) was built and verified locally on ${releaseInfo.date}; it is not marked as published to npm or GitHub Releases.`;
+  const releaseLinks = [
+    `- [${releaseInfo.npmPackage} on npm](${releaseInfo.npmUrl})`,
+    ...(isPublished
+      ? [
+          `- [GitHub Release v${releaseInfo.version}](${releaseInfo.releaseUrl})`,
+        ]
+      : []),
+    `- [Changelog](${releaseInfo.changelogUrl})`,
+  ];
 
   return [
     isZh ? "## 当前版本" : "## Current Version",
     "",
-    isZh
-      ? `v${releaseInfo.version}（${releaseInfo.codename}）已于 ${releaseInfo.date} 发布到 npm，${releaseInfo.npmPackage} 的 latest 当前指向这个版本。`
-      : `v${releaseInfo.version} (${releaseInfo.codename}) shipped to npm on ${releaseInfo.date}; the ${releaseInfo.npmPackage} latest tag now points to this release.`,
+    versionSummary,
     "",
     isZh
       ? `当前公开目录：${siteIndex.total_sites} 个站点，${siteIndex.total_commands} 条命令。`
@@ -287,9 +311,7 @@ function renderVersionNotice(
     "",
     isZh ? "### 链接" : "### Links",
     "",
-    `- [${releaseInfo.npmPackage} on npm](${releaseInfo.npmUrl})`,
-    `- [GitHub Release v${releaseInfo.version}](${releaseInfo.releaseUrl})`,
-    `- [Changelog](${releaseInfo.changelogUrl})`,
+    ...releaseLinks,
   ].join("\n");
 }
 
@@ -405,7 +427,9 @@ function renderHomePageMarkdown(
       "",
       "## 当前版本",
       "",
-      `当前 latest：v${releaseInfo.version} · ${releaseInfo.codename}。`,
+      releaseInfo.status === "published"
+        ? `当前 latest：v${releaseInfo.version} · ${releaseInfo.codename}。`
+        : `本地版本：v${releaseInfo.version} · ${releaseInfo.codename}。`,
       "",
       "## Agent 索引",
       "",
@@ -472,7 +496,9 @@ function renderHomePageMarkdown(
     "",
     "## Current Version",
     "",
-    `Latest: v${releaseInfo.version} · ${releaseInfo.codename}.`,
+    releaseInfo.status === "published"
+      ? `Latest: v${releaseInfo.version} · ${releaseInfo.codename}.`
+      : `Local release: v${releaseInfo.version} · ${releaseInfo.codename}.`,
     "",
     "## Agent Index",
     "",

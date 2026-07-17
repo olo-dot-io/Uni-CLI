@@ -8,7 +8,7 @@ Uni-CLI is the universal computer-control platform for AI agents to discover, ru
 - Commands: 1798
 - Adapters: 1225 (984 YAML + 241 TypeScript)
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9274
+- Tests: 9454
 
 ## Agent Contract
 

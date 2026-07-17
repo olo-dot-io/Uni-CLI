@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.400.0] — 2026-07-17 — Apollo · Young
+
+> Local release: built and verified on this machine; no npm publication,
+> GitHub Release, or remote tag is represented.
+
+### Added
+
+- The generic `computer-use` MCP profile now exposes 16 direct browser tools
+  alongside 16 computer controls: prepared state, screenshots, navigation,
+  trusted ref/viewport input, tabs, bounded content/history search, claims,
+  dialog/download supervision, and explicit foreground presence.
+- Existing Chrome can render an isolated, pointer-through Shadow DOM edge glow
+  and virtual cursor only for an explicit foreground target. The renderer has
+  no idle timer, RAF loop, or infinite animation and honors reduced motion.
+- Open-tab and history search reads eligible content on demand with fixed tab,
+  frame, text, concurrency, and result ceilings, without debugger attachment,
+  target claims, focus changes, navigation, or persistent indexing.
+
+### Changed
+
+- Per-command browser ownership and the legacy HTTP daemon are replaced by one
+  authenticated Browser Runtime Broker. Agent sessions share provider lifetime
+  while retaining exclusive target leases, profile partitions, explicit
+  handoff, turn cleanup, idle TTL, crash recovery, and transport-independent
+  CLI/MCP/plugin identity.
+- Browser, compute, MCP, subprocess, overlay, and sidecar operations now share
+  bounded cancellation, exact action settlement, deny-first permissions,
+  process-tree containment, and fresh snapshot-ref generation.
+- Release metadata now distinguishes a complete local delivery from an npm or
+  GitHub publication, so generated documentation cannot claim an event that did
+  not occur.
+
+### Fixed
+
+- Background Chrome allocation preserves the active tab, focused window, and
+  foreground app; doctor/status/session probes start neither providers nor
+  placeholder targets.
+- Ref actions fail closed on stale generations, ambiguous aliases, unsupported
+  frames, occlusion, sensitive content, and points outside the live CSS
+  viewport instead of replaying or guessing.
+- Transport close retries unacknowledged session cleanup, raw snapshots stop at
+  their producer-side bound, and composed-tree redaction crosses open shadow
+  roots, same-origin frames, and slots.
+
+### Verification
+
+- The complete `npm run verify` gate passed with 2,987 unit, 94 integration,
+  6,467 adapter, 5 performance, and 23 targeted coverage behaviors; expected
+  platform/network exclusions remained explicit skips.
+- Independent bounded audit and counterexample rerun reported no remaining
+  P0/P1/P2 findings for the delivered browser-control scope.
+- Real Chrome behavior covers shared runtime ownership, no-focus background
+  work, open-shadow/same-origin refs, privacy redaction, visible presence,
+  semantic isolation, reduced motion, and byte-identical teardown.
+
 ## [0.227.1] — 2026-07-12 — Apollo · Evans
 
 ### Fixed

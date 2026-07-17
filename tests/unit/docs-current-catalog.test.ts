@@ -77,6 +77,7 @@ interface PackageJson {
 interface ReleaseInfo {
   version: string;
   codename: string;
+  status: "local" | "published";
   releaseUrl: string;
   changelogUrl: string;
 }
@@ -119,8 +120,28 @@ describe("current docs catalog claims", () => {
     expect(releaseInfo.codename).not.toMatch(
       /\b(?:tbd|todo|unreleased|next)\b/i,
     );
+    expect(["local", "published"]).toContain(releaseInfo.status);
     expect(releaseInfo.releaseUrl).toContain(`/v${pkg.version}`);
     expect(releaseInfo.changelogUrl).toContain(`${versionSlug(pkg.version)}--`);
+  });
+
+  it("generated home pages distinguish local delivery from publication", () => {
+    const releaseInfo = JSON.parse(
+      readRepoFile("docs/release-info.json"),
+    ) as ReleaseInfo;
+    const rootHome = readRepoFile("docs/public/markdown/index.md");
+    const zhHome = readRepoFile("docs/public/markdown/zh/index.md");
+
+    if (releaseInfo.status === "published") {
+      expect(rootHome).toContain(`Latest: v${releaseInfo.version}`);
+      expect(zhHome).toContain(`当前 latest：v${releaseInfo.version}`);
+      return;
+    }
+
+    expect(rootHome).toContain(`Local release: v${releaseInfo.version}`);
+    expect(zhHome).toContain(`本地版本：v${releaseInfo.version}`);
+    expect(rootHome).not.toContain(`Latest: v${releaseInfo.version}`);
+    expect(zhHome).not.toContain(`当前 latest：v${releaseInfo.version}`);
   });
 
   it("MCP registry manifest matches the package version", () => {

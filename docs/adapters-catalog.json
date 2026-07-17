@@ -1,6 +1,6 @@
 {
-  "source": "unicli@0.227.1",
-  "generated": "2026-07-12T14:33:22.672Z",
+  "source": "unicli@0.400.0",
+  "generated": "2026-07-17T04:47:00.034Z",
   "total_sites": 320,
   "total_commands": 1798,
   "adapters": [

@@ -1,23 +1,24 @@
 {
-  "version": "0.227.1",
-  "codename": "Apollo · Evans",
-  "date": "2026-07-12",
+  "version": "0.400.0",
+  "codename": "Apollo · Young",
+  "date": "2026-07-17",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.227.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#02271--2026-07-12--apollo--evans",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04000--2026-07-17--apollo--young",
   "highlights": {
     "root": [
-      "Uni-CLI 0.227.1 is the corrected publication target for this release line; the 0.227.0 candidate stopped before npm and GitHub Release publication when its gate found host-contaminated tests.",
-      "All Node HTTP execution now has one proxy owner: fetch and dispatcher come from the same Undici package across pipelines, OAuth, downloads, extraction, cascade, and the public HTTP transport.",
-      "Repair is now a bounded exact-command verifier with no hidden npm, git, or agent mutation; envelope truth, oracle evidence, and process exit code agree.",
-      "Live cookies remain in memory unless explicitly exported, and the canonical release gate now proves Node 22/24 Linux, Windows, macOS, dependency-audit, repair, and portable test-inventory truth before publication."
+      "Uni-CLI 0.400.0 delivers one shared, background-first Browser Runtime Broker for managed, existing-Chrome, and remote providers with explicit Agent session and target ownership.",
+      "The generic computer-use profile exposes 16 direct browser tools alongside 16 computer controls for state, screenshots, navigation, trusted refs, input, tabs, dialogs, downloads, search, and foreground presence.",
+      "Bounded open-tab and history search runs without debugger attachment, focus changes, navigation, target claims, or persistent page-content indexing; sensitive and Agent-owned visual content stays excluded.",
+      "This metadata describes a locally built and verified release. It does not claim npm or GitHub Release publication."
     ],
     "zh": [
-      "Uni-CLI 0.227.1 是这一发布线修正后的发布目标；0.227.0 候选在门禁发现受宿主环境污染的测试后，已于 npm 与 GitHub Release 发布前停止。",
-      "全部 Node HTTP 执行现在都由同一代理边界负责：pipeline、OAuth、download、extract、cascade 与公共 HTTP transport 的 fetch 和 dispatcher 均来自同一 Undici 包。",
-      "repair 现在是有界的原命令 verifier，不再隐藏执行 npm、git 或 agent mutation；envelope、oracle evidence 与 process exit code 表达同一真值。",
-      "实时 cookie 默认只留在内存；统一 release gate 会在发布前验证 Node 22/24 Linux、Windows、macOS、依赖审计、repair 与跨平台测试清单真值。"
+      "Uni-CLI 0.400.0 交付一个共享、后台优先的 Browser Runtime Broker，统一托管 managed、现有 Chrome 与 remote provider，并显式隔离 Agent session 与 target ownership。",
+      "通用 computer-use profile 现提供 16 个直接浏览器工具与 16 个电脑控制工具，覆盖 state、screenshot、navigation、可信 ref、input、tab、dialog、download、search 与前台 presence。",
+      "有界的打开标签页与历史搜索不会附加 debugger、改变焦点、导航、认领 target 或持久索引页面内容；敏感内容和 Agent 自有视觉元素不会进入感知结果。",
+      "这里描述的是已在本机构建并验证的版本，不代表 npm 或 GitHub Release 已发布。"
     ]
   }
 }

@@ -50,7 +50,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 - 站点和工具：320
 - 操作：1798
 - Built-in action：105（50 registered + 55 transport-native）
-- 测试：9274
+- 测试：9454
 
 能力规模来自当前仓库生成物：operation、adapter、built-in action、测试和 substrate 都在本地构建流程里计数。
 
@@ -63,7 +63,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 当前版本
 
-当前 latest：v0.227.1 · Apollo · Evans。
+本地版本：v0.400.0 · Apollo · Young。
 
 ## Agent 索引
 

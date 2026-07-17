@@ -22,12 +22,11 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.225.1` line is a patch release candidate because
-it repairs the site-availability and browser-substrate verification path without
-breaking the CLI/package shape. The `0.225.0` line introduced the universal
-computer-control platform model; `0.225.1` makes that model operationally
-auditable by separating real adapter failures from auth, platform, browser,
-local-daemon, write/destructive, quarantined, and caller-input-required paths.
+Uni-CLI follows semver. The `0.400.0` line is an epoch-scale minor release:
+it replaces per-command browser ownership with one shared runtime and adds a
+generic Agent browser-control surface. The direct `0.4.0` spelling is not
+used because it sorts below the already published `0.227.1`; `0.400.0`
+preserves monotonic upgrades.
 
 | Change                                                                                   | Version bump |
 | ---------------------------------------------------------------------------------------- | ------------ |
@@ -48,28 +47,27 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 
 ## Historical Release Audit
 
-The public git/tag history starts in 2026 with the `0.200.x` line. For the
-`0.225.1` release, the release was checked against `CHANGELOG.md`, local tags,
-npm registry state, release automation, adapter health, real E2E workflows, and
-the current site-availability sweep.
+The public git/tag history starts in 2026 with the `0.200.x` line. The
+`0.400.0` delivery is local: package and documentation metadata identify it
+as locally built and verified, not as an npm or GitHub publication.
 
 Release facts:
 
-- npm registry state before tagging: `@zenalexa/unicli@latest` is `0.225.0`;
-- release tag target: `v0.225.1`;
-- release metadata passes `npm run release:check -- --strict-codename`;
-- site availability classifies 313 sites and 1784 adapter commands with
-  `fail=0`;
-- representative safe site probes report `ok=64`, `environment_skip=12`, and
-  `no_auto_probe=237`;
-- adapter health reports `ok=160`, `fail=0`, `skip=1624`, and
-  `skip_env_missing=64`;
-- real E2E reports 43 passed workflows, 0 failed workflows, and 1 skipped
-  workflow for an arXiv rate limit;
-- built-CLI social smoke passes for Twitter/X, Xiaohongshu, Reddit, YouTube,
-  Bilibili, and Weibo.
+- npm registry state before local delivery:
+  `@zenalexa/unicli@latest` is `0.227.1`;
+- local package target: `0.400.0`; no release tag or remote publication is
+  represented;
+- the shared Browser Runtime Broker owns provider lifetime, Agent sessions,
+  target leases, visibility, cancellation, and cleanup;
+- the generic computer-use profile exposes direct browser state, navigation,
+  trusted input, tabs, bounded content/history search, dialogs, downloads, and
+  explicit foreground presence;
+- the complete repository gate passed with 2,987 unit, 94 integration, 6,467
+  adapter, 5 performance, and 23 targeted coverage behaviors; package dry run,
+  generated-doc checks, and local installed-CLI smoke remain separate required
+  acceptance steps.
 
-| Release line | Historical role                                                                                                 | Audit lesson for `0.225.1`                                                                         |
+| Release line | Historical role                                                                                                 | Audit lesson for `0.400.0`                                                                         |
 | ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                          | A release must expose a machine-readable surface, not just prose.                                  |
 | `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.   | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
@@ -80,10 +78,12 @@ Release facts:
 | `0.222.0`    | Local computer-use and compute capture entered the release surface.                                             | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
 | `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                       | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
 | `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair. | Product claims need live health gates, not catalog counts alone.                                   |
+| `0.227.1`    | Portable release truth, credential privacy, exact repair, and cross-platform publication gates.                 | A release candidate must stop before publication when host-contaminated evidence fails.            |
+| `0.400.0`    | Shared browser/computer runtime plus direct generic Agent browser control, search, and foreground presence.     | Runtime reuse is safe only with explicit target ownership, bounded perception, and no-focus truth. |
 
-`0.225.1` is a patch release because it hardens availability diagnostics,
-browser-substrate repair, and real workflow verification while preserving the
-public command/package contract.
+`0.400.0` is an epoch-scale minor release because it changes the runtime
+ownership and Agent-facing browser protocol surfaces while keeping the package
+name and command-envelope contract stable.
 
 ## Changesets
 
@@ -141,8 +141,16 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.225 line, the release label format is unchanged. The current release
-candidate label is `Apollo · Conrad`.
+For the 0.400 line, the release label format is unchanged. The local release
+label is `Apollo · Young`.
+
+Local delivery uses an explicit `local` status. This is also the default, so
+generated docs cannot turn an unobserved npm or GitHub Release event into a
+publication claim:
+
+```bash
+npx tsx scripts/release.ts --codename "Apollo · Young" --status local
+```
 
 ## Substantive Commits
 

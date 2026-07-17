@@ -2,7 +2,7 @@
 
 发布不是固定节奏，而是取决于社区需要和实际开发状态。版本号必须表达真实变化：小修复走 patch，能力扩展走 minor，稳定合同或破坏性变化才走 major。
 
-`0.225.0` 线是 minor release candidate，因为它把公开产品模型从 execution substrate / catalog 叙事重塑为通用 computer-control 平台：意图、策略、行动 substrate、证据、交付、修复，覆盖真实软件。它不是稳定 major 兼容边界；CLI/package 形状保持不变，变化点是 architecture audit、command contract 和文档共同表达更大的产品类别。
+`0.400.0` 线是 epoch 级 minor release：它用一个共享 runtime 取代逐命令的浏览器所有权，并新增通用 Agent 浏览器控制面。不能直接使用 `0.4.0`，因为按 SemVer 它低于已经发布的 `0.227.1`；`0.400.0` 保持升级序列单调递增。
 
 ## 权限边界
 
@@ -39,20 +39,19 @@ npm run release:check
 
 ## 历史发布审计
 
-当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.225.0` 候选版对照了
-`CHANGELOG.md`、本地 tag、npm registry、release automation 和当前 architecture
-audit。
+当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。`0.400.0` 是本机交付：
+package 与文档元数据只将它标记为已在本机构建并验证，不表示 npm 或 GitHub
+Release 已发布。
 
-候选事实：
+交付事实：
 
-- npm registry 上 `@zenalexa/unicli@latest` 是 `0.224.1`；
-- 本地最新 tag 是 `v0.224.1`；
-- 旧版本元数据下 `npm run release:check -- --strict-codename` 通过；
-- architecture audit 报告 1819 条命令、1783 条 adapter 命令、36 条 core 命令、627 条 local-computer-use 命令、0 个缺失 source path；
-- capability readiness 覆盖 web、browser、desktop、system、protocol、bridge 六类能力面；
-- workflow readiness cataloged media playback、video search、browser tab control、installed app operation、productivity state、open/navigate destination，但 live claim 仍需要后续证据。
+- 本机交付前，npm registry 上 `@zenalexa/unicli@latest` 是 `0.227.1`；
+- 本机 package 目标为 `0.400.0`；没有创建远端 tag，也没有表示已完成远端发布；
+- 共享 Browser Runtime Broker 统一负责 provider 生命周期、Agent session、target lease、可见性、取消和清理；
+- 通用 computer-use profile 暴露直接的浏览器 state、navigation、可信 input、tab、有界内容/历史搜索、dialog、download 和显式前台 presence；
+- 完整仓库门禁已通过 2,987 个 unit、94 个 integration、6,467 个 adapter、5 个 performance 和 23 个定向 coverage 行为；package dry run、生成文档检查与本机 CLI smoke 仍是独立的必需验收项。
 
-| Release line | 历史角色                                                                                               | 对 `0.225.0` 的审计结论                                                                |
+| Release line | 历史角色                                                                                               | 对 `0.400.0` 的审计结论                                                                |
 | ------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `0.200.0`    | 第一个 Vostok public adapter platform，带 build manifest 和 self-repair architecture。                 | 发布必须暴露机器可读 surface，不能只写定位。                                           |
 | `0.208.0`    | Skills export、MCP gateway、eval catalog、usage ledger、operate/observe，以及 4-reviewer hardening。   | Review finding 要明确，安全和 release wiring 问题必须在 tag 前修掉。                   |
@@ -62,9 +61,12 @@ audit。
 | `0.221.0`    | Patent / scholarly verticals 带 typed records 和 source routing。                                      | 垂直覆盖必须伴随 record、provenance 和测试。                                           |
 | `0.222.0`    | Local computer-use 和 compute capture 进入发布面。                                                     | Desktop/computer control 是核心 substrate，不是 sidecar demo。                         |
 | `0.224.0`    | Callable architecture audit/tree 和 registry-backed search cache。                                     | Architecture audit 不能遗漏 core control command，也不能把产品退回 adapter lifecycle。 |
+| `0.225.0`    | 通用 computer-control 平台 framing：intent、policy、action substrate、evidence、delivery、repair。     | 产品主张需要 live health gate，不能只看 catalog count。                                |
+| `0.227.1`    | 可移植 release truth、credential privacy、精确 repair 和跨平台 publication gate。                      | 宿主污染证据失败时，release candidate 必须停在发布之前。                               |
+| `0.400.0`    | 共享 browser/computer runtime，加上通用 Agent browser control、search 和 foreground presence。         | Runtime 复用必须伴随显式 target ownership、有界 perception 和真实的 no-focus 合同。    |
 
-`0.225.0` 是 minor release：项目身份和 architecture audit surface 发生实质变化，
-但不宣称 stable-major compatibility contract。
+`0.400.0` 是 epoch 级 minor release：runtime ownership 和 Agent-facing browser
+protocol surface 发生实质变化，但 package name 与 command-envelope contract 保持稳定。
 
 ## Changeset
 
@@ -95,7 +97,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.225.0` 的候选发布 label 是 `Apollo · Irwin`。
+`0.400.0` 的本机发布 label 是 `Apollo · Young`。
 
 ## 发布步骤
 
@@ -113,6 +115,12 @@ npm run docs:check-public
 - `docs:build` 通过，公开站点可部署。
 - changelog 说清楚用户能得到什么。
 - 产品模型重塑发布要更新本页的历史发布审计。
+
+本机交付使用显式 `local` 状态；`scripts/release.ts` 默认也是 `local`，因此生成文档不会把尚未发生的 npm 或 GitHub Release 事件写成既成事实：
+
+```bash
+npx tsx scripts/release.ts --codename "Apollo · Young" --status local
+```
 
 真实发布步骤：
 
