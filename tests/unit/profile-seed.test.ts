@@ -248,7 +248,7 @@ describe("automation profile seed", () => {
     const profile = createProfile();
     const target = join(root, ".unicli", "chrome-profile");
     mkdirSync(join(root, ".unicli"), { recursive: true });
-    const owner = acquireKernelFileLock(`${target}.seed.lock`);
+    const owner = await acquireKernelFileLock(`${target}.seed.lock`);
 
     try {
       await expect(
@@ -258,7 +258,7 @@ describe("automation profile seed", () => {
       ).rejects.toMatchObject({ code: "seed-lock-held" });
       expect(existsSync(target)).toBe(false);
     } finally {
-      owner.release();
+      await owner.release();
     }
   });
 

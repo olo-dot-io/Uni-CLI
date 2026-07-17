@@ -1214,7 +1214,7 @@ async function acquireBsdBrokerGuard(
   guardPath: string,
 ): Promise<BrokerOwnershipGuard> {
   try {
-    return { kind: "file", lock: acquireKernelFileLock(guardPath) };
+    return { kind: "file", lock: await acquireKernelFileLock(guardPath) };
   } catch (error) {
     if (error instanceof KernelFileLockError && error.code === "contended") {
       throw new BrokerTransportError(
@@ -1236,7 +1236,7 @@ async function releaseBrokerGuard(guard: BrokerOwnershipGuard): Promise<void> {
     if (guard.server.listening) await closeServer(guard.server);
     return;
   }
-  guard.lock.release();
+  await guard.lock.release();
 }
 
 function writeBrokerLock(path: string, payload: LockPayload): void {

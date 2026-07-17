@@ -21,14 +21,16 @@ const ownerHelperPath = join(
   "helpers",
   "kernel-file-lock-owner.ts",
 );
-const kernelIt = ["darwin", "linux"].includes(process.platform) ? it : it.skip;
+const posixKernelIt = ["darwin", "linux"].includes(process.platform)
+  ? it
+  : it.skip;
 
 let root: string | null = null;
 let owner: ChildProcess | null = null;
 
 afterEach(async () => {
   if (owner && owner.exitCode === null && owner.signalCode === null) {
-    owner.kill("SIGCONT");
+    if (process.platform !== "win32") owner.kill("SIGCONT");
     owner.kill("SIGKILL");
     await waitForExit(owner);
   }
@@ -38,25 +40,25 @@ afterEach(async () => {
 });
 
 describe("process-owned kernel file lock", () => {
-  kernelIt("retains ownership after the lock provider exits", () => {
+  it("retains ownership after the lock provider exits", async () => {
     root = mkdtempSync(join(tmpdir(), "unicli-kernel-lock-"));
     const path = join(root, "owner.lock");
-    const first = acquireKernelFileLock(path);
+    const first = await acquireKernelFileLock(path);
 
-    expect(() => acquireKernelFileLock(path)).toThrowError(
+    await expect(acquireKernelFileLock(path)).rejects.toEqual(
       expect.objectContaining<Partial<KernelFileLockError>>({
         code: "contended",
       }),
     );
     expect(statSync(path).isFile()).toBe(true);
 
-    first.release();
-    first.release();
-    const successor = acquireKernelFileLock(path);
-    successor.release();
+    await first.release();
+    await first.release();
+    const successor = await acquireKernelFileLock(path);
+    await successor.release();
   });
 
-  kernelIt(
+  posixKernelIt(
     "keeps a paused owner exclusive across twelve processes and releases atomically on exit",
     async () => {
       root = mkdtempSync(join(tmpdir(), "unicli-kernel-lock-process-"));
@@ -94,8 +96,44 @@ describe("process-owned kernel file lock", () => {
       await waitForExit(owner);
       owner = null;
 
-      const successor = acquireKernelFileLock(path);
-      successor.release();
+      const successor = await acquireKernelFileLock(path);
+      await successor.release();
+      expect(statSync(path).isFile()).toBe(true);
+    },
+    20_000,
+  );
+
+  it.runIf(process.platform === "win32")(
+    "keeps one named-pipe owner exclusive across twelve processes and releases atomically on exit",
+    async () => {
+      root = mkdtempSync(join(tmpdir(), "unicli-kernel-lock-process-"));
+      const path = join(root, "owner.lock");
+      owner = spawn(
+        process.execPath,
+        ["--import", tsxImportPath, ownerHelperPath, "hold", path],
+        {
+          cwd: repositoryRoot,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      const ready = await readFirstEnvelope(owner);
+      expect(ready).toMatchObject({ status: "acquired", pid: owner.pid });
+
+      const contenders = await Promise.all(
+        Array.from({ length: 12 }, () => runContender(path)),
+      );
+      expect(contenders).toEqual(
+        Array.from({ length: 12 }, () =>
+          expect.objectContaining({ status: "failed", code: "contended" }),
+        ),
+      );
+
+      owner.kill("SIGKILL");
+      await waitForExit(owner);
+      owner = null;
+
+      const successor = await acquireKernelFileLock(path);
+      await successor.release();
       expect(statSync(path).isFile()).toBe(true);
     },
     20_000,
