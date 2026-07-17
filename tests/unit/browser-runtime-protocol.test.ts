@@ -659,8 +659,8 @@ describe("browser broker protocol and authenticated transport", () => {
     ).toBe(false);
   });
 
-  it("preserves Chrome extension outcome ambiguity at the strict broker wire boundary", () => {
-    const parsed = browserBrokerWireRequestSchema.parse({
+  it("preserves only valid Chrome target-state flags at the strict broker wire boundary", () => {
+    const wireRequest = {
       product: BROWSER_BROKER_PRODUCT,
       protocol: BROWSER_BROKER_PROTOCOL,
       version: BROWSER_BROKER_PROTOCOL_VERSION,
@@ -679,15 +679,34 @@ describe("browser broker protocol and authenticated transport", () => {
             suggestion: "Inspect the target before issuing another mutation.",
             retryable: false,
             outcome_ambiguous: true,
+            target_unusable: true,
           },
         },
       },
-    });
+    };
+    const parsed = browserBrokerWireRequestSchema.parse(wireRequest);
 
     expect(parsed.request).toMatchObject({
       action: "chrome.host.result",
-      result: { error: { outcome_ambiguous: true } },
+      result: {
+        error: { outcome_ambiguous: true, target_unusable: true },
+      },
     });
+    expect(
+      browserBrokerWireRequestSchema.safeParse({
+        ...wireRequest,
+        request: {
+          ...wireRequest.request,
+          result: {
+            ...wireRequest.request.result,
+            error: {
+              ...wireRequest.request.result.error,
+              target_unusable: "yes",
+            },
+          },
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it("accepts bounded Chrome content search and foreground presence commands", () => {

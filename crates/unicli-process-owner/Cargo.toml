@@ -12,6 +12,8 @@ name = "unicli-process-owner"
 path = "src/main.rs"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+serde.workspace = true
+serde_json.workspace = true
 windows = { version = "0.58", features = [
   "Win32_Foundation",
   "Win32_Security",

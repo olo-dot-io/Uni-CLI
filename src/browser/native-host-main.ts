@@ -4,11 +4,11 @@
  * @needs       node:crypto, chrome-native-protocol.ts, native-messaging.ts, runtime-launch.ts, runtime-protocol.ts, runtime-transport.ts
  * @feeds       bin/unicli-browser-native-host and the Chrome extension
  * @breaks      Exits nonzero with a structured stderr envelope on invalid identity/framing, non-retryable broker corruption, request mismatch, command deadline, or disconnect failure.
- * @invariants  Chrome validates extension origin before launch; host validates hello identity; broker credentials remain in owner-only files and never enter extension messages; explicit broker shutdown parks this same native connection without launching a replacement broker; an extension command that exceeds its deadline terminates this host generation so the port can reconnect.
+ * @invariants  Chrome validates extension origin before launch; host validates hello identity and every structured error flag before forwarding it; broker credentials remain in owner-only files and never enter extension messages; explicit broker shutdown parks this same native connection without launching a replacement broker; an extension command that exceeds its deadline terminates this host generation so the port can reconnect.
  * @side-effects Reads/writes Native Messaging stdio frames, probes authenticated broker IPC, and remains parked while no running broker exists; it never starts the broker.
  * @perf        One long poll per connected idle interval and a 250ms local probe while parked; no browser or broker process is launched.
  * @concurrency One host processes one extension command at a time; broker target queues retain cross-client ordering; a parked host keeps exactly one pending extension read while broker generations change.
- * @test        tests/unit/chrome-native-framing.test.ts, tests/integration/browser-extension-background.test.ts
+ * @test        tests/unit/chrome-native-framing.test.ts, tests/integration/browser-extension-background.test.ts, tests/integration/browser-native-host.test.ts
  * @stability   experimental
  * @since       2026-07-15
  */
@@ -21,6 +21,7 @@ import {
   CHROME_NATIVE_PRODUCT,
   CHROME_NATIVE_PROTOCOL,
   CHROME_NATIVE_PROTOCOL_VERSION,
+  isChromeNativeError,
   type ChromeNativeBrokerCommand,
   type ChromeNativeHello,
   type ChromeNativeResult,
@@ -370,7 +371,7 @@ function readResult(
     value.request_id !== expectedRequestId ||
     typeof value.ok !== "boolean" ||
     (value.ok === true && value.error !== undefined) ||
-    (value.ok === false && !isNativeError(value.error))
+    (value.ok === false && !isChromeNativeError(value.error))
   ) {
     throw new NativeMessagingError(
       "native_message_invalid",
@@ -378,20 +379,6 @@ function readResult(
     );
   }
   return value as unknown as ChromeNativeResult;
-}
-
-function isNativeError(value: unknown): boolean {
-  if (typeof value !== "object" || value === null || Array.isArray(value))
-    return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.code === "string" &&
-    typeof record.message === "string" &&
-    typeof record.suggestion === "string" &&
-    typeof record.retryable === "boolean" &&
-    (record.outcome_ambiguous === undefined ||
-      typeof record.outcome_ambiguous === "boolean")
-  );
 }
 
 function isUuid(value: string): boolean {

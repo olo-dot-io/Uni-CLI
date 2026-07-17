@@ -1,12 +1,12 @@
 /**
  * @owner       src/browser/runtime-protocol.ts
- * @does        Define the authenticated Browser Runtime Broker request, response, lifecycle, command-effect, status, and refusal wire contracts.
+ * @does        Define and validate the authenticated Browser Runtime Broker request, response, lifecycle, command-effect, status, and refusal wire contracts.
  * @needs       src/browser/invocation-context.ts, runtime-session.ts, managed-browser.ts, remote-browser.ts, chrome-provider.ts, chrome-native-protocol.ts
  * @feeds       src/browser/runtime-broker.ts, src/browser/runtime-transport.ts, native browser host and CLI/MCP clients
  * @breaks      Protocol consumers reject unknown versions, malformed identities, unknown actions, and structured broker or Chrome extension errors.
- * @invariants  Authentication is outside tool arguments; every request has one id; active turns renew an explicit broker lease; every target response carries authoritative ownership and exact Chrome tab/window identity when applicable; provider-wide Chrome search is read-only and target-free; hidden/background/foreground, provider selection, cancellation effect classification, and extension-reported outcome ambiguity are explicit.
- * @side-effects none (types and constants only)
- * @perf        O(1) serialization shape.
+ * @invariants  Authentication is outside tool arguments; every request has one id; Chrome extension errors use the shared strict bounded validator; active turns renew an explicit broker lease; every target response carries authoritative ownership and exact Chrome tab/window identity when applicable; provider-wide Chrome search is read-only and target-free; hidden/background/foreground, provider selection, cancellation effect classification, outcome ambiguity, and unusable targets are explicit.
+ * @side-effects none
+ * @perf        O(wire payload size) validation, with collection and string bounds enforced by the schemas.
  * @concurrency Request ids allow independent in-flight clients; target ordering is broker-owned, not encoded in transport.
  * @test        tests/unit/browser-runtime-protocol.test.ts, tests/integration/browser-runtime-broker.test.ts
  * @stability   experimental
@@ -22,6 +22,8 @@ import {
   CHROME_NATIVE_PRODUCT,
   CHROME_NATIVE_PROTOCOL,
   CHROME_NATIVE_PROTOCOL_VERSION,
+  isChromeNativeError,
+  type ChromeNativeError,
   type ChromeNativeHello,
   type ChromeNativeResult,
   type ChromeContentSearchQuery,
@@ -583,16 +585,10 @@ const chromeNativeHelloSchema = z
   })
   .strict();
 
-const chromeNativeErrorSchema = z
-  .object({
-    code: z.string().trim().min(1).max(256),
-    message: z.string().max(16_384),
-    suggestion: z.string().max(16_384),
-    retryable: z.boolean(),
-    outcome_ambiguous: z.boolean().optional(),
-    target_unusable: z.boolean().optional(),
-  })
-  .strict();
+const chromeNativeErrorSchema = z.custom<ChromeNativeError>(
+  isChromeNativeError,
+  "Invalid Chrome native error",
+);
 
 const chromeNativeResultSchema = z.discriminatedUnion("ok", [
   z

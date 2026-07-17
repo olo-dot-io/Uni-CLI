@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHROME_NATIVE_MAX_EXTENSION_TO_HOST_BYTES,
   CHROME_NATIVE_MAX_HOST_TO_EXTENSION_BYTES,
+  isChromeNativeError,
 } from "../../src/browser/chrome-native-protocol.js";
 import {
   encodeNativeMessage,
@@ -85,6 +86,28 @@ describe("Chrome Native Messaging framing", () => {
     await expect(collecting).rejects.toMatchObject({
       code: "native_message_invalid",
     });
+  });
+
+  it("validates target invalidation through the strict shared error contract", () => {
+    const error = {
+      code: "chrome_target_detached",
+      message: "Chrome detached the target",
+      suggestion: "Acquire a fresh target.",
+      retryable: true,
+      target_unusable: true,
+    };
+
+    expect(isChromeNativeError(error)).toBe(true);
+    expect(isChromeNativeError({ ...error, target_unusable: "yes" })).toBe(
+      false,
+    );
+    expect(isChromeNativeError({ ...error, internal: "leak" })).toBe(false);
+    expect(isChromeNativeError({ ...error, code: ` ${error.code}` })).toBe(
+      false,
+    );
+    expect(isChromeNativeError({ ...error, code: " ".repeat(1_000_000) })).toBe(
+      false,
+    );
   });
 });
 

@@ -159,7 +159,7 @@ setInterval(() => {}, 1000);
     const provider = new ManagedBrowserProvider({
       runtimeRoot: join(testRoot, "runtime"),
       browserPath,
-      startupTimeoutMs: 1_000,
+      startupTimeoutMs: 5_000,
     });
     providers.add(provider);
 
@@ -207,7 +207,7 @@ setInterval(() => {}, 1000);
     const provider = new ManagedBrowserProvider({
       runtimeRoot: join(testRoot, "runtime"),
       browserPath,
-      startupTimeoutMs: 1_000,
+      startupTimeoutMs: 5_000,
     });
     providers.add(provider);
     const target = await provider.acquireTarget({

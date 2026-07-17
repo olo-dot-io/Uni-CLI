@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9454<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9459<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -522,7 +522,10 @@ Docs:
   managed provider is hidden and uses Uni-CLI automation profiles under
   `~/.unicli/`; Agent sessions own distinct targets while declared profile
   partitions can share login/storage. Existing Chrome requires the native
-  host and explicit background or foreground visibility. Empty profiles
+  host and explicit background or foreground visibility. Install it with
+  `unicli browser native-host install --browser chrome`, then use
+  `unicli browser native-host extension-path` to locate the unpacked extension.
+  Empty profiles
   require explicit `unicli browser start --ephemeral` or
   `UNICLI_BROWSER_EPHEMERAL=1`.
   Chrome 136+ blocks remote debugging on the default user-data-dir.
