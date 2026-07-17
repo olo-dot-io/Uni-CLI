@@ -32,16 +32,14 @@ import {
 } from "../../src/browser/runtime-transport.js";
 import {
   repositoryRoot,
-  tsxPath,
   waitForExit,
 } from "../helpers/browser-runtime-harness.js";
 
 const BROWSER_SESSION_ID = "018f4f68-6f5b-7b01-8c02-123456789abc";
 const nativeHostMainPath = join(
   repositoryRoot,
-  "src",
-  "browser",
-  "native-host-main.ts",
+  "bin",
+  "unicli-browser-native-host",
 );
 
 let cleanup: (() => Promise<void>) | null = null;
@@ -66,7 +64,7 @@ describe("Chrome native host and broker integration", () => {
       runtimeRoot,
       requestTimeoutMs: 10_000,
     });
-    const host = spawn(tsxPath, [nativeHostMainPath], {
+    const host = spawn(process.execPath, [nativeHostMainPath], {
       cwd: repositoryRoot,
       env: {
         ...process.env,
@@ -281,7 +279,7 @@ describe("Chrome native host and broker integration", () => {
       runtimeRoot,
       requestTimeoutMs: 10_000,
     });
-    const host = spawn(tsxPath, [nativeHostMainPath], {
+    const host = spawn(process.execPath, [nativeHostMainPath], {
       cwd: repositoryRoot,
       env: {
         ...process.env,

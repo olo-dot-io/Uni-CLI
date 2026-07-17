@@ -23,35 +23,35 @@ Uni-CLI exposes 27 subpaths from `package.json` `exports`. Each subpath is
 labelled **Stable**, **Beta**, or **Experimental**. The label governs how
 quickly we may break the API.
 
-| Subpath                                  | Source                                  | Status       |
-| ---------------------------------------- | --------------------------------------- | ------------ |
-| `@zenalexa/unicli`                       | `src/main.ts`                           | Stable       |
-| `@zenalexa/unicli/index`                 | `src/index.ts`                          | Stable       |
-| `@zenalexa/unicli/registry`              | `src/registry.ts`                       | Stable       |
-| `@zenalexa/unicli/errors`                | `src/errors.ts`                         | Stable       |
-| `@zenalexa/unicli/types`                 | `src/types.ts`                          | Stable       |
-| `@zenalexa/unicli/output`                | `src/output/formatter.ts`               | Stable       |
-| `@zenalexa/unicli/engine`                | `src/engine/executor.ts`                | Stable       |
-| `@zenalexa/unicli/engine/registry`       | `src/engine/step-registry.ts`           | Stable       |
-| `@zenalexa/unicli/transport`             | `src/transport/bus.ts`                  | Stable       |
-| `@zenalexa/unicli/transport/http`        | `src/transport/adapters/http.ts`        | Stable       |
-| `@zenalexa/unicli/protocol/mcp`          | `src/mcp/schema.ts`                     | Stable       |
-| `@zenalexa/unicli/protocol/acp`          | `src/protocol/acp.ts`                   | Stable       |
-| `@zenalexa/unicli/pipeline`              | alias of `engine`                       | Stable       |
-| `@zenalexa/unicli/download`              | `src/engine/download.ts`                | Stable       |
-| `@zenalexa/unicli/engine/steps`          | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/visual`      | `src/transport/adapters/visual.ts`      | Beta         |
-| `@zenalexa/unicli/transport/desktop-ax`  | `src/transport/adapters/desktop-ax.ts`  | Beta         |
-| `@zenalexa/unicli/transport/subprocess`  | `src/transport/adapters/subprocess.ts`  | Beta         |
-| `@zenalexa/unicli/transport/cdp-browser` | `src/transport/adapters/cdp-browser.ts` | Beta         |
-| `@zenalexa/unicli/compute/visual-timeline` | `src/compute/visual-timeline.ts`       | Beta         |
-| `@zenalexa/unicli/agents/backends`       | `src/agents/backends.ts`                | Beta         |
-| `@zenalexa/unicli/protocol/skill`        | `src/protocol/skill.ts`                 | Beta         |
-| `@zenalexa/unicli/registry-v2`           | `src/core/registry.ts`                  | Experimental |
-| `@zenalexa/unicli/browser/cdp`           | `src/browser/cdp-client.ts`             | Experimental |
-| `@zenalexa/unicli/browser/page`          | `src/browser/page.ts`                   | Experimental |
-| `@zenalexa/unicli/browser/runtime`       | `src/browser/runtime-client.ts`         | Experimental |
-| `@zenalexa/unicli/browser/utils`         | `src/browser/dom-helpers.ts`            | Experimental |
+| Subpath                                    | Source                                  | Status       |
+| ------------------------------------------ | --------------------------------------- | ------------ |
+| `@zenalexa/unicli`                         | `src/main.ts`                           | Stable       |
+| `@zenalexa/unicli/index`                   | `src/index.ts`                          | Stable       |
+| `@zenalexa/unicli/registry`                | `src/registry.ts`                       | Stable       |
+| `@zenalexa/unicli/errors`                  | `src/errors.ts`                         | Stable       |
+| `@zenalexa/unicli/types`                   | `src/types.ts`                          | Stable       |
+| `@zenalexa/unicli/output`                  | `src/output/formatter.ts`               | Stable       |
+| `@zenalexa/unicli/engine`                  | `src/engine/executor.ts`                | Stable       |
+| `@zenalexa/unicli/engine/registry`         | `src/engine/step-registry.ts`           | Stable       |
+| `@zenalexa/unicli/transport`               | `src/transport/bus.ts`                  | Stable       |
+| `@zenalexa/unicli/transport/http`          | `src/transport/adapters/http.ts`        | Stable       |
+| `@zenalexa/unicli/protocol/mcp`            | `src/mcp/schema.ts`                     | Stable       |
+| `@zenalexa/unicli/protocol/acp`            | `src/protocol/acp.ts`                   | Stable       |
+| `@zenalexa/unicli/pipeline`                | alias of `engine`                       | Stable       |
+| `@zenalexa/unicli/download`                | `src/engine/download.ts`                | Stable       |
+| `@zenalexa/unicli/engine/steps`            | `src/engine/steps/index.ts`             | Beta         |
+| `@zenalexa/unicli/transport/visual`        | `src/transport/adapters/visual.ts`      | Beta         |
+| `@zenalexa/unicli/transport/desktop-ax`    | `src/transport/adapters/desktop-ax.ts`  | Beta         |
+| `@zenalexa/unicli/transport/subprocess`    | `src/transport/adapters/subprocess.ts`  | Beta         |
+| `@zenalexa/unicli/transport/cdp-browser`   | `src/transport/adapters/cdp-browser.ts` | Beta         |
+| `@zenalexa/unicli/compute/visual-timeline` | `src/compute/visual-timeline.ts`        | Beta         |
+| `@zenalexa/unicli/agents/backends`         | `src/agents/backends.ts`                | Beta         |
+| `@zenalexa/unicli/protocol/skill`          | `src/protocol/skill.ts`                 | Beta         |
+| `@zenalexa/unicli/registry-v2`             | `src/core/registry.ts`                  | Experimental |
+| `@zenalexa/unicli/browser/cdp`             | `src/browser/cdp-client.ts`             | Experimental |
+| `@zenalexa/unicli/browser/page`            | `src/browser/page.ts`                   | Experimental |
+| `@zenalexa/unicli/browser/runtime`         | `src/browser/runtime-client.ts`         | Experimental |
+| `@zenalexa/unicli/browser/utils`           | `src/browser/dom-helpers.ts`            | Experimental |
 
 **Stable** — Breaking changes require a major bump and a deprecation
 warning for at least one full release prior.

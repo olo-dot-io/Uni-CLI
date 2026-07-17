@@ -6,9 +6,30 @@ import siteIndex from "../../../site-index.json";
 
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
+const isPublished = computed(() => releaseInfo.status === "published");
 const highlights = computed(() =>
   isZh.value ? releaseInfo.highlights.zh : releaseInfo.highlights.root,
 );
+const releaseHeading = computed(() => {
+  if (isPublished.value) {
+    return isZh.value
+      ? `v${releaseInfo.version} 已发布到 npm。`
+      : `v${releaseInfo.version} is live on npm.`;
+  }
+  return isZh.value
+    ? `v${releaseInfo.version} 已在本机构建并验证。`
+    : `v${releaseInfo.version} was built and verified locally.`;
+});
+const releaseSummary = computed(() => {
+  if (isPublished.value) {
+    return isZh.value
+      ? `${releaseInfo.codename} 于 ${releaseInfo.date} 发布，npm 包 ${releaseInfo.npmPackage} 当前 latest 指向这个版本。`
+      : `${releaseInfo.codename} shipped on ${releaseInfo.date}; the ${releaseInfo.npmPackage} npm latest tag now points to this release.`;
+  }
+  return isZh.value
+    ? `${releaseInfo.codename} 于 ${releaseInfo.date} 完成本机验证；这里不将该版本标记为 npm 或 GitHub Release 已发布。`
+    : `${releaseInfo.codename} completed local verification on ${releaseInfo.date}; this page does not mark the version as published to npm or GitHub Releases.`;
+});
 const catalogLabel = computed(() =>
   isZh.value
     ? `${siteIndex.total_sites} 个站点 / ${siteIndex.total_commands} 条命令`
@@ -27,19 +48,9 @@ const catalogLabel = computed(() =>
           {{ isZh ? "当前版本" : "Current Version" }}
         </p>
         <h2 :id="isZh ? 'uni-version-title-zh' : 'uni-version-title'">
-          {{
-            isZh
-              ? `v${releaseInfo.version} 已发布到 npm。`
-              : `v${releaseInfo.version} is live on npm.`
-          }}
+          {{ releaseHeading }}
         </h2>
-        <p>
-          {{
-            isZh
-              ? `${releaseInfo.codename} 于 ${releaseInfo.date} 发布，npm 包 ${releaseInfo.npmPackage} 当前 latest 指向这个版本。`
-              : `${releaseInfo.codename} shipped on ${releaseInfo.date}; the ${releaseInfo.npmPackage} npm latest tag now points to this release.`
-          }}
-        </p>
+        <p>{{ releaseSummary }}</p>
       </div>
 
       <div class="uni-version-meta">
@@ -66,6 +77,7 @@ const catalogLabel = computed(() =>
             {{ isZh ? "打开 npm 包" : "Open npm Package" }}
           </a>
           <a
+            v-if="isPublished"
             :href="releaseInfo.releaseUrl"
             target="_blank"
             rel="noopener noreferrer"
