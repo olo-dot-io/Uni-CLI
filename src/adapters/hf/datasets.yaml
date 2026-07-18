@@ -43,7 +43,15 @@ pipeline:
 columns: [id, author, downloads, likes, lastModified, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "ai.search", "ai.artifacts"]
+retrieval:
+  operation: discover
+  result_kind: dataset
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    sort: sort
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

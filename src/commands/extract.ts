@@ -1,64 +1,55 @@
 /**
- * @owner        src/commands/extract.ts
- * @does         One-shot URL → cleaned Markdown/text/HTML extraction without
- *               adapter awareness. Stateless agent verb: fetch + render in a
- *               single CLI call, no browser session, no auth, no pipeline
- *               composition required.
- * @needs        commander, src/engine/html-to-markdown, src/engine/ssrf, src/engine/proxy,
- *               src/output/{envelope,formatter}, src/constants
- * @feeds        src/cli.ts agent entrypoint; agents that want "fetch this URL
- *               as Markdown" without composing a fetch_text + html_to_md
- *               pipeline themselves.
- * @breaks       Emits structured envelopes. Codes:
- *                 invalid_input    — non-http(s) URL, SSRF block, body cap
- *                 not_found        — 404
- *                 auth_required    — 401/403
- *                 rate_limited     — 429
- *                 api_error        — other 4xx
- *                 upstream_error   — 5xx
- *                 network_error    — DNS/TCP/TLS failure or timeout
- *               Each error envelope carries next_actions with a retry hint,
- *               a `describe` link, and a `do` link.
- * @invariants   Truncates rendered content at --max-chars; never holds more
- *               than HARD_MAX_BYTES of upstream body in memory.
- * @side-effects HTTP GET to user-supplied URL with proxy if configured.
- *               No local filesystem writes.
- * @perf         O(N) in body bytes for Turndown; N capped by HARD_MAX_BYTES.
- * @concurrency  Pure async; no shared state.
- * @test         tests/unit/commands/extract.test.ts
- * @stability    experimental
- * @since        2026-05-18
+ * @owner       src::commands::extract
+ * @does        Exposes the domain-neutral, one-shot URL-to-EvidenceDocument reader as a stable CLI verb.
+ * @needs       commander, evidence-reader, shared envelope formatter, and shared error mapping
+ * @feeds       agents that need current web evidence without knowing a domain-specific adapter
+ * @breaks      Diverging from ai.read, treating SPA shells or binary bytes as success, or omitting provenance makes cross-domain research unreliable.
+ * @invariants  Success emits the shared EvidenceDocument contract plus legacy length/format aliases; all failures use structured, actionable envelopes; rendered output is capped at one million characters.
+ * @side-effects Performs the reader-selected network/API operation; PDF reads may create and remove one invocation-local temporary directory.
+ * @perf        Direct bodies are bounded by the shared five MB fetch cap and rendered content by --max-chars.
+ * @concurrency Invocation state is local; cancellation is owned by the command process.
+ * @test        tests/unit/commands/extract.test.ts, tests/unit/engine/evidence-document.test.ts
+ * @stability   experimental
+ * @since       2026-05-18
  */
 
 import { Command } from "commander";
-import { htmlToMarkdown } from "../engine/html-to-markdown.js";
-import { assertSafeRequestUrl } from "../engine/ssrf.js";
-import { describeNetworkFailure, fetchWithProxy } from "../engine/proxy.js";
-import { USER_AGENT } from "../constants.js";
-import { format, detectFormat } from "../output/formatter.js";
+
+import {
+  readEvidenceDocument,
+  type EvidenceReader,
+  type EvidenceRepresentation,
+} from "../engine/evidence-reader.js";
+import { errorToAgentFields, errorTypeToCode } from "../output/error-map.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
 import type {
   AgentContext,
   AgentError,
   AgentNextAction,
 } from "../output/envelope.js";
+import { detectFormat, format } from "../output/formatter.js";
 import type { OutputFormat } from "../types.js";
 
 const DEFAULT_MAX_CHARS = 50_000;
-const HARD_MAX_BYTES = 5_000_000;
-
-type ExtractFormat = "markdown" | "text" | "html";
+const DEFAULT_MAX_LINKS = 100;
+const MAX_CHARS_HARD_LIMIT = 1_000_000;
+const MAX_LINKS_HARD_LIMIT = 1_000;
+const MAX_PAGE = 100_000;
 
 interface ExtractOpts {
   maxChars: string;
+  maxLinks: string;
   as: string;
+  reader: string;
+  firstPage: string;
+  lastPage: string;
 }
 
 export function registerExtractCommand(program: Command): void {
   program
     .command("extract <url>")
     .description(
-      "Fetch a URL and return cleaned Markdown (one-shot, no browser/auth)",
+      "Read a URL into a provenance-bearing EvidenceDocument (HTML, JSON, text, PDF, or GitHub thread)",
     )
     .option(
       "--max-chars <n>",
@@ -66,10 +57,22 @@ export function registerExtractCommand(program: Command): void {
       String(DEFAULT_MAX_CHARS),
     )
     .option(
+      "--max-links <n>",
+      `Retain at most N structured links (default ${DEFAULT_MAX_LINKS})`,
+      String(DEFAULT_MAX_LINKS),
+    )
+    .option(
       "--as <format>",
-      "Render content as markdown|text|html (default markdown)",
+      "Represent HTML as markdown|text|html (default markdown)",
       "markdown",
     )
+    .option(
+      "--reader <reader>",
+      "Use direct|jina|defuddle; non-direct readers receive the source URL",
+      "direct",
+    )
+    .option("--first-page <n>", "First PDF page to extract", "1")
+    .option("--last-page <n>", "Last PDF page to extract", "20")
     .action(async (url: string, opts: ExtractOpts) => {
       const startedAt = Date.now();
       const fmt = detectFormat(
@@ -77,36 +80,44 @@ export function registerExtractCommand(program: Command): void {
       );
 
       let maxChars: number;
+      let maxLinks: number;
+      let firstPage: number;
+      let lastPage: number;
+      let representation: EvidenceRepresentation;
+      let reader: EvidenceReader;
       try {
-        maxChars = parseMaxChars(opts.maxChars);
-      } catch (e) {
-        emitError(
-          baseCtx(startedAt),
-          {
-            code: "invalid_input",
-            message:
-              e instanceof Error ? e.message : "invalid --max-chars value",
-            suggestion: `Pass a positive integer up to ${MAX_CHARS_HARD_LIMIT}`,
-            retryable: false,
-          },
-          fmt,
-          url,
+        maxChars = parsePositiveInteger(
+          opts.maxChars,
+          "--max-chars",
+          MAX_CHARS_HARD_LIMIT,
         );
-        return;
-      }
-      const renderAs = parseExtractFormat(opts.as);
-
-      try {
-        assertSafeRequestUrl(url);
-      } catch (e) {
+        maxLinks = parsePositiveInteger(
+          opts.maxLinks,
+          "--max-links",
+          MAX_LINKS_HARD_LIMIT,
+        );
+        firstPage = parsePositiveInteger(
+          opts.firstPage,
+          "--first-page",
+          MAX_PAGE,
+        );
+        lastPage = parsePositiveInteger(opts.lastPage, "--last-page", MAX_PAGE);
+        if (lastPage < firstPage) {
+          throw new Error(
+            "--last-page must be greater than or equal to --first-page",
+          );
+        }
+        representation = parseRepresentation(opts.as);
+        reader = parseReader(opts.reader);
+      } catch (error) {
         emitError(
-          baseCtx(startedAt),
+          baseContext(startedAt),
           {
             code: "invalid_input",
             message:
-              e instanceof Error ? e.message : "URL failed safety validation",
+              error instanceof Error ? error.message : "invalid extract option",
             suggestion:
-              "Use an http(s) URL; loopback / link-local / private ranges are blocked",
+              "Use positive numeric limits, an inclusive page range, --as markdown|text|html, and --reader direct|jina|defuddle.",
             retryable: false,
           },
           fmt,
@@ -115,120 +126,59 @@ export function registerExtractCommand(program: Command): void {
         return;
       }
 
-      let html: string;
-      let httpStatus = 0;
       try {
-        const init: RequestInit = {
-          method: "GET",
-          headers: { "User-Agent": USER_AGENT },
+        const document = await readEvidenceDocument(url, {
+          maxChars,
+          maxLinks,
+          representation,
+          reader,
+          firstPage,
+          lastPage,
+        });
+        const ctx: AgentContext = {
+          command: "core.extract",
+          duration_ms: Date.now() - startedAt,
+          surface: "web",
+          next_actions: successNextActions(
+            url,
+            representation,
+            document.truncated,
+            document.original_char_count,
+          ),
         };
-        const resp = await fetchWithProxy(url, init);
-        httpStatus = resp.status;
-
-        if (!resp.ok) {
-          emitError(
-            baseCtx(startedAt),
-            {
-              code: mapStatus(resp.status),
-              message: `HTTP ${resp.status} ${resp.statusText} from ${url}`,
-              suggestion:
-                resp.status >= 500
-                  ? "Upstream 5xx — retry after a short delay"
-                  : resp.status === 429
-                    ? "Rate-limited — back off and retry"
-                    : resp.status === 401 || resp.status === 403
-                      ? "Authenticated endpoint — try `unicli auth setup <site>`"
-                      : `Check that ${url} is the canonical URL`,
-              retryable: resp.status >= 500 || resp.status === 429,
-            },
-            fmt,
-            url,
-          );
-          return;
-        }
-
-        const lenHeader = resp.headers.get("content-length");
-        if (lenHeader && Number(lenHeader) > HARD_MAX_BYTES) {
-          emitError(
-            baseCtx(startedAt),
-            {
-              // REASON: oversized upstream payload is an upstream property,
-              // not caller error — surface as `upstream_error` (exit 69) so
-              // agent retry policy knows the URL itself cannot be re-fetched
-              // smaller. retryable=false because shrink-on-retry is unlikely.
-              code: "upstream_error",
-              message: `Content-Length ${lenHeader} exceeds hard cap ${HARD_MAX_BYTES}`,
-              suggestion:
-                "Target a smaller URL or use a streaming adapter via `unicli search`",
-              retryable: false,
-            },
-            fmt,
-            url,
-          );
-          return;
-        }
-
-        html = await resp.text();
-        if (html.length > HARD_MAX_BYTES) {
-          html = html.slice(0, HARD_MAX_BYTES);
-        }
-      } catch (e) {
+        const data: Record<string, unknown> = {
+          ...document,
+          format: document.content_format,
+          length: document.char_count,
+          original_length: document.original_char_count,
+        };
+        console.log(format(data, undefined, fmt, ctx));
+      } catch (error) {
+        const mappedCode = errorTypeToCode(error);
+        const code =
+          mappedCode === "response_too_large" ? "upstream_error" : mappedCode;
+        const fields = errorToAgentFields(
+          error,
+          "src/commands/extract.ts",
+          "web",
+          "read",
+          hostname(url),
+        );
         emitError(
-          baseCtx(startedAt),
+          baseContext(startedAt),
           {
-            code: "network_error",
-            message: describeNetworkFailure(e),
-            suggestion: `Network fetch failed for ${url} — verify connectivity`,
-            retryable: true,
+            code,
+            message: error instanceof Error ? error.message : String(error),
+            ...fields,
           },
           fmt,
           url,
         );
-        return;
       }
-
-      let content: string;
-      if (renderAs === "markdown") {
-        content = htmlToMarkdown(html);
-      } else if (renderAs === "text") {
-        content = stripTags(html);
-      } else {
-        content = html;
-      }
-
-      const originalLength = content.length;
-      const truncated = originalLength > maxChars;
-      if (truncated) content = content.slice(0, maxChars);
-
-      const ctx: AgentContext = {
-        command: "core.extract",
-        duration_ms: Date.now() - startedAt,
-        surface: "web",
-        next_actions: successNextActions(
-          url,
-          renderAs,
-          truncated,
-          originalLength,
-        ),
-      };
-
-      const data: Record<string, unknown> = {
-        url,
-        format: renderAs,
-        http_status: httpStatus,
-        length: content.length,
-        original_length: originalLength,
-        truncated,
-        content,
-      };
-
-      console.log(format(data, undefined, fmt, ctx));
     });
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-function baseCtx(startedAt: number): Omit<AgentContext, "next_actions"> {
+function baseContext(startedAt: number): Omit<AgentContext, "next_actions"> {
   return {
     command: "core.extract",
     duration_ms: Date.now() - startedAt,
@@ -236,72 +186,62 @@ function baseCtx(startedAt: number): Omit<AgentContext, "next_actions"> {
   };
 }
 
-/**
- * Parse `--max-chars`. Throws on invalid input — caller is responsible for
- * converting the throw into a structured `invalid_input` envelope. This is
- * the rule-02 contract: bad CLI input is a caller bug, not a system state
- * to silently recover from.
- */
-const MAX_CHARS_HARD_LIMIT = 1_000_000;
-function parseMaxChars(raw: string): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
-    throw new Error(`--max-chars must be a positive integer (got "${raw}")`);
+function parsePositiveInteger(
+  raw: string,
+  label: string,
+  maximum: number,
+): number {
+  const value = Number(raw);
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer (got "${raw}")`);
   }
-  if (n > MAX_CHARS_HARD_LIMIT) {
-    throw new Error(
-      `--max-chars ${n} exceeds hard limit ${MAX_CHARS_HARD_LIMIT}`,
-    );
+  if (value > maximum) {
+    throw new Error(`${label} ${value} exceeds hard limit ${maximum}`);
   }
-  return n;
+  return value;
 }
 
-function parseExtractFormat(raw: string): ExtractFormat {
-  const v = raw.toLowerCase();
-  if (v === "text" || v === "txt" || v === "plain") return "text";
-  if (v === "html" || v === "raw") return "html";
-  return "markdown";
+function parseRepresentation(raw: string): EvidenceRepresentation {
+  const value = raw.toLowerCase();
+  if (value === "markdown") return "markdown";
+  if (value === "text") return "text";
+  if (value === "html") return "html";
+  throw new Error(`--as must be markdown, text, or html (got "${raw}")`);
 }
 
-function mapStatus(status: number): string {
-  if (status === 404) return "not_found";
-  if (status === 401 || status === 403) return "auth_required";
-  if (status === 429) return "rate_limited";
-  if (status >= 500) return "upstream_error";
-  return "api_error";
+function parseReader(raw: string): EvidenceReader {
+  const value = raw.toLowerCase();
+  if (value === "direct" || value === "jina" || value === "defuddle") {
+    return value;
+  }
+  throw new Error(`--reader must be direct, jina, or defuddle (got "${raw}")`);
 }
 
-// REASON: intentionally minimal HTML stripper for `--as text` mode. Strips
-// scripts, styles, tags, and 5 common entities. Does NOT handle CDATA,
-// HTML comments, numeric character references, or HTML5 `<template>` —
-// agents post-process the output anyway. NOT a safe-HTML sanitizer.
-function stripTags(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, " ")
-    .trim();
+function hostname(url: string): string | undefined {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
 function successNextActions(
   url: string,
-  as: ExtractFormat,
+  representation: EvidenceRepresentation,
   truncated: boolean,
   originalLength: number,
 ): AgentNextAction[] {
+  const quotedUrl = shellQuote(url);
   const actions: AgentNextAction[] = [];
-
   if (truncated) {
-    const fullCap = Math.min(originalLength, 1_000_000);
+    const fullCap = Math.min(originalLength, MAX_CHARS_HARD_LIMIT);
     actions.push({
-      command: `unicli extract ${url} --max-chars ${fullCap}`,
-      description: `Re-extract with larger limit (full rendered length ${originalLength})`,
+      command: `unicli extract ${quotedUrl} --max-chars ${fullCap}`,
+      description: `Re-read with a larger limit (rendered length ${originalLength})`,
       params: {
         "max-chars": {
           value: fullCap,
@@ -310,95 +250,71 @@ function successNextActions(
       },
     });
   }
-
-  if (as !== "text") {
+  if (representation !== "text") {
     actions.push({
-      command: `unicli extract ${url} --as text`,
-      description: "Re-extract as plain text (no Markdown formatting)",
+      command: `unicli extract ${quotedUrl} --as text`,
+      description: "Read as plain text",
     });
   }
-  if (as !== "html") {
+  if (representation !== "html") {
     actions.push({
-      command: `unicli extract ${url} --as html`,
-      description: "Re-extract as raw HTML (no cleaning)",
+      command: `unicli extract ${quotedUrl} --as html`,
+      description: "Read source HTML when that representation exists",
     });
   }
-
   actions.push({
     command: `unicli do "<natural-language intent>"`,
-    description:
-      "Route a natural-language intent to the best-matching adapter (e.g. structured site fetch instead of a raw URL)",
+    description: "Route the intent to a source-specific structured adapter",
   });
-
   return actions;
 }
 
-function errorNextActions(url: string, errCode: string): AgentNextAction[] {
+function errorNextActions(url: string, error: AgentError): AgentNextAction[] {
   const actions: AgentNextAction[] = [
     {
-      command: `unicli extract ${url}`,
-      description: "Retry the same extraction",
+      command: `unicli extract ${shellQuote(url)}`,
+      description: "Retry the same evidence read",
     },
+    ...(error.alternatives ?? []).map((command) => ({
+      command,
+      description: "Use a reader alternative supplied by the failed boundary",
+    })),
   ];
-  if (errCode === "auth_required") {
+  if (error.code === "auth_required") {
     actions.push({
-      command: `unicli auth setup <site>`,
+      command: "unicli auth setup <site>",
       description: "Authenticate before retrying",
-      params: {
-        site: {
-          description: "Short site name (e.g. `twitter`, `github`)",
-        },
-      },
-    });
-  }
-  if (
-    errCode === "not_found" ||
-    errCode === "api_error" ||
-    errCode === "invalid_input"
-  ) {
-    actions.push({
-      command: `unicli do "<natural-language intent>"`,
-      description: "Try a structured adapter instead of a raw URL fetch",
     });
   }
   actions.push({
-    command: `unicli describe`,
-    description: "Inspect available commands and adapters",
+    command: `unicli search ${shellQuote(`reader for ${hostname(url) ?? url}`)}`,
+    description: "Discover a source-specific reader",
   });
   return actions;
 }
 
 function emitError(
-  baseCtxValue: Omit<AgentContext, "next_actions">,
-  err: AgentError,
+  base: Omit<AgentContext, "next_actions">,
+  error: AgentError,
   fmt: OutputFormat,
   url: string,
 ): void {
-  const ctx: AgentContext = {
-    ...baseCtxValue,
-    next_actions: errorNextActions(url, err.code),
-    error: err,
-  };
   printErrorEnvelope({
     fmt,
-    exitCode: mapExitCode(err.code),
-    ctx,
+    exitCode: exitCodeFor(error.code),
+    ctx: {
+      ...base,
+      next_actions: errorNextActions(url, error),
+      error,
+    },
   });
 }
 
-function mapExitCode(code: string): number {
-  switch (code) {
-    case "auth_required":
-      return 77;
-    case "rate_limited":
-    case "network_error":
-      return 75;
-    case "upstream_error":
-      return 69;
-    case "not_found":
-    case "invalid_input":
-      return 2;
-    default:
-      return 1;
-  }
+function exitCodeFor(code: string): number {
+  if (code === "auth_required" || code === "challenge_required") return 77;
+  if (code === "rate_limited" || code === "network_error") return 75;
+  if (code === "upstream_error") return 69;
+  if (code === "empty_result") return 66;
+  if (code === "not_found" || code === "invalid_input") return 2;
+  return 1;
 }

@@ -44,7 +44,15 @@ pipeline:
 
 columns: [id, author, pipeline_tag, downloads, likes, lastModified, url]
 
-capabilities: ["http.fetch", "ai.search", "ai.artifacts"]
+retrieval:
+  operation: discover
+  result_kind: model
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    sort: sort
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

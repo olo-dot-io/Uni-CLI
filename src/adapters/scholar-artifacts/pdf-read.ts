@@ -4,7 +4,7 @@
  * @needs       src/engine/executor.ts cancellable download/exec steps, src/engine/download.ts, pdftotext
  * @feeds       src/adapters/scholar-artifacts/pdf.ts and source-specific scholarly read commands
  * @breaks      Invalid PDF URLs, denied download paths, missing pdftotext, or empty extracted text throw before claim text reaches agents.
- * @invariants  Helpers register no commands; callers pass the owning site/command and cancellation signal so operation policy, deadlines, and resource attribution stay source-scoped.
+ * @invariants  Helpers register no commands; callers pass the owning site/command and cancellation signal so operation policy, deadlines, and resource attribution stay source-scoped; truncation markers remain inside maxChars and never make returned text longer than its original.
  * @side-effects HTTPS/HTTP egress to the supplied PDF URL; writes one PDF under the requested output directory; executes pdftotext.
  * @perf        O(PDF bytes + extracted page range); page range defaults to first 20 pages.
  * @concurrency Caller-provided unique output directories isolate invocations; the same ref/output pair shares one deterministic artifact path.
@@ -92,12 +92,22 @@ export function truncateScholarText(
   text: string,
   maxChars: number,
 ): { text: string; truncated: boolean; originalChars: number } {
+  if (!Number.isSafeInteger(maxChars) || maxChars < 1) {
+    throw new TypeError("maxChars must be a positive safe integer.");
+  }
   const originalChars = text.length;
   if (originalChars <= maxChars) {
     return { text, truncated: false, originalChars };
   }
+  const marker = `[truncated at ${maxChars} characters]`;
+  const separator = "\n\n";
+  const prefixLimit = maxChars - separator.length - marker.length;
+  const truncatedText =
+    prefixLimit > 0
+      ? `${text.slice(0, prefixLimit).trimEnd()}${separator}${marker}`
+      : marker.slice(0, maxChars);
   return {
-    text: `${text.slice(0, maxChars).trimEnd()}\n\n[truncated at ${maxChars} characters]`,
+    text: truncatedText,
     truncated: true,
     originalChars,
   };

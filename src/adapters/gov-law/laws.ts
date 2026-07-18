@@ -1,3 +1,18 @@
+/**
+ * @owner       src::adapters::gov-law::laws
+ * @does        Registers official Chinese national law/regulation discovery and recent-publication listing through the public database UI.
+ * @needs       shared browser argument helpers, an IPage implementation, and the adapter registry
+ * @feeds       generic research and law/regulation evidence workflows
+ * @breaks      Search-page markup drift or an unrendered browser target yields missing or misidentified legal records.
+ * @invariants  Search is read-only; result URLs are resolved against the official database origin; duplicates are removed before the limit.
+ * @side-effects Navigates and evaluates the public National Laws and Regulations Database.
+ * @perf        One navigation plus one bounded DOM evaluation per command.
+ * @concurrency Browser target ownership is caller-scoped.
+ * @test        adapter live probe through `unicli test gov-law`
+ * @stability   experimental
+ * @since       2026-07-17
+ */
+
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
 import { intArg, js, str } from "../_shared/browser-tools.js";
@@ -32,6 +47,14 @@ cli({
     { name: "limit", type: "int", default: 20 },
   ],
   columns: ["title", "date", "url"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "regulation",
+    source_class: "official",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate"],
+  minimum_capability: "cdp-browser.navigate",
   func: async (page, kwargs) => {
     const p = page as IPage;
     const limit = intArg(kwargs.limit, 20, 100);

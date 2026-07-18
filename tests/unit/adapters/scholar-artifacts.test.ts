@@ -67,6 +67,12 @@ describe("scholar-artifacts pdf adapter", () => {
     expect(truncated.truncated).toBe(true);
     expect(truncated.originalChars).toBe(1200);
     expect(truncated.text).toContain("[truncated at 1000 characters]");
+    expect(truncated.text.length).toBeLessThanOrEqual(1000);
+
+    const nearLimit = truncateScholarText("x".repeat(1001), 1000);
+    expect(nearLimit.originalChars).toBeGreaterThanOrEqual(
+      nearLimit.text.length,
+    );
   });
 
   it("derives stable safe PDF filenames", () => {

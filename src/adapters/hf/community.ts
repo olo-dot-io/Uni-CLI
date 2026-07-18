@@ -159,7 +159,13 @@ cli({
     "url",
     "summary",
   ],
-  capabilities: ["http.fetch", "ai.search", "ai.community"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "discussion",
+    source_class: "community",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["http.fetch"],
   minimum_capability: "http.fetch",
   func: async (_page, kwargs) => {
     const query = text(kwargs.query).trim();

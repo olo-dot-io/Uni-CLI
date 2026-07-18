@@ -7,9 +7,18 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
+import { createHash } from "node:crypto";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { runPipeline } from "../../src/engine/executor.js";
 import { htmlToMarkdown } from "../../src/engine/html-to-markdown.js";
 import { isHtmlVerificationChallenge } from "../../src/engine/steps/html-to-md.js";
+import { stepFetch } from "../../src/engine/steps/fetch.js";
+import {
+  forgetTransientCookies,
+  rememberTransientCookies,
+} from "../../src/engine/cookies.js";
 import "../../src/engine/steps/index.js";
 
 // --- Echo server: returns request info as JSON ---
@@ -17,6 +26,35 @@ import "../../src/engine/steps/index.js";
 let server: Server;
 let baseUrl: string;
 let requestCounts: Record<string, number> = {};
+
+function fetchCachePath(url: string, method = "GET"): string {
+  const key = createHash("sha256")
+    .update(`${method}:${url}`)
+    .digest("hex")
+    .slice(0, 16);
+  return join(homedir(), ".unicli", "cache", `${key}.json`);
+}
+
+function writeFetchCacheEntry(
+  url: string,
+  finalUrl: string,
+  data: unknown,
+): string {
+  const cachePath = fetchCachePath(url);
+  mkdirSync(join(homedir(), ".unicli", "cache"), { recursive: true });
+  writeFileSync(
+    cachePath,
+    JSON.stringify({
+      schema_version: "fetch-cache.v1",
+      stored_at: Date.now(),
+      requested_url: url,
+      final_url: finalUrl,
+      method: "GET",
+      data,
+    }),
+  );
+  return cachePath;
+}
 
 function collectBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve) => {
@@ -52,6 +90,19 @@ beforeAll(async () => {
             req.url === "/slow" ? "application/json" : "text/plain",
         });
         res.end(req.url === "/slow" ? JSON.stringify({ ok: true }) : "ok");
+      }, 500);
+      return;
+    }
+
+    if (req.url === "/cookie-fallback") {
+      if (!req.headers.cookie) {
+        res.writeHead(403, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "authentication required" }));
+        return;
+      }
+      setTimeout(() => {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
       }, 500);
       return;
     }
@@ -532,12 +583,114 @@ describe("request cancellation", () => {
           ],
           { args: {}, source: "internal" },
           undefined,
-          { signal: AbortSignal.timeout(25) },
+          { signal: AbortSignal.timeout(25), canMutate: false },
         ),
-      ).rejects.toMatchObject({ detail: { errorType: "network_error" } });
+      ).rejects.toMatchObject({ name: "TimeoutError" });
       expect(Date.now() - startedAt).toBeLessThan(400);
     },
   );
+
+  it("preserves caller cancellation during authenticated cookie fallback", async () => {
+    const controller = new AbortController();
+    const reason = new Error("cookie-fallback-cancelled");
+    rememberTransientCookies("127-0-0", undefined, "browser", {
+      session: "test",
+    });
+    const execution = runPipeline(
+      [{ fetch: { url: `${baseUrl}/cookie-fallback` } }],
+      { args: {}, source: "internal" },
+      undefined,
+      { signal: controller.signal, canMutate: false },
+    );
+    setTimeout(() => controller.abort(reason), 50);
+    try {
+      await expect(execution).rejects.toBe(reason);
+    } finally {
+      forgetTransientCookies("127-0-0");
+    }
+  });
+});
+
+describe("fetch cache policy", () => {
+  it("validates a cached URL before returning its stored response", async () => {
+    const url = `http://127.0.0.1:8080/cached-private-${process.pid}`;
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    const cachePath = writeFetchCacheEntry(url, url, {
+      source: "cached-private",
+    });
+    delete process.env.UNICLI_ALLOW_LOCAL;
+    try {
+      await expect(
+        runPipeline([{ fetch: { url, cache: 60 } }], {
+          args: {},
+          source: "internal",
+        }),
+      ).rejects.toThrow(/blocked fetch to reserved\/local address/);
+    } finally {
+      rmSync(cachePath, { force: true });
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+    }
+  });
+
+  it("revalidates the cached redirect destination before returning data", async () => {
+    const url = `https://example.com/cached-redirect-${process.pid}`;
+    const finalUrl = "http://127.0.0.1:8080/private-final";
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    const cachePath = writeFetchCacheEntry(url, finalUrl, {
+      source: "redirect-cache",
+    });
+    delete process.env.UNICLI_ALLOW_LOCAL;
+    try {
+      await expect(
+        stepFetch(
+          {
+            args: {},
+            vars: {},
+            data: null,
+            source: "internal",
+            canMutate: false,
+          },
+          { url, cache: 60 },
+        ),
+      ).rejects.toThrow(/blocked fetch to reserved\/local address/);
+    } finally {
+      rmSync(cachePath, { force: true });
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+    }
+  });
+
+  it("does not return a cache hit after caller cancellation", async () => {
+    const url = `https://example.com/cached-cancel-${process.pid}`;
+    const cachePath = writeFetchCacheEntry(url, url, { source: "cache" });
+    const controller = new AbortController();
+    const reason = new Error("cached-fetch-cancelled");
+    controller.abort(reason);
+    try {
+      await expect(
+        stepFetch(
+          {
+            args: {},
+            vars: {},
+            data: null,
+            source: "internal",
+            signal: controller.signal,
+            canMutate: false,
+          },
+          { url, cache: 60 },
+        ),
+      ).rejects.toBe(reason);
+    } finally {
+      rmSync(cachePath, { force: true });
+    }
+  });
 });
 
 describe("step error metadata", () => {

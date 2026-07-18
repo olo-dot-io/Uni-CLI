@@ -1,7 +1,7 @@
 /**
  * @owner       src::commands::ai-content
- * @does        Defines the canonical AI content record and pure URL, provenance, normalization, fusion, and document-structure operations.
- * @needs       node:crypto and WHATWG URL
+ * @does        Defines the AI content record and pure domain enrichment, normalization, and fusion over the generic evidence and retrieval contracts.
+ * @needs       node:crypto, WHATWG URL, AI landscape identities, and the pure EvidenceDocument value boundary
  * @feeds       src/commands/ai.ts and AI content contract tests
  * @breaks      Weak canonicalization or provenance inference causes duplicate, misattributed, or untraceable Agent evidence.
  * @invariants  Pure functions perform no I/O; normalized records always retain source identity and retrieval time; document hashes cover returned content.
@@ -19,23 +19,14 @@ import {
   identifyAiPrimarySource,
   type AiOrganizationType,
 } from "./ai-landscape.js";
+import {
+  canonicalizeUrl,
+  structureEvidenceDocument,
+  type EvidenceDocument,
+} from "../engine/evidence-document.js";
+import type { RetrievalResultKind, RetrievalSourceClass } from "../types.js";
 
-export type AiContentKind =
-  | "docs"
-  | "repository"
-  | "issue"
-  | "pull-request"
-  | "discussion"
-  | "model"
-  | "dataset"
-  | "space"
-  | "paper"
-  | "release"
-  | "commit"
-  | "post"
-  | "video"
-  | "benchmark"
-  | "community";
+export type AiContentKind = RetrievalResultKind;
 
 export type AiVendor =
   | "nvidia"
@@ -57,11 +48,7 @@ export type AiVendor =
   | "github"
   | "unknown";
 
-export type AiSourceClass =
-  | "official"
-  | "hosted-artifact"
-  | "community"
-  | "search-index";
+export type AiSourceClass = RetrievalSourceClass;
 
 export interface AiContentSource {
   ref: string;
@@ -121,73 +108,6 @@ const HARDWARE_VENDOR_IDS = new Set<AiVendor>([
   "kunlunxin",
   "cambricon",
 ]);
-
-const KIND_BY_REF: Readonly<Record<string, AiContentKind>> = {
-  "duckduckgo.search": "docs",
-  "brave.search": "docs",
-  "yahoo.search": "docs",
-  "gh.search-repos": "repository",
-  "gh.search-issues": "issue",
-  "gh.search-prs": "pull-request",
-  "gh.discussions": "discussion",
-  "gh.release": "release",
-  "hf.models": "model",
-  "hf.datasets": "dataset",
-  "hf.spaces": "space",
-  "hf.community": "discussion",
-  "huggingface-papers.search": "paper",
-  "arxiv.search": "paper",
-  "semantic-scholar.search": "paper",
-  "openreview.search": "paper",
-  "openalex.search": "paper",
-  "crossref.search": "paper",
-  "acl-anthology.search": "paper",
-  "modelscope.models": "model",
-  "modelscope.datasets": "dataset",
-  "opencsg.models": "model",
-  "opencsg.datasets": "dataset",
-  "openrouter.search": "model",
-  "bluesky.search-posts": "post",
-  "twitter.search": "post",
-  "reddit.search": "post",
-  "linux-do.search": "post",
-  "zhihu.search": "post",
-  "youtube.search": "video",
-  "bilibili.search": "video",
-  "hackernews.search": "community",
-  "lobsters.search": "community",
-  "stackoverflow.search": "community",
-  "devto.search": "community",
-};
-
-const SOURCE_CLASS_BY_REF: Readonly<Record<string, AiSourceClass>> = {
-  "duckduckgo.search": "search-index",
-  "brave.search": "search-index",
-  "yahoo.search": "search-index",
-};
-
-export function inferAiSourceKind(
-  ref: string,
-  capabilities: readonly string[],
-): AiContentKind {
-  const known = KIND_BY_REF[ref];
-  if (known) return known;
-  if (capabilities.includes("ai.docs")) return "docs";
-  if (capabilities.includes("ai.paper")) return "paper";
-  if (capabilities.includes("ai.model")) return "model";
-  if (capabilities.includes("ai.dataset")) return "dataset";
-  if (capabilities.includes("ai.post")) return "post";
-  if (capabilities.includes("ai.video")) return "video";
-  if (capabilities.includes("ai.release")) return "release";
-  if (capabilities.includes("ai.commit")) return "commit";
-  if (capabilities.includes("ai.benchmark")) return "benchmark";
-  if (capabilities.includes("ai.artifacts")) return "repository";
-  return "community";
-}
-
-export function inferAiSourceClass(ref: string): AiSourceClass {
-  return SOURCE_CLASS_BY_REF[ref] ?? "community";
-}
 
 function stringValue(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -262,43 +182,7 @@ function firstTimestamp(
 }
 
 export function canonicalizeAiUrl(raw: string): string {
-  const value = raw.trim();
-  if (!value) return "";
-  let urlValue = value.startsWith("//") ? `https:${value}` : value;
-  try {
-    let parsed = new URL(urlValue);
-    if (
-      parsed.hostname.endsWith("duckduckgo.com") &&
-      parsed.pathname === "/l/" &&
-      parsed.searchParams.get("uddg")
-    ) {
-      urlValue = parsed.searchParams.get("uddg") ?? urlValue;
-      parsed = new URL(urlValue);
-    }
-    if (parsed.hostname.endsWith("search.yahoo.com")) {
-      const yahooTarget = /\/RU=([^/]+)(?:\/|$)/.exec(parsed.pathname)?.[1];
-      if (yahooTarget) parsed = new URL(decodeURIComponent(yahooTarget));
-    }
-    parsed.hash = "";
-    const trackingKeys = new Set<string>();
-    parsed.searchParams.forEach((_value, key) => {
-      if (/^(utm_|fbclid$|gclid$|mc_cid$|mc_eid$)/i.test(key)) {
-        trackingKeys.add(key);
-      }
-    });
-    for (const key of trackingKeys) {
-      parsed.searchParams.delete(key);
-    }
-    if (
-      (parsed.protocol === "https:" && parsed.port === "443") ||
-      (parsed.protocol === "http:" && parsed.port === "80")
-    ) {
-      parsed.port = "";
-    }
-    return parsed.toString();
-  } catch {
-    return "";
-  }
+  return canonicalizeUrl(raw);
 }
 
 function domainOf(url: string): string {
@@ -822,30 +706,6 @@ export function reciprocalRankFuse(
     }));
 }
 
-function extractMarkdownLinks(
-  markdown: string,
-  baseUrl: string,
-  limit: number,
-): Array<{ text: string; url: string }> {
-  const links: Array<{ text: string; url: string }> = [];
-  const seen = new Set<string>();
-  for (const match of markdown.matchAll(
-    /(?<!!)\[([^\]]+)]\(([^)\s]+)(?:\s+"[^"]*")?\)/g,
-  )) {
-    try {
-      if (match[1].trim().startsWith("![")) continue;
-      const url = canonicalizeAiUrl(new URL(match[2], baseUrl).toString());
-      if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) continue;
-      seen.add(url);
-      links.push({ text: match[1].trim(), url });
-      if (links.length >= limit) break;
-    } catch {
-      continue;
-    }
-  }
-  return links;
-}
-
 export function structureAiDocument(
   url: string,
   markdown: string,
@@ -853,56 +713,45 @@ export function structureAiDocument(
   maxChars: number,
   maxLinks: number,
 ): Record<string, unknown> {
-  const canonicalUrl = canonicalizeAiUrl(url);
-  const originalCharCount = markdown.length;
-  const content = markdown.slice(0, maxChars);
-  const allHeadings = markdown
-    .split("\n")
-    .map((line) => /^(#{1,6})\s+(.+?)\s*$/.exec(line))
-    .filter((match): match is RegExpExecArray => match !== null)
-    .map((match) => ({
-      level: match[1].length,
-      title: match[2]
-        .replace(/\s*\[[^\]]*]\([^)]*"Permalink[^)]*\)\s*$/i, "")
-        .trim(),
-    }));
-  const domain = domainOf(canonicalUrl);
-  const firstLine = content
-    .split("\n")
-    .map((line) => line.trim())
-    .find(Boolean);
-  const documentTitle =
-    firstLine && !/^(?:#|[-*+]\s|\d+\.\s|\[)/.test(firstLine)
-      ? firstLine.replace(/\s+—\s+.+$/, "").trim()
-      : "";
-  const title =
-    documentTitle || allHeadings[0]?.title || domain || canonicalUrl;
+  const evidence = structureEvidenceDocument({
+    sourceUrl: url,
+    content: markdown,
+    contentType: "text/markdown",
+    contentFormat: "markdown",
+    sourceAdapter: "web",
+    sourceCommand: "read",
+    reader: "direct",
+    retrievedAt,
+    maxChars,
+    maxLinks,
+  });
+  return enrichAiEvidenceDocument(evidence);
+}
+
+export function enrichAiEvidenceDocument(
+  evidence: EvidenceDocument,
+): Record<string, unknown> {
+  const primarySource = identifyAiPrimarySource(evidence.url);
   const vendors = inferAiVendors(
-    canonicalUrl,
-    `${title} ${content.slice(0, 500)}`,
+    evidence.url,
+    `${evidence.title} ${evidence.content.slice(0, 500)}`,
   );
   const vendor = vendors.length === 1 ? vendors[0] : "unknown";
+  const isOfficial = officialSource(evidence.url);
+  const sourceClass = isOfficial
+    ? "official"
+    : hostedArtifact(evidence.url)
+      ? "hosted-artifact"
+      : "community";
   return {
-    id: createHash("sha256").update(canonicalUrl).digest("hex").slice(0, 24),
-    title,
-    url: canonicalUrl,
-    domain,
+    ...evidence,
     vendor,
     vendors,
-    source_class: officialSource(canonicalUrl)
-      ? "official"
-      : hostedArtifact(canonicalUrl)
-        ? "hosted-artifact"
-        : "community",
-    content_format: "markdown",
-    headings: allHeadings.slice(0, 200),
-    heading_count: allHeadings.length,
-    links: extractMarkdownLinks(content, canonicalUrl, maxLinks),
-    char_count: content.length,
-    original_char_count: originalCharCount,
-    truncated: originalCharCount > maxChars,
-    content_sha256: createHash("sha256").update(content).digest("hex"),
-    retrieved_at: retrievedAt,
-    content,
+    source_class: sourceClass,
+    organization: isOfficial ? (primarySource?.name ?? "") : "",
+    organization_type: isOfficial
+      ? (primarySource?.type ?? "unknown")
+      : "unknown",
+    primary_source_id: isOfficial ? (primarySource?.id ?? "") : "",
   };
 }

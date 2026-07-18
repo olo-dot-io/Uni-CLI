@@ -273,9 +273,11 @@ export async function readArxivPaper(
     arxivArtifactFilename({ id, title: entry.title }),
   );
   const download = await httpDownload(pdfUrl, path, {
-    Accept: "application/pdf,*/*",
-    Referer: arxivAbsUrl(canonicalId),
-    "User-Agent": "unicli-arxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    headers: {
+      Accept: "application/pdf,*/*",
+      Referer: arxivAbsUrl(canonicalId),
+      "User-Agent": "unicli-arxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    },
   });
   if (download.status === "failed" || !download.path) {
     throw new Error(

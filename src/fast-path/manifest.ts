@@ -1,10 +1,16 @@
 /**
- * Generated manifest reader — the discovery-only fast path consumes
- * `dist/manifest.json` instead of loading every adapter through Commander.
- *
- * Keep this module side-effect free: the entry decides whether absence of
- * the manifest is fatal or simply means "no fast path; fall through to the
- * full Commander tree".
+ * @owner       src::fast-path::manifest
+ * @does        Loads and types the compact generated manifest used by discovery without booting Commander.
+ * @needs       node fs/path/url, generated dist/manifest.json, and shared target-surface types
+ * @feeds       fast-path list, search, describe, repair, and command-contract projection
+ * @breaks      Omitting authentication or retrieval metadata makes fast-path discovery disagree with the live adapter registry.
+ * @invariants  Loading is side-effect free; absence returns undefined for caller-controlled fallback; declared command metadata is preserved verbatim.
+ * @side-effects Reads one generated JSON file when present.
+ * @perf        One bounded synchronous manifest read and parse per process cache fill.
+ * @concurrency Module state contains only the parsed immutable manifest cache.
+ * @test        tests/unit/fast-path.test.ts
+ * @stability   stable
+ * @since       2026-04-01
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -38,6 +44,7 @@ export type ManifestCommand = {
   columns?: string[];
   defaultFormat?: string;
   capabilities?: string[];
+  auth_requirement?: "required" | "optional" | "none";
   executables?: string[];
   minimum_capability?: string;
   pipeline_steps?: number;

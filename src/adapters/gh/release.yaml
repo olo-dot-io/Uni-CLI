@@ -35,7 +35,14 @@ args:
 columns: [tagName, name, publishedAt, isPrerelease, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec", "ai.search", "ai.release"]
+retrieval:
+  operation: discover
+  result_kind: release
+  source_class: hosted-artifact
+  arguments:
+    limit: limit
+    repository: repo
+capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

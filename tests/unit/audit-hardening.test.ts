@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -36,10 +36,9 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
   it("accepts a public https URL", async () => {
     const { assertSafeRequestUrl } =
       await import("../../src/engine/executor.js");
-    expect(() => assertSafeRequestUrl("https://api.example.com/v1/foo")).not
-      .toThrow;
-    expect(() => assertSafeRequestUrl("https://api.example.com/v1/foo")).not
-      .toThrow;
+    expect(() =>
+      assertSafeRequestUrl("https://api.example.com/v1/foo"),
+    ).not.toThrow();
   });
 
   it.each([
@@ -60,6 +59,11 @@ describe("assertSafeRequestUrl — SSRF defence on pipeline fetch", () => {
     ["RFC1918 10/8", "http://10.0.0.1/internal"],
     ["RFC1918 192.168/16", "http://192.168.1.1/router"],
     ["RFC1918 172.16/12", "http://172.16.5.9/internal"],
+    ["IPv4-mapped IPv6 loopback", "http://[::ffff:7f00:1]/internal"],
+    ["IPv4-mapped IPv6 private", "http://[::ffff:a00:1]/internal"],
+    ["benchmark network", "http://198.18.0.1/internal"],
+    ["shared address space", "http://100.64.0.1/internal"],
+    ["IPv6 documentation", "http://[2001:db8::1]/internal"],
     ["localhost literal", "http://localhost/"],
   ])("rejects %s", async (_label, url) => {
     const { assertSafeRequestUrl } =

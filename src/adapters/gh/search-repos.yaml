@@ -57,8 +57,16 @@ args:
 columns:
   [fullName, description, stargazersCount, forksCount, language, url, updatedAt]
 
-capabilities:
-  ["subprocess.exec", "auth.executable.gh", "ai.search", "ai.artifacts"]
+retrieval:
+  operation: discover
+  result_kind: repository
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    sort: sort
+    order: order
+capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

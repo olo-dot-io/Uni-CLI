@@ -665,9 +665,11 @@ export async function downloadRxivPdf(
     }),
   );
   const download = await httpDownload(pdf, path, {
-    Accept: "application/pdf,*/*",
-    Referer: `${config.webOrigin}/`,
-    "User-Agent": "unicli-rxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    headers: {
+      Accept: "application/pdf,*/*",
+      Referer: `${config.webOrigin}/`,
+      "User-Agent": "unicli-rxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    },
   });
   if (download.status === "failed") {
     throw rxivAssetError(config, "PDF", doi, download.error ?? "unknown error");

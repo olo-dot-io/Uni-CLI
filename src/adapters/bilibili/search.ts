@@ -64,7 +64,13 @@ cli({
     },
   ],
   columns: ["rank", "title", "author", "play", "published_at", "bvid", "url"],
-  capabilities: ["http.fetch", "ai.search", "ai.community", "ai.video"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "video",
+    source_class: "community",
+    arguments: { query: "keyword", limit: "limit" },
+  },
+  capabilities: ["http.fetch"],
   func: async (_page, kwargs) => {
     const keyword = String(kwargs.keyword);
     const limit = Number(kwargs.limit) || 20;

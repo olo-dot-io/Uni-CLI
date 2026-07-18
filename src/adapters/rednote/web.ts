@@ -951,7 +951,7 @@ cli({
       const result = await httpDownload(
         item.url,
         join(output, filename),
-        cookieHeader ? { Cookie: cookieHeader } : undefined,
+        cookieHeader ? { headers: { Cookie: cookieHeader } } : undefined,
       );
       return {
         index: index + 1,

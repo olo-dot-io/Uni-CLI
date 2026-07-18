@@ -344,7 +344,7 @@ describe("rednote agent-facing web commands", () => {
       ]);
       expect(fetchMock).toHaveBeenCalledWith(
         "https://ci.rednote.com/example.jpg?token=abc",
-        { headers: { Cookie: "sid=secret" } },
+        { headers: { Cookie: "sid=secret" }, redirect: "manual" },
       );
     } finally {
       vi.unstubAllGlobals();

@@ -1,14 +1,22 @@
 /**
- * @owner Uni-CLI Core
- * @does Projects adapter and core registry commands into the agent-native command contract.
- * @needs AdapterManifest, AdapterCommand, CoreDiscoveryCommand, operation policy metadata.
- * @feeds describe, MCP, agent packs, benchmark generation, repair tooling.
- * @breaks Missing source paths, schemas, safety metadata, or repair metadata.
+ * @owner       src::core::command-contract
+ * @does        Projects adapter and core registry commands into one agent-native command contract.
+ * @needs       AdapterManifest, AdapterCommand, CoreDiscoveryCommand, operation policy, authentication, and retrieval metadata
+ * @feeds       describe, MCP, agent packs, benchmark generation, and repair tooling
+ * @breaks      Missing source paths, schemas, safety metadata, authentication truth, retrieval metadata, or repair metadata misleads every discovery surface.
+ * @invariants  In-process and generated-manifest projections preserve the same strategy, authentication requirement, retrieval contract, policy, and repair path.
+ * @side-effects None.
+ * @perf        O(arguments + capabilities) per command.
+ * @concurrency Pure projection functions are safe for concurrent callers.
+ * @test        tests/unit/command-contract.test.ts, tests/unit/fast-path.test.ts
+ * @stability   stable
+ * @since       2026-06-18
  */
 
 import {
   commandRequiresAuth,
   commandAuthSetupCommand,
+  commandHasOptionalAuth,
   commandStrategy,
   commandUsesBrowser,
 } from "../registry.js";
@@ -24,6 +32,7 @@ import type {
   AdapterCommand,
   AdapterManifest,
   OutputSchema,
+  RetrievalMetadata,
   Strategy,
   TargetSurface,
 } from "../types.js";
@@ -81,6 +90,7 @@ export interface CommandContractEffect {
 export interface CommandContractAuth {
   strategy: Strategy | "public";
   required: boolean;
+  optional?: boolean;
   setup_command?: string;
 }
 
@@ -126,6 +136,7 @@ export interface CommandContract {
   eval: CommandContractEval;
   repair: CommandContractRepair;
   artifacts: CommandContractArtifacts;
+  retrieval?: RetrievalMetadata;
 }
 
 export type CommandContractLintSeverity = "error" | "warning";
@@ -255,6 +266,7 @@ export function buildCommandContract(
   const args = command.adapterArgs ?? [];
   const strategy = commandStrategy(adapter, command);
   const authRequired = commandRequiresAuth(adapter, command);
+  const authOptional = commandHasOptionalAuth(command);
   const authSetupCommand = commandAuthSetupCommand(adapter, command);
   const targetSurface = resolveOperationTargetSurface({
     adapterType: adapter.type,
@@ -316,6 +328,7 @@ export function buildCommandContract(
     auth: {
       strategy: strategy ?? "public",
       required: authRequired,
+      ...(authOptional ? { optional: true } : {}),
       ...(authSetupCommand ? { setup_command: authSetupCommand } : {}),
     },
     governance: {
@@ -345,6 +358,7 @@ export function buildCommandContract(
       produces_files: artifactValidators.length > 0,
       validators: artifactValidators.map((validator) => validator.kind),
     },
+    ...(command.retrieval ? { retrieval: command.retrieval } : {}),
   };
 }
 

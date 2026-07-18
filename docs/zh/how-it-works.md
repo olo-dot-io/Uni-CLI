@@ -135,7 +135,7 @@ live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth
 
 ## v2 AgentEnvelope
 
-每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1815<!-- /STATS --></span> 条命令。
+每条命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent 用一份 schema 解析 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条命令。
 
 ```json
 {
@@ -225,7 +225,7 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状跨 <span><!-- STATS:site_count -->323<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1815<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
+这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状跨 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条命令。一种错误回执跨每一次失败。一条 self-repair 路径跨每一个适配器。
 
 ## 延伸阅读
 

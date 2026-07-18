@@ -142,6 +142,11 @@ describe("unicli extract <url> — success path", () => {
     expect(env.data.url).toBe(`${baseUrl}/page`);
     expect(env.data.format).toBe("markdown");
     expect(env.data.http_status).toBe(200);
+    expect(env.data.schema_version).toBe("evidence-document.v1");
+    expect(env.data.source_url).toBe(`${baseUrl}/page`);
+    expect(env.data.source_adapter).toBe("web");
+    expect(env.data.source_command).toBe("read");
+    expect(env.data.content_sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(env.data.truncated).toBe(false);
     expect(env.data.content).toMatch(/^# Hello/);
     expect(env.data.content).toContain("World");

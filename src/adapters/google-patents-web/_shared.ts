@@ -2,13 +2,13 @@
  * @owner       src::adapters::google-patents-web::_shared
  * @does        Shared HTTP helpers and types for the KEYLESS Google Patents web adapter — distinct from the BigQuery-backed google-patents-bq adapter (which requires a billed GCP project). This adapter uses the public XHR endpoint that drives patents.google.com and the SSR /patent/<id>/en bibliography page, both of which are reachable with only a real-browser User-Agent header.
  * @needs       src/engine/normalizer/patent-envelope.ts, src/types/patent.ts, node:fetch (global)
- * @feeds       src/adapters/google-patents-web/search.yaml, src/adapters/google-patents-web/get.ts
+ * @feeds       src/adapters/google-patents-web/search.ts, src/adapters/google-patents-web/get.ts
  * @breaks      throws GooglePatentsHttpError when the endpoint returns non-2xx or unparseable JSON; callers surface PATENT_API_DEPRECATED to the meta-command
- * @invariants  every outbound request carries a real-browser User-Agent — Google rejects bare `node-fetch`/`python-requests`; the @keyless-best-effort verification tag is emitted in adapter file headers
+ * @invariants  every outbound request carries a real-browser User-Agent; normalized search rows link to their patent detail rather than the transient XHR query endpoint; the @keyless-best-effort verification tag is emitted in adapter file headers
  * @side-effects HTTPS egress to patents.google.com only; no env reads, no cookies
  * @perf        single request per call; XHR responses are ~40-100 KB
  * @concurrency safe — pure functions plus stateless `fetch`
- * @test        covered transitively via tests/unit/adapters/google-patents-web/*.test.ts (none yet — adapters ship with live verification proof in docs/skills/patent-cookbook.md)
+ * @test        src/adapters/google-patents-web/_shared.test.ts and live verification in docs/skills/patent-cookbook.md
  * @stability   experimental — Google does not publish a stability contract for this XHR
  * @since       2026-05-18
  * @verification keyless-best-effort
@@ -203,7 +203,7 @@ export function projectGoogleRowToRecord(
   const cleanSnippet = patent.snippet ? stripHtml(patent.snippet) : undefined;
   return {
     publication_number: pubNo,
-    title: patent.title ? patent.title.trim() : undefined,
+    title: patent.title ? stripHtml(patent.title) : undefined,
     abstract: cleanSnippet,
     inventors: patent.inventor ? [{ name: patent.inventor.trim() }] : undefined,
     assignees: patent.assignee ? [{ name: patent.assignee.trim() }] : undefined,
@@ -212,8 +212,15 @@ export function projectGoogleRowToRecord(
     grant_date: patent.grant_date || undefined,
     priority_date: patent.priority_date || undefined,
     source_adapter: "google-patents-web",
-    source_url: sourceUrl,
+    source_url: googlePatentDetailUrl(row.id, sourceUrl),
   };
+}
+
+function googlePatentDetailUrl(id: string, fallback: string): string {
+  const detailPath = /^\/?(patent\/[^/?#\s]+(?:\/[^/?#\s]+)?)/.exec(id)?.[1];
+  return detailPath
+    ? new URL(`/${detailPath}`, "https://patents.google.com").toString()
+    : fallback;
 }
 
 /** `patent/US11741188B2/en` → `US11741188B2`. */

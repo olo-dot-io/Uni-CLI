@@ -1,9 +1,14 @@
 /**
  * @owner   src/adapters/pubmed/articles.ts
- * @does    Register agent-facing PubMed search, normalized paper metadata, field/value article detail, PMC full-text read, author, citation, and related-article commands.
+ * @does    Register PubMed discovery as generic biomedical evidence plus normalized article detail, PMC full text, author, citation, and related-article commands.
  * @needs   NCBI E-utilities PubMed/PMC APIs, TypeScript adapter loader, PMID/PMCID/query validation.
- * @feeds   surface coverage ledger, biomedical literature command surface, agent-readable PubMed rows, scholar full-text workflow.
+ * @feeds   generic research, biomedical literature, agent-readable PubMed rows, and scholar full-text workflows.
  * @breaks  NCBI E-utilities envelope drift, weak PMID/PMCID validation, missing PMC full text, or silent empty rows hide literature lookup failures.
+ * @invariants Search results retain PMID and canonical PubMed URL; identifier-specific commands validate PMID/PMCID before network access.
+ * @side-effects HTTPS requests to NCBI E-utilities and PubMed Central.
+ * @test src/adapters/pubmed/articles.test.ts
+ * @stability stable
+ * @since 2026-07-09
  */
 
 import { DOMParser, type Document, type Element } from "@xmldom/xmldom";
@@ -517,6 +522,12 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: SUMMARY_COLUMNS,
+  retrieval: {
+    operation: "discover",
+    result_kind: "paper",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit" },
+  },
   capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const query = requirePubMedText(kwargs.query, "query");

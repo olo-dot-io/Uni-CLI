@@ -66,13 +66,13 @@ cli({
     },
   ],
   columns: ["title", "subreddit", "author", "score", "comments", "url"],
-  capabilities: [
-    "cdp-browser.navigate",
-    "cdp-browser.evaluate",
-    "ai.search",
-    "ai.community",
-    "ai.post",
-  ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "post",
+    source_class: "community",
+    arguments: { query: "query", limit: "limit", sort: "sort" },
+  },
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate"],
   func: async (page, kwargs) => {
     const p = page as IPage;
     const query = String(kwargs.query ?? "");

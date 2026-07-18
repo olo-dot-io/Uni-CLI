@@ -85,7 +85,13 @@ cli({
     },
   ],
   columns: ["title", "channel", "views", "videoId"],
-  capabilities: ["http.fetch", "ai.search", "ai.community", "ai.video"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "video",
+    source_class: "community",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["http.fetch"],
   async func(_page, kwargs) {
     const query = kwargs.query as string;
     const limit = (kwargs.limit as number) ?? 10;

@@ -43,6 +43,7 @@ import type {
   AdapterType,
   BrowserSessionPreference,
   PipelineStep,
+  RetrievalMetadata,
 } from "../types.js";
 
 /**
@@ -181,6 +182,8 @@ interface YamlAdapter {
   output?: string | Record<string, unknown>;
   // schema-v2 required metadata
   capabilities?: string[];
+  auth_requirement?: AdapterCommand["auth_requirement"];
+  retrieval?: RetrievalMetadata;
   minimum_capability?: string;
   trust?: string;
   confidentiality?: string;
@@ -572,6 +575,8 @@ export function loadAdaptersFromDir(dir: string): number {
                 (cap): cap is string => typeof cap === "string",
               )
             : undefined,
+          auth_requirement: parsed.auth_requirement,
+          retrieval: v2Result.ok ? v2Result.data.retrieval : undefined,
           paginated: parsed.paginated === true ? true : undefined,
         };
         count++;

@@ -632,6 +632,9 @@ export function extractTsRegistrations(
               defaultFormat:
                 getObjectString(first, "defaultFormat", bindings) || undefined,
               capabilities: getStringArray(first, "capabilities", constArrays),
+              auth_requirement:
+                getObjectString(first, "auth_requirement", bindings) ||
+                undefined,
               executables: getStringArray(first, "executables", constArrays),
               minimum_capability:
                 getObjectString(first, "minimum_capability", bindings) ||

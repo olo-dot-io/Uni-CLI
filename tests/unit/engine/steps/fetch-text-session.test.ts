@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { stepFetchText } from "../../../../src/engine/steps/fetch-text.js";
+import {
+  fetchTextResource,
+  stepFetchText,
+} from "../../../../src/engine/steps/fetch-text.js";
 
 const ctx = (over: Record<string, unknown> = {}) => ({
   data: null,
@@ -176,16 +179,17 @@ describe("fetch_text capture_cookies", () => {
   });
 
   it("does NOT capture cookies from a cross-site final URL (leak guard)", async () => {
-    mockOnce(() => {
-      const r = new Response("body", {
-        status: 200,
-        headers: [["set-cookie", "evil=1; Path=/"]],
-      });
-      Object.defineProperty(r, "url", {
-        value: "https://evil.example.com/landing",
-      });
-      return r;
-    });
+    mockOnce((url) =>
+      url === "https://kyfw.12306.cn/otn/leftTicket/init"
+        ? new Response(null, {
+            status: 302,
+            headers: { location: "https://evil.example.com/landing" },
+          })
+        : new Response("body", {
+            status: 200,
+            headers: [["set-cookie", "evil=1; Path=/"]],
+          }),
+    );
     const out = await stepFetchText(ctx(), {
       url: "https://kyfw.12306.cn/otn/leftTicket/init",
       capture_cookies: true,
@@ -205,6 +209,109 @@ describe("fetch_text capture_cookies", () => {
       url: "https://kyfw.12306.cn/otn/x",
     });
     expect(out.cookieHeader).toBeUndefined();
+  });
+});
+
+describe("fetch_text validated redirects", () => {
+  it("rejects reserved addresses at the exported fetch boundary", async () => {
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    delete process.env.UNICLI_ALLOW_LOCAL;
+    const calls = mockOnce(() => new Response("must not execute"));
+    try {
+      await expect(
+        fetchTextResource(
+          "http://127.0.0.1:8080/internal",
+          { url: "http://127.0.0.1:8080/internal" },
+          {},
+          0,
+        ),
+      ).rejects.toThrow(/blocked fetch to reserved\/local address/);
+      expect(calls).toHaveLength(0);
+    } finally {
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+    }
+  });
+
+  it("rejects a public redirect before contacting its reserved target", async () => {
+    const previousAllowLocal = process.env.UNICLI_ALLOW_LOCAL;
+    delete process.env.UNICLI_ALLOW_LOCAL;
+    const calls = mockOnce(
+      () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "http://127.0.0.1:8080/internal" },
+        }),
+    );
+    try {
+      await expect(
+        fetchTextResource(
+          "https://example.com/redirect",
+          { url: "https://example.com/redirect" },
+          {},
+          0,
+        ),
+      ).rejects.toThrow(/blocked fetch to reserved\/local address/);
+      expect(calls).toHaveLength(1);
+    } finally {
+      if (previousAllowLocal === undefined) {
+        delete process.env.UNICLI_ALLOW_LOCAL;
+      } else {
+        process.env.UNICLI_ALLOW_LOCAL = previousAllowLocal;
+      }
+    }
+  });
+
+  it("strips credentials across origins and reports the validated final URL", async () => {
+    const calls = mockOnce((url) =>
+      url === "https://example.com/start"
+        ? new Response(null, {
+            status: 302,
+            headers: { location: "https://example.org/final" },
+          })
+        : new Response("public body", { status: 200 }),
+    );
+
+    const resource = await fetchTextResource(
+      "https://example.com/start",
+      { url: "https://example.com/start" },
+      { Authorization: "Bearer secret", Cookie: "session=secret" },
+      0,
+    );
+
+    const redirectedHeaders = new Headers(calls[1]?.init.headers);
+    expect(resource.finalUrl).toBe("https://example.org/final");
+    expect(redirectedHeaders.has("authorization")).toBe(false);
+    expect(redirectedHeaders.has("cookie")).toBe(false);
+  });
+
+  it("preserves the caller cancellation reason instead of making it retryable", async () => {
+    const controller = new AbortController();
+    const reason = new Error("caller-cancelled");
+    globalThis.fetch = (async (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal?.reason),
+          {
+            once: true,
+          },
+        );
+      })) as unknown as typeof fetch;
+
+    const pending = fetchTextResource(
+      "https://example.com/slow",
+      { url: "https://example.com/slow" },
+      {},
+      0,
+      { signal: controller.signal },
+    );
+    controller.abort(reason);
+
+    await expect(pending).rejects.toBe(reason);
   });
 });
 

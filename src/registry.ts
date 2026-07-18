@@ -4,7 +4,7 @@
  * @needs src/types command execution context, src/discovery/aliases, src/core/auth-contract
  * @feeds src/discovery/loader.ts, src/commands/dispatch.ts, src/discovery/search.ts, MCP and ACP command surfaces
  * @breaks Propagates malformed adapter command metadata to command resolution and invocation callers.
- * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths are preserved unless the adapter sets one explicitly; TypeScript functions receive the kernel execution context.
+ * @invariants Every registered command is keyed by stable site and command names; loader-provided source paths and explicit authentication/retrieval metadata are preserved unless the adapter sets them explicitly; TypeScript functions receive the kernel execution context.
  * @side-effects Mutates the process-local adapter registry map.
  * @perf O(1) registration and command lookup; O(commands) listing.
  * @concurrency Not thread-safe; Node module registry is process-local and loader imports TS adapters sequentially.
@@ -17,6 +17,7 @@ import { AdapterType, Strategy } from "./types.js";
 import { SITE_CATEGORIES } from "./discovery/aliases.js";
 import {
   metadataAuthSetupCommand,
+  metadataHasOptionalAuth,
   metadataRequiresAuth,
 } from "./core/auth-contract.js";
 import type {
@@ -27,6 +28,7 @@ import type {
   SocialCapability,
   BrowserSessionPreference,
   CommandExecutionContext,
+  RetrievalMetadata,
 } from "./types.js";
 
 export { Strategy };
@@ -100,7 +102,12 @@ export function commandRequiresAuth(
   return metadataRequiresAuth(
     commandStrategy(adapter, command),
     command.capabilities,
+    command.auth_requirement,
   );
+}
+
+export function commandHasOptionalAuth(command: AdapterCommand): boolean {
+  return metadataHasOptionalAuth(command.auth_requirement);
 }
 
 export function commandAuthSetupCommand(
@@ -111,6 +118,7 @@ export function commandAuthSetupCommand(
     adapter.name,
     commandStrategy(adapter, command),
     command.capabilities,
+    command.auth_requirement,
   );
 }
 
@@ -210,6 +218,10 @@ export interface CliRegistration {
    * the underlying AdapterCommand at call time.
    */
   capabilities?: readonly string[];
+  /** Required, optional-by-route, or absent authentication contract. */
+  auth_requirement?: AdapterCommand["auth_requirement"];
+  /** Domain-neutral evidence discovery metadata; never used for permission. */
+  retrieval?: RetrievalMetadata;
   /** Local executable names used by commands that declare subprocess.*. */
   executables?: readonly string[];
   /** Schema-v2 minimum-capability token; defaults to `http.fetch`. */
@@ -222,6 +234,18 @@ export interface CliRegistration {
 }
 
 export function cli(config: CliRegistration): void {
+  if (config.retrieval?.arguments) {
+    const declaredArguments = new Set(
+      (config.args ?? []).map((argument) => argument.name),
+    );
+    for (const [role, target] of Object.entries(config.retrieval.arguments)) {
+      if (!declaredArguments.has(target)) {
+        throw new TypeError(
+          `${config.site}.${config.name} retrieval role ${role} maps to undeclared argument ${target}.`,
+        );
+      }
+    }
+  }
   let adapter = adapters.get(config.site);
   if (!adapter) {
     adapter = {
@@ -258,6 +282,8 @@ export function cli(config: CliRegistration): void {
     socialCapabilities: config.socialCapabilities,
     defaultFormat: config.defaultFormat,
     capabilities: config.capabilities ? [...config.capabilities] : undefined,
+    auth_requirement: config.auth_requirement,
+    retrieval: config.retrieval,
     executables: config.executables ? [...config.executables] : undefined,
     minimum_capability: config.minimum_capability,
     func: config.func as AdapterCommand["func"],

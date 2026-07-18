@@ -67,16 +67,15 @@ columns:
   ]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
+retrieval:
+  operation: discover
+  result_kind: paper
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
 capabilities:
-  [
-    "http.fetch",
-    "scholar.search",
-    "scholar.code",
-    "scholar.datasets",
-    "ai.search",
-    "ai.paper",
-    "ai.research",
-  ]
+  ["http.fetch", "scholar.search", "scholar.code", "scholar.datasets"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

@@ -4,7 +4,7 @@
  * @needs   ../../discovery/search, ../../discovery/core-catalog, ../../discovery/macos-dynamic, ../../core/auth-contract, ../../engine/repair/plan, ../../output/error-map, ../manifest, ../render, js-yaml, node:fs
  * @feeds   src/fast-path.ts
  * @breaks  Sets process.exitCode for invalid args or empty searches; propagates unreadable manifest errors; skips malformed user-adapter YAML.
- * @invariants Fast-path search shares the canonical scorer and owns manifest-to-document and user-adapter-to-document projection.
+ * @invariants Fast-path search shares the canonical scorer and owns manifest-to-document and user-adapter-to-document projection; describe preserves explicit required, optional, or absent authentication truth.
  * @side-effects Writes CLI output through Io, reads ~/.unicli/adapters, and may set process.exitCode.
  * @perf    Keeps startup bounded by reading compact manifest data instead of loading adapters.
  * @concurrency No shared mutable state beyond process.exitCode.
@@ -27,6 +27,7 @@ import {
 import { buildCoreCommandContract } from "../../core/command-contract.js";
 import {
   metadataAuthSetupCommand,
+  metadataHasOptionalAuth,
   metadataRequiresAuth,
 } from "../../core/auth-contract.js";
 import {
@@ -102,8 +103,16 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
         const category = info.category ?? "other";
         const strategy = command.strategy ?? "public";
         const tags: string[] = [];
-        if (metadataRequiresAuth(strategy, command.capabilities)) {
+        if (
+          metadataRequiresAuth(
+            strategy,
+            command.capabilities,
+            command.auth_requirement,
+          )
+        ) {
           tags.push("[auth]");
+        } else if (metadataHasOptionalAuth(command.auth_requirement)) {
+          tags.push("[auth optional]");
         }
         if (command.quarantined === true) tags.push("[quarantined]");
         return {
@@ -414,13 +423,20 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         site,
         strategy,
         command.capabilities,
+        command.auth_requirement,
       );
+      const authOptional = metadataHasOptionalAuth(command.auth_requirement);
       return {
         name: command.name,
         description: command.description ?? "",
         quarantined: command.quarantined === true,
         strategy,
-        auth: metadataRequiresAuth(strategy, command.capabilities),
+        auth: metadataRequiresAuth(
+          strategy,
+          command.capabilities,
+          command.auth_requirement,
+        ),
+        ...(authOptional ? { auth_optional: true } : {}),
         ...(authSetup ? { auth_setup: authSetup } : {}),
         browser: command.browser === true,
         args: summarizeArgs(command.args),
@@ -478,7 +494,9 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     site,
     strategy,
     command.capabilities,
+    command.auth_requirement,
   );
+  const authOptional = metadataHasOptionalAuth(command.auth_requirement);
 
   io.stdout(
     JSON.stringify(
@@ -487,7 +505,12 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         description: command.description ?? "",
         quarantined: command.quarantined === true,
         strategy,
-        auth: metadataRequiresAuth(strategy, command.capabilities),
+        auth: metadataRequiresAuth(
+          strategy,
+          command.capabilities,
+          command.auth_requirement,
+        ),
+        ...(authOptional ? { auth_optional: true } : {}),
         ...(authSetup ? { auth_setup: authSetup } : {}),
         browser: command.browser === true,
         target_surface: targetSurface,

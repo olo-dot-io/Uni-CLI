@@ -5,7 +5,7 @@
  * @needs       TypeScript standard types only.
  * @feeds       Every adapter, engine, browser provider, command, and transport.
  * @breaks      Compile-time contract mismatches across public Uni-CLI surfaces.
- * @invariants  Every potentially blocking page operation and TypeScript command function accepts caller-owned request cancellation without making cleanup cancellable.
+ * @invariants  Every potentially blocking page operation and TypeScript command function accepts caller-owned request cancellation without making cleanup cancellable; command authentication distinguishes required, optional, and none; retrieval metadata remains domain-neutral.
  * @side-effects none
  * @perf        Type-only declarations.
  * @concurrency AbortSignal parameters carry caller ownership across asynchronous page and command operations.
@@ -36,6 +36,8 @@ export enum Strategy {
   INTERCEPT = "intercept",
   UI = "ui",
 }
+
+export type AuthRequirement = "required" | "optional" | "none";
 
 export type TargetSurface = "web" | "desktop" | "system" | "mobile";
 export type BrowserSessionPreference = "auto" | "user" | "cdp";
@@ -120,6 +122,29 @@ export interface OutputSchema {
   compact?: boolean;
 }
 
+/** Extensible, kebab-case evidence kind declared by a domain/source adapter. */
+export type RetrievalResultKind = string;
+
+export type RetrievalSourceClass =
+  | "official"
+  | "hosted-artifact"
+  | "community"
+  | "search-index";
+
+/**
+ * Domain-neutral metadata for commands that discover evidence candidates.
+ * This is intentionally separate from `capabilities`: retrieval semantics
+ * describe what a read-only command returns, while capabilities describe what
+ * the command may execute and therefore participate in authorization.
+ */
+export interface RetrievalMetadata {
+  operation: "discover";
+  result_kind: RetrievalResultKind;
+  source_class: RetrievalSourceClass;
+  /** Extensible semantic-role -> declared adapter argument mapping. */
+  arguments?: Readonly<Record<string, string>>;
+}
+
 export interface PipelineStep {
   [action: string]: unknown;
 }
@@ -162,6 +187,15 @@ export interface AdapterCommand {
    * without each meta-command hard-coding a site list.
    */
   capabilities?: string[];
+
+  /**
+   * Overrides capability-derived authentication when a composite command can
+   * run publicly but explicit routes may activate an authenticated source.
+   */
+  auth_requirement?: AuthRequirement;
+
+  /** Read-only evidence discovery contract, independent of any domain pack. */
+  retrieval?: RetrievalMetadata;
 
   /**
    * Local executable names the command may invoke when it declares a

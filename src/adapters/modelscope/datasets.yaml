@@ -40,7 +40,14 @@ pipeline:
 
 columns: [id, title, downloads, likes, updated_at, url]
 
-capabilities: ["http.fetch", "ai.search", "ai.dataset"]
+retrieval:
+  operation: discover
+  result_kind: dataset
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

@@ -41,7 +41,7 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->323<!-- /STATS --> sites, <!-- STATS:command_count -->1815<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -53,7 +53,7 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 **Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +28 more (`unicli list`)
 
-**International**: twitter (47), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +80 more (`unicli list`)
+**International**: twitter (47), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +81 more (`unicli list`)
 
 **AI / ML**: chatgpt (17), antigravity (16), chatwise (16), notebooklm (15), claude (14), doubao-app (13), yollomi (12), deepseek (9), +17 more (`unicli list`)
 

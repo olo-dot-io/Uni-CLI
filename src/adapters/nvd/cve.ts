@@ -1,9 +1,14 @@
 /**
  * @owner   src/adapters/nvd/cve.ts
- * @does    Register agent-facing NVD CVE lookup command.
+ * @does    Register the agent-facing NVD CVE lookup as an official, domain-neutral vulnerability retrieval source.
  * @needs   Public NVD CVE API 2.0, TypeScript adapter loader, CVE id validation.
- * @feeds   surface coverage ledger, vulnerability intelligence command surface, agent-readable CVE rows.
+ * @feeds   generic research, vulnerability intelligence, surface coverage, and agent-readable CVE rows.
  * @breaks  NVD API envelope drift, weak CVE parsing, or silent empty rows hide vulnerability lookup failures.
+ * @invariants The query role accepts only a valid CVE identifier and every success links to the canonical NVD detail page.
+ * @side-effects HTTPS GET to the public NVD API.
+ * @test src/adapters/nvd/cve.test.ts
+ * @stability stable
+ * @since 2026-07-09
  */
 
 import { cli, Strategy } from "../../registry.js";
@@ -167,6 +172,14 @@ cli({
     "description",
     "url",
   ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "vulnerability",
+    source_class: "official",
+    arguments: { query: "id" },
+  },
+  capabilities: ["http.fetch"],
+  minimum_capability: "http.fetch",
   func: async (_page, kwargs) => {
     const id = requireCveId(kwargs.id);
     const body = (await fetchNvdJson(

@@ -303,10 +303,12 @@ async function readAclPaperPdf(
   );
   const path = join(outputDir, aclArtifactFilename(record));
   const download = await httpDownload(record.pdf_url, path, {
-    Accept: "application/pdf,*/*",
-    Referer: record.source_url ?? `${ORIGIN}/${record.id}/`,
-    "User-Agent":
-      "unicli-acl-anthology/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    headers: {
+      Accept: "application/pdf,*/*",
+      Referer: record.source_url ?? `${ORIGIN}/${record.id}/`,
+      "User-Agent":
+        "unicli-acl-anthology/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+    },
   });
   if (download.status === "failed" || !download.path) {
     throw new Error(
@@ -363,13 +365,13 @@ cli({
     { name: "limit", type: "int", default: 20 },
   ],
   columns: ["id", "title", "authors", "year", "venue", "pdf_url", "source_url"],
-  capabilities: [
-    "http.fetch",
-    "scholar.search",
-    "scholar.pdf",
-    "ai.search",
-    "ai.paper",
-  ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "paper",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["http.fetch", "scholar.search", "scholar.pdf"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("acl-anthology search query cannot be empty.");

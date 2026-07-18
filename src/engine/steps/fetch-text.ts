@@ -1,9 +1,9 @@
 //! @owner       src::engine::steps::fetch_text
-//! @does        HTTP request returning validated textual content; rejects binary MIME/magic before downstream text conversion, with optional session-cookie capture and bounded endpoint rotation
+//! @does        HTTP request returning size-bounded validated textual content; rejects binary MIME/magic before downstream text conversion, with optional session-cookie capture and bounded endpoint rotation
 //! @needs       ./fetch (FetchConfig), ../proxy, ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
 //! @feeds       ./index (barrel), pipeline executor via registry "fetch_text"
 //! @breaks      PipelineError on HTTP/network failures or unsupported binary content
-//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; non-text MIME and recognizable binary responses never become successful text; cookie capture is host-scoped; rotation is bounded
+//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; response bodies never exceed MAX_TEXT_RESOURCE_BYTES; non-text MIME and recognizable binary responses never become successful text; cookie capture is host-scoped; rotation is bounded
 //! @side-effects network I/O
 //! @perf        one fetch per attempt; rotation adds at most rotate_urls.length fetches
 //! @concurrency stateless per call
@@ -15,10 +15,14 @@ import { USER_AGENT } from "../../constants.js";
 import { setTimeout as delay } from "node:timers/promises";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
-import { assertSafeRequestUrl } from "../ssrf.js";
+import { UnsafeRequestUrlError } from "../ssrf.js";
 import { evalTemplate } from "../template.js";
-import { describeNetworkFailure, fetchWithProxy } from "../proxy.js";
+import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
+import {
+  fetchWithValidatedRedirects,
+  RedirectLimitError,
+} from "../validated-fetch.js";
 import {
   parseSetCookiePairs,
   mergeCookieHeader,
@@ -31,13 +35,22 @@ import {
   type FetchConfig,
 } from "./fetch.js";
 
-interface TextResult {
+export interface TextResource {
   text: string;
   /** Final response URL after redirects; falls back to the request URL. */
   finalUrl: string;
+  contentType: string;
+  status: number;
   /** Raw Set-Cookie lines from the response, empty when none. */
   setCookieLines: string[];
 }
+
+export interface FetchTextResourceOptions {
+  signal?: AbortSignal;
+  validateRequest?: (url: string) => void;
+}
+
+export const MAX_TEXT_RESOURCE_BYTES = 5_000_000;
 
 const TEXTUAL_CONTENT_TYPE =
   /^(?:text\/|application\/(?:json|xml|xhtml\+xml|javascript|x-javascript|graphql|yaml|x-yaml|toml|x-toml|ndjson|x-ndjson|json-seq|csv|markdown|sql|x-www-form-urlencoded|[a-z0-9.+-]+\+(?:json|xml))$)/i;
@@ -96,6 +109,70 @@ function unsupportedContentTypeError(
   );
 }
 
+function responseTooLargeError(
+  requestUrl: string,
+  observedBytes: number,
+  stepIndex: number,
+): PipelineError {
+  return new PipelineError(
+    `fetch_text stopped after ${observedBytes} bytes because the response from ${requestUrl} exceeds the ${MAX_TEXT_RESOURCE_BYTES}-byte text limit.`,
+    {
+      step: stepIndex,
+      action: "fetch_text",
+      config: { url: requestUrl },
+      errorType: "response_too_large",
+      url: requestUrl,
+      suggestion:
+        "Use a range-capable or source-specific artifact reader instead of loading the full response as text.",
+      retryable: false,
+      alternatives: [],
+      preserveErrorCode: true,
+    },
+  );
+}
+
+async function readBoundedBody(
+  response: Response,
+  requestUrl: string,
+  stepIndex: number,
+): Promise<Uint8Array> {
+  const declaredLength = Number(response.headers.get("content-length") ?? 0);
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_TEXT_RESOURCE_BYTES
+  ) {
+    await response.body?.cancel();
+    throw responseTooLargeError(requestUrl, declaredLength, stepIndex);
+  }
+  if (!response.body) return new Uint8Array();
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_TEXT_RESOURCE_BYTES) {
+        await reader.cancel();
+        throw responseTooLargeError(requestUrl, total, stepIndex);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
 /** Append resolved `params` to a URL, preserving an existing query string. */
 function withParams(
   url: string,
@@ -111,22 +188,30 @@ function withParams(
 }
 
 /** One request with the existing retry/backoff/error contract. */
-async function fetchTextOnce(
+export async function fetchTextResource(
   requestUrl: string,
   config: FetchConfig,
   headers: Record<string, string>,
   stepIndex: number,
-  signal?: AbortSignal,
-): Promise<TextResult> {
+  options: FetchTextResourceOptions = {},
+): Promise<TextResource> {
   const method = config.method ?? "GET";
-  const fetchInit: RequestInit = { method, headers, signal };
+  const fetchInit: RequestInit = {
+    method,
+    headers,
+    ...(options.signal ? { signal: options.signal } : {}),
+  };
 
   const maxAttempts = normalizeFetchAttempts(config.retry);
   const baseDelay = config.backoff ?? 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const resp = await fetchWithProxy(requestUrl, fetchInit);
+      const { response: resp, finalUrl } = await fetchWithValidatedRedirects(
+        requestUrl,
+        fetchInit,
+        { validateRequest: options.validateRequest },
+      );
       if (resp.ok) {
         const contentType = (resp.headers.get("content-type") ?? "")
           .split(";", 1)[0]
@@ -135,7 +220,7 @@ async function fetchTextOnce(
           await resp.body?.cancel();
           throw unsupportedContentTypeError(requestUrl, contentType, stepIndex);
         }
-        const bytes = new Uint8Array(await resp.arrayBuffer());
+        const bytes = await readBoundedBody(resp, requestUrl, stepIndex);
         const inferredBinaryType = binarySignature(bytes);
         if (inferredBinaryType) {
           throw unsupportedContentTypeError(
@@ -154,7 +239,9 @@ async function fetchTextOnce(
             : [];
         return {
           text,
-          finalUrl: resp.url || requestUrl,
+          finalUrl,
+          contentType,
+          status: resp.status,
           setCookieLines,
         };
       }
@@ -166,7 +253,9 @@ async function fetchTextOnce(
         resp.status === 503;
       const isLastAttempt = attempt === maxAttempts;
       if (retryable && !isLastAttempt) {
-        await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
+        await delay(baseDelay * 2 ** (attempt - 1), undefined, {
+          signal: options.signal,
+        });
         continue;
       }
 
@@ -188,9 +277,26 @@ async function fetchTextOnce(
         },
       );
     } catch (err) {
+      options.signal?.throwIfAborted();
       const isLastAttempt = attempt === maxAttempts;
-      if (err instanceof PipelineError) {
+      if (
+        err instanceof PipelineError ||
+        err instanceof UnsafeRequestUrlError
+      ) {
         throw err;
+      }
+      if (err instanceof RedirectLimitError) {
+        throw new PipelineError(err.message, {
+          step: stepIndex,
+          action: "fetch_text",
+          config: { url: requestUrl },
+          errorType: "http_error",
+          url: requestUrl,
+          suggestion:
+            "Use a canonical source URL with a bounded redirect chain.",
+          retryable: false,
+          alternatives: [],
+        });
       }
       if (isLastAttempt) {
         const message = describeNetworkFailure(err);
@@ -208,7 +314,9 @@ async function fetchTextOnce(
           },
         );
       }
-      await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
+      await delay(baseDelay * 2 ** (attempt - 1), undefined, {
+        signal: options.signal,
+      });
     }
   }
 
@@ -251,26 +359,28 @@ export async function stepFetchText(
   }
 
   let cookieHeader = ctx.cookieHeader;
-  let lastResult: TextResult | null = null;
+  let lastResult: TextResource | null = null;
 
   for (let i = 0; i < candidates.length; i += 1) {
     const requestUrl = withParams(candidates[i] as string, config, ctx);
-    assertSafeRequestUrl(requestUrl);
-    assertRuntimeNetworkAllowed(ctx, {
-      action: "fetch_text",
-      step: stepIndex,
-      config,
-      url: requestUrl,
-      access: networkAccessForMethod(config.method),
-    });
 
     if (cookieHeader) headers["Cookie"] = cookieHeader;
-    const result = await fetchTextOnce(
+    const result = await fetchTextResource(
       requestUrl,
       config,
       headers,
       stepIndex,
-      ctx.signal,
+      {
+        signal: ctx.signal,
+        validateRequest: (url) =>
+          assertRuntimeNetworkAllowed(ctx, {
+            action: "fetch_text",
+            step: stepIndex,
+            config,
+            url,
+            access: networkAccessForMethod(config.method),
+          }),
+      },
     );
     lastResult = result;
 

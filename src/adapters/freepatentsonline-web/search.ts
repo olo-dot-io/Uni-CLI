@@ -2,7 +2,7 @@
  * @owner       src::adapters::freepatentsonline-web::search
  * @does        Keyless patent search via www.freepatentsonline.com's SSR `result.html` listing — older site, still maintained, no JS gate, no auth. Complements google-patents-web as a second day-zero source.
  * @needs       src/adapters/freepatentsonline-web/_shared.ts, src/engine/normalizer/patent-envelope.ts, src/registry.ts
- * @feeds       src/commands/patent.ts (capability tag patent.search)
+ * @feeds       generic research and src/commands/patent.ts (capability tag patent.search)
  * @breaks      PATENT_API_DEPRECATED on non-2xx HTTP; PATENT_NOT_FOUND on empty listing; PATENT_SCHEMA_DRIFT when the listing_table selector no longer matches
  * @invariants  output rows are canonical PatentRecord; publication_number is decoded from the FPO link path (URL-encoded structural signal) — rows whose link does not encode a kind code are dropped, never fabricated
  * @side-effects HTTPS egress to www.freepatentsonline.com only
@@ -163,6 +163,12 @@ cli({
     },
   ],
   columns: ["publication_number", "title", "abstract", "source_url"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "patent",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit" },
+  },
   capabilities: ["http.fetch", "patent.search"],
   minimum_capability: "http.fetch",
   func: async (_page, kwargs) =>

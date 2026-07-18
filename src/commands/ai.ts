@@ -1,10 +1,10 @@
 /**
  * @owner       src::commands::ai
- * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, normalization, provenance, deduplication, and structured reading.
- * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter registry, shared kernel execution, web/Jina/Defuddle readers, scholar-artifacts PDF reader, pdftotext
+ * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, normalization, provenance, deduplication, and AI enrichment over the domain-neutral retrieval contract.
+ * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter retrieval metadata, shared kernel execution, and the evidence-document reader
  * @feeds       Agent AI research loops through `unicli ai search|pulse|read|sources|landscape|profiles`
- * @breaks      Missing ai.* capability tags, weak URL canonicalization, binary/challenge false success, silent source failures, or lossy normalization make current evidence undiscoverable or untraceable.
- * @invariants  Search executes only registered read-only ai.search source commands after the outer orchestrator is authorized; internal fan-out passes only declared args; partial failures are counted on every row and detailed once per response; PDF/challenge/binary inputs never become successful Markdown; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
+ * @breaks      Missing AI source-pack refs, weak domain enrichment, silent source failures, or lossy normalization make current AI evidence undiscoverable or untraceable.
+ * @invariants  Search executes only registered read-only retrieval commands selected by AI profiles after the outer orchestrator is authorized; internal fan-out passes only declared mapped args; partial failures are counted on every row and detailed once per response; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
  * @side-effects Search and pulse execute registered read-only adapters; read may create and remove one temporary PDF artifact while extracting text; sources, landscape, and profiles are network-free.
  * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; HTML readers are bounded to 30 seconds and PDF extraction to 60 seconds; normalization and reciprocal-rank fusion are O(S * R).
  * @concurrency Independent source invocations run in a bounded worker pool; each owns an abort signal and result state.
@@ -13,45 +13,43 @@
  * @since       2026-07-17
  */
 
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import {
   coerceAiContentRecords,
-  inferAiSourceClass,
-  inferAiSourceKind,
+  enrichAiEvidenceDocument,
   reciprocalRankFuse,
-  structureAiDocument,
   type AiContentRecord,
   type AiContentSource,
   type AiVendor,
 } from "./ai-content.js";
 import {
   AUTHENTICATED_AI_SOURCE_REFS,
-  identifyAiPrimarySource,
+  AI_ROLE_PROFILES,
+  OPTIONAL_AI_SOURCE_REFS,
   listAiLandscapeRows,
   listAiProfileRows,
   resolveAiRoleProfile,
   selectAiOfficialDomains,
   type AiRoleProfileId,
 } from "./ai-landscape.js";
-import { resolveArgs } from "../engine/args.js";
-import { buildInvocation, execute } from "../engine/kernel/execute.js";
-import { buildCommandContract } from "../core/command-contract.js";
 import { mapConcurrent } from "../engine/download.js";
+import {
+  EvidenceReadFailure,
+  readEvidenceDocument,
+} from "../engine/evidence-reader.js";
+import {
+  executeRetrievalRequests,
+  listRetrievalSources,
+  retrievalSourceCanRun,
+  type RetrievalRequest,
+  type RetrievalSource,
+} from "../engine/retrieval.js";
 import {
   commandAuthSetupCommand,
   commandRequiresAuth,
   commandStrategy,
-  getAllAdapters,
 } from "../registry.js";
-import type { AdapterCommand, AdapterManifest } from "../types.js";
 
-interface AiSourceCommand extends AiContentSource {
-  adapter: AdapterManifest;
-  command: AdapterCommand;
-}
+interface AiSourceCommand extends AiContentSource, RetrievalSource {}
 
 export interface AiSourceError {
   ref: string;
@@ -75,6 +73,7 @@ export interface AiSearchOptions {
   since?: string;
   limit?: string | number;
   profile?: string;
+  signal?: AbortSignal;
 }
 
 export interface AiPulseOptions {
@@ -84,6 +83,7 @@ export interface AiPulseOptions {
   window?: string;
   includeAuth?: boolean;
   limit?: string | number;
+  signal?: AbortSignal;
 }
 
 export interface AiPulseResult extends AiSearchResult {
@@ -127,8 +127,19 @@ export class AiCommandFailure extends Error {
 
 const AI_SOURCE_CONCURRENCY = 6;
 const AI_SOURCE_TIMEOUT_MS = 20_000;
-const AI_READ_TIMEOUT_MS = 30_000;
-const AI_PDF_READ_TIMEOUT_MS = 60_000;
+
+export const AI_RETRIEVAL_CAPABILITIES = [
+  "http.fetch",
+  "subprocess.exec",
+  "auth.executable.gh",
+  "cdp-browser.navigate",
+  "cdp-browser.evaluate",
+  "scholar.search",
+  "scholar.pdf",
+  "scholar.code",
+  "scholar.datasets",
+  "scholar.review",
+] as const;
 
 const VENDOR_CONFIG: Record<
   Exclude<AiVendor, "hugging-face" | "github" | "unknown">,
@@ -231,59 +242,38 @@ function shellQuote(value: string): string {
 }
 
 export function listAiSourceCommands(): AiSourceCommand[] {
-  return getAllAdapters()
-    .flatMap((adapter) =>
-      Object.entries(adapter.commands)
-        .filter(([, command]) =>
-          (command.capabilities ?? []).includes("ai.search"),
-        )
-        .map(([name, command]) => {
-          const contract = buildCommandContract({
-            adapter,
-            commandName: name,
-            command,
-          });
-          if (!contract.effect.read_only) {
-            throw new AiCommandFailure({
-              code: "ai_source_not_read_only",
-              message: `Registered AI source ${adapter.name}.${name} is not read-only.`,
-              suggestion:
-                "Remove the ai.search capability or redesign the source command as a read-only operation.",
-            });
-          }
-          const ref = `${adapter.name}.${name}`;
-          return {
-            ref,
-            site: adapter.name,
-            name,
-            adapter,
-            command,
-            kind: inferAiSourceKind(ref, command.capabilities ?? []),
-            sourceClass: inferAiSourceClass(ref),
-          } satisfies AiSourceCommand;
-        }),
-    )
-    .sort((left, right) => left.ref.localeCompare(right.ref));
+  const configuredRefs = new Set([
+    ...AI_ROLE_PROFILES.flatMap((profile) => profile.sourceRefs),
+    ...AUTHENTICATED_AI_SOURCE_REFS,
+    ...OPTIONAL_AI_SOURCE_REFS,
+  ]);
+  return listRetrievalSources()
+    .filter((source) => configuredRefs.has(source.ref))
+    .map((source) => ({
+      ...source,
+      kind: source.metadata.result_kind,
+      sourceClass: source.metadata.source_class,
+    }));
 }
 
 function commandCanRun(
   source: AiSourceCommand,
-  hasRepository: boolean,
+  opts: AiSearchOptions,
 ): boolean {
-  return (source.command.adapterArgs ?? []).every(
-    (arg) =>
-      !arg.required ||
-      arg.name === "query" ||
-      arg.name === "keyword" ||
-      arg.name === "limit" ||
-      (arg.name === "repo" && hasRepository),
-  );
+  return retrievalSourceCanRun(source, {
+    query: "query",
+    limit: 1,
+    sort: "relevance",
+    order: "desc",
+    since: opts.since,
+    repository: opts.repo,
+  });
 }
 
 function kindMatches(source: AiSourceCommand, requested: string): boolean {
   if (requested === "all") return true;
   if (requested === "community") {
-    return (source.command.capabilities ?? []).includes("ai.community");
+    return ["community", "discussion", "post", "video"].includes(source.kind);
   }
   return source.kind === requested;
 }
@@ -323,29 +313,7 @@ function resolveAiSources(opts: AiSearchOptions): AiSourceCommand[] {
   const requestedKind = opts.kind ?? "all";
   return [...new Map(selected.map((source) => [source.ref, source])).values()]
     .filter((source) => kindMatches(source, requestedKind))
-    .filter((source) => commandCanRun(source, Boolean(opts.repo)));
-}
-
-function declaredArgs(
-  command: AdapterCommand,
-  args: Record<string, unknown>,
-): Record<string, unknown> {
-  const schema = command.adapterArgs ?? [];
-  const names = new Set(schema.map((arg) => arg.name));
-  const filtered = Object.fromEntries(
-    Object.entries(args).filter(
-      ([name, value]) => names.has(name) && value !== undefined,
-    ),
-  );
-  const resolved = resolveArgs({
-    opts: filtered,
-    positionals: [],
-    schema: schema.map((arg) => ({ ...arg, positional: false })),
-    stdinIsTTY: true,
-  });
-  return Object.fromEntries(
-    Object.entries(resolved.args).filter(([name]) => names.has(name)),
-  );
+    .filter((source) => commandCanRun(source, opts));
 }
 
 function parseVendors(
@@ -476,31 +444,6 @@ function sourceSort(source: AiSourceCommand, mode: string): string {
   return "lastModified";
 }
 
-function retryCommand(
-  source: AiSourceCommand,
-  args: Record<string, unknown>,
-): string {
-  const positionals: string[] = [];
-  const options: string[] = [];
-  for (const arg of source.command.adapterArgs ?? []) {
-    const value = args[arg.name];
-    if (value === undefined || value === "") continue;
-    if (arg.positional) {
-      positionals.push(shellQuote(String(value)));
-      continue;
-    }
-    const flag = `--${arg.name.replaceAll("_", "-")}`;
-    if (arg.type === "bool") {
-      if (value === true) options.push(flag);
-    } else {
-      options.push(flag, shellQuote(String(value)));
-    }
-  }
-  return ["unicli", source.site, source.name, ...positionals, ...options].join(
-    " ",
-  );
-}
-
 function retryAiSearchCommand(
   query: string,
   opts: AiSearchOptions,
@@ -526,12 +469,11 @@ function retryAiSearchCommand(
   return parts.join(" ");
 }
 
-async function runAiSource(
+function prepareAiRetrievalRequest(
   source: AiSourceCommand,
   query: string,
   opts: AiSearchOptions,
-  retrievedAt: string,
-): Promise<{ records: AiContentRecord[]; error?: AiSourceError }> {
+): { request: RetrievalRequest; sourceQuery: string } {
   const requestedLimit = parseLimit(opts.limit, 20);
   const hasPostFilter =
     parseCsv(opts.vendors).length > 0 || parseCsv(opts.domains).length > 0;
@@ -543,60 +485,19 @@ async function runAiSource(
     30,
   );
   const sourceQuery = searchQueryForSource(source, query, opts);
-  const args = declaredArgs(source.command, {
-    query: sourceQuery,
-    keyword: sourceQuery,
-    repo: opts.repo,
-    limit: perSourceLimit,
-    sort: sourceSort(source, opts.sort ?? "relevance"),
-    order: "desc",
-    since: opts.since ? `${opts.since}T00:00:00.000Z` : undefined,
-  });
-  const invocation = buildInvocation(
-    "cli",
-    source.site,
-    source.name,
-    { args, source: "internal" },
-    { approved: true, signal: AbortSignal.timeout(AI_SOURCE_TIMEOUT_MS) },
-  );
-  const rerun = retryCommand(source, args);
-  if (!invocation) {
-    return {
-      records: [],
-      error: {
-        ref: source.ref,
-        code: "build_invocation_failed",
-        message: `could not build ${source.ref}`,
-        suggestion: `Inspect the registered contract with \`unicli describe ${source.site} ${source.name}\`.`,
-        alternatives: [`unicli describe ${source.site} ${source.name}`, rerun],
-        retry_command: rerun,
-      },
-    };
-  }
-  const result = await execute(invocation);
-  if (result.error) {
-    return {
-      records: [],
-      error: {
-        ref: source.ref,
-        code: result.error.code,
-        message: result.error.message,
-        suggestion: result.error.suggestion ?? `Retry or repair ${source.ref}.`,
-        adapter_path: result.error.adapter_path,
-        step: result.error.step,
-        retryable: result.error.retryable,
-        alternatives: [...(result.error.alternatives ?? []), rerun],
-        retry_command: rerun,
-      },
-    };
-  }
   return {
-    records: coerceAiContentRecords(
-      result.results,
+    request: {
       source,
-      sourceQuery,
-      retrievedAt,
-    ),
+      values: {
+        query: sourceQuery,
+        repository: opts.repo,
+        limit: perSourceLimit,
+        sort: sourceSort(source, opts.sort ?? "relevance"),
+        order: "desc",
+        since: opts.since ? `${opts.since}T00:00:00.000Z` : undefined,
+      },
+    },
+    sourceQuery,
   };
 }
 
@@ -735,12 +636,28 @@ export async function searchAiContent(
         : [effectiveOpts];
     return scopes.map((sourceScope) => ({ source, sourceScope }));
   });
-  const outcomes = await mapConcurrent(
-    sourceRuns,
-    AI_SOURCE_CONCURRENCY,
-    ({ source, sourceScope }) =>
-      runAiSource(source, normalizedQuery, sourceScope, retrievedAt),
+  const prepared = sourceRuns.map(({ source, sourceScope }) =>
+    prepareAiRetrievalRequest(source, normalizedQuery, sourceScope),
   );
+  const retrievalOutcomes = await executeRetrievalRequests(
+    prepared.map(({ request }) => request),
+    {
+      allowedCapabilities: AI_RETRIEVAL_CAPABILITIES,
+      concurrency: AI_SOURCE_CONCURRENCY,
+      timeoutMs: AI_SOURCE_TIMEOUT_MS,
+      signal: opts.signal,
+      retrievedAt,
+    },
+  );
+  const outcomes = retrievalOutcomes.map((outcome, index) => ({
+    records: coerceAiContentRecords(
+      outcome.results,
+      outcome.source as AiSourceCommand,
+      prepared[index].sourceQuery,
+      retrievedAt,
+    ),
+    error: outcome.error,
+  }));
 
   const errors = outcomes
     .map((outcome) => outcome.error)
@@ -878,6 +795,7 @@ export async function pulseAiContent(
         sort: "latest",
         since,
         limit: Math.min(Math.max(limit * 2, 20), 100),
+        signal: opts.signal,
       });
       return { rows, error: undefined };
     } catch (error) {
@@ -968,317 +886,65 @@ export async function readAiContent(
     reader?: string;
     firstPage?: string | number;
     lastPage?: string | number;
+    signal?: AbortSignal;
   } = {},
 ): Promise<Record<string, unknown>> {
   const maxChars = parseLimit(opts.maxCharsK, 100, "max_chars_k") * 1_000;
   const maxLinks = parseLimit(opts.maxLinks, 100, "max_links");
   const firstPage = parseLimit(opts.firstPage, 1, "first_page");
   const lastPage = parseLimit(opts.lastPage, 20, "last_page");
-  if (lastPage < firstPage) {
-    throw new AiCommandFailure({
-      code: "invalid_input",
-      message: "last_page must be greater than or equal to first_page.",
-      suggestion: "Choose an inclusive PDF page range from 1 to 100.",
-    });
-  }
   const reader = opts.reader ?? "direct";
-  if (!new Set(["direct", "jina", "defuddle"]).has(reader)) {
+  if (reader !== "direct" && reader !== "jina" && reader !== "defuddle") {
     throw new AiCommandFailure({
       code: "invalid_input",
       message: "reader must be direct, jina, or defuddle.",
       suggestion: "Use --reader direct, --reader jina, or --reader defuddle.",
     });
   }
-  let parsedUrl: URL;
+
+  let evidence;
   try {
-    parsedUrl = new URL(url);
-  } catch {
-    throw new AiCommandFailure({
-      code: "invalid_input",
-      message: "url must be an absolute HTTP(S) URL.",
-      suggestion: "Pass the canonical URL from an `unicli ai search` result.",
+    evidence = await readEvidenceDocument(url, {
+      maxChars,
+      maxLinks,
+      reader,
+      firstPage,
+      lastPage,
+      signal: opts.signal,
     });
-  }
-  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-    throw new AiCommandFailure({
-      code: "invalid_input",
-      message: "url must use HTTP or HTTPS.",
-      suggestion: "Pass the canonical URL from an `unicli ai search` result.",
-    });
+  } catch (error) {
+    if (error instanceof EvidenceReadFailure) {
+      throw new AiCommandFailure({
+        code: error.code,
+        message: error.message,
+        suggestion: error.suggestion,
+        retryable: error.retryable,
+        alternatives: error.alternatives,
+      });
+    }
+    throw error;
   }
 
-  const githubThreadMatch =
+  const enriched = enrichAiEvidenceDocument(evidence);
+  const parsedUrl = new URL(evidence.url);
+  const arxivId =
+    /(?:^|\.)arxiv\.org$/i.test(parsedUrl.hostname) &&
+    /^\/(?:pdf|abs)\/([^/?#]+?)(?:\.pdf)?$/.exec(parsedUrl.pathname)?.[1];
+  const githubThread =
     parsedUrl.hostname.toLowerCase() === "github.com"
-      ? /^\/([^/]+)\/([^/]+)\/(issues|pull)\/(\d+)\/?$/.exec(parsedUrl.pathname)
+      ? /^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/\d+\/?$/.exec(parsedUrl.pathname)
       : null;
-  if (githubThreadMatch) {
-    const commandName =
-      githubThreadMatch[3] === "issues" ? "issue-thread" : "pr-thread";
-    const resolved = getAllAdapters().find((adapter) => adapter.name === "gh");
-    const command = resolved?.commands[commandName];
-    if (!resolved || !command) {
-      throw new AiCommandFailure({
-        code: "AI_THREAD_READ_UNAVAILABLE",
-        message: `Registered gh.${commandName} command is unavailable.`,
-        suggestion: `Restore the GitHub thread reader or run \`unicli gh ${commandName} ${shellQuote(url)}\`.`,
-      });
-    }
-    const invocation = buildInvocation(
-      "cli",
-      "gh",
-      commandName,
-      {
-        args: declaredArgs(command, { ref: parsedUrl.toString() }),
-        source: "internal",
-      },
-      { approved: true, signal: AbortSignal.timeout(AI_READ_TIMEOUT_MS) },
-    );
-    if (!invocation) {
-      throw new AiCommandFailure({
-        code: "AI_THREAD_READ_UNAVAILABLE",
-        message: `Could not build gh.${commandName} invocation.`,
-        suggestion: `Run \`unicli describe gh ${commandName}\` to inspect the adapter contract.`,
-      });
-    }
-    const result = await execute(invocation);
-    if (result.error) {
-      throw new AiCommandFailure({
-        code: result.error.code,
-        message: result.error.message,
-        suggestion:
-          result.error.suggestion ??
-          "Retry the public GitHub thread or authenticate gh.",
-        retryable: result.error.retryable ?? false,
-        alternatives: [
-          ...(result.error.alternatives ?? []),
-          `unicli gh ${commandName} ${shellQuote(url)}`,
-        ],
-      });
-    }
-    const thread = result.results.find(
-      (value): value is Record<string, unknown> =>
-        typeof value === "object" && value !== null,
-    );
-    if (!thread) {
-      throw new AiCommandFailure({
-        code: "AI_READ_EMPTY",
-        message: `gh.${commandName} returned no structured thread.`,
-        suggestion:
-          "Verify that the GitHub issue or pull request still exists.",
-      });
-    }
-    const primarySource = identifyAiPrimarySource(parsedUrl.toString());
-    const sourceClass =
-      primarySource && primarySource.type !== "community"
-        ? "official"
-        : "community";
-    return {
-      ...thread,
-      source_class: sourceClass,
-      organization: sourceClass === "official" ? primarySource?.name : "",
-      organization_type:
-        sourceClass === "official" ? primarySource?.type : "unknown",
-      primary_source_id: sourceClass === "official" ? primarySource?.id : "",
-      source_adapter: "gh",
-      source_command: commandName,
-      content_format: "github-thread",
-      retrieved_at: new Date().toISOString(),
-      next_search: `unicli ai search ${shellQuote(String(thread.title ?? ""))} --repo ${githubThreadMatch[1]}/${githubThreadMatch[2]}`,
-    };
-  }
+  const title = arxivId ? `arXiv ${arxivId}` : evidence.title;
+  const nextSearch = arxivId
+    ? `unicli scholar read ${shellQuote(arxivId)}`
+    : githubThread
+      ? `unicli ai search ${shellQuote(title)} --repo ${githubThread[1]}/${githubThread[2]}`
+      : `unicli ai search ${shellQuote(title)} --domains ${evidence.domain}`;
 
-  const readPdf = async (): Promise<Record<string, unknown>> => {
-    const resolved = getAllAdapters().find(
-      (adapter) => adapter.name === "scholar-artifacts",
-    );
-    const command = resolved?.commands["read-pdf"];
-    if (!resolved || !command) {
-      throw new AiCommandFailure({
-        code: "AI_PDF_READ_UNAVAILABLE",
-        message:
-          "Registered scholar-artifacts.read-pdf command is unavailable.",
-        suggestion: "Restore the PDF artifact adapter before retrying.",
-      });
-    }
-    const output = mkdtempSync(join(tmpdir(), "unicli-ai-pdf-"));
-    try {
-      const invocation = buildInvocation(
-        "cli",
-        "scholar-artifacts",
-        "read-pdf",
-        {
-          args: declaredArgs(command, {
-            pdf_url: parsedUrl.toString(),
-            output,
-            "first-page": firstPage,
-            "last-page": lastPage,
-            "max-chars": maxChars,
-          }),
-          source: "internal",
-        },
-        {
-          approved: true,
-          signal: AbortSignal.timeout(AI_PDF_READ_TIMEOUT_MS),
-        },
-      );
-      if (!invocation) {
-        throw new AiCommandFailure({
-          code: "AI_PDF_READ_UNAVAILABLE",
-          message: "Could not build scholar-artifacts.read-pdf invocation.",
-          suggestion:
-            "Run `unicli describe scholar-artifacts read-pdf` to inspect the adapter contract.",
-        });
-      }
-      const result = await execute(invocation);
-      if (result.error) {
-        throw new AiCommandFailure({
-          code: result.error.code,
-          message: result.error.message,
-          suggestion:
-            result.error.suggestion ??
-            "Retry the PDF URL or inspect the PDF extraction adapter.",
-          retryable: result.error.retryable ?? false,
-          alternatives: [
-            ...(result.error.alternatives ?? []),
-            `unicli scholar-artifacts read-pdf ${shellQuote(url)}`,
-          ],
-        });
-      }
-      const artifact = result.results.find(
-        (value): value is Record<string, unknown> =>
-          typeof value === "object" && value !== null,
-      );
-      const text = typeof artifact?.text === "string" ? artifact.text : "";
-      if (!text.trim()) {
-        throw new AiCommandFailure({
-          code: "AI_READ_EMPTY",
-          message: "PDF extraction returned no text.",
-          suggestion:
-            "Choose a text-bearing page range or use an OCR-capable document tool.",
-        });
-      }
-      const row = structureAiDocument(
-        parsedUrl.toString(),
-        text,
-        new Date().toISOString(),
-        maxChars,
-        maxLinks,
-      );
-      const arxivId =
-        /(?:^|\.)arxiv\.org$/i.test(parsedUrl.hostname) &&
-        /^\/(?:pdf|abs)\/([^/?#]+?)(?:\.pdf)?$/.exec(parsedUrl.pathname)?.[1];
-      const title = arxivId ? `arXiv ${arxivId}` : String(row.title);
-      const originalCharCount =
-        typeof artifact?.text_chars === "number"
-          ? artifact.text_chars
-          : row.original_char_count;
-      const truncated =
-        typeof artifact?.text_truncated === "boolean"
-          ? artifact.text_truncated
-          : row.truncated;
-      return {
-        ...row,
-        title,
-        original_char_count: originalCharCount,
-        truncated,
-        content_format: "pdf-text",
-        page_range: { first: firstPage, last: lastPage },
-        text_chars: artifact?.text_chars,
-        text_truncated: artifact?.text_truncated,
-        next_search: arxivId
-          ? `unicli scholar read ${shellQuote(arxivId)}`
-          : `unicli ai search ${shellQuote(title)} --domains ${String(row.domain)}`,
-      };
-    } finally {
-      rmSync(output, { recursive: true, force: true });
-    }
-  };
-
-  if (/\.pdf(?:$|[?#])/i.test(parsedUrl.toString())) {
-    return readPdf();
-  }
-
-  const resolved = getAllAdapters().find(
-    (adapter) => adapter.name === (reader === "direct" ? "web" : reader),
-  );
-  const command = resolved?.commands.read;
-  if (!resolved || !command) {
-    throw new AiCommandFailure({
-      code: "AI_READ_UNAVAILABLE",
-      message: `Registered ${reader}.read command is unavailable.`,
-      suggestion: `Repair or restore the ${reader}.read adapter before retrying.`,
-    });
-  }
-  const invocation = buildInvocation(
-    "cli",
-    resolved.name,
-    "read",
-    {
-      args: declaredArgs(command, { url: parsedUrl.toString() }),
-      source: "internal",
-    },
-    { approved: true, signal: AbortSignal.timeout(AI_READ_TIMEOUT_MS) },
-  );
-  if (!invocation) {
-    throw new AiCommandFailure({
-      code: "AI_READ_UNAVAILABLE",
-      message: `Could not build ${resolved.name}.read invocation.`,
-      suggestion: `Run \`unicli describe ${resolved.name} read\` to inspect the adapter contract.`,
-    });
-  }
-  const result = await execute(invocation);
-  if (result.error) {
-    if (
-      reader === "direct" &&
-      result.error.code === "unsupported_content_type" &&
-      (result.error.alternatives ?? []).some((command) =>
-        command.includes("scholar-artifacts read-pdf"),
-      )
-    ) {
-      return readPdf();
-    }
-    const alternatives = [
-      ...(result.error.alternatives ?? []),
-      `unicli ${resolved.name} read ${shellQuote(url)}`,
-    ];
-    if (reader === "direct") {
-      alternatives.push(
-        `unicli ai read ${shellQuote(url)} --reader jina`,
-        `unicli ai read ${shellQuote(url)} --reader defuddle`,
-      );
-    }
-    throw new AiCommandFailure({
-      code: result.error.code,
-      message: result.error.message,
-      suggestion:
-        result.error.suggestion ??
-        "Retry the canonical source URL or use an authenticated site adapter.",
-      retryable: result.error.retryable ?? false,
-      alternatives,
-    });
-  }
-  const markdown = result.results
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .join("\n\n");
-  if (!markdown) {
-    throw new AiCommandFailure({
-      code: "AI_READ_EMPTY",
-      message: `${resolved.name}.read returned no document content.`,
-      suggestion: `Try the canonical documentation URL or inspect \`unicli repair ${resolved.name} read\`.`,
-    });
-  }
-  const row = structureAiDocument(
-    parsedUrl.toString(),
-    markdown,
-    new Date().toISOString(),
-    maxChars,
-    maxLinks,
-  );
   return {
-    ...row,
-    next_search: `unicli ai search ${shellQuote(String(row.title))} --domains ${String(row.domain)}`,
+    ...enriched,
+    title,
+    next_search: nextSearch,
   };
 }
 

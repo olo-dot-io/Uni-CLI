@@ -41,13 +41,13 @@ cli({
     },
   ],
   columns: ["id", "author", "text", "likes", "retweets", "views", "url"],
-  capabilities: [
-    "cdp-browser.navigate",
-    "cdp-browser.evaluate",
-    "ai.search",
-    "ai.community",
-    "ai.post",
-  ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "post",
+    source_class: "community",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate"],
   func: async (page, kwargs) => {
     const query = kwargs.query as string;
     const count = Math.min((kwargs.limit as number) ?? 20, 50);

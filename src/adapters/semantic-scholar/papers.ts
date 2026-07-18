@@ -209,7 +209,13 @@ cli({
     "pdf_url",
     "source_url",
   ],
-  capabilities: ["http.fetch", "scholar.search", "ai.search", "ai.paper"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "paper",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query)

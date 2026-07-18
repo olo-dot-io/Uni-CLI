@@ -1631,6 +1631,14 @@ export const AUTHENTICATED_AI_SOURCE_REFS = [
   "bilibili.search",
 ] as const;
 
+/** Public AI sources available for explicit selection but omitted from default role fan-out. */
+export const OPTIONAL_AI_SOURCE_REFS = [
+  "duckduckgo.search",
+  "gh.discussions",
+  "gh.release",
+  "hf.community",
+] as const;
+
 export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
   {
     id: "all",

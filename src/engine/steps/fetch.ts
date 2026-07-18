@@ -1,14 +1,14 @@
 /**
  * @owner       src::engine::steps::fetch
  * @does        Executes validated HTTP requests with retries, caching, proxy routing, and bounded concurrency.
- * @needs       node fs/path/os/crypto, constants, registry/executor, SSRF/template/cookies/download/proxy/resource guard
+ * @needs       node fs/path/os/crypto, constants, registry/executor, validated fetch/template/cookies/download/resource guard
  * @feeds       step registry action "fetch", fetch_text shared request helpers
  * @breaks      PipelineError preserves network, HTTP, policy, and response-shape failure semantics.
- * @invariants  Every request URL passes SSRF validation; proxy fetch and dispatcher share one Undici implementation.
+ * @invariants  Initial and redirected request URLs pass request-policy and runtime-resource validation before cache access or network I/O; cross-origin redirects cannot retain caller credentials; caller cancellation remains the exact abort reason instead of a retryable network failure.
  * @side-effects Network I/O, optional cache writes, cookie acquisition, and response-cookie capture.
  * @perf        Retry count and fan-out are explicitly bounded by adapter configuration.
  * @concurrency Multi-URL requests use the shared bounded concurrency mapper.
- * @test        tests/adapter/phase5-workflow.test.ts, tests/unit/proxy.test.ts
+ * @test        tests/unit/engine-features.test.ts, tests/unit/engine/steps/fetch-text-session.test.ts, tests/unit/proxy.test.ts
  * @stability   stable
  * @since       2026-04-15
  */
@@ -21,12 +21,16 @@ import { setTimeout as delay } from "node:timers/promises";
 import { USER_AGENT } from "../../constants.js";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
-import { assertSafeRequestUrl } from "../ssrf.js";
+import { assertSafeRequestUrl, UnsafeRequestUrlError } from "../ssrf.js";
 import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
 import { mapConcurrent } from "../download.js";
-import { describeNetworkFailure, fetchWithProxy } from "../proxy.js";
+import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
+import {
+  fetchWithValidatedRedirects,
+  RedirectLimitError,
+} from "../validated-fetch.js";
 
 export interface FetchConfig {
   url: string;
@@ -83,14 +87,14 @@ export async function stepFetch(
   stepIndex = -1,
 ): Promise<PipelineContext> {
   let url = evalTemplate(config.url, ctx);
-  assertSafeRequestUrl(url);
-  assertRuntimeNetworkAllowed(ctx, {
-    action: "fetch",
-    step: stepIndex,
-    config,
-    url,
-    access: networkAccessForMethod(config.method),
-  });
+  const validateRequest = (requestUrl: string): void =>
+    assertRuntimeNetworkAllowed(ctx, {
+      action: "fetch",
+      step: stepIndex,
+      config,
+      url: requestUrl,
+      access: networkAccessForMethod(config.method),
+    });
 
   // Fan-out with concurrency limit when data is an array of items.
   if (Array.isArray(ctx.data)) {
@@ -102,14 +106,6 @@ export async function stepFetch(
     const results = await mapConcurrent(items, concurrency, async (item) => {
       const itemCtx = { ...ctx, data: item };
       const itemUrl = evalTemplate(config.url, itemCtx);
-      assertSafeRequestUrl(itemUrl);
-      assertRuntimeNetworkAllowed(ctx, {
-        action: "fetch",
-        step: stepIndex,
-        config,
-        url: itemUrl,
-        access: networkAccessForMethod(config.method),
-      });
       const resolvedConfig = config.body
         ? {
             ...config,
@@ -120,13 +116,12 @@ export async function stepFetch(
             ...config,
             headers: resolveHeaderTemplates(config.headers, itemCtx),
           };
-      return fetchJson(
-        itemUrl,
-        resolvedConfig,
-        ctx.cookieHeader,
+      return fetchJson(itemUrl, resolvedConfig, {
+        cookieHeader: ctx.cookieHeader,
         stepIndex,
-        ctx.signal,
-      );
+        signal: ctx.signal,
+        validateRequest,
+      });
     });
     return { ...ctx, data: results };
   }
@@ -149,21 +144,22 @@ export async function stepFetch(
     : { ...config, headers: resolveHeaderTemplates(config.headers, ctx) };
 
   try {
-    const data = await fetchJson(
-      url,
-      resolvedConfig,
-      ctx.cookieHeader,
+    const data = await fetchJson(url, resolvedConfig, {
+      cookieHeader: ctx.cookieHeader,
       stepIndex,
-      ctx.signal,
-    );
+      signal: ctx.signal,
+      validateRequest,
+    });
     return { ...ctx, data };
   } catch (err) {
+    ctx.signal?.throwIfAborted();
     if (
       err instanceof PipelineError &&
       (err.detail.statusCode === 401 || err.detail.statusCode === 403) &&
       !ctx.cookieHeader
     ) {
       try {
+        ctx.signal?.throwIfAborted();
         const hostname = new URL(url).hostname;
         const siteName = hostname
           .replace(/^www\./, "")
@@ -171,21 +167,23 @@ export async function stepFetch(
           .slice(0, -1)
           .join("-");
         const cookies = await loadCookiesWithCDP(siteName);
+        ctx.signal?.throwIfAborted();
         if (cookies) {
           const fallbackCookie = formatCookieHeader(cookies);
-          const data = await fetchJson(
-            url,
-            resolvedConfig,
-            fallbackCookie,
+          const data = await fetchJson(url, resolvedConfig, {
+            cookieHeader: fallbackCookie,
             stepIndex,
-            ctx.signal,
-          );
+            signal: ctx.signal,
+            validateRequest,
+          });
           return { ...ctx, data, cookieHeader: fallbackCookie };
         }
       } catch {
+        ctx.signal?.throwIfAborted();
         // Cookie fallback also failed — throw original
       }
     }
+    ctx.signal?.throwIfAborted();
     throw err;
   }
 }
@@ -208,19 +206,40 @@ function fetchCacheKey(url: string, method: string): string {
     .slice(0, 16);
 }
 
+interface FetchCacheEntry {
+  schema_version: "fetch-cache.v1";
+  stored_at: number;
+  requested_url: string;
+  final_url: string;
+  method: string;
+  data: unknown;
+}
+
 function readFetchCache(
   url: string,
   method: string,
   ttlSeconds: number,
-): unknown | null {
+): FetchCacheEntry | null {
   const key = fetchCacheKey(url, method);
   const filePath = join(CACHE_DIR, `${key}.json`);
   if (!existsSync(filePath)) return null;
   try {
     const raw = readFileSync(filePath, "utf-8");
-    const entry = JSON.parse(raw) as { ts: number; data: unknown };
-    if (Date.now() - entry.ts > ttlSeconds * 1000) return null;
-    return entry.data;
+    const entry = JSON.parse(raw) as Partial<FetchCacheEntry>;
+    const age = Date.now() - (entry.stored_at ?? Number.NaN);
+    if (
+      entry.schema_version !== "fetch-cache.v1" ||
+      !Number.isSafeInteger(entry.stored_at) ||
+      age < 0 ||
+      age > ttlSeconds * 1000 ||
+      entry.requested_url !== url ||
+      entry.method !== method ||
+      typeof entry.final_url !== "string" ||
+      !Object.prototype.hasOwnProperty.call(entry, "data")
+    ) {
+      return null;
+    }
+    return entry as FetchCacheEntry;
   } catch {
     return null;
   }
@@ -228,9 +247,21 @@ function readFetchCache(
 
 const MAX_CACHE_ENTRY_BYTES = 10 * 1024 * 1024;
 
-function writeFetchCache(url: string, method: string, data: unknown): void {
+function writeFetchCache(
+  url: string,
+  finalUrl: string,
+  method: string,
+  data: unknown,
+): void {
   try {
-    const payload = JSON.stringify({ ts: Date.now(), url, data });
+    const payload = JSON.stringify({
+      schema_version: "fetch-cache.v1",
+      stored_at: Date.now(),
+      requested_url: url,
+      final_url: finalUrl,
+      method,
+      data,
+    } satisfies FetchCacheEntry);
     if (payload.length > MAX_CACHE_ENTRY_BYTES) return;
     mkdirSync(CACHE_DIR, { recursive: true });
     const key = fetchCacheKey(url, method);
@@ -243,15 +274,30 @@ function writeFetchCache(url: string, method: string, data: unknown): void {
 async function fetchJson(
   url: string,
   config: FetchConfig,
-  cookieHeader?: string,
-  stepIndex = -1,
-  signal?: AbortSignal,
+  options: {
+    cookieHeader?: string;
+    stepIndex: number;
+    signal?: AbortSignal;
+    validateRequest: (url: string) => void;
+  },
 ): Promise<unknown> {
-  const method = config.method ?? "GET";
+  const method = (config.method ?? "GET").toUpperCase();
+  const { cookieHeader, signal, stepIndex } = options;
+
+  signal?.throwIfAborted();
+  assertSafeRequestUrl(url);
+  options.validateRequest(url);
+  signal?.throwIfAborted();
 
   if (config.cache && config.cache > 0) {
     const cached = readFetchCache(url, method, config.cache);
-    if (cached !== null) return cached;
+    if (cached !== null) {
+      signal?.throwIfAborted();
+      assertSafeRequestUrl(cached.final_url);
+      options.validateRequest(cached.final_url);
+      signal?.throwIfAborted();
+      return cached.data;
+    }
   }
 
   const headers: Record<string, string> = {
@@ -274,9 +320,35 @@ async function fetchJson(
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let resp: Response;
+    let finalUrl: string;
     try {
-      resp = await fetchWithProxy(url, init);
+      ({ response: resp, finalUrl } = await fetchWithValidatedRedirects(
+        url,
+        init,
+        {
+          validateRequest: options.validateRequest,
+        },
+      ));
     } catch (error) {
+      signal?.throwIfAborted();
+      if (
+        error instanceof PipelineError ||
+        error instanceof UnsafeRequestUrlError
+      ) {
+        throw error;
+      }
+      if (error instanceof RedirectLimitError) {
+        throw new PipelineError(error.message, {
+          step: stepIndex,
+          action: "fetch",
+          config: { url, method },
+          errorType: "http_error",
+          url,
+          suggestion: "Use a canonical API URL with a bounded redirect chain.",
+          retryable: false,
+          alternatives: [],
+        });
+      }
       const isLastAttempt = attempt === maxAttempts;
       if (!isLastAttempt) {
         await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
@@ -299,7 +371,10 @@ async function fetchJson(
 
     if (resp.ok) {
       const data = await resp.json();
-      if (config.cache && config.cache > 0) writeFetchCache(url, method, data);
+      signal?.throwIfAborted();
+      if (config.cache && config.cache > 0) {
+        writeFetchCache(url, finalUrl, method, data);
+      }
       return data;
     }
 
@@ -317,6 +392,7 @@ async function fetchJson(
     } catch {
       /* ignore */
     }
+    signal?.throwIfAborted();
     const isRetryableStatus =
       resp.status === 429 ||
       resp.status === 500 ||

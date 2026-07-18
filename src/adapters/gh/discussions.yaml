@@ -57,8 +57,15 @@ pipeline:
 columns:
   [number, title, author, category, createdAt, updatedAt, answeredAt, url]
 
-capabilities:
-  ["subprocess.exec", "auth.executable.gh", "ai.search", "ai.community"]
+retrieval:
+  operation: discover
+  result_kind: discussion
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    repository: repo
+capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

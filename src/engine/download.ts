@@ -1,14 +1,14 @@
 /**
  * @owner       src::engine::download
  * @does        Transactionally streams HTTP content or invokes yt-dlp, while providing filename and bounded-concurrency utilities.
- * @needs       canonical proxy-aware fetch, transactional file publication, node streams/fs/path, yt-dlp subprocess when selected
+ * @needs       validated proxy-aware fetch, transactional file publication, node streams/fs/path, yt-dlp subprocess when selected
  * @feeds       download pipeline action, HTTP transport, scholarly/media adapters, public package download export
  * @breaks      Direct destination writes can replace valid artifacts after cancellation; ordinary HTTP, stream, filesystem, and subprocess failures return explicit failed DownloadResult values.
- * @invariants  HTTP downloads use the canonical proxy boundary, publish only by atomic rename, preserve prior destinations on abort, and rethrow the exact cancellation reason; result order is preserved.
+ * @invariants  HTTP downloads validate every redirect hop, retain the legacy headers/signal call shape, publish only by atomic rename, preserve prior destinations on abort, and rethrow the exact cancellation reason; yt-dlp receives caller cancellation and a bounded timeout; result order is preserved.
  * @side-effects Creates directories/files and may launch yt-dlp.
  * @perf        HTTP streams without whole-body buffering; mapConcurrent is caller-bounded.
  * @concurrency Worker-pool mapping preserves input order; each destination stream has one owner.
- * @test        tests/unit/download.test.ts and adapter download suites
+ * @test        tests/unit/download.test.ts, tests/unit/engine/steps/download-cancellation.test.ts, and adapter download suites
  * @stability   public
  * @since       2026-04-03
  */
@@ -20,8 +20,8 @@ import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
-import { fetchWithProxy } from "./proxy.js";
 import { publishFileTransactionally } from "./transactional-file.js";
+import { fetchWithValidatedRedirects } from "./validated-fetch.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -35,6 +35,45 @@ export interface DownloadResult {
   size?: number;
   error?: string;
   duration?: number;
+}
+
+export interface HttpDownloadOptions {
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  validateRequest?: (url: string) => void;
+}
+
+function isHttpDownloadOptions(
+  value: HttpDownloadOptions | Record<string, string>,
+): value is HttpDownloadOptions {
+  const candidate = value as Record<string, unknown>;
+  return (
+    (Object.hasOwn(candidate, "headers") &&
+      (candidate.headers === undefined ||
+        (typeof candidate.headers === "object" &&
+          candidate.headers !== null))) ||
+    (Object.hasOwn(candidate, "signal") &&
+      (candidate.signal === undefined ||
+        (typeof candidate.signal === "object" &&
+          candidate.signal !== null &&
+          "aborted" in candidate.signal))) ||
+    typeof candidate.validateRequest === "function"
+  );
+}
+
+function normalizeHttpDownloadOptions(
+  value: HttpDownloadOptions | Record<string, string>,
+  legacySignal: AbortSignal | undefined,
+): HttpDownloadOptions {
+  if (isHttpDownloadOptions(value)) {
+    if (legacySignal !== undefined) {
+      throw new TypeError(
+        "httpDownload cannot combine an options object with the legacy fourth signal argument.",
+      );
+    }
+    return value;
+  }
+  return { headers: value, signal: legacySignal };
 }
 
 // ---------------------------------------------------------------------------
@@ -90,21 +129,38 @@ export function generateFilename(url: string, index: number): string {
  * Stream a URL to disk using Node.js fetch + Readable.fromWeb().
  * Creates parent directories automatically.
  */
-export async function httpDownload(
+export function httpDownload(
   url: string,
   destPath: string,
   headers?: Record<string, string>,
   signal?: AbortSignal,
+): Promise<DownloadResult>;
+export function httpDownload(
+  url: string,
+  destPath: string,
+  options?: HttpDownloadOptions,
+): Promise<DownloadResult>;
+export async function httpDownload(
+  url: string,
+  destPath: string,
+  optionsOrHeaders: HttpDownloadOptions | Record<string, string> = {},
+  legacySignal?: AbortSignal,
 ): Promise<DownloadResult> {
+  const options = normalizeHttpDownloadOptions(optionsOrHeaders, legacySignal);
   const t0 = Date.now();
+  const { signal } = options;
   try {
     signal?.throwIfAborted();
     await mkdir(dirname(destPath), { recursive: true });
 
-    const res = await fetchWithProxy(url, {
-      headers,
-      ...(signal ? { signal } : {}),
-    });
+    const { response: res } = await fetchWithValidatedRedirects(
+      url,
+      {
+        headers: options.headers,
+        ...(signal ? { signal } : {}),
+      },
+      { validateRequest: options.validateRequest },
+    );
     signal?.throwIfAborted();
     if (!res.ok) {
       return {
@@ -155,16 +211,23 @@ export async function httpDownload(
 export async function ytdlpDownload(
   url: string,
   dir: string,
-  opts?: { cookieFile?: string; cookiesFromBrowser?: string },
+  opts?: {
+    cookieFile?: string;
+    cookiesFromBrowser?: string;
+    signal?: AbortSignal;
+    timeoutMs?: number;
+  },
 ): Promise<DownloadResult> {
   const t0 = Date.now();
   try {
+    opts?.signal?.throwIfAborted();
     mkdirSync(dir, { recursive: true });
 
     const args = buildYtdlpDownloadArgs(url, dir, opts);
 
     const { stdout } = await execFileAsync("yt-dlp", args, {
-      timeout: 5 * 60 * 1000, // 5 min
+      timeout: opts?.timeoutMs ?? 5 * 60 * 1000,
+      ...(opts?.signal ? { signal: opts.signal } : {}),
     });
 
     // Parse output path — yt-dlp prints "Destination: <path>" or
@@ -197,6 +260,7 @@ export async function ytdlpDownload(
       duration: Date.now() - t0,
     };
   } catch (err) {
+    opts?.signal?.throwIfAborted();
     return {
       status: "failed",
       error: err instanceof Error ? err.message : String(err),

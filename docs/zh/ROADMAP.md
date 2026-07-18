@@ -1,6 +1,6 @@
 # 路线图
 
-> Current: v0.400.0 — Apollo · Young. <!-- STATS:site_count -->323<!-- /STATS --> 个站点，<!-- STATS:command_count -->1815<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
+> Current: v0.400.0 — Apollo · Young. <!-- STATS:site_count -->324<!-- /STATS --> 个站点，<!-- STATS:command_count -->1817<!-- /STATS --> 条命令，<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
 路线图按“Agent 控制真实软件的控制平台”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

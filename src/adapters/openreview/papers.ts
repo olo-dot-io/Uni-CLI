@@ -509,11 +509,9 @@ async function downloadOpenReviewPdf(
   }
   const outputDir = resolve(String(output ?? "./openreview-downloads"));
   const path = join(outputDir, openReviewPdfFilename(id, row.title));
-  const download = await httpDownload(
-    pdfUrl,
-    path,
-    openReviewHeaders("application/pdf,*/*"),
-  );
+  const download = await httpDownload(pdfUrl, path, {
+    headers: openReviewHeaders("application/pdf,*/*"),
+  });
   if (download.status === "failed") {
     throw new Error(
       `OpenReview PDF download failed for ${id}: ${download.error ?? "unknown error"}.`,
@@ -552,13 +550,13 @@ cli({
     "pdf_url",
     "source_url",
   ],
-  capabilities: [
-    "http.fetch",
-    "scholar.search",
-    "scholar.review",
-    "ai.search",
-    "ai.paper",
-  ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "paper",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit" },
+  },
+  capabilities: ["http.fetch", "scholar.search", "scholar.review"],
   func: async (_page, kwargs) => {
     const query = String(kwargs.query ?? "").trim();
     if (!query) throw new Error("openreview search query cannot be empty.");

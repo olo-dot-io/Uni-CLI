@@ -27,7 +27,7 @@ pipeline:
 
 columns: [number, title, state, author, createdAt, updatedAt, url, comments]
 
-capabilities: ["subprocess.exec", "auth.executable.gh", "ai.read", "ai.thread"]
+capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

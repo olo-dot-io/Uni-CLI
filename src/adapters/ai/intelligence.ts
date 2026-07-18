@@ -4,7 +4,7 @@
  * @needs       src/commands/ai.ts orchestration services, PDF extraction, optional Jina/Defuddle readers, and the adapter registry
  * @feeds       `unicli ai search|pulse|read|sources|landscape|profiles` on every supported transport
  * @breaks      Registering these as Commander-only commands makes MCP discovery advertise commands it cannot execute.
- * @invariants  Every surface resolves ai.* through the shared invocation kernel; search and read remain read-only; provider failures stay structured in results or errors.
+ * @invariants  Every surface resolves ai.* through the shared invocation kernel; search and read remain read-only; optional GitHub authentication is never promoted to mandatory auth; provider failures stay structured in results or errors.
  * @side-effects search/pulse/read fan out to declared read-only adapters; PDF reads create and delete one temporary artifact; discovery commands are network-free.
  * @perf        Delegates to bounded AI orchestration limits (1-100 results).
  * @concurrency safe across invocations; each invocation owns its orchestration state.
@@ -14,6 +14,7 @@
  */
 
 import {
+  AI_RETRIEVAL_CAPABILITIES,
   listAiLandscapeRows,
   listAiProfileRows,
   listAiSourceRows,
@@ -144,16 +145,11 @@ cli({
     "url",
     "summary",
   ],
-  capabilities: [
-    "http.fetch",
-    "subprocess.exec",
-    "cdp-browser.navigate",
-    "cdp-browser.evaluate",
-    "ai.intelligence",
-  ],
+  capabilities: [...AI_RETRIEVAL_CAPABILITIES, "ai.intelligence"],
+  auth_requirement: "optional",
   executables: ["gh"],
   minimum_capability: "http.fetch",
-  func: async (_page, kwargs) =>
+  func: async (_page, kwargs, context) =>
     searchAiContent(text(kwargs.query) ?? "", {
       sources: text(kwargs.sources),
       profile: text(kwargs.profile),
@@ -164,6 +160,7 @@ cli({
       sort: text(kwargs.sort),
       since: text(kwargs.since),
       limit: text(kwargs.limit),
+      signal: context.signal,
     }),
 });
 
@@ -235,16 +232,11 @@ cli({
     "url",
     "summary",
   ],
-  capabilities: [
-    "http.fetch",
-    "subprocess.exec",
-    "cdp-browser.navigate",
-    "cdp-browser.evaluate",
-    "ai.intelligence",
-  ],
+  capabilities: [...AI_RETRIEVAL_CAPABILITIES, "ai.intelligence"],
+  auth_requirement: "optional",
   executables: ["gh"],
   minimum_capability: "http.fetch",
-  func: async (_page, kwargs) =>
+  func: async (_page, kwargs, context) =>
     pulseAiContent({
       profile: text(kwargs.profile),
       query: text(kwargs.query),
@@ -252,6 +244,7 @@ cli({
       window: text(kwargs.window),
       includeAuth: bool(kwargs.include_auth),
       limit: text(kwargs.limit),
+      signal: context.signal,
     }),
 });
 
@@ -309,18 +302,21 @@ cli({
     "http.fetch",
     "http.download",
     "subprocess.exec",
+    "auth.executable.gh",
     "ai.intelligence",
     "ai.docs",
   ],
-  executables: ["pdftotext"],
+  auth_requirement: "optional",
+  executables: ["pdftotext", "gh"],
   minimum_capability: "http.fetch",
-  func: async (_page, kwargs) =>
+  func: async (_page, kwargs, context) =>
     readAiContent(text(kwargs.url) ?? "", {
       maxCharsK: text(kwargs.max_chars_k),
       maxLinks: text(kwargs.max_links),
       reader: text(kwargs.reader),
       firstPage: text(kwargs.first_page),
       lastPage: text(kwargs.last_page),
+      signal: context.signal,
     }),
 });
 

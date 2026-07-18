@@ -59,7 +59,15 @@ pipeline:
 columns: [title, score, author, comments, created_at, tags, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "ai.search", "ai.community"]
+retrieval:
+  operation: discover
+  result_kind: community
+  source_class: community
+  arguments:
+    query: query
+    limit: limit
+    sort: sort
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

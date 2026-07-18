@@ -528,6 +528,16 @@ describe("search", () => {
     expect(results.slice(0, 5).map((r) => r.site)).not.toContain("nowcoder");
   });
 
+  it.each([
+    "federated cross-domain retrieval providers current records",
+    "通用跨行业实时检索来源",
+  ])("discovers the generic retrieval surface for %s", (query) => {
+    expect(search(query, 5)[0]).toMatchObject({
+      site: "retrieval",
+      command: "search",
+    });
+  });
+
   it("routes academic full-text reading to the scholar meta-command", () => {
     const results = search("read academic paper pdf full text", 8);
     const commands = results.slice(0, 5).map((r) => `${r.site}/${r.command}`);

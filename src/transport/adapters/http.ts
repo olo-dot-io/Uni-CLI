@@ -413,7 +413,7 @@ export class HttpTransport implements TransportAdapter {
       const { httpDownload } = await import("../../engine/download.js");
       const headers: Record<string, string> = {};
       if (this.ctx?.cookieHeader) headers["Cookie"] = this.ctx.cookieHeader;
-      const result = await httpDownload(url, dest, headers, signal);
+      const result = await httpDownload(url, dest, { headers, signal });
       if (result.status !== "success" || !result.path) {
         return err({
           transport: "http",

@@ -120,6 +120,22 @@ describe("CLI fast path", () => {
     });
   });
 
+  it("describes routed authentication without making public retrieval mandatory-auth", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "describe", "retrieval", "search"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    expect(JSON.parse(stdout.join(""))).toMatchObject({
+      auth: false,
+      auth_optional: true,
+      auth_setup: "gh auth login",
+    });
+  });
+
   it("lists core compute commands from the same discovery surface as adapters", () => {
     const { stdout, io } = makeIo();
 

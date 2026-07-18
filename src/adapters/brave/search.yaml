@@ -50,7 +50,14 @@ pipeline:
 columns: [title, url, snippet]
 
 # schema-v2 metadata
-capabilities: ["http.fetch", "ai.search", "ai.docs"]
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  arguments:
+    query: query
+    limit: limit
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

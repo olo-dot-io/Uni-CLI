@@ -392,6 +392,7 @@ if (existsSync(ADAPTERS_DIR)) {
                   (capability) => typeof capability === "string",
                 )
               : undefined,
+            auth_requirement: parsed.auth_requirement,
             executables: Array.isArray(parsed.executables)
               ? parsed.executables.filter(
                   (executable) => typeof executable === "string",

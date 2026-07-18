@@ -2,7 +2,7 @@
  * @owner       src::adapters::google-patents-web::search
  * @does        Keyless free-text patent search via the public XHR endpoint that drives patents.google.com — distinct from src/adapters/google-patents-bq which talks to BigQuery and needs a billed GCP project.
  * @needs       src/adapters/google-patents-web/_shared.ts, src/engine/normalizer/patent-envelope.ts, src/registry.ts
- * @feeds       src/commands/patent.ts (capability tag patent.search)
+ * @feeds       generic research and src/commands/patent.ts (capability tag patent.search)
  * @breaks      PATENT_API_DEPRECATED with status code embedded when the XHR returns non-2xx (typically 403 → suspected UA gating); PATENT_NOT_FOUND on empty result; PATENT_SCHEMA_DRIFT when the JSON shape no longer carries results.cluster[].result[]
  * @invariants  output rows are canonical PatentRecord; source_adapter='google-patents-web'; results are server-ordered (Google's relevance ranking)
  * @side-effects HTTPS egress to patents.google.com only — no env reads, no cookies, no auth
@@ -189,6 +189,12 @@ cli({
     "assignees",
     "source_url",
   ],
+  retrieval: {
+    operation: "discover",
+    result_kind: "patent",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit", since: "since" },
+  },
   capabilities: ["http.fetch", "patent.search"],
   minimum_capability: "http.fetch",
   func: async (_page, kwargs) =>
