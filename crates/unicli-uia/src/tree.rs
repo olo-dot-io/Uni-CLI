@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-uia::tree
+//! @does        Enumerate Windows UI Automation windows, validate immutable targets, encode trees, resolve refs, and poll native conditions.
+//! @needs       Windows UI Automation API, shared request contract, ref table
+//! @feeds       unicli-uia snapshot, action, wait, and screenshot handlers
+//! @breaks      Coercing malformed target fields or selecting a different HWND makes native refs unsafe to replay.
+//! @invariants  App/pid/window selectors are typed and conjunctive; an explicit target either resolves exactly or fails closed.
+//! @side-effects Reads desktop accessibility state and sleeps during bounded wait polling.
+//! @perf        Linear in enumerated windows and accessible descendants; wait polling is deadline-bounded.
+//! @concurrency Request-local traversal and ref state; no process-global target substitution.
+//! @test        cargo test -p unicli-uia
+//! @stability   internal
+//! @since       0.400.2
+
 use std::collections::BTreeMap;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -58,6 +71,8 @@ struct UiaElementProperties {
     bounds: Option<ElementBounds>,
     enabled: bool,
     focusable: bool,
+    focused: bool,
+    checked: bool,
     horizontally_scrollable: bool,
     vertically_scrollable: bool,
 }
@@ -76,6 +91,12 @@ fn element_record_from_uia_properties(props: UiaElementProperties) -> Option<Ele
     }
     if props.focusable {
         states.push("focusable".into());
+    }
+    if props.focused {
+        states.push("focused".into());
+    }
+    if props.checked {
+        states.push("checked".into());
     }
     if props.horizontally_scrollable {
         states.push("horizontally_scrollable".into());
@@ -154,6 +175,7 @@ pub fn handle_windows(_state: &mut State, request: &SidecarRequest) -> HandlerRe
 pub fn handle_snapshot(state: &mut State, request: &SidecarRequest) -> HandlerResult {
     state.refs_mut().clear();
     let windows = enumerate_top_level_windows()?;
+    validate_snapshot_target(&windows, &request.params)?;
     Ok(snapshot_response_from_windows(&windows, &request.params))
 }
 
@@ -239,6 +261,7 @@ fn windows_response_from_windows(windows: &[WindowRecord], params: &Value) -> Va
             serde_json::json!({
                 "id": window.hwnd,
                 "hwnd": window.hwnd,
+                "windowId": window.hwnd,
                 "name": window.title,
                 "title": window.title,
                 "pid": window.pid,
@@ -400,14 +423,19 @@ pub(crate) fn resolve_top_level_window_ref<'a>(
     stable: &str,
 ) -> Option<&'a WindowRecord> {
     let (scope, path) = stable.strip_prefix("desktop-uia:")?.split_once(':')?;
-    let pid = scope.strip_prefix("pid-")?.parse::<u32>().ok()?;
+    let hwnd = scope.strip_prefix("window-")?;
     let index = path
         .strip_prefix("Window[")?
         .strip_suffix(']')?
         .parse::<usize>()
         .ok()?;
+    if index != 0 {
+        return None;
+    }
 
-    windows.iter().filter(|window| window.pid == pid).nth(index)
+    windows
+        .iter()
+        .find(|window| window.hwnd.eq_ignore_ascii_case(hwnd))
 }
 
 fn assert_target_ref_node(
@@ -429,7 +457,7 @@ fn assert_target_ref_node(
     let (window, element, path) = resolve_descendant_element_ref(windows, stable)?;
     if element_matches_find_params(element, params) && element_state_filter_matches(element, params)
     {
-        let scope = format!("pid-{}", window.pid);
+        let scope = window_scope(window);
         return Some((
             "native_descendant_tree",
             element_node(
@@ -451,17 +479,16 @@ pub(crate) fn resolve_descendant_element_ref<'a>(
     stable: &str,
 ) -> Option<(&'a WindowRecord, &'a ElementRecord, String)> {
     let (scope, path) = stable.strip_prefix("desktop-uia:")?.split_once(':')?;
-    let pid = scope.strip_prefix("pid-")?.parse::<u32>().ok()?;
+    let hwnd = scope.strip_prefix("window-")?;
     let mut segments = path.split('/');
     let (window_role, window_index) = parse_indexed_path_segment(segments.next()?)?;
-    if window_role != "Window" {
+    if window_role != "Window" || window_index != 0 {
         return None;
     }
     let window = windows
         .iter()
-        .filter(|window| window.pid == pid)
-        .nth(window_index)?;
-    let mut resolved_path = format!("Window[{window_index}]");
+        .find(|window| window.hwnd.eq_ignore_ascii_case(hwnd))?;
+    let mut resolved_path = "Window[0]".to_string();
     let mut children = window.children.as_slice();
     let mut current = None;
 
@@ -587,8 +614,8 @@ fn pid_local_window_index(windows: &[WindowRecord], target: &WindowRecord) -> us
 }
 
 fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Value {
-    let path = format!("Window[{index}]");
-    let scope = format!("pid-{}", window.pid);
+    let path = "Window[0]";
+    let scope = window_scope(window);
     let mut node = serde_json::json!({
         "role": "Window",
         "name": window.title,
@@ -596,7 +623,8 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
         "scope": scope,
         "app": window.title,
         "pid": window.pid,
-        "states": ["visible"],
+        "windowId": window.hwnd,
+        "states": window_states(window),
         "metadata": {
             "hwnd": window.hwnd,
         },
@@ -611,7 +639,7 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
             &scope,
             &window.title,
             window.pid,
-            &path,
+            path,
             include_stable,
         ));
     }
@@ -620,10 +648,35 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
 }
 
 fn window_stable(window: &WindowRecord, index: usize) -> String {
-    format!("desktop-uia:pid-{}:Window[{index}]", window.pid)
+    let _ = index;
+    format!("desktop-uia:{}:Window[0]", window_scope(window))
 }
 
-fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
+fn window_scope(window: &WindowRecord) -> String {
+    format!("window-{}", window.hwnd.to_ascii_lowercase())
+}
+
+fn window_states(window: &WindowRecord) -> Vec<&'static str> {
+    let mut states = vec!["visible", "enabled"];
+    if window_is_focused(window) {
+        states.push("focused");
+    }
+    states
+}
+
+#[cfg(target_os = "windows")]
+fn window_is_focused(window: &WindowRecord) -> bool {
+    parse_hwnd(&window.hwnd)
+        .map(|hwnd| unsafe { win32::get_foreground_window() == hwnd })
+        .unwrap_or(false)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn window_is_focused(_window: &WindowRecord) -> bool {
+    false
+}
+
+pub(crate) fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
     let pid_filter = params
         .get("pid")
         .and_then(Value::as_u64)
@@ -632,11 +685,78 @@ fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
         .get("app")
         .and_then(Value::as_str)
         .map(|app| app.to_ascii_lowercase());
-
     pid_filter.map_or(true, |pid| window.pid == pid)
+        && params
+            .get("windowId")
+            .map_or(true, |window_id| window_id_matches(&window.hwnd, window_id))
         && app_filter
             .as_ref()
             .map_or(true, |app| window.title.to_ascii_lowercase().contains(app))
+}
+
+fn validate_snapshot_target(windows: &[WindowRecord], params: &Value) -> Result<(), UiaError> {
+    validate_window_target_params(params)?;
+    let has_target = params.get("app").is_some()
+        || params.get("pid").is_some()
+        || params.get("windowId").is_some();
+    if has_target
+        && !windows
+            .iter()
+            .any(|window| window_matches_params(window, params))
+    {
+        return Err(UiaError::target_not_found(snapshot_target_label(params)));
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_window_target_params(params: &Value) -> Result<(), UiaError> {
+    if params.get("bundleId").is_some() || params.get("processName").is_some() {
+        return Err(UiaError::invalid_input(
+            "Windows UIA snapshots do not accept bundleId or processName; use app, pid, or windowId",
+        ));
+    }
+    if matches!(params.get("app"), Some(Value::String(app)) if app.trim().is_empty())
+        || matches!(params.get("app"), Some(value) if !value.is_string())
+    {
+        return Err(UiaError::invalid_input("app must be a non-empty string"));
+    }
+    if matches!(params.get("pid"), Some(value) if !matches!(value.as_u64(), Some(pid) if pid > 0 && pid <= u32::MAX as u64))
+    {
+        return Err(UiaError::invalid_input(
+            "pid must be a positive 32-bit integer",
+        ));
+    }
+    if let Some(window_id) = params.get("windowId") {
+        let is_valid = match window_id {
+            Value::String(window_id) => !window_id.trim().is_empty(),
+            Value::Number(window_id) => window_id.as_u64().is_some_and(|id| id > 0),
+            _ => false,
+        };
+        if !is_valid {
+            return Err(UiaError::invalid_input(
+                "windowId must be a non-empty native id string or positive integer",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn window_id_matches(native_id: &str, requested: &Value) -> bool {
+    match requested {
+        Value::String(requested) => native_id.eq_ignore_ascii_case(requested),
+        Value::Number(requested) => requested.as_u64().is_some_and(|requested| {
+            u64::from_str_radix(native_id.trim_start_matches("0x"), 16)
+                .is_ok_and(|native| native == requested)
+        }),
+        _ => false,
+    }
+}
+
+fn snapshot_target_label(params: &Value) -> String {
+    ["app", "pid", "windowId"]
+        .iter()
+        .find_map(|key| params.get(*key).map(|value| format!("{key}={value}")))
+        .unwrap_or_else(|| "requested target".into())
 }
 
 fn window_matches_find_params(window: &WindowRecord, params: &Value) -> bool {
@@ -909,15 +1029,16 @@ fn collect_descendant_matches(
     window_index: usize,
     params: &Value,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
     collect_element_matches(
         matches,
         &window.children,
         &scope,
         &window.title,
         window.pid,
-        &path,
+        path,
         params,
     );
 }
@@ -928,9 +1049,10 @@ fn collect_descendant_observe_candidates(
     window_index: usize,
     goal: &str,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
-    collect_element_observe_candidates(candidates, &window.children, &scope, &path, goal);
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
+    collect_element_observe_candidates(candidates, &window.children, &scope, path, goal);
 }
 
 fn collect_element_observe_candidates(
@@ -1079,15 +1201,16 @@ fn collect_descendant_assertion_matches(
     window_index: usize,
     params: &Value,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
     collect_element_assertion_matches(
         matches,
         &window.children,
         &scope,
         &window.title,
         window.pid,
-        &path,
+        path,
         params,
     );
 }
@@ -1325,6 +1448,11 @@ fn element_record_from_windows_uia(
         .ok()
         .map(|value| value.as_bool())
         .unwrap_or(false);
+    let focused = unsafe { element.CurrentHasKeyboardFocus() }
+        .ok()
+        .map(|value| value.as_bool())
+        .unwrap_or(false);
+    let checked = checked_from_windows_uia(element);
     let (horizontally_scrollable, vertically_scrollable) = scrollability_from_windows_uia(element);
     let bounds = unsafe { element.CurrentBoundingRectangle() }
         .ok()
@@ -1349,9 +1477,36 @@ fn element_record_from_windows_uia(
         bounds,
         enabled,
         focusable,
+        focused,
+        checked,
         horizontally_scrollable,
         vertically_scrollable,
     })
+}
+
+#[cfg(target_os = "windows")]
+fn checked_from_windows_uia(
+    element: &windows::Win32::UI::Accessibility::IUIAutomationElement,
+) -> bool {
+    use windows::Win32::UI::Accessibility::{
+        IUIAutomationSelectionItemPattern, IUIAutomationTogglePattern, ToggleState_On,
+        UIA_SelectionItemPatternId, UIA_TogglePatternId,
+    };
+
+    if let Ok(pattern) =
+        unsafe { element.GetCurrentPatternAs::<IUIAutomationTogglePattern>(UIA_TogglePatternId) }
+    {
+        return unsafe { pattern.CurrentToggleState() }
+            .map(|state| state == ToggleState_On)
+            .unwrap_or(false);
+    }
+    unsafe {
+        element.GetCurrentPatternAs::<IUIAutomationSelectionItemPattern>(UIA_SelectionItemPatternId)
+    }
+    .ok()
+    .and_then(|pattern| unsafe { pattern.CurrentIsSelected() }.ok())
+    .map(|selected| selected.as_bool())
+    .unwrap_or(false)
 }
 
 #[cfg(target_os = "windows")]
@@ -1390,6 +1545,8 @@ mod win32 {
         pub fn get_window_text_w(hwnd: isize, text: *mut u16, max_count: i32) -> i32;
         #[link_name = "GetWindowThreadProcessId"]
         pub fn get_window_thread_process_id(hwnd: isize, process_id: *mut u32) -> u32;
+        #[link_name = "GetForegroundWindow"]
+        pub fn get_foreground_window() -> isize;
     }
 }
 
@@ -1473,10 +1630,11 @@ mod tests {
                         "role": "Window",
                         "name": "Beta",
                         "path": "Window[0]",
-                        "scope": "pid-42",
+                        "scope": "window-0x2",
                         "app": "Beta",
                         "pid": 42,
-                        "states": ["visible"],
+                        "windowId": "0x2",
+                        "states": ["visible", "enabled"],
                         "metadata": {
                             "hwnd": "0x2",
                         },
@@ -1552,11 +1710,12 @@ mod tests {
                 "role": "Window",
                 "name": "Beta",
                 "path": "Window[0]",
-                "scope": "pid-42",
-                "stable": "desktop-uia:pid-42:Window[0]",
+                "scope": "window-0x2",
+                "stable": "desktop-uia:window-0x2:Window[0]",
                 "app": "Beta",
                 "pid": 42,
-                "states": ["visible"],
+                "windowId": "0x2",
+                "states": ["visible", "enabled"],
                 "metadata": {
                     "hwnd": "0x2",
                 },
@@ -1605,8 +1764,8 @@ mod tests {
                 "name": "Display",
                 "value": "8",
                 "path": "Window[0]/Edit[0]",
-                "scope": "pid-42",
-                "stable": "desktop-uia:pid-42:Window[0]/Edit[0]",
+                "scope": "window-0x2",
+                "stable": "desktop-uia:window-0x2:Window[0]/Edit[0]",
                 "app": "Calculator",
                 "pid": 42,
                 "states": ["focusable", "enabled"],
@@ -1648,11 +1807,12 @@ mod tests {
                     "role": "Window",
                     "name": "Beta Preferences",
                     "path": "Window[0]",
-                    "scope": "pid-42",
-                    "stable": "desktop-uia:pid-42:Window[0]",
+                    "scope": "window-0x2",
+                    "stable": "desktop-uia:window-0x2:Window[0]",
                     "app": "Beta Preferences",
                     "pid": 42,
-                    "states": ["visible"],
+                    "windowId": "0x2",
+                    "states": ["visible", "enabled"],
                     "metadata": {
                         "hwnd": "0x2",
                     },
@@ -1694,8 +1854,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/Edit[0]",
-                    "scope": "pid-42",
-                    "stable": "desktop-uia:pid-42:Window[0]/Edit[0]",
+                    "scope": "window-0x2",
+                    "stable": "desktop-uia:window-0x2:Window[0]/Edit[0]",
                     "app": "Calculator",
                     "pid": 42,
                     "states": ["focusable", "enabled"],
@@ -1735,8 +1895,8 @@ mod tests {
                 "candidates": [
                     {
                         "action": "click",
-                        "ref": "desktop-uia:pid-42:Window[0]",
-                        "stable": "desktop-uia:pid-42:Window[0]",
+                        "ref": "desktop-uia:window-0x2:Window[0]",
+                        "stable": "desktop-uia:window-0x2:Window[0]",
                         "role": "Window",
                         "name": "Beta Preferences",
                         "confidence": 0.95,
@@ -1787,8 +1947,8 @@ mod tests {
                 "candidates": [
                     {
                         "action": "click",
-                        "ref": "desktop-uia:pid-42:Window[0]/Button[1]",
-                        "stable": "desktop-uia:pid-42:Window[0]/Button[1]",
+                        "ref": "desktop-uia:window-0x2:Window[0]/Button[1]",
+                        "stable": "desktop-uia:window-0x2:Window[0]/Button[1]",
                         "role": "Button",
                         "name": "Eight",
                         "states": ["enabled"],
@@ -1825,7 +1985,7 @@ mod tests {
         assert_eq!(response["candidates"][0]["action"], "scroll");
         assert_eq!(
             response["candidates"][0]["stable"],
-            "desktop-uia:pid-42:Window[0]/Pane[0]",
+            "desktop-uia:window-0x2:Window[0]/Pane[0]",
         );
     }
 
@@ -1854,7 +2014,7 @@ mod tests {
         assert_eq!(response["candidates"][0]["action"], "set_value");
         assert_eq!(
             response["candidates"][0]["stable"],
-            "desktop-uia:pid-42:Window[0]/Slider[0]",
+            "desktop-uia:window-0x2:Window[0]/Slider[0]",
         );
     }
 
@@ -1939,11 +2099,12 @@ mod tests {
                     "role": "Window",
                     "name": "Beta Preferences",
                     "path": "Window[0]",
-                    "scope": "pid-42",
-                    "stable": "desktop-uia:pid-42:Window[0]",
+                    "scope": "window-0x2",
+                    "stable": "desktop-uia:window-0x2:Window[0]",
                     "app": "Beta Preferences",
                     "pid": 42,
-                    "states": ["visible"],
+                    "windowId": "0x2",
+                    "states": ["visible", "enabled"],
                     "metadata": {
                         "hwnd": "0x2",
                     },
@@ -1990,8 +2151,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/Edit[0]",
-                    "scope": "pid-42",
-                    "stable": "desktop-uia:pid-42:Window[0]/Edit[0]",
+                    "scope": "window-0x2",
+                    "stable": "desktop-uia:window-0x2:Window[0]/Edit[0]",
                     "app": "Calculator",
                     "pid": 42,
                     "states": ["focusable", "enabled"],
@@ -2017,7 +2178,7 @@ mod tests {
                 }],
             }],
             &serde_json::json!({
-                "ref": "desktop-uia:pid-42:Window[0]/Edit[0]",
+                "ref": "desktop-uia:window-0x2:Window[0]/Edit[0]",
                 "text": "8",
                 "state": "enabled",
             }),
@@ -2038,8 +2199,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/Edit[0]",
-                    "scope": "pid-42",
-                    "stable": "desktop-uia:pid-42:Window[0]/Edit[0]",
+                    "scope": "window-0x2",
+                    "stable": "desktop-uia:window-0x2:Window[0]/Edit[0]",
                     "app": "Calculator",
                     "pid": 42,
                     "states": ["focusable", "enabled"],
@@ -2049,7 +2210,7 @@ mod tests {
     }
 
     #[test]
-    fn resolves_stable_top_level_window_refs_by_pid_and_pid_local_index() {
+    fn resolves_stable_top_level_window_refs_by_exact_native_id() {
         let windows = [
             WindowRecord {
                 hwnd: "0x1".into(),
@@ -2071,7 +2232,7 @@ mod tests {
             },
         ];
 
-        let resolved = resolve_top_level_window_ref(&windows, "desktop-uia:pid-42:Window[1]")
+        let resolved = resolve_top_level_window_ref(&windows, "desktop-uia:window-0x3:Window[0]")
             .expect("stable window ref");
 
         assert_eq!(resolved.hwnd, "0x3");
@@ -2092,6 +2253,8 @@ mod tests {
             }),
             enabled: true,
             focusable: true,
+            focused: true,
+            checked: true,
             horizontally_scrollable: false,
             vertically_scrollable: false,
         })
@@ -2109,10 +2272,48 @@ mod tests {
                     width: 200,
                     height: 32,
                 }),
-                states: vec!["enabled".into(), "focusable".into()],
+                states: vec![
+                    "enabled".into(),
+                    "focusable".into(),
+                    "focused".into(),
+                    "checked".into(),
+                ],
                 children: vec![],
             },
         );
+    }
+
+    #[test]
+    fn snapshot_target_validation_rejects_missing_and_unsupported_targets() {
+        let windows = [WindowRecord {
+            hwnd: "0x42".into(),
+            pid: 42,
+            title: "Calculator".into(),
+            children: vec![],
+        }];
+
+        let missing = validate_snapshot_target(&windows, &serde_json::json!({ "app": "Missing" }))
+            .expect_err("missing app must not become an empty desktop snapshot");
+        assert!(format!("{missing:?}").contains("desktop-uia.target_not_found"));
+        validate_snapshot_target(&windows, &serde_json::json!({ "windowId": "0x42" }))
+            .expect("matching window id");
+        validate_snapshot_target(&windows, &serde_json::json!({ "windowId": 66 }))
+            .expect("matching numeric native window id");
+        for invalid in [
+            serde_json::json!({ "windowId": 0 }),
+            serde_json::json!({ "windowId": "" }),
+            serde_json::json!({ "pid": "42" }),
+            serde_json::json!({ "pid": 0 }),
+            serde_json::json!({ "app": "" }),
+        ] {
+            let error = validate_snapshot_target(&windows, &invalid)
+                .expect_err("invalid target types must not broaden the snapshot");
+            assert!(format!("{error:?}").contains("desktop-uia.invalid_input"));
+        }
+        let unsupported =
+            validate_snapshot_target(&windows, &serde_json::json!({ "processName": "calc.exe" }))
+                .expect_err("unsupported target selector must be explicit");
+        assert!(format!("{unsupported:?}").contains("desktop-uia.invalid_input"));
     }
 
     #[test]
@@ -2124,6 +2325,8 @@ mod tests {
             bounds: None,
             enabled: true,
             focusable: false,
+            focused: false,
+            checked: false,
             horizontally_scrollable: false,
             vertically_scrollable: true,
         })

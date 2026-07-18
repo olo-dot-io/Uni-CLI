@@ -1,10 +1,16 @@
 /**
- * Internal helpers for `DesktopAxTransport`.
- *
- * Pure utilities and Swift-script binary lifecycle. Carved out of
- * `desktop-ax.ts` to keep the main transport file under the
- * god-file-guard threshold and to give these helpers a stable home for
- * future direct unit testing.
+ * @owner       src::transport::adapters::desktop-ax-helpers
+ * @does        Normalize native AX snapshots and manage cached Swift-script binaries for DesktopAxTransport.
+ * @needs       filesystem, crypto hashing, desktop AX target resolver, snapshot encoder types.
+ * @feeds       desktop AX snapshot encoding, target filtering, and Swift execution.
+ * @breaks      Dropping native state booleans or exact window identity makes ref preflight and condition waits disagree with the observed UI.
+ * @invariants  Equivalent scripts map to one cache path; normalized descendants inherit app/pid/window/scope and retain actionable states.
+ * @side-effects Creates and chmods content-addressed Swift binaries under the Uni-CLI cache.
+ * @perf        One tree normalization pass; one cached Swift compilation per unique script digest.
+ * @concurrency One in-process compile promise owns each content digest.
+ * @test        tests/unit/transport/adapters/desktop-ax.test.ts
+ * @stability   stable
+ * @since       2026-07-15
  */
 
 import { createHash } from "node:crypto";
@@ -126,13 +132,19 @@ export function normalizeAxSnapshot(
   input: Record<string, unknown>,
   path = String(input.role ?? "AXUnknown") + "[0]",
   scope = readScope(input),
-  inherited: { app?: string; pid?: number } = {},
+  inherited: { app?: string; pid?: number; windowId?: number } = {},
 ): RawAxNode {
   const role = typeof input.role === "string" ? input.role : "AXUnknown";
   const app = typeof input.app === "string" ? input.app : inherited.app;
   const pid = typeof input.pid === "number" ? input.pid : inherited.pid;
+  const windowId =
+    typeof input.windowId === "number" &&
+    Number.isSafeInteger(input.windowId) &&
+    input.windowId > 0
+      ? input.windowId
+      : inherited.windowId;
   const children = Array.isArray(input.children)
-    ? normalizeChildren(input.children, path, scope, { app, pid })
+    ? normalizeChildren(input.children, path, scope, { app, pid, windowId })
     : undefined;
   return {
     role,
@@ -146,6 +158,7 @@ export function normalizeAxSnapshot(
     scope,
     app,
     pid,
+    windowId,
   };
 }
 
@@ -153,7 +166,7 @@ function normalizeChildren(
   children: unknown[],
   parentPath: string,
   scope: string,
-  inherited: { app?: string; pid?: number },
+  inherited: { app?: string; pid?: number; windowId?: number },
 ): RawAxNode[] {
   const roleCounts = new Map<string, number>();
   const nodes: RawAxNode[] = [];
@@ -219,10 +232,19 @@ function readScreenIndex(input: Record<string, unknown>): number | undefined {
 function readStates(
   input: Record<string, unknown>,
 ): readonly string[] | undefined {
-  if (!Array.isArray(input.states)) return undefined;
-  return input.states.filter(
-    (state): state is string => typeof state === "string",
+  const states = new Set(
+    Array.isArray(input.states)
+      ? input.states.filter(
+          (state): state is string => typeof state === "string",
+        )
+      : [],
   );
+  if (input.enabled === true) states.add("enabled");
+  if (input.enabled === false) states.add("disabled");
+  if (input.focused === true) states.add("focused");
+  if (input.checked === true) states.add("checked");
+  if (input.minimized === true) states.add("minimized");
+  return states.size > 0 ? Array.from(states) : undefined;
 }
 
 function readNumber(value: unknown): number | undefined {

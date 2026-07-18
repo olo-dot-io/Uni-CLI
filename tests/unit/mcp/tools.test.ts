@@ -485,10 +485,22 @@ describe("computer-use profile", () => {
     const tools = selectTools!("computer-use");
 
     for (const [command, toolName] of [
+      ["apps", "computer-use.apps"],
+      ["windows", "computer-use.windows"],
+      ["capture", "computer-use.capture"],
+      ["snapshot", "computer-use.snapshot"],
+      ["find", "computer-use.find"],
       ["click", "computer-use.click"],
       ["type", "computer-use.type"],
       ["press", "computer-use.press"],
       ["scroll", "computer-use.scroll"],
+      ["launch", "computer-use.launch"],
+      ["screenshot", "computer-use.screenshot"],
+      ["attach", "computer-use.attach"],
+      ["eval", "computer-use.evaluate"],
+      ["wait", "computer-use.wait"],
+      ["observe", "computer-use.observe"],
+      ["assert", "computer-use.assert"],
     ] as const) {
       const corePayload = describeUnicli("compute", command).payload as {
         args_schema: {

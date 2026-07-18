@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9680<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9791<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">

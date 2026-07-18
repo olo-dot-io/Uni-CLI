@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
   DesktopAxTransport,
   type AxShell,
@@ -23,6 +23,7 @@ import {
   buildAxSetValueScript,
   buildAxSnapshotScript,
   buildElectronAxWarmupScript,
+  readAxWindowId,
   readAxElementQuery,
   resolveAxTarget,
 } from "../../../../src/transport/adapters/desktop-ax-swift.js";
@@ -30,6 +31,7 @@ import {
   findElectronApp,
   resolveAppControlPolicy,
 } from "../../../../src/electron-apps.js";
+import { normalizeAxSnapshot } from "../../../../src/transport/adapters/desktop-ax-helpers.js";
 import { createTransportBus } from "../../../../src/transport/bus.js";
 import type { TransportContext } from "../../../../src/transport/types.js";
 
@@ -104,6 +106,37 @@ class FakeShell implements AxShell {
 }
 
 describe("DesktopAxTransport", () => {
+  it("parses only positive 32-bit decimal CoreGraphics window ids", () => {
+    expect(readAxWindowId(42)).toBe(42);
+    expect(readAxWindowId("42")).toBe(42);
+    for (const invalid of [-1, 0, "-1", "0", "window-name", 0x1_0000_0000]) {
+      expect(readAxWindowId(invalid)).toBeUndefined();
+    }
+  });
+
+  it.each([-1, "-1", "window-name", 0x1_0000_0000])(
+    "fails closed before AX dispatch for invalid window id %s",
+    async (windowId) => {
+      const shell = new FakeShell();
+      const transport = new DesktopAxTransport({ shell, platform: "darwin" });
+      await transport.open(makeCtx());
+
+      const result = await transport.action({
+        kind: "ax_snapshot",
+        params: { app: "Ghostty", windowId },
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          minimum_capability: "desktop-ax.ax_snapshot.invalid_input",
+          exit_code: 2,
+        },
+      });
+      expect(shell.calls).toHaveLength(0);
+    },
+  );
+
   it("resolves natural app aliases for NetEase desktop control", () => {
     expect(findElectronApp("netease music app")?.bundleId).toBe(
       "com.netease.163music",
@@ -156,6 +189,38 @@ describe("DesktopAxTransport", () => {
       expect(script).not.toContain("Set([])");
       expect(script).not.toContain("as? AXUIElement");
     }
+  });
+
+  it("binds ref actions to an exact window and AX traversal path", () => {
+    const target = resolveAxTarget({ app: "Calculator" });
+    expect(target).not.toBeNull();
+    const query = readAxElementQuery(
+      {
+        stable: "desktop-ax:focusedWindow:AXWindow[0]/AXGroup[1]/AXButton[2]",
+        windowId: 4242,
+        role: "AXButton",
+        name: "Equals",
+      },
+      false,
+    );
+    const script = buildAxPressScript(target!, {
+      ...query,
+      actionName: "AXPress",
+    });
+
+    expect(query.windowId).toBe(4242);
+    expect(query.path).toEqual([
+      { role: "AXWindow", index: 0 },
+      { role: "AXGroup", index: 1 },
+      { role: "AXButton", index: 2 },
+    ]);
+    expect(script).toContain("let queryWindowId = 4242");
+    expect(script).toContain(
+      'let queryPathRoles: [String] = ["AXWindow", "AXGroup", "AXButton"]',
+    );
+    expect(script).toContain("exactWindowId($0");
+    expect(script).toContain("elementAtQueryPath(window)");
+    expect(script).not.toContain("activateIgnoringOtherApps");
   });
 
   it("generates background-click Swift with activation primer, event taps, and window field writes", () => {
@@ -229,6 +294,50 @@ describe("DesktopAxTransport", () => {
     expect(script).toContain("AXSize");
     expect(script).toContain("screenIndex");
     expect(script).toContain("NSScreen.screens");
+    expect(script).toContain("kAXFocusedAttribute");
+    expect(script).toContain("kAXMinimizedAttribute");
+    expect(script).toContain("CGWindowListCopyWindowInfo");
+    expect(script).toContain("kCGWindowIsOnscreen");
+    expect(script).toContain("minimized ? !isOnscreen : isOnscreen");
+    expect(script).not.toContain(
+      "if titled.count == 1 { return windowNumber(titled[0]) }",
+    );
+    expect(script).not.toContain("return exactBounds.count == 1");
+    expect(script).toContain('describedRoot["windowId"]');
+    expect(script).toContain('describedRoot["scope"] = "window-\\(windowId)"');
+  });
+
+  it("generates target-scoped snapshots for an exact CoreGraphics window", () => {
+    const target = resolveAxTarget({ app: "Calculator" });
+    expect(target).not.toBeNull();
+    const script = buildAxSnapshotScript(target!, {
+      maxDepth: 2,
+      scope: "focusedWindow",
+      windowId: 4242,
+    });
+
+    expect(script).toContain("let snapshotWindowId = 4242");
+    expect(script).toContain("matches.count == 1");
+    expect(script).toContain("selectedWindow = matches[0]");
+    expect(script).toContain('"matched": false');
+    expect(script).toContain(
+      '"failure": matches.isEmpty ? "window_not_found" : "window_ambiguous"',
+    );
+  });
+
+  it("normalizes native AX booleans into actionable ref states", () => {
+    const snapshot = normalizeAxSnapshot({
+      role: "AXWindow",
+      title: "Editor",
+      enabled: true,
+      focused: true,
+      children: [
+        { role: "AXButton", title: "Run", enabled: false, minimized: true },
+      ],
+    });
+
+    expect(snapshot.states).toEqual(["enabled", "focused"]);
+    expect(snapshot.children?.[0]?.states).toEqual(["disabled", "minimized"]);
   });
 
   it("typechecks generated Swift AX scripts when swiftc is available", () => {
@@ -417,8 +526,102 @@ describe("DesktopAxTransport", () => {
       expect(shell.calls[0]?.command).toBe("screencapture");
       const stagingPath = String(shell.calls[0]?.args.at(-1));
       expect(stagingPath).not.toBe(destination);
-      expect(dirname(stagingPath)).toBe(root);
+      expect(dirname(dirname(stagingPath))).toBe(root);
+      expect(basename(dirname(stagingPath))).toMatch(/^\.shot\./);
+      expect(stagingPath).toMatch(/\.tmp\.png$/);
       expect(readFileSync(destination, "utf8")).toBe("png bytes");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("ax_screenshot scopes an explicit app to its observed window bounds", async () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-ax-window-shot-"));
+    const destination = join(root, "shot.png");
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "snapshot"`,
+      JSON.stringify({
+        found: true,
+        matched: true,
+        mode: "snapshot",
+        scope: "focusedWindow",
+        element: {
+          role: "AXWindow",
+          title: "Calculator",
+          bounds: { x: 10, y: 20, w: 640, h: 480 },
+          windowId: 42,
+        },
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    try {
+      const res = await t.action({
+        kind: "ax_screenshot",
+        params: { app: "Calculator", path: destination },
+      });
+
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.data).toMatchObject({
+          path: destination,
+          mime: "image/png",
+          scope: "window",
+          windowId: 42,
+          bounds: { x: 10, y: 20, w: 640, h: 480 },
+        });
+      }
+      const capture = shell.calls.find(
+        (call) => call.command === "screencapture",
+      );
+      expect(capture?.args).toContain("-l42");
+      expect(capture?.args).toContain("-o");
+      expect(capture?.args).not.toContain("-R10,20,640,480");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed when an app window cannot be bound to CoreGraphics", async () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-ax-window-shot-"));
+    const destination = join(root, "shot.png");
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "snapshot"`,
+      JSON.stringify({
+        found: true,
+        matched: true,
+        mode: "snapshot",
+        scope: "focusedWindow",
+        element: {
+          role: "AXWindow",
+          title: "Calculator",
+          bounds: { x: 10, y: 20, w: 640, h: 480 },
+        },
+      }),
+    );
+    const t = new DesktopAxTransport({ shell, platform: "darwin" });
+    await t.open(makeCtx());
+
+    try {
+      const res = await t.action({
+        kind: "ax_screenshot",
+        params: { app: "Calculator", path: destination },
+      });
+
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.error.minimum_capability).toBe(
+          "desktop-ax.ax_screenshot.target_window",
+        );
+      }
+      expect(shell.calls.some((call) => call.command === "screencapture")).toBe(
+        false,
+      );
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -751,7 +954,44 @@ describe("DesktopAxTransport", () => {
     if (!res.ok) {
       expect(res.error.reason).toMatch(/no matching accessibility element/i);
       expect(res.error.suggestion).toMatch(/focus the target control/i);
+      expect(res.error.minimum_capability).toBe(
+        "desktop-ax.ax_press.no_element",
+      );
     }
+  });
+
+  it("distinguishes an exact stale window from an element-filter miss", async () => {
+    const shell = new FakeShell();
+    shell.respondMatch(
+      "swift",
+      `let commandMode = "press"`,
+      JSON.stringify({
+        found: true,
+        matched: false,
+        mode: "press",
+        failure: "window_not_found",
+      }),
+    );
+    const transport = new DesktopAxTransport({ shell, platform: "darwin" });
+    await transport.open(makeCtx());
+
+    const result = await transport.action({
+      kind: "ax_press",
+      params: {
+        app: "Calculator",
+        ensureElectronAx: false,
+        windowId: 4242,
+        role: "AXButton",
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        minimum_capability: "desktop-ax.ax_press.target_window_not_found",
+        exit_code: 66,
+      },
+    });
   });
 
   it("ax_scroll performs AXScrollToVisible without activating the app", async () => {

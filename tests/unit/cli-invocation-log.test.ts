@@ -14,12 +14,17 @@ import {
   _resetCliInvocationLogForTests,
   beginCliInvocationLogging,
   completeCliInvocation,
+  currentCliInvocationId,
+  observeCliLocalLogWarning,
   observeCliOutput,
   observeCliTrace,
 } from "../../src/runtime/cli-invocation-log.js";
 import {
   _resetLocalEventLogForTests,
+  appendLocalEvent,
+  createLocalEvent,
   createLocalEventStore,
+  localEventWarning,
   readLocalEvents,
 } from "../../src/runtime/local-event-log.js";
 
@@ -65,6 +70,7 @@ describe("CLI invocation log", () => {
       startedAt: Date.now() - 20,
       registerProcessHooks: false,
     });
+    expect(currentCliInvocationId()).toEqual(expect.any(String));
     observeCliTrace("01KTRACE000000000000000000");
     observeCliOutput(
       {
@@ -80,6 +86,7 @@ describe("CLI invocation log", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       event_name: "unicli.cli.invocation.completed",
+      operation_role: "invocation",
       trace_id: "01KTRACE000000000000000000",
       transport: "cli",
       command: "github.search",
@@ -89,6 +96,19 @@ describe("CLI invocation log", () => {
       result_bytes: 321,
     });
     expect(JSON.stringify(events)).not.toContain("must-not-persist");
+    expect(currentCliInvocationId()).toBeUndefined();
+  });
+
+  it("uses a fixed identity until a rendered command is observed", () => {
+    beginCliInvocationLogging({
+      argv: ["node", "unicli", "private-user-token"],
+      registerProcessHooks: false,
+    });
+
+    completeCliInvocation(64);
+    const serialized = JSON.stringify(readLocalEvents(createLocalEventStore()));
+    expect(serialized).toContain('"command":"core.unknown"');
+    expect(serialized).not.toContain("private-user-token");
   });
 
   it("records typed error semantics from the rendered envelope", () => {
@@ -134,5 +154,34 @@ describe("CLI invocation log", () => {
     expect(completeCliInvocation(0)).toContain(
       "[local-log] failed to append local event",
     );
+  });
+
+  it("does not repeat a local-log warning already surfaced by the kernel", () => {
+    const blockedRoot = join(tempDir, "blocked-duplicate");
+    writeFileSync(blockedRoot, "not a directory");
+    process.env.UNICLI_LOG_ROOT = blockedRoot;
+    beginCliInvocationLogging({
+      argv: ["node", "unicli", "github", "search"],
+      registerProcessHooks: false,
+    });
+    const kernelWarning = localEventWarning(
+      appendLocalEvent(
+        createLocalEvent({
+          event_name: "unicli.tool.call.completed",
+          invocation_id: "tool-1",
+          parent_invocation_id: currentCliInvocationId()!,
+          transport: "cli",
+          command: "github.search",
+          operation_role: "direct",
+          outcome: "success",
+          exit_code: 0,
+          duration_ms: 1,
+        }),
+      ),
+    );
+    expect(kernelWarning).toEqual(expect.any(String));
+    observeCliLocalLogWarning(kernelWarning!);
+
+    expect(completeCliInvocation(0)).toBeUndefined();
   });
 });

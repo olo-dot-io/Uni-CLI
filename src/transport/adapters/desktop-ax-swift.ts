@@ -1,3 +1,18 @@
+/**
+ * @owner       src::transport::adapters::desktop-ax-swift
+ * @does        Resolve macOS AX targets and generate bounded Swift programs for exact-window observation and exact-path mutation.
+ * @needs       Electron app registry, CoreGraphics window metadata, and shared background-input script builders.
+ * @feeds       desktop AX transport actions and generated-script typecheck tests.
+ * @breaks      Missing live AX state, exact CoreGraphics window identity, or AX traversal provenance can observe or mutate an unrelated surface.
+ * @invariants  Generated programs select one explicit process and exact window, emit one JSON result, preserve native element state, and revalidate the exact AX traversal path before mutation without activating the app unless requested.
+ * @side-effects Generated programs may inspect or mutate the selected macOS application when executed.
+ * @perf        Snapshot recursion and child fanout are bounded by caller depth and 50 children per node.
+ * @concurrency Generated scripts retain only request-local process, window, and traversal-path state.
+ * @test        tests/unit/transport/adapters/desktop-ax.test.ts
+ * @stability   stable
+ * @since       2026-07-15
+ */
+
 import { findElectronApp } from "../../electron-apps.js";
 export {
   buildAxBackgroundClickScript,
@@ -35,11 +50,14 @@ export interface AxWarmupResult {
 export interface AxSnapshotScriptOptions {
   maxDepth: number;
   scope: "focusedWindow" | "focusedElement";
+  windowId?: number;
 }
 
 export interface AxElementQuery {
   focused: boolean;
   maxDepth: number;
+  windowId?: number;
+  path?: readonly AxPathSegment[];
   roles: readonly string[];
   subroles: readonly string[];
   names: readonly string[];
@@ -49,6 +67,11 @@ export interface AxElementQuery {
   namePrefix: boolean;
   titlePrefix: boolean;
   descriptionPrefix: boolean;
+}
+
+export interface AxPathSegment {
+  role: string;
+  index: number;
 }
 
 export interface AxSetValueScriptOptions extends AxElementQuery {
@@ -110,10 +133,12 @@ export function buildAxWindowsScript(
   return [
     `import AppKit`,
     `import ApplicationServices`,
+    `import CoreGraphics`,
     `import Foundation`,
     ``,
     swiftEmitHelper(),
     swiftAxHelpers(),
+    swiftWindowIdentityHelpers(),
     `let commandMode = "windows"`,
     `let requestedAppName = ${swiftStringLiteral(opts.appName ?? "")}`,
     `let requestedBundleId = ${swiftStringLiteral(opts.bundleId ?? "")}`,
@@ -141,13 +166,17 @@ export function buildAxWindowsScript(
     `  if let title = stringAttr(window, kAXTitleAttribute as String) { out["title"] = title }`,
     `  if let focused = boolAttr(window, "AXFocused") ?? boolAttr(window, kAXMainAttribute as String) { out["focused"] = focused }`,
     `  if let minimized = boolAttr(window, kAXMinimizedAttribute as String) { out["minimized"] = minimized }`,
+    `  if let bounds = elementBounds(window) {`,
+    `    out["bounds"] = ["x": Double(bounds.origin.x), "y": Double(bounds.origin.y), "w": Double(bounds.size.width), "h": Double(bounds.size.height)]`,
+    `  }`,
+    `  if let windowId = exactWindowId(window, pid: app.processIdentifier) { out["windowId"] = windowId }`,
     `  return out`,
     `}`,
     ``,
     `var windows: [[String: Any]] = []`,
     `for app in NSWorkspace.shared.runningApplications.filter(appMatches) {`,
     `  let axApp = AXUIElementCreateApplication(app.processIdentifier)`,
-    `  let appWindows = (attr(axApp, kAXWindowsAttribute as String) as? [AnyObject] ?? []).compactMap { axElement($0) }`,
+    `  let appWindows = targetWindows(in: axApp)`,
     `  for (index, window) in appWindows.enumerated() {`,
     `    windows.append(windowInfo(window, app: app, index: index))`,
     `  }`,
@@ -248,15 +277,18 @@ export function buildAxSnapshotScript(
   return [
     `import AppKit`,
     `import ApplicationServices`,
+    `import CoreGraphics`,
     `import CoreFoundation`,
     `import Foundation`,
     ``,
     ...buildRunningAppPrelude(target, 0),
     swiftEmitHelper(),
     swiftAxHelpers(),
+    swiftWindowIdentityHelpers(),
     `let commandMode = "snapshot"`,
     `let snapshotScope = ${swiftStringLiteral(opts.scope)}`,
     `let snapshotMaxDepth = ${normalizeInt(opts.maxDepth, 3)}`,
+    `let snapshotWindowId = ${String(opts.windowId ?? 0)}`,
     ``,
     `guard let running else {`,
     `  emit([`,
@@ -269,9 +301,36 @@ export function buildAxSnapshotScript(
     `}`,
     ``,
     `let axApp = AXUIElementCreateApplication(running.processIdentifier)`,
+    `let selectedWindow: AXUIElement?`,
+    `if snapshotWindowId > 0 {`,
+    `  let appWindows = targetWindows(in: axApp)`,
+    `  let matches = appWindows.filter { exactWindowId($0, pid: running.processIdentifier) == snapshotWindowId }`,
+    `  guard matches.count == 1 else {`,
+    `    emit([`,
+    `      "found": true,`,
+    `      "matched": false,`,
+    `      "mode": commandMode,`,
+    `      "scope": snapshotScope,`,
+    `      "windowId": snapshotWindowId,`,
+    `      "failure": matches.isEmpty ? "window_not_found" : "window_ambiguous",`,
+    `    ])`,
+    `    exit(0)`,
+    `  }`,
+    `  selectedWindow = matches[0]`,
+    `} else {`,
+    `  selectedWindow = focusedWindow(in: axApp)`,
+    `}`,
     `let root = snapshotScope == "focusedElement"`,
-    `  ? focusedElement(in: axApp) ?? focusedWindow(in: axApp) ?? axApp`,
-    `  : focusedWindow(in: axApp) ?? focusedElement(in: axApp) ?? axApp`,
+    `  ? selectedWindow.flatMap { axElement(attr($0, kAXFocusedUIElementAttribute as String)) } ?? focusedElement(in: axApp) ?? selectedWindow ?? axApp`,
+    `  : selectedWindow ?? focusedElement(in: axApp) ?? axApp`,
+    `var describedRoot = describe(root, depth: 0, maxDepth: snapshotMaxDepth)`,
+    `describedRoot["pid"] = Int(running.processIdentifier)`,
+    `if let selectedWindow, let windowId = exactWindowId(selectedWindow, pid: running.processIdentifier) {`,
+    `  describedRoot["windowId"] = windowId`,
+    `  describedRoot["scope"] = "window-\\(windowId)"`,
+    `} else {`,
+    `  describedRoot["scope"] = snapshotScope`,
+    `}`,
     `emit([`,
     `  "found": true,`,
     `  "matched": true,`,
@@ -279,7 +338,7 @@ export function buildAxSnapshotScript(
     `  "scope": snapshotScope,`,
     `  "bundleId": running.bundleIdentifier ?? bundleId,`,
     `  "localizedName": running.localizedName ?? processName,`,
-    `  "element": describe(root, depth: 0, maxDepth: snapshotMaxDepth),`,
+    `  "element": describedRoot,`,
     `])`,
   ].join("\n");
 }
@@ -323,6 +382,10 @@ export function swiftStringLiteral(value: string): string {
 
 export function swiftStringArray(values: readonly string[]): string {
   return `[${values.map(swiftStringLiteral).join(", ")}]`;
+}
+
+function swiftIntArray(values: readonly number[]): string {
+  return `[${values.map((value) => String(value)).join(", ")}]`;
 }
 
 function swiftStringSet(values: readonly string[]): string {
@@ -377,6 +440,8 @@ export function readAxElementQuery(
     focused:
       typeof params.focused === "boolean" ? params.focused : defaultFocused,
     maxDepth: readPositiveInt(params.maxDepth, 8),
+    windowId: readAxWindowId(params.windowId),
+    path: readAxStablePath(params.stable),
     roles: readStringList(params.role),
     subroles: readStringList(params.subrole),
     names: readStringList(params.name),
@@ -397,6 +462,24 @@ export function readAxElementQuery(
   };
 }
 
+export function readAxStablePath(value: unknown): readonly AxPathSegment[] {
+  if (typeof value !== "string" || !value.startsWith("desktop-ax:")) {
+    return [];
+  }
+  const scopeEnd = value.indexOf(":", "desktop-ax:".length);
+  if (scopeEnd < 0 || scopeEnd === value.length - 1) return [];
+  const segments: AxPathSegment[] = [];
+  for (const raw of value.slice(scopeEnd + 1).split("/")) {
+    const match = /^(.+)\[(\d+)\]$/.exec(raw);
+    if (!match?.[1] || match[2] === undefined) return [];
+    const index = Number(match[2]);
+    if (!Number.isSafeInteger(index) || index < 0) return [];
+    segments.push({ role: match[1], index });
+    if (segments.length > 128) return [];
+  }
+  return segments;
+}
+
 export function hasAxElementMatcher(params: Record<string, unknown>): boolean {
   return (
     readStringList(params.role).length > 0 ||
@@ -412,6 +495,21 @@ export function readPositiveInt(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0
     ? Math.trunc(value)
     : fallback;
+}
+
+export function readAxWindowId(value: unknown): number | undefined {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value)
+        ? Number(value)
+        : undefined;
+  return typeof parsed === "number" &&
+    Number.isSafeInteger(parsed) &&
+    parsed >= 1 &&
+    parsed <= 0xffff_ffff
+    ? parsed
+    : undefined;
 }
 
 function buildRunningAppPrelude(
@@ -450,6 +548,7 @@ function buildAxElementCommandScript(
     | AxPressScriptOptions
     | AxScrollScriptOptions,
 ): string {
+  const path = opts.path ?? [];
   const setValue = "value" in opts ? opts.value : "";
   const attribute = "attribute" in opts ? opts.attribute : "AXValue";
   const actionName = "actionName" in opts ? opts.actionName : "AXPress";
@@ -457,15 +556,20 @@ function buildAxElementCommandScript(
   return [
     `import AppKit`,
     `import ApplicationServices`,
+    `import CoreGraphics`,
     `import CoreFoundation`,
     `import Foundation`,
     ``,
     ...buildRunningAppPrelude(target, 0),
     swiftEmitHelper(),
     swiftAxHelpers(),
+    swiftWindowIdentityHelpers(),
     `let commandMode = ${swiftStringLiteral(mode)}`,
     `let queryFocused = ${opts.focused ? "true" : "false"}`,
     `let queryMaxDepth = ${normalizeInt(opts.maxDepth, 8)}`,
+    `let queryWindowId = ${String(opts.windowId ?? 0)}`,
+    `let queryPathRoles: [String] = ${swiftStringArray(path.map((segment) => segment.role))}`,
+    `let queryPathIndices: [Int] = ${swiftIntArray(path.map((segment) => segment.index))}`,
     `let queryRoles = ${swiftStringSet(opts.roles)}`,
     `let querySubroles = ${swiftStringSet(opts.subroles)}`,
     `let queryNames = ${swiftStringSet(opts.names)}`,
@@ -514,19 +618,48 @@ function buildAxElementCommandScript(
     `  return nil`,
     `}`,
     ``,
+    `func selectedWindow(in app: AXUIElement) -> AXUIElement? {`,
+    `  if queryWindowId <= 0 { return focusedWindow(in: app) }`,
+    `  let appWindows = targetWindows(in: app)`,
+    `  let matches = appWindows.filter { exactWindowId($0, pid: running!.processIdentifier) == queryWindowId }`,
+    `  return matches.count == 1 ? matches[0] : nil`,
+    `}`,
+    ``,
+    `func elementAtQueryPath(_ root: AXUIElement) -> AXUIElement? {`,
+    `  guard queryPathRoles.count == queryPathIndices.count, !queryPathRoles.isEmpty else { return nil }`,
+    `  var current = root`,
+    `  var offset = 0`,
+    `  if stringAttr(current, kAXRoleAttribute as String) == queryPathRoles[0] && queryPathIndices[0] == 0 { offset = 1 }`,
+    `  for position in offset..<queryPathRoles.count {`,
+    `    let role = queryPathRoles[position]`,
+    `    let index = queryPathIndices[position]`,
+    `    let matches = children(current).filter { stringAttr($0, kAXRoleAttribute as String) == role }`,
+    `    guard index >= 0 && index < matches.count else { return nil }`,
+    `    current = matches[index]`,
+    `  }`,
+    `  return current`,
+    `}`,
+    ``,
     `func selectElement(in app: AXUIElement) -> AXUIElement? {`,
     `  let focused = focusedElement(in: app)`,
+    `  let window = selectedWindow(in: app)`,
+    `  if queryWindowId > 0 && window == nil { return nil }`,
+    `  if !queryPathRoles.isEmpty {`,
+    `    guard let window, let exact = elementAtQueryPath(window), matchesQuery(exact) else { return nil }`,
+    `    return exact`,
+    `  }`,
     `  let hasQuery = !queryRoles.isEmpty || !querySubroles.isEmpty || !queryNames.isEmpty || !queryTitles.isEmpty || !queryDescriptions.isEmpty || !queryIdentifiers.isEmpty`,
     `  if !hasQuery {`,
-    `    return focused ?? focusedWindow(in: app)`,
+    `    return focused ?? window`,
     `  }`,
     `  if queryFocused, let focused, matchesQuery(focused) {`,
     `    return focused`,
     `  }`,
     `  if queryFocused { return nil }`,
-    `  if let window = focusedWindow(in: app), let found = findMatching(window) {`,
+    `  if let window, let found = findMatching(window) {`,
     `    return found`,
     `  }`,
+    `  if queryWindowId > 0 { return nil }`,
     `  return findMatching(app)`,
     `}`,
     ``,
@@ -541,13 +674,20 @@ function buildAxElementCommandScript(
     `}`,
     ``,
     `let axApp = AXUIElementCreateApplication(running.processIdentifier)`,
+    `let exactWindowMatches = queryWindowId > 0`,
+    `  ? targetWindows(in: axApp).filter { exactWindowId($0, pid: running.processIdentifier) == queryWindowId }`,
+    `  : []`,
     `guard let element = selectElement(in: axApp) else {`,
+    `  let failure = queryWindowId > 0 && exactWindowMatches.count != 1`,
+    `    ? (exactWindowMatches.isEmpty ? "window_not_found" : "window_ambiguous")`,
+    `    : (!queryPathRoles.isEmpty ? "stale_path" : "element_not_found")`,
     `  emit([`,
     `    "found": true,`,
     `    "matched": false,`,
     `    "mode": commandMode,`,
     `    "bundleId": running.bundleIdentifier ?? bundleId,`,
     `    "localizedName": running.localizedName ?? processName,`,
+    `    "failure": failure,`,
     `  ])`,
     `  exit(0)`,
     `}`,
@@ -641,6 +781,19 @@ function swiftAxHelpers(): string {
     `  return String(describing: raw)`,
     `}`,
     ``,
+    `func checkedAttr(_ el: AXUIElement) -> Bool? {`,
+    `  let role = stringAttr(el, kAXRoleAttribute as String) ?? ""`,
+    `  if role == kAXCheckBoxRole as String || role == kAXRadioButtonRole as String || role == "AXSwitch" {`,
+    `    if let value = attr(el, kAXValueAttribute as String) as? NSNumber { return value.intValue != 0 }`,
+    `    if let selected = boolAttr(el, kAXSelectedAttribute as String) { return selected }`,
+    `  }`,
+    `  if role == kAXMenuItemRole as String {`,
+    `    if let mark = stringAttr(el, "AXMenuItemMarkChar") { return !mark.isEmpty }`,
+    `    if let selected = boolAttr(el, kAXSelectedAttribute as String) { return selected }`,
+    `  }`,
+    `  return nil`,
+    `}`,
+    ``,
     `func pointAttr(_ el: AXUIElement, _ name: String) -> CGPoint? {`,
     `  guard let raw = attr(el, name) else { return nil }`,
     `  let value = raw as CFTypeRef`,
@@ -712,6 +865,14 @@ function swiftAxHelpers(): string {
     `  return axElement(attr(app, kAXFocusedWindowAttribute as String))`,
     `}`,
     ``,
+    `func targetWindows(in app: AXUIElement) -> [AXUIElement] {`,
+    `  var windows = (attr(app, kAXWindowsAttribute as String) as? [AnyObject] ?? []).compactMap { axElement($0) }`,
+    `  if let focused = focusedWindow(in: app), !windows.contains(where: { CFEqual($0, focused) }) {`,
+    `    windows.append(focused)`,
+    `  }`,
+    `  return windows`,
+    `}`,
+    ``,
     `func focusedElement(in app: AXUIElement) -> AXUIElement? {`,
     `  if let focused = axElement(attr(app, kAXFocusedUIElementAttribute as String)) { return focused }`,
     `  if let window = focusedWindow(in: app), let focused = axElement(attr(window, kAXFocusedUIElementAttribute as String)) {`,
@@ -729,6 +890,9 @@ function swiftAxHelpers(): string {
     `  if let identifier = stringAttr(el, "AXIdentifier") { out["identifier"] = identifier }`,
     `  if let value = valueAttr(el) { out["value"] = value }`,
     `  if let enabled = boolAttr(el, kAXEnabledAttribute as String) { out["enabled"] = enabled }`,
+    `  if let focused = boolAttr(el, kAXFocusedAttribute as String) { out["focused"] = focused }`,
+    `  if let checked = checkedAttr(el) { out["checked"] = checked }`,
+    `  if let minimized = boolAttr(el, kAXMinimizedAttribute as String) { out["minimized"] = minimized }`,
     `  if let rect = elementBounds(el) {`,
     `    out["bounds"] = [`,
     `      "x": Double(rect.origin.x),`,
@@ -746,6 +910,60 @@ function swiftAxHelpers(): string {
     `    out["children"] = Array(kids.prefix(50)).map { describe($0, depth: depth + 1, maxDepth: maxDepth) }`,
     `  }`,
     `  return out`,
+    `}`,
+  ].join("\n");
+}
+
+function swiftWindowIdentityHelpers(): string {
+  return [
+    `func boundsMatch(_ lhs: CGRect, _ rhs: CGRect) -> Bool {`,
+    `  let tolerance: CGFloat = 2`,
+    `  return abs(lhs.origin.x - rhs.origin.x) <= tolerance`,
+    `    && abs(lhs.origin.y - rhs.origin.y) <= tolerance`,
+    `    && abs(lhs.size.width - rhs.size.width) <= tolerance`,
+    `    && abs(lhs.size.height - rhs.size.height) <= tolerance`,
+    `}`,
+    ``,
+    `func windowNumber(_ info: [String: Any]) -> Int? {`,
+    `  return (info[kCGWindowNumber as String] as? NSNumber)?.intValue`,
+    `}`,
+    ``,
+    `func windowBounds(_ info: [String: Any]) -> CGRect? {`,
+    `  guard let rawBounds = info[kCGWindowBounds as String] as? NSDictionary else { return nil }`,
+    `  var bounds = CGRect.zero`,
+    `  return CGRectMakeWithDictionaryRepresentation(rawBounds, &bounds) ? bounds : nil`,
+    `}`,
+    ``,
+    `func windowIsOnscreen(_ info: [String: Any]) -> Bool? {`,
+    `  return (info[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue`,
+    `}`,
+    ``,
+    `func exactWindowId(_ window: AXUIElement, pid: pid_t) -> Int? {`,
+    `  guard let targetBounds = elementBounds(window) else { return nil }`,
+    `  let targetTitle = stringAttr(window, kAXTitleAttribute as String) ?? ""`,
+    `  guard let infos = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return nil }`,
+    `  let owned = infos.filter { info in`,
+    `    guard let ownerPid = info[kCGWindowOwnerPID as String] as? NSNumber, ownerPid.int32Value == pid else { return false }`,
+    `    guard let layer = info[kCGWindowLayer as String] as? NSNumber, layer.intValue == 0 else { return false }`,
+    `    return windowNumber(info) != nil`,
+    `  }`,
+    `  let minimized = boolAttr(window, kAXMinimizedAttribute as String) ?? false`,
+    `  if !targetTitle.isEmpty {`,
+    `    let titled = owned.filter { ($0[kCGWindowName as String] as? String) == targetTitle }`,
+    `    let titledBounds = titled.filter { info in`,
+    `      guard let candidateBounds = windowBounds(info) else { return false }`,
+    `      guard boundsMatch(targetBounds, candidateBounds) else { return false }`,
+    `      guard let isOnscreen = windowIsOnscreen(info) else { return false }`,
+    `      return minimized ? !isOnscreen : isOnscreen`,
+    `    }`,
+    `    if titledBounds.count == 1 { return windowNumber(titledBounds[0]) }`,
+    `  }`,
+    `  let exactVisibleBounds = owned.filter { info in`,
+    `    guard let candidateBounds = windowBounds(info), boundsMatch(targetBounds, candidateBounds) else { return false }`,
+    `    guard let isOnscreen = windowIsOnscreen(info) else { return false }`,
+    `    return minimized ? !isOnscreen : isOnscreen`,
+    `  }`,
+    `  return exactVisibleBounds.count == 1 ? windowNumber(exactVisibleBounds[0]) : nil`,
     `}`,
   ].join("\n");
 }

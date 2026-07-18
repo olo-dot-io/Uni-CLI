@@ -3,7 +3,7 @@
 /**
  * @owner       src::main
  * @does        Selects constant-time root version/help, ACP, manifest fast paths, or the full Commander command tree.
- * @needs       constants/fast-startup, ACP server, manifest fast path, full CLI loaded only at the owning boundary
+ * @needs       constants/fast-startup, ACP server, manifest fast path, full CLI and Commander error boundary loaded only at the owning boundary
  * @feeds       npm `unicli` executable
  * @breaks      Startup routing and command failures propagate their owning exit status.
  * @invariants  Root version/help never load adapters or start network work; only one dispatch path runs.
@@ -40,8 +40,12 @@ if (versionFastPath) {
   beginCliInvocationLogging();
   const { tryRunFastPath } = await import("./fast-path.js");
   if (!tryRunFastPath(process.argv)) {
-    const { createCli } = await import("./cli.js");
+    const { createCli, handleCommanderError } = await import("./cli.js");
     const program = await createCli();
-    program.parse(process.argv);
+    try {
+      program.parse(process.argv);
+    } catch (error) {
+      if (!handleCommanderError(program, error)) throw error;
+    }
   }
 }

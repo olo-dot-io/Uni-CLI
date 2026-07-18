@@ -4,7 +4,7 @@
  * @needs       Swift AX generators, app control policy, cancellable shell, transactional file publication
  * @feeds       compute cascade and direct desktop-ax transport callers
  * @breaks      Returning cancellation before native children exit, losing post-dispatch ambiguity, or overwriting fulfilled native mutations permits unsafe replay.
- * @invariants  Native mutation settlement is authoritative; cancellation-caused rejection after dispatch is outcome-ambiguous; screenshot destinations change only at atomic commit.
+ * @invariants  Native mutation settlement is authoritative; cancellation-caused rejection after dispatch is outcome-ambiguous; app-targeted screenshots bind one AX window to one exact CoreGraphics window id instead of sampling an occluded screen region; screenshot destinations change only at atomic commit.
  * @side-effects Can focus apps, mutate accessibility elements, post input, use the clipboard, launch apps, and create screenshot artifacts.
  * @perf        Swift compilation is content-addressed and cached; each action uses at most one native child after warmup.
  * @concurrency AbortSignal is request-local; detached process groups prevent descendants from escaping cancellation.
@@ -57,6 +57,7 @@ import {
   type AxWarmupResult,
   type ResolvedAxTarget,
   readAxElementQuery,
+  readAxWindowId,
   readPositiveInt,
   resolveAxTarget,
 } from "./desktop-ax-swift.js";
@@ -162,6 +163,11 @@ interface AxElementCommandResult {
   action?: string;
   result?: number;
   element?: Record<string, unknown>;
+  failure?:
+    | "window_not_found"
+    | "window_ambiguous"
+    | "stale_path"
+    | "element_not_found";
 }
 
 interface CachedAxSession {
@@ -263,6 +269,22 @@ export class DesktopAxTransport implements TransportAdapter {
                 : "run on macOS (darwin) for native AX + AppleScript",
           minimum_capability: `desktop-ax.${req.kind}`,
           exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+      if (
+        req.params.windowId !== undefined &&
+        readAxWindowId(req.params.windowId) === undefined
+      ) {
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action: req.kind,
+          reason:
+            "windowId must be a positive decimal CoreGraphics window id no greater than 4294967295",
+          suggestion:
+            "pass the numeric windowId reported by `unicli compute windows --app <app>`",
+          minimum_capability: `desktop-ax.${req.kind}.invalid_input`,
+          exit_code: exitCodeFor("usage_error"),
         });
       }
       const envelope = await settleDispatchedAction(
@@ -609,7 +631,11 @@ export class DesktopAxTransport implements TransportAdapter {
     return this.runSwiftAxAction<T>(
       "ax_snapshot",
       target,
-      buildAxSnapshotScript(target, { maxDepth, scope }),
+      buildAxSnapshotScript(target, {
+        maxDepth,
+        scope,
+        windowId: readAxWindowId(params.windowId),
+      }),
       signal,
     );
   }
@@ -762,21 +788,69 @@ export class DesktopAxTransport implements TransportAdapter {
     params: Record<string, unknown>,
     signal?: AbortSignal,
   ): Promise<Envelope<T>> {
+    const target = resolveAxTarget(params);
+    let bounds = readScreenshotBounds(params);
+    let windowId = readAxWindowId(params.windowId);
+    if (target) {
+      const observed = await this.doAxSnapshot<AxElementCommandResult>(
+        { ...params, maxDepth: 1 },
+        signal,
+      );
+      if (!observed.ok) return observed as Envelope<T>;
+      bounds = this.lastAxSnapshot
+        ? normalizeAxSnapshot(this.lastAxSnapshot).bounds
+        : undefined;
+      windowId = this.lastAxSnapshot
+        ? readAxWindowId(this.lastAxSnapshot.windowId)
+        : undefined;
+      if (windowId === undefined) {
+        return err({
+          transport: "desktop-ax",
+          step: 0,
+          action: "ax_screenshot",
+          reason: `an exact on-screen window id is unavailable for ${target.appName}`,
+          suggestion:
+            "restore the target window and retry after it appears in `unicli compute windows --app <name>`",
+          minimum_capability: "desktop-ax.ax_screenshot.target_window",
+          exit_code: exitCodeFor("service_unavailable"),
+        });
+      }
+    }
+    const captureArgs = (path: string): string[] => [
+      "-x",
+      "-t",
+      "png",
+      ...(windowId !== undefined
+        ? ["-o", `-l${String(windowId)}`]
+        : bounds
+          ? [
+              `-R${String(Math.trunc(bounds.x))},${String(Math.trunc(bounds.y))},${String(Math.trunc(bounds.w))},${String(Math.trunc(bounds.h))}`,
+            ]
+          : []),
+      path,
+    ];
     const path = readStringParam(params.path);
     if (path) {
       try {
         await publishFileTransactionally(
           path,
           async (temporaryPath) => {
-            await this.shell.run(
-              "screencapture",
-              ["-x", "-t", "png", temporaryPath],
-              { timeoutMs: 10_000, signal },
-            );
+            await this.shell.run("screencapture", captureArgs(temporaryPath), {
+              timeoutMs: 10_000,
+              signal,
+            });
           },
           { signal },
         );
-        return ok({ path, mime: "image/png" } as unknown as T);
+        return ok({
+          path,
+          mime: "image/png",
+          ...(windowId !== undefined
+            ? { scope: "window", windowId, ...(bounds ? { bounds } : {}) }
+            : bounds
+              ? { scope: "window_bounds", bounds }
+              : {}),
+        } as unknown as T);
       } catch (e) {
         signal?.throwIfAborted();
         return this.envelopeFromShellError("ax_screenshot", e);
@@ -786,7 +860,7 @@ export class DesktopAxTransport implements TransportAdapter {
     const dir = await mkdtemp(join(tmpdir(), "unicli-ax-screenshot-"));
     const file = join(dir, "capture.png");
     try {
-      await this.shell.run("screencapture", ["-x", "-t", "png", file], {
+      await this.shell.run("screencapture", captureArgs(file), {
         timeoutMs: 10_000,
         signal,
       });
@@ -797,6 +871,11 @@ export class DesktopAxTransport implements TransportAdapter {
         base64: buffer.toString("base64"),
         mime: "image/png",
         bytes: buffer.length,
+        ...(windowId !== undefined
+          ? { scope: "window", windowId, ...(bounds ? { bounds } : {}) }
+          : bounds
+            ? { scope: "window_bounds", bounds }
+            : {}),
       } as unknown as T);
     } catch (e) {
       signal?.throwIfAborted();
@@ -928,11 +1007,18 @@ export class DesktopAxTransport implements TransportAdapter {
           suggestion: target.bundleId
             ? `launch the app first, or run open -b ${target.bundleId}`
             : `launch the app first, or run open -a "${target.appName}"`,
+          minimum_capability: `desktop-ax.${action}.target_not_found`,
           exit_code: exitCodeFor("service_unavailable"),
         });
       }
 
       if (result.matched === false) {
+        const exactFailure = axMatchFailure(
+          action,
+          target.appName,
+          result.failure,
+        );
+        if (exactFailure) return exactFailure as Envelope<T>;
         return err({
           transport: "desktop-ax",
           step: 0,
@@ -940,6 +1026,7 @@ export class DesktopAxTransport implements TransportAdapter {
           reason: `no matching accessibility element found in ${target.appName}`,
           suggestion:
             "focus the target control first, or pass role/title/description filters that match the target element",
+          minimum_capability: `desktop-ax.${action}.no_element`,
           exit_code: exitCodeFor("service_unavailable"),
         });
       }
@@ -1053,4 +1140,66 @@ export class DesktopAxTransport implements TransportAdapter {
       process.env.UNICLI_AX_SWIFT_CACHE !== "0"
     );
   }
+}
+
+function axMatchFailure(
+  action: string,
+  appName: string,
+  failure: AxElementCommandResult["failure"],
+): Envelope<never> | undefined {
+  if (failure === "window_not_found") {
+    return err({
+      transport: "desktop-ax",
+      step: 0,
+      action,
+      reason: `the exact accessibility window is no longer available in ${appName}`,
+      suggestion:
+        "run `unicli compute windows --app <app>` and bind the current windowId",
+      minimum_capability: `desktop-ax.${action}.target_window_not_found`,
+      exit_code: exitCodeFor("empty_result"),
+    });
+  }
+  if (failure === "window_ambiguous") {
+    return err({
+      transport: "desktop-ax",
+      step: 0,
+      action,
+      reason: `the exact accessibility window identity is ambiguous in ${appName}`,
+      suggestion:
+        "refresh the window inventory; do not retry against an ambiguous native id",
+      minimum_capability: `desktop-ax.${action}.target_window_ambiguous`,
+      exit_code: exitCodeFor("service_unavailable"),
+    });
+  }
+  if (failure === "stale_path") {
+    return err({
+      transport: "desktop-ax",
+      step: 0,
+      action,
+      reason: `the accessibility traversal path is stale in ${appName}`,
+      suggestion: "take a fresh snapshot and use the replacement stable ref",
+      minimum_capability: `desktop-ax.${action}.stale_ref`,
+      exit_code: exitCodeFor("empty_result"),
+    });
+  }
+  return undefined;
+}
+
+function readScreenshotBounds(
+  params: Record<string, unknown>,
+): { x: number; y: number; w: number; h: number } | undefined {
+  if (!isRecord(params.bounds)) return undefined;
+  const { x, y, w, h } = params.bounds;
+  return typeof x === "number" &&
+    Number.isFinite(x) &&
+    typeof y === "number" &&
+    Number.isFinite(y) &&
+    typeof w === "number" &&
+    Number.isFinite(w) &&
+    w > 0 &&
+    typeof h === "number" &&
+    Number.isFinite(h) &&
+    h > 0
+    ? { x, y, w, h }
+    : undefined;
 }

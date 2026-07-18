@@ -268,6 +268,10 @@ describe("CommandContract", () => {
     expect(click.args_schema.properties.ref.description).toContain(
       "olo:accessibility",
     );
+    expect(click.args_schema.properties.background).toMatchObject({
+      type: "boolean",
+      default: false,
+    });
     expect(click.channels.shell).toContain("<ref>");
     expect(type.args_schema.required).toEqual(["ref", "text"]);
     expect(type.channels.shell).toContain("<ref> <text>");

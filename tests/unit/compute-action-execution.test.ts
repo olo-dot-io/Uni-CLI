@@ -53,14 +53,15 @@ describe("compute action execution", () => {
     const bus = createTransportBus();
     const alloc = new RefAllocator();
     alloc.alloc({
-      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      stable: "desktop-ax:window-42:AXWindow[0]/AXButton[4]",
       role: "AXButton",
       name: "5",
       app: "Calculator",
+      windowId: 42,
       bounds: { x: 10, y: 20, w: 30, h: 40 },
       screenIndex: 2,
     });
-    bus.refs.put(alloc.freeze("desktop-ax", "calc"));
+    bus.refs.put(alloc.freeze("desktop-ax", "window-42"));
     const ax = new StubTransport(
       "desktop-ax",
       ["ax_press"],
@@ -136,13 +137,14 @@ describe("compute action execution", () => {
     const bus = createTransportBus();
     const first = new RefAllocator();
     first.alloc({
-      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      stable: "desktop-ax:window-42:AXWindow[0]/AXButton[4]",
       role: "AXButton",
       name: "5",
       app: "Calculator",
+      windowId: 42,
       bounds: { x: 10, y: 20, w: 20, h: 20 },
     });
-    bus.refs.put(first.freeze("desktop-ax", "calc"));
+    bus.refs.put(first.freeze("desktop-ax", "window-42"));
     const ax = new StubTransport(
       "desktop-ax",
       ["ax_press"],
@@ -182,13 +184,14 @@ describe("compute action execution", () => {
     await overlayStarted;
     const replacement = new RefAllocator();
     replacement.alloc({
-      stable: "desktop-ax:calc:AXWindow[0]/AXButton[8]",
+      stable: "desktop-ax:window-42:AXWindow[0]/AXButton[8]",
       role: "AXButton",
       name: "9",
       app: "Calculator",
+      windowId: 42,
       bounds: { x: 110, y: 20, w: 20, h: 20 },
     });
-    bus.refs.put(replacement.freeze("desktop-ax", "calc"));
+    bus.refs.put(replacement.freeze("desktop-ax", "window-42"));
     releaseOverlay();
 
     const execution = await executionPromise;

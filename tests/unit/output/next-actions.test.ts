@@ -113,6 +113,19 @@ describe("error next_actions", () => {
     expect(commands).toContain(retry);
   });
 
+  it("preserves direct first-party targets for an empty vendor scope", () => {
+    const target = "unicli ai read 'https://developer.cambricon.com'";
+    const commands = defaultErrorNextActions(
+      "ai",
+      "search",
+      "empty_result",
+      undefined,
+      { alternatives: [target, "unicli ai sources"] },
+    ).map((action) => action.command);
+
+    expect(commands).toContain(target);
+  });
+
   it("propagates concrete AI source recovery instead of repairing the aggregator", () => {
     const sourceRetry =
       "unicli yahoo search 'site:docs.nvidia.com NVLink bandwidth'";
@@ -127,6 +140,30 @@ describe("error next_actions", () => {
     expect(commands).toContain(sourceRetry);
     expect(commands).toContain("unicli ai sources");
     expect(commands).not.toContain("unicli repair ai search");
+  });
+
+  it("emits each recovery command once when source and auth guidance overlap", () => {
+    const actions = defaultErrorNextActions(
+      "ai",
+      "search",
+      "auth_required",
+      undefined,
+      {
+        setupCommand: "gh auth login",
+        alternatives: [
+          "gh auth login",
+          "unicli gh search-repos 'NVLink'",
+          "unicli ai sources",
+          "unicli ai sources",
+        ],
+      },
+    );
+    const commands = actions.map((action) => action.command);
+
+    expect(commands).toContain("gh auth login");
+    expect(commands).toContain("unicli gh search-repos 'NVLink'");
+    expect(commands).toContain("unicli ai sources");
+    expect(new Set(commands).size).toBe(commands.length);
   });
 
   it("routes a keyless DuckDuckGo challenge to usable search adapters", () => {

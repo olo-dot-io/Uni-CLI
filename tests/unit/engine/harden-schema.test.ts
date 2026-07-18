@@ -11,7 +11,11 @@ import { describe, it, expect } from "vitest";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { hardenArgs, InputHardeningError } from "../../../src/engine/harden.js";
+import {
+  assertUriShapeDeclarations,
+  hardenArgs,
+  InputHardeningError,
+} from "../../../src/engine/harden.js";
 import type { AdapterArg } from "../../../src/types.js";
 
 function trycatch(
@@ -60,6 +64,60 @@ describe("hardenArgs — format: uri (draft-2020-12 format-assertion)", () => {
     if (r.ok) {
       expect(r.warnings.some((w) => /double-URL-encoded/.test(w))).toBe(true);
     }
+  });
+});
+
+describe("hardenArgs — declarative URI origin and path shape", () => {
+  const schema: AdapterArg[] = [
+    {
+      name: "target",
+      type: "str",
+      format: "uri",
+      "x-unicli-uri-origins": ["https://github.com"],
+      "x-unicli-uri-path-pattern":
+        "/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*/?",
+    },
+  ];
+
+  it("accepts a URI whose canonical origin and complete pathname match", () => {
+    expect(
+      trycatch(
+        { target: "https://github.com/olo-dot-io/Uni-CLI/issues/42" },
+        schema,
+      ),
+    ).toEqual({ ok: true, warnings: [] });
+  });
+
+  it.each([
+    "mailto:secret@example.com",
+    "https://example.com/olo-dot-io/Uni-CLI/issues/42",
+    "https://github.com/olo-dot-io/Uni-CLI/pull/42",
+    "https://github.com/olo-dot-io/Uni-CLI/issues/42/files",
+    "https://user:secret@github.com/olo-dot-io/Uni-CLI/issues/42",
+  ])("rejects a URI outside the declared shape: %s", (target) => {
+    expect(trycatch({ target }, schema).ok).toBe(false);
+  });
+
+  it("rejects malformed shape declarations before invocation", () => {
+    expect(() =>
+      assertUriShapeDeclarations([
+        {
+          name: "target",
+          type: "str",
+          format: "uri",
+          "x-unicli-uri-origins": ["https://github.com/path"],
+        },
+      ]),
+    ).toThrow(/canonical HTTP\(S\) origins/);
+    expect(() =>
+      assertUriShapeDeclarations([
+        {
+          name: "target",
+          type: "str",
+          "x-unicli-uri-path-pattern": "/*",
+        },
+      ]),
+    ).toThrow(/requires format: uri/);
   });
 });
 

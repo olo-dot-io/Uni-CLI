@@ -228,7 +228,10 @@ describe("DesktopUiaTransport", () => {
     const ctx = makeCtx();
     await t.open(ctx);
 
-    const snapshot = await t.snapshot({ format: "json" });
+    const snapshot = await t.snapshot({
+      format: "json",
+      params: { app: "Notepad" },
+    });
 
     expect(snapshot).toEqual({
       format: "json",
@@ -240,7 +243,10 @@ describe("DesktopUiaTransport", () => {
       "desktop-uia:123:Window[0]",
     );
     expect(sidecar.calls).toEqual([
-      { kind: "uia_snapshot", params: { format: "json" } },
+      {
+        kind: "uia_snapshot",
+        params: { app: "Notepad", format: "json" },
+      },
     ]);
   });
 
@@ -263,9 +269,20 @@ describe("DesktopUiaTransport", () => {
       role: "Window",
       name: "Notepad",
       path: "Window[0]",
-      scope: "pid-42",
+      scope: "window-0x2",
+      app: "Notepad",
+      pid: 42,
+      windowId: "0x2",
       bounds: { x: 100, y: 120, width: 800, height: 600 },
       states: ["visible"],
+      children: [
+        {
+          role: "Button",
+          name: "Save",
+          path: "Window[0]/Button[0]",
+          scope: "window-0x2",
+        },
+      ],
     };
     const sidecar = new FakeSidecar(async () => raw);
     const ctx = makeCtx();
@@ -277,12 +294,21 @@ describe("DesktopUiaTransport", () => {
     expect(snapshot).toEqual({
       format: "text",
       encoding: "compact",
-      data: '@e1 window "Notepad" 800x600@100,120 {visible}',
-      refs: { count: 1, scope: "pid-42" },
+      data: '@e1 window "Notepad" 800x600@100,120 {visible} app=Notepad\n@e2 button "Save" app=Notepad',
+      refs: { count: 2, scope: "window-0x2" },
     });
     expect(ctx.bus.refs.resolve("@e1")).toMatchObject({
-      stable: "desktop-uia:pid-42:Window[0]",
+      stable: "desktop-uia:window-0x2:Window[0]",
       bounds: { x: 100, y: 120, w: 800, h: 600 },
+      app: "Notepad",
+      pid: 42,
+      windowId: "0x2",
+    });
+    expect(ctx.bus.refs.resolve("@e2")).toMatchObject({
+      stable: "desktop-uia:window-0x2:Window[0]/Button[0]",
+      app: "Notepad",
+      pid: 42,
+      windowId: "0x2",
     });
     expect(sidecar.calls).toEqual([
       { kind: "uia_snapshot", params: { format: "compact" } },

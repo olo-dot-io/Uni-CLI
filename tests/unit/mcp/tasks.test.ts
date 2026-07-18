@@ -42,7 +42,7 @@ describe("MCP 2025-11-25 Tasks", () => {
       tools: [{ name: "mutate", execution: { taskSupport: "required" } }],
     });
     expect(direct.error).toMatchObject({
-      code: -32601,
+      code: -32602,
       message: expect.stringContaining("requires task augmentation"),
     });
   });

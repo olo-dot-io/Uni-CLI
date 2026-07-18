@@ -306,10 +306,12 @@ describe("execute (end-to-end)", () => {
         trace_id: success.trace_id,
         transport: "mcp",
         command: "inv-site.hello",
+        operation_role: "standalone",
         target_surface: "web",
         outcome: "success",
         exit_code: 0,
       });
+      expect(events[0]).not.toHaveProperty("adapter_path");
       expect(events[1]).toMatchObject({
         transport: "acp",
         command: "inv-site.fail",

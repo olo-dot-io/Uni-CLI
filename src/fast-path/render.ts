@@ -75,6 +75,12 @@ export function argsToJsonSchema(args: ManifestArg[]): Record<string, unknown> {
     if (arg["x-unicli-accepts"]) {
       prop["x-unicli-accepts"] = arg["x-unicli-accepts"];
     }
+    if (arg["x-unicli-uri-origins"]) {
+      prop["x-unicli-uri-origins"] = arg["x-unicli-uri-origins"];
+    }
+    if (arg["x-unicli-uri-path-pattern"]) {
+      prop["x-unicli-uri-path-pattern"] = arg["x-unicli-uri-path-pattern"];
+    }
     properties[arg.name] = prop;
     if (arg.required) required.push(arg.name);
   }

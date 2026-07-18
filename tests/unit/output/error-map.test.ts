@@ -216,6 +216,9 @@ describe("errorTypeToCode — generic Error message matching", () => {
       "linux-do",
     );
     expect(fields.retryable).toBe(true);
+    expect(fields.suggestion).toBe(
+      "Retry after the upstream rate-limit window, reduce request frequency, or select another source.",
+    );
   });
 
   it("falls back to internal_error for unknown Error", () => {
@@ -272,6 +275,19 @@ describe("mapErrorToExitCode", () => {
   it("returns TEMP_FAILURE for PipelineError with network_error errorType", () => {
     const err = makePipelineError({ errorType: "network_error" });
     expect(mapErrorToExitCode(err)).toBe(ExitCode.TEMP_FAILURE);
+  });
+
+  it("returns TEMP_FAILURE for structured and generic rate limits", () => {
+    expect(mapErrorToExitCode(makePipelineError({ statusCode: 429 }))).toBe(
+      ExitCode.TEMP_FAILURE,
+    );
+    expect(
+      mapErrorToExitCode(
+        Object.assign(new Error("upstream quota exhausted"), {
+          code: "rate_limited",
+        }),
+      ),
+    ).toBe(ExitCode.TEMP_FAILURE);
   });
 
   it("returns GENERIC_ERROR for other PipelineError", () => {

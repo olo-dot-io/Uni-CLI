@@ -342,6 +342,73 @@ describe("AI source precision contracts", () => {
     });
   });
 
+  it("preserves source failure and recovery detail when every pulse lane is empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      // REASON: Semantic Scholar is external; the real retrieval, error mapping, and pulse aggregation run unchanged.
+      vi.fn(
+        async () => new Response("temporarily unavailable", { status: 503 }),
+      ),
+    );
+
+    const failure = await pulseAiContent({
+      profile: "inference",
+      query: "continuous batching",
+      sources: "yahoo.search",
+      window: "all",
+      limit: 2,
+    }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("yahoo.search"),
+      alternatives: expect.arrayContaining([
+        expect.stringContaining("unicli yahoo search"),
+      ]),
+    });
+  });
+
+  it("ranks an exact rare technical term above a broader high-rank overview", async () => {
+    vi.stubGlobal(
+      "fetch",
+      // REASON: Hacker News is external; the real adapter normalization and AI fusion/ranking run unchanged.
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              hits: [
+                {
+                  objectID: "broad",
+                  title: "NVIDIA Blackwell systems overview",
+                  story_text: "A broad AI infrastructure overview.",
+                  url: "https://example.com/blackwell-overview",
+                },
+                {
+                  objectID: "exact",
+                  title: "NVL72 NVLink bandwidth formula and topology",
+                  story_text: "Exact NVL72 engineering details.",
+                  url: "https://example.com/nvl72-bandwidth",
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+      ),
+    );
+
+    const rows = await searchAiContent("NVL72", {
+      sources: "hackernews.search",
+      limit: 2,
+    });
+
+    expect(rows.map((row) => row.title)).toEqual([
+      "NVL72 NVLink bandwidth formula and topology",
+    ]);
+  });
+
   it("reports a repeated provider failure once across profile pulse queries", async () => {
     vi.stubGlobal(
       "fetch",
@@ -619,6 +686,38 @@ describe("AI source precision contracts", () => {
     ).rejects.toMatchObject({
       code: "empty_result",
       alternatives: expect.arrayContaining(["unicli ai sources"]),
+    });
+  });
+
+  it("exposes bounded first-party recovery targets for an empty vendor scope", async () => {
+    vi.stubGlobal(
+      "fetch",
+      // REASON: Semantic Scholar is external; the real empty-result and vendor recovery boundary run unchanged.
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ data: [] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ),
+    );
+
+    const failure = await searchAiContent("BANG C kernel occupancy", {
+      sources: "semantic-scholar.search",
+      vendors: "cambricon",
+      limit: 5,
+    }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+
+    expect(failure).toMatchObject({
+      code: "empty_result",
+      suggestion: expect.stringContaining("developer.cambricon.com"),
+      alternatives: expect.arrayContaining([
+        "unicli ai read 'https://developer.cambricon.com'",
+        "unicli ai read 'https://github.com/Cambricon/mlu-ops'",
+      ]),
     });
   });
 

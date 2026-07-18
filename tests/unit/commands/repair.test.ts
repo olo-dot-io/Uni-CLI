@@ -52,6 +52,20 @@ beforeAll(() => {
       },
     },
   });
+  registerAdapter({
+    name: "repair-required-fixture",
+    type: AdapterType.WEB_API,
+    commands: {
+      read: {
+        name: "read",
+        adapter_path: "src/adapters/repair-required-fixture/read.yaml",
+        adapterArgs: [
+          { name: "url", type: "str", required: true, positional: true },
+        ],
+        pipeline: [],
+      },
+    },
+  });
 });
 
 afterEach(() => {
@@ -104,6 +118,33 @@ describe("unicli repair command truth contract", () => {
     expect(envelope.ok).toBe(false);
     expect(envelope.error.code).toBe("invalid_input");
     expect(envelope.error.exit_code).toBe(2);
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("requires the original argv before verifying a parameterized command", async () => {
+    const capture = captureConsole();
+    try {
+      await program().parseAsync(
+        ["-f", "json", "repair", "repair-required-fixture", "read"],
+        { from: "user" },
+      );
+    } finally {
+      capture.restore();
+    }
+
+    const envelope = JSON.parse(capture.stderr().trim());
+    validateEnvelope(envelope);
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: {
+        code: "invalid_input",
+        exit_code: 2,
+      },
+    });
+    expect(envelope.error.message).toContain(
+      "requires original arguments: url",
+    );
+    expect(envelope.error.suggestion).toContain("--target-args");
     expect(process.exitCode).toBe(2);
   });
 

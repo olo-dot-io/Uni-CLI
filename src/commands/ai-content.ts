@@ -3,8 +3,8 @@
  * @does        Defines the AI content record and pure domain enrichment, normalization, and fusion over the generic evidence and retrieval contracts.
  * @needs       node:crypto, WHATWG URL, AI landscape identities, and the pure EvidenceDocument value boundary
  * @feeds       src/commands/ai.ts and AI content contract tests
- * @breaks      Weak canonicalization or provenance inference causes duplicate, misattributed, or untraceable Agent evidence.
- * @invariants  Pure functions perform no I/O; normalized records always retain source identity and retrieval time; document hashes cover returned content.
+ * @breaks      Weak canonicalization or conflated author/publisher/host provenance causes duplicate, misattributed, or untraceable Agent evidence.
+ * @invariants  Pure functions perform no I/O; normalized records always retain source identity and retrieval time; publisher is populated only by an explicit upstream publisher or a verified official owner and never by authorship; document hashes cover returned content.
  * @side-effects None.
  * @perf        O(R) normalization/fusion and O(N) document structuring.
  * @concurrency safe
@@ -545,10 +545,8 @@ export function coerceAiContentRecords(
       vendor,
       vendors,
       publisher:
-        firstString(row, ["repository", "publisher"]) ||
-        (isOfficial ? primarySource?.name : "") ||
-        author ||
-        (vendor !== "unknown" ? vendor : domain),
+        firstString(row, ["publisher"]) ||
+        (isOfficial ? (primarySource?.name ?? "") : ""),
       hosting_platform: primarySource?.name ?? source.site,
       organization: isOfficial ? (primarySource?.name ?? "") : "",
       organization_type: isOfficial
@@ -635,6 +633,7 @@ export function reciprocalRankFuse(
       ...primary,
       summary: primary.summary || secondary.summary,
       author: primary.author || secondary.author,
+      publisher: primary.publisher || secondary.publisher,
       doi: primary.doi || secondary.doi,
       arxiv_id: primary.arxiv_id || secondary.arxiv_id,
       semantic_scholar_id:

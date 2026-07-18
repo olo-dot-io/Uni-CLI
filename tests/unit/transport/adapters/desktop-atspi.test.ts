@@ -238,7 +238,10 @@ describe("DesktopAtspiTransport", () => {
     const ctx = makeCtx();
     await t.open(ctx);
 
-    const snapshot = await t.snapshot({ format: "json" });
+    const snapshot = await t.snapshot({
+      format: "json",
+      params: { app: "Calculator" },
+    });
 
     expect(snapshot).toEqual({
       format: "json",
@@ -250,7 +253,10 @@ describe("DesktopAtspiTransport", () => {
       "desktop-atspi:123:frame[0]",
     );
     expect(sidecar.calls).toEqual([
-      { kind: "atspi_snapshot", params: { format: "json" } },
+      {
+        kind: "atspi_snapshot",
+        params: { app: "Calculator", format: "json" },
+      },
     ]);
   });
 
@@ -273,9 +279,20 @@ describe("DesktopAtspiTransport", () => {
       role: "Window",
       name: "Terminal",
       path: "Window[0]",
-      scope: "pid-1234",
+      scope: "window-0x03a00007",
+      app: "Terminal",
+      pid: 1234,
+      windowId: "0x03a00007",
       bounds: { x: 10, y: 20, width: 640, height: 480 },
       states: ["visible"],
+      children: [
+        {
+          role: "push_button",
+          name: "Run",
+          path: "Window[0]/push_button[0]",
+          scope: "window-0x03a00007",
+        },
+      ],
     };
     const sidecar = new FakeSidecar(async () => raw);
     const ctx = makeCtx();
@@ -287,12 +304,21 @@ describe("DesktopAtspiTransport", () => {
     expect(snapshot).toEqual({
       format: "text",
       encoding: "compact",
-      data: '@e1 window "Terminal" 640x480@10,20 {visible}',
-      refs: { count: 1, scope: "pid-1234" },
+      data: '@e1 window "Terminal" 640x480@10,20 {visible} app=Terminal\n@e2 button "Run" app=Terminal',
+      refs: { count: 2, scope: "window-0x03a00007" },
     });
     expect(ctx.bus.refs.resolve("@e1")).toMatchObject({
-      stable: "desktop-atspi:pid-1234:Window[0]",
+      stable: "desktop-atspi:window-0x03a00007:Window[0]",
       bounds: { x: 10, y: 20, w: 640, h: 480 },
+      app: "Terminal",
+      pid: 1234,
+      windowId: "0x03a00007",
+    });
+    expect(ctx.bus.refs.resolve("@e2")).toMatchObject({
+      stable: "desktop-atspi:window-0x03a00007:Window[0]/push_button[0]",
+      app: "Terminal",
+      pid: 1234,
+      windowId: "0x03a00007",
     });
     expect(sidecar.calls).toEqual([
       { kind: "atspi_snapshot", params: { format: "compact" } },

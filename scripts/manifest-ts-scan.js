@@ -357,6 +357,17 @@ function argsFromArrayLiteral(node, constArrays) {
     if (kind) arg["x-unicli-kind"] = kind;
     const accepts = getStringArray(argNode, "x-unicli-accepts", constArrays);
     if (accepts) arg["x-unicli-accepts"] = accepts;
+    const uriOrigins = getStringArray(
+      argNode,
+      "x-unicli-uri-origins",
+      constArrays,
+    );
+    if (uriOrigins) arg["x-unicli-uri-origins"] = uriOrigins;
+    const uriPathPattern = getObjectString(
+      argNode,
+      "x-unicli-uri-path-pattern",
+    );
+    if (uriPathPattern) arg["x-unicli-uri-path-pattern"] = uriPathPattern;
 
     args.push(arg);
   }

@@ -63,7 +63,7 @@ export function registerUsageCommands(program: Command): void {
       "Override legacy usage.jsonl path",
       DEFAULT_LEDGER_PATH,
     )
-    .option("--log-dir <path>", "Override schema-v1 local event directory")
+    .option("--log-dir <path>", "Override versioned local event directory")
     .option("--json", "Output as JSON")
     .action((opts: ReportOptions) => {
       const startedAt = Date.now();

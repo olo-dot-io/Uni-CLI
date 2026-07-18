@@ -1,6 +1,6 @@
 /**
  * @owner       src::runtime::usage-ledger
- * @does        Projects legacy usage JSONL and schema-v1 local tool events into aggregate command statistics.
+ * @does        Strictly projects legacy usage JSONL and versioned parent-correlated local events into aggregate command statistics.
  * @needs       local event log reader, user-home resolution, sysexits semantics
  * @feeds       `unicli usage report` and usage regression tests
  * @breaks      Silent corruption or permissive CLI parsing makes operational reports falsely trustworthy.
@@ -19,6 +19,7 @@ import { userHome } from "../engine/user-home.js";
 import {
   createLocalEventStore,
   readLocalEvents,
+  type LocalDiagnosticEvent,
   type LocalEventStore,
 } from "./local-event-log.js";
 
@@ -105,15 +106,41 @@ export function loadUsageSources(
   options: {
     ledgerPath?: string;
     eventStore?: LocalEventStore;
+    now?: number;
   } = {},
 ): UsageSources {
   const legacy = loadUsage(options.ledgerPath ?? DEFAULT_LEDGER_PATH);
-  const events = readLocalEvents(options.eventStore ?? createLocalEventStore())
-    .filter(
-      (event) =>
-        (event.event_name === "unicli.tool.call.completed" &&
-          event.transport !== "cli") ||
-        event.event_name === "unicli.cli.invocation.completed",
+  const allEvents = readLocalEvents(
+    options.eventStore ?? createLocalEventStore(),
+    options.now === undefined ? {} : { now: options.now },
+  );
+  const directChildParents = new Set(
+    allEvents
+      .filter(
+        (event) =>
+          event.schema_version === "2" &&
+          event.operation_role === "direct" &&
+          event.parent_invocation_id !== undefined,
+      )
+      .map((event) =>
+        event.schema_version === "2" ? event.parent_invocation_id : undefined,
+      )
+      .filter((id): id is string => id !== undefined),
+  );
+  const legacyCliTerminalTraces = new Set(
+    allEvents
+      .filter(
+        (event) =>
+          event.schema_version === "1" &&
+          event.event_name === "unicli.cli.invocation.completed" &&
+          event.trace_id !== undefined,
+      )
+      .map((event) => event.trace_id)
+      .filter((id): id is string => id !== undefined),
+  );
+  const events = allEvents
+    .filter((event) =>
+      shouldProjectEvent(event, directChildParents, legacyCliTerminalTraces),
     )
     .map(
       (event): UsageRecord => ({
@@ -133,6 +160,32 @@ export function loadUsageSources(
     legacy_records: legacy.length,
     event_records: events.length,
   };
+}
+
+function shouldProjectEvent(
+  event: LocalDiagnosticEvent,
+  directChildParents: ReadonlySet<string>,
+  legacyCliTerminalTraces: ReadonlySet<string>,
+): boolean {
+  if (event.event_name === "unicli.cli.invocation.completed") return true;
+  if (event.schema_version === "1") {
+    return !(
+      event.transport === "cli" &&
+      event.trace_id !== undefined &&
+      legacyCliTerminalTraces.has(event.trace_id)
+    );
+  }
+  if (event.transport === "cli" && event.operation_role === "direct") {
+    return false;
+  }
+  if (
+    event.transport === "mcp" &&
+    event.operation_role === "invocation" &&
+    directChildParents.has(event.invocation_id)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function filterSince(
@@ -259,25 +312,46 @@ function parseLegacyUsageRecord(value: unknown): UsageRecord {
     throw new Error("record must be an object");
   }
   const record = value as Record<string, unknown>;
+  const allowedKeys = new Set([
+    "ts",
+    "site",
+    "cmd",
+    "strategy",
+    "transport",
+    "tokens",
+    "ms",
+    "bytes",
+    "exit",
+  ]);
+  for (const key of Object.keys(record)) {
+    if (!allowedKeys.has(key)) {
+      throw new Error(`record contains unknown field: ${key}`);
+    }
+  }
   if (
     typeof record.ts !== "string" ||
     !Number.isFinite(Date.parse(record.ts)) ||
-    typeof record.site !== "string" ||
-    typeof record.cmd !== "string" ||
-    typeof record.strategy !== "string" ||
+    !boundedNonEmptyString(record.site) ||
+    !boundedNonEmptyString(record.cmd) ||
+    !boundedNonEmptyString(record.strategy) ||
     !finiteNonNegative(record.tokens) ||
     !finiteNonNegative(record.ms) ||
     !finiteNonNegative(record.bytes) ||
     typeof record.exit !== "number" ||
-    !Number.isInteger(record.exit)
+    !Number.isSafeInteger(record.exit) ||
+    record.exit < 0 ||
+    record.exit > 255
   ) {
     throw new Error("record does not match the legacy usage schema");
   }
-  const transport =
-    typeof record.transport === "string" &&
-    ["cli", "mcp", "acp", "bench", "hub"].includes(record.transport)
-      ? (record.transport as UsageRecord["transport"])
-      : "cli";
+  if (
+    record.transport !== undefined &&
+    (typeof record.transport !== "string" ||
+      !["cli", "mcp", "acp", "bench", "hub"].includes(record.transport))
+  ) {
+    throw new Error("record transport is invalid");
+  }
+  const transport = (record.transport ?? "cli") as UsageRecord["transport"];
   return {
     ts: record.ts,
     site: record.site,
@@ -289,6 +363,14 @@ function parseLegacyUsageRecord(value: unknown): UsageRecord {
     bytes: record.bytes,
     exit: record.exit,
   };
+}
+
+function boundedNonEmptyString(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    Buffer.byteLength(value, "utf-8") <= 1024
+  );
 }
 
 function finiteNonNegative(value: unknown): value is number {

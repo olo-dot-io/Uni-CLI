@@ -29,6 +29,8 @@ export type ManifestArg = {
   format?: string;
   "x-unicli-kind"?: string;
   "x-unicli-accepts"?: string[];
+  "x-unicli-uri-origins"?: string[];
+  "x-unicli-uri-path-pattern"?: string;
 };
 
 export type ManifestCommand = {

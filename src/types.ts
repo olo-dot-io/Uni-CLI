@@ -5,7 +5,7 @@
  * @needs       TypeScript standard types only.
  * @feeds       Every adapter, engine, browser provider, command, and transport.
  * @breaks      Compile-time contract mismatches across public Uni-CLI surfaces.
- * @invariants  Every potentially blocking page operation and TypeScript command function accepts caller-owned request cancellation without making cleanup cancellable; command authentication distinguishes required, optional, and none; retrieval metadata remains domain-neutral.
+ * @invariants  Every potentially blocking page operation and TypeScript command function accepts caller-owned request cancellation without making cleanup cancellable; command authentication distinguishes required, optional, and none; retrieval metadata remains domain-neutral; URI arguments can declare reusable exact-origin and RE2 pathname constraints.
  * @side-effects none
  * @perf        Type-only declarations.
  * @concurrency AbortSignal parameters carry caller ownership across asynchronous page and command operations.
@@ -112,6 +112,10 @@ export interface AdapterArg {
    * legitimately accepts URL slugs (zhihu, twitter) or vice versa.
    */
   "x-unicli-accepts"?: Array<"url" | "id">;
+  /** Canonical HTTP(S) origins accepted by a `format: uri` argument. */
+  "x-unicli-uri-origins"?: string[];
+  /** RE2 pathname expression matched against the complete parsed URI path. */
+  "x-unicli-uri-path-pattern"?: string;
 }
 
 export interface OutputSchema {

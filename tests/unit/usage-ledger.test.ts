@@ -92,20 +92,46 @@ describe("usage sources", () => {
     );
   });
 
+  it("rejects unknown legacy fields and invalid explicit transports", () => {
+    writeFileSync(
+      ledgerPath,
+      `${JSON.stringify({ ...record(), secret: "must-not-be-ignored" })}\n`,
+    );
+    expect(() => loadUsage(ledgerPath)).toThrowError(
+      expect.objectContaining<Partial<UsageLedgerError>>({
+        code: "malformed_jsonl",
+        line: 1,
+      }),
+    );
+
+    writeFileSync(
+      ledgerPath,
+      `${JSON.stringify({ ...record(), transport: "unknown" })}\n`,
+    );
+    expect(() => loadUsage(ledgerPath)).toThrowError(
+      expect.objectContaining<Partial<UsageLedgerError>>({
+        code: "malformed_jsonl",
+        line: 1,
+      }),
+    );
+  });
+
   it("combines legacy rows with tool events across transports", () => {
     writeFileSync(ledgerPath, `${JSON.stringify(record())}\n`);
     const eventStore = createLocalEventStore({ rootDir: eventRoot });
+    const eventTimestamp = new Date().toISOString();
     expect(
       appendLocalEvent(
         createLocalEvent({
           event_name: "unicli.tool.call.completed",
-          timestamp: "2026-07-18T12:01:00.000Z",
+          timestamp: eventTimestamp,
           invocation_id: "01KTEST0000000000000000000",
           transport: "mcp",
           command: "huggingface.search",
           site: "huggingface",
           cmd: "search",
           strategy: "public",
+          operation_role: "standalone",
           outcome: "error",
           exit_code: 75,
           duration_ms: 250,
@@ -118,7 +144,11 @@ describe("usage sources", () => {
       ).ok,
     ).toBe(true);
 
-    const sources = loadUsageSources({ ledgerPath, eventStore });
+    const sources = loadUsageSources({
+      ledgerPath,
+      eventStore,
+      now: Date.parse(eventTimestamp),
+    });
     expect(sources).toMatchObject({
       legacy_records: 1,
       event_records: 1,
@@ -126,7 +156,7 @@ describe("usage sources", () => {
     expect(sources.records).toEqual([
       record(),
       record({
-        ts: "2026-07-18T12:01:00.000Z",
+        ts: eventTimestamp,
         site: "huggingface",
         transport: "mcp",
         ms: 250,
@@ -136,7 +166,7 @@ describe("usage sources", () => {
     ]);
   });
 
-  it("uses terminal CLI invocation events and excludes duplicate CLI tool events", () => {
+  it("keeps nested CLI work while excluding only its direct child event", () => {
     const eventStore = createLocalEventStore({ rootDir: eventRoot });
     appendLocalEvent(
       createLocalEvent({
@@ -144,6 +174,7 @@ describe("usage sources", () => {
         invocation_id: "cli-1",
         transport: "cli",
         command: "github.search",
+        operation_role: "invocation",
         outcome: "success",
         exit_code: 0,
         duration_ms: 10,
@@ -155,25 +186,106 @@ describe("usage sources", () => {
         event_name: "unicli.tool.call.completed",
         invocation_id: "tool-1",
         trace_id: "tool-1",
+        parent_invocation_id: "cli-1",
         transport: "cli",
         command: "github.search",
         site: "github",
         cmd: "search",
         strategy: "public",
+        operation_role: "direct",
         outcome: "success",
         exit_code: 0,
         duration_ms: 8,
       }),
       eventStore,
     );
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: "tool-2",
+        trace_id: "tool-2",
+        parent_invocation_id: "cli-1",
+        transport: "cli",
+        command: "huggingface.search",
+        site: "huggingface",
+        cmd: "search",
+        strategy: "public",
+        operation_role: "nested",
+        outcome: "success",
+        exit_code: 0,
+        duration_ms: 7,
+      }),
+      eventStore,
+    );
 
-    const sources = loadUsageSources({ ledgerPath, eventStore });
-    expect(sources.event_records).toBe(1);
+    const sources = loadUsageSources({
+      ledgerPath,
+      eventStore,
+      now: Date.parse("2026-07-18T13:00:00.000Z"),
+    });
+    expect(sources.event_records).toBe(2);
     expect(sources.records[0]).toMatchObject({
       site: "github",
       cmd: "search",
       transport: "cli",
       ms: 10,
+    });
+    expect(sources.records[1]).toMatchObject({
+      site: "huggingface",
+      cmd: "search",
+      transport: "cli",
+      ms: 7,
+    });
+  });
+
+  it("uses the kernel child identity for MCP adapter calls without double counting", () => {
+    const eventStore = createLocalEventStore({ rootDir: eventRoot });
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: "mcp-1",
+        transport: "mcp",
+        command: "mcp.unicli_run",
+        site: "mcp",
+        cmd: "unicli_run",
+        strategy: "handler",
+        operation_role: "invocation",
+        outcome: "success",
+        exit_code: 0,
+        duration_ms: 20,
+      }),
+      eventStore,
+    );
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: "tool-1",
+        parent_invocation_id: "mcp-1",
+        trace_id: "tool-1",
+        transport: "mcp",
+        command: "github.search",
+        site: "github",
+        cmd: "search",
+        strategy: "public",
+        operation_role: "direct",
+        outcome: "success",
+        exit_code: 0,
+        duration_ms: 18,
+      }),
+      eventStore,
+    );
+
+    const sources = loadUsageSources({
+      ledgerPath,
+      eventStore,
+      now: Date.parse("2026-07-18T13:00:00.000Z"),
+    });
+    expect(sources.event_records).toBe(1);
+    expect(sources.records[0]).toMatchObject({
+      site: "github",
+      cmd: "search",
+      transport: "mcp",
+      ms: 18,
     });
   });
 });

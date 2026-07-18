@@ -1,14 +1,14 @@
 /**
  * @owner   src/compute/capture.ts
- * @does    Build a reusable desktop context packet from existing compute snapshot and screenshot actions.
- * @needs   core/envelope, transport/cascade, transport/types
+ * @does    Build a reusable exact-target desktop context packet with snapshot, screenshot, image-integrity, and coordinate-transform evidence.
+ * @needs   node crypto/fs, core envelopes, transport cascade/types, visual timeline
  * @feeds   src/commands/compute.ts, src/mcp/profiles/computer-use.ts
- * @breaks  Returns a structured transport envelope when every requested capture part fails.
- * @invariants Capture reuses compute_* actions; it does not bypass transport policy or ref allocation.
+ * @breaks  Returns a structured transport envelope when every requested capture part fails; missing bounds omit rather than guess native-to-image geometry.
+ * @invariants Capture reuses compute_* actions; app and native window identity remain identical across snapshot and screenshot; image hashes cover returned bytes; native bounds produce an explicit affine transform; it does not bypass transport policy or ref allocation.
  * @side-effects May capture screenshots; may populate the transport ref store through compute_snapshot.
  * @perf    Screenshot payload size dominates packet size when no path is supplied.
  * @concurrency Uses the caller-provided transport bus; callers own bus lifecycle.
- * @test    tests/unit/commands/compute.test.ts, tests/unit/mcp/tools.test.ts
+ * @test    tests/unit/compute-capture.test.ts, tests/unit/commands/compute.test.ts, tests/unit/mcp/tools.test.ts
  * @stability beta
  * @since   0.223.0
  */
@@ -26,6 +26,7 @@ export type CaptureSnapshotFormat = "compact" | "tree" | "json";
 
 export interface ComputeCaptureOptions {
   app?: string;
+  windowId?: number | string;
   include?: string | readonly CaptureInclude[];
   format?: CaptureSnapshotFormat;
   maxDepth?: number;
@@ -56,6 +57,26 @@ export interface ComputeCaptureImageMetadata {
   coordinate_space: {
     kind: "image-pixels";
     origin: "top-left";
+    native_screen_to_image?: {
+      input: {
+        kind: "screen-logical";
+        origin: "top-left";
+      };
+      bounds: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      affine: {
+        a: number;
+        b: 0;
+        c: 0;
+        d: number;
+        e: number;
+        f: number;
+      };
+    };
   };
 }
 
@@ -70,6 +91,7 @@ export interface ComputeCapturePacket {
   schema_version: 1;
   captured_at: string;
   app?: string;
+  windowId?: number | string;
   includes: CaptureInclude[];
   snapshot?: ComputeCapturePart;
   screenshot?: ComputeCapturePart;
@@ -103,11 +125,18 @@ export async function captureComputeContext(
   const parts: Partial<Pick<ComputeCapturePacket, "snapshot" | "screenshot">> =
     {};
   const trajectory: ComputeCaptureTrajectoryStep[] = [];
+  let exactWindowId = options.windowId;
+  const mustBindCombinedNativeCapture =
+    options.app !== undefined &&
+    options.windowId === undefined &&
+    includes.includes("snapshot") &&
+    includes.includes("screenshot");
 
   if (includes.includes("snapshot")) {
     hooks.signal?.throwIfAborted();
     const params = {
       ...(options.app ? { app: options.app } : {}),
+      ...(options.windowId === undefined ? {} : { windowId: options.windowId }),
       format: options.format ?? "compact",
       maxDepth: options.maxDepth ?? 64,
     };
@@ -124,13 +153,30 @@ export async function captureComputeContext(
       params,
       ok: snapshotResult.ok,
     });
+    if (snapshotResult.ok && exactWindowId === undefined) {
+      exactWindowId = readExactSnapshotWindowId(
+        snapshotResult.data,
+        options.app,
+      );
+      if (exactWindowId !== undefined) {
+        bindTrajectoryWindowId(trajectory, exactWindowId);
+      }
+    }
     if (snapshotResult.ok) hooks.onSnapshotSuccess?.();
+    if (
+      snapshotResult.ok &&
+      mustBindCombinedNativeCapture &&
+      exactWindowId === undefined
+    ) {
+      return exactCaptureTargetUnavailable(options.app);
+    }
   }
 
   if (includes.includes("screenshot")) {
     hooks.signal?.throwIfAborted();
     const params = {
       ...(options.app ? { app: options.app } : {}),
+      ...(exactWindowId === undefined ? {} : { windowId: exactWindowId }),
       ...(options.screenshotPath ? { path: options.screenshotPath } : {}),
     };
     const screenshotResult = await tryCascade(bus, {
@@ -150,6 +196,22 @@ export async function captureComputeContext(
       params,
       ok: screenshotResult.ok,
     });
+    if (screenshotResult.ok) {
+      const observedWindowId = readExactScreenshotWindowId(
+        screenshotResult.data,
+      );
+      if (
+        exactWindowId !== undefined &&
+        observedWindowId !== undefined &&
+        !sameWindowId(exactWindowId, observedWindowId)
+      ) {
+        return captureTargetChanged(exactWindowId, observedWindowId);
+      }
+      if (exactWindowId === undefined && observedWindowId !== undefined) {
+        exactWindowId = observedWindowId;
+        bindTrajectoryWindowId(trajectory, exactWindowId);
+      }
+    }
   }
 
   hooks.signal?.throwIfAborted();
@@ -165,11 +227,15 @@ export async function captureComputeContext(
       exit_code: exitCodeFor("service_unavailable"),
     });
   }
+  if (mustBindCombinedNativeCapture && exactWindowId === undefined) {
+    return exactCaptureTargetUnavailable(options.app);
+  }
 
   const packet: Omit<ComputeCapturePacket, "visual_timeline"> = {
     schema_version: 1,
     captured_at: new Date().toISOString(),
     ...(options.app ? { app: options.app } : {}),
+    ...(exactWindowId === undefined ? {} : { windowId: exactWindowId }),
     includes,
     ...parts,
     trajectory: {
@@ -181,6 +247,99 @@ export async function captureComputeContext(
   return ok({
     ...packet,
     visual_timeline: buildCaptureVisualTimeline(packet),
+  });
+}
+
+function readExactSnapshotWindowId(
+  data: unknown,
+  requestedApp?: string,
+): number | string | undefined {
+  if (!isRecord(data) || !isRecord(data.refs)) return undefined;
+  const provenance = data.refs.provenance;
+  if (!isRecord(provenance) || !Array.isArray(provenance.records)) {
+    return undefined;
+  }
+  const records = provenance.records;
+  if (records.length === 0) return undefined;
+  const windowIds: Array<number | string> = [];
+  for (const value of records) {
+    if (!isRecord(value) || !isNativeWindowId(value.windowId)) {
+      return undefined;
+    }
+    if (
+      requestedApp !== undefined &&
+      (typeof value.app !== "string" ||
+        value.app.trim().toLowerCase() !== requestedApp.trim().toLowerCase())
+    ) {
+      return undefined;
+    }
+    windowIds.push(value.windowId);
+  }
+  const first = windowIds[0];
+  return first !== undefined &&
+    windowIds.every((windowId) => sameWindowId(first, windowId))
+    ? first
+    : undefined;
+}
+
+function readExactScreenshotWindowId(
+  data: unknown,
+): number | string | undefined {
+  return isRecord(data) && isNativeWindowId(data.windowId)
+    ? data.windowId
+    : undefined;
+}
+
+function isNativeWindowId(value: unknown): value is number | string {
+  return (
+    (typeof value === "number" && Number.isSafeInteger(value) && value > 0) ||
+    (typeof value === "string" && value.trim().length > 0)
+  );
+}
+
+function sameWindowId(left: number | string, right: number | string): boolean {
+  return (
+    String(left).trim().toLowerCase() === String(right).trim().toLowerCase()
+  );
+}
+
+function bindTrajectoryWindowId(
+  trajectory: ComputeCaptureTrajectoryStep[],
+  windowId: number | string,
+): void {
+  for (const step of trajectory) {
+    step.params = { ...step.params, windowId };
+  }
+}
+
+function exactCaptureTargetUnavailable(
+  app: string | undefined,
+): ActionResult<ComputeCapturePacket> {
+  return err({
+    transport: "visual",
+    step: 0,
+    action: "compute_capture",
+    reason: `snapshot did not prove one exact native window identity${app ? ` for ${app}` : ""}`,
+    suggestion:
+      "run `unicli compute windows --app <app>` and retry capture with its exact --window-id",
+    minimum_capability: "compute.capture.target_window",
+    exit_code: exitCodeFor("service_unavailable"),
+  });
+}
+
+function captureTargetChanged(
+  expected: number | string,
+  observed: number | string,
+): ActionResult<ComputeCapturePacket> {
+  return err({
+    transport: "visual",
+    step: 0,
+    action: "compute_capture",
+    reason: `screenshot resolved windowId=${String(observed)} after snapshot bound windowId=${String(expected)}`,
+    suggestion:
+      "discard this capture and retry with an explicit --window-id from `unicli compute windows --app <app>`",
+    minimum_capability: "compute.capture.target_changed",
+    exit_code: exitCodeFor("service_unavailable"),
   });
 }
 
@@ -215,7 +374,7 @@ async function enrichScreenshotData(
   const buffer = await screenshotBuffer(data, signal);
   signal?.throwIfAborted();
   if (!buffer) return data;
-  const image = readImageMetadata(buffer, readMime(data, buffer));
+  const image = readImageMetadata(buffer, readMime(data, buffer), data);
   if (Buffer.isBuffer(data)) {
     return {
       base64: buffer.toString("base64"),
@@ -250,8 +409,14 @@ async function screenshotBuffer(
 function readImageMetadata(
   buffer: Buffer,
   mime?: string,
+  screenshotData?: unknown,
 ): ComputeCaptureImageMetadata {
   const size = readImageSize(buffer);
+  const nativeBounds = readNativeScreenshotBounds(screenshotData);
+  const nativeScreenTransform =
+    size && nativeBounds
+      ? nativeScreenToImageTransform(size, nativeBounds)
+      : undefined;
   return {
     ...(mime ? { mime } : {}),
     bytes: buffer.length,
@@ -260,6 +425,72 @@ function readImageMetadata(
     coordinate_space: {
       kind: "image-pixels",
       origin: "top-left",
+      ...(nativeScreenTransform
+        ? { native_screen_to_image: nativeScreenTransform }
+        : {}),
+    },
+  };
+}
+
+interface ScreenshotBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function readNativeScreenshotBounds(
+  data: unknown,
+): ScreenshotBounds | undefined {
+  if (!isRecord(data)) return undefined;
+  return (
+    normalizeScreenshotBounds(data.bounds) ??
+    (isRecord(data.target)
+      ? normalizeScreenshotBounds(data.target.bounds)
+      : undefined)
+  );
+}
+
+function normalizeScreenshotBounds(
+  value: unknown,
+): ScreenshotBounds | undefined {
+  if (!isRecord(value)) return undefined;
+  const x = value.x;
+  const y = value.y;
+  const width = value.width ?? value.w;
+  const height = value.height ?? value.h;
+  return [x, y, width, height].every(
+    (part) => typeof part === "number" && Number.isFinite(part),
+  ) &&
+    (width as number) > 0 &&
+    (height as number) > 0
+    ? {
+        x: x as number,
+        y: y as number,
+        width: width as number,
+        height: height as number,
+      }
+    : undefined;
+}
+
+function nativeScreenToImageTransform(
+  image: { width: number; height: number },
+  bounds: ScreenshotBounds,
+): NonNullable<
+  ComputeCaptureImageMetadata["coordinate_space"]["native_screen_to_image"]
+> {
+  const scaleX = image.width / bounds.width;
+  const scaleY = image.height / bounds.height;
+  return {
+    input: { kind: "screen-logical", origin: "top-left" },
+    bounds,
+    affine: {
+      a: scaleX,
+      b: 0,
+      c: 0,
+      d: scaleY,
+      e: -bounds.x * scaleX,
+      f: -bounds.y * scaleY,
     },
   };
 }

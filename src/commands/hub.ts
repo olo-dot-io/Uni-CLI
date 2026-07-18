@@ -1,12 +1,16 @@
 /**
- * Hub CLI command — git-based adapter registry.
- *
- * Commands:
- *   unicli hub search <query>                  — search community adapters
- *   unicli hub install <site>/<command>         — install adapter from hub
- *   unicli hub publish <site> [command]         — submit adapter to hub
- *   unicli hub update                           — pull latest adapter index
- *   unicli hub verify <site>                    — verify installed hub adapters
+ * @owner       src::commands::hub
+ * @does        Registers search, install, publish, update, and verification commands for the git-backed adapter hub.
+ * @needs       Commander, hub filesystem/index, git/GitHub/Uni-CLI subprocesses, output envelopes, child logging policy
+ * @feeds       top-level hub CLI surface
+ * @breaks      Invalid hub data, unavailable subprocesses, or adapter verification failures emit structured CLI errors.
+ * @invariants  Site names are shell-safe; child verification never duplicates parent-owned local usage evidence.
+ * @side-effects Reads/writes hub files, runs external commands, and writes CLI stdout/stderr.
+ * @perf        Index operations are linear in hub entries; network/subprocess latency dominates mutations and verification.
+ * @concurrency One CLI process mutates the local hub directory; no shared writer coordination.
+ * @test        tests/unit/commands/hub.test.ts
+ * @stability   stable
+ * @since       2026-04-10
  */
 
 import { Command } from "commander";
@@ -19,6 +23,7 @@ import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import { mapErrorToExitCode } from "../output/error-map.js";
 import type { OutputFormat } from "../types.js";
+import { localLoggingDisabledChildEnv } from "../runtime/child-process-env.js";
 
 const HUB_REPO = "olo-dot-io/unicli-hub";
 const HUB_DIR = join(homedir(), ".unicli", "hub");
@@ -398,6 +403,7 @@ export function registerHubCommand(program: Command): void {
         const raw = execFileSync("unicli", ["eval", "run", site, "--json"], {
           encoding: "utf-8",
           timeout: 60_000,
+          env: localLoggingDisabledChildEnv(),
         }) as string;
         // Passthrough the child eval envelope to stdout untouched so agents
         // parsing stdout always see a single v2 envelope.

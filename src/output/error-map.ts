@@ -130,6 +130,9 @@ export function mapErrorToExitCode(err: unknown): number {
     if (errorType === "network_error" || errorType === "timeout") {
       return ExitCode.TEMP_FAILURE;
     }
+    if (statusCode === 429 || errorType === "rate_limited") {
+      return ExitCode.TEMP_FAILURE;
+    }
     return ExitCode.GENERIC_ERROR;
   }
   if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
@@ -137,6 +140,7 @@ export function mapErrorToExitCode(err: unknown): number {
     const code = (err as ActionableError).code;
     if (code === "invalid_input") return ExitCode.USAGE_ERROR;
     if (code === "empty_result") return ExitCode.EMPTY_RESULT;
+    if (code === "rate_limited") return ExitCode.TEMP_FAILURE;
     if (
       code === "auth_required" ||
       code === "challenge_required" ||
@@ -242,7 +246,9 @@ export function errorToAgentFields(
         ? authFailureSuggestion(siteName, cmdName, domain)
         : code === "challenge_required"
           ? challengeFailureSuggestion(siteName, cmdName, domain)
-          : `Run 'unicli test ${siteName}' to diagnose, or report this error.`),
+          : code === "rate_limited"
+            ? "Retry after the upstream rate-limit window, reduce request frequency, or select another source."
+            : `Run 'unicli test ${siteName}' to diagnose, or report this error.`),
     retryable: actionable?.retryable ?? isRetryableMessage(message),
     alternatives: actionable?.alternatives ?? [],
   };

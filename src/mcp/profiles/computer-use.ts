@@ -77,6 +77,10 @@ const DEFINITIONS: ToolDef[] = [
         getBus(),
         {
           ...(typeof input.app === "string" ? { app: input.app } : {}),
+          ...(typeof input.windowId === "string" ||
+          typeof input.windowId === "number"
+            ? { windowId: input.windowId }
+            : {}),
           ...(typeof input.include === "string"
             ? { include: input.include }
             : {}),

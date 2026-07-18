@@ -127,6 +127,7 @@ function inputFailure(
   output: RepairOutput,
   message: string,
   adapterPath?: string,
+  suggestion = "Resolve a concrete adapter command with `unicli describe <site> <command>`, then retry.",
 ): void {
   emitFailure(
     output,
@@ -134,8 +135,7 @@ function inputFailure(
       code: "invalid_input",
       message,
       ...(adapterPath ? { adapter_path: adapterPath } : {}),
-      suggestion:
-        "Resolve a concrete adapter command with `unicli describe <site> <command>`, then retry.",
+      suggestion,
       retryable: false,
       alternatives: ["unicli list", "unicli search <intent>"],
     },
@@ -163,11 +163,24 @@ function executeRepair(
 
   let plan;
   try {
+    const targetArgs = parseTargetArgs(opts.targetArgs);
+    const requiredArgs = (resolved.command.adapterArgs ?? [])
+      .filter((argument) => argument.required)
+      .map((argument) => argument.name);
+    if (!argsFile && targetArgs.length === 0 && requiredArgs.length > 0) {
+      inputFailure(
+        output,
+        `${site}.${commandName} requires original arguments: ${requiredArgs.join(", ")}`,
+        adapterPath,
+        `Pass the original argv with --target-args, for example --target-args '["<${requiredArgs[0]}>"]', or use the root --args-file option.`,
+      );
+      return;
+    }
     plan = buildRepairPlan({
       site,
       command: commandName,
       adapterPath,
-      targetArgs: parseTargetArgs(opts.targetArgs),
+      targetArgs,
       argsFile,
       timeoutMs: parseTimeout(opts.timeout),
     });

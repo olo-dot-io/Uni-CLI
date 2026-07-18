@@ -12,6 +12,8 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { ok, err } from "../../../src/core/envelope.js";
 import { validateEnvelope } from "../../../src/output/envelope.js";
+import { getBus } from "../../../src/transport/bus.js";
+import { loadCdpSession } from "../../../src/transport/cdp-session.js";
 
 const cascadeMock = vi.hoisted(() => ({
   tryCascade: vi.fn(),
@@ -194,6 +196,207 @@ describe("unicli compute", () => {
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });
 
+  it("surfaces transport cleanup failure instead of printing false success", async () => {
+    cascadeMock.tryCascade.mockResolvedValue(ok({ captured: true }));
+    const closeSpy = vi
+      .spyOn(getBus().get("visual"), "close")
+      .mockRejectedValueOnce(new Error("visual cleanup failed"));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "snapshot", "--app", "Calculator"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      closeSpy.mockRestore();
+    }
+
+    expect(cap.getStdout()).toBe("");
+    expect(process.exitCode).toBe(69);
+    const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: {
+        code: "service_unavailable",
+        message:
+          "compute resource cleanup failed: visual: visual cleanup failed",
+        minimum_capability: "compute.cleanup.service_unavailable",
+        exit_code: 69,
+      },
+    });
+    validateEnvelope(envelope as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("preserves an action error while surfacing an adjacent cleanup error", async () => {
+    cascadeMock.tryCascade.mockResolvedValue(
+      err({
+        transport: "desktop-ax",
+        step: 1,
+        action: "compute_snapshot",
+        reason: "snapshot failed",
+        suggestion: "inspect accessibility permission",
+        minimum_capability: "desktop-ax.snapshot",
+        exit_code: 75,
+        retryable: true,
+      }),
+    );
+    const closeSpy = vi
+      .spyOn(getBus().get("visual"), "close")
+      .mockRejectedValueOnce(new Error("visual cleanup failed"));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "snapshot", "--app", "Calculator"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      closeSpy.mockRestore();
+    }
+
+    expect(cap.getStdout()).toBe("");
+    expect(process.exitCode).toBe(75);
+    const envelope = JSON.parse(cap.getStderr()) as {
+      error?: { message?: string; suggestion?: string; exit_code?: number };
+    };
+    expect(envelope.error).toMatchObject({
+      message:
+        "snapshot failed; cleanup also failed: visual: visual cleanup failed",
+      suggestion:
+        "inspect accessibility permission; inspect the failing compute resource cleanup",
+      exit_code: 75,
+    });
+    validateEnvelope(envelope as Parameters<typeof validateEnvelope>[0]);
+  });
+
+  it("wait forwards the app, state, and bounded timeout contract", async () => {
+    cascadeMock.tryCascade.mockResolvedValue(
+      ok({ matched: true, state: "disappear", attempts: 2 }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "wait",
+          "--app",
+          "Calculator",
+          "--text",
+          "Busy",
+          "--state",
+          "disappear",
+          "--timeout",
+          "250",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_wait",
+      params: {
+        app: "Calculator",
+        text: "Busy",
+        state: "disappear",
+        timeoutMs: 250,
+      },
+    });
+  });
+
+  it.each([
+    ["snapshot max depth", ["compute", "snapshot", "--max-depth", "1junk"]],
+    ["capture max depth", ["compute", "capture", "--max-depth", "65"]],
+    ["scroll amount", ["compute", "scroll", "@e1", "--amount", "3px"]],
+    ["launch debug port", ["compute", "launch", "Code", "--debug-port", "9x"]],
+    ["attach port", ["compute", "attach", "--port", "70000"]],
+    [
+      "observe top-k",
+      ["compute", "observe", "save the document", "--top-k", "0"],
+    ],
+    [
+      "wait timeout with trailing junk",
+      [
+        "compute",
+        "wait",
+        "--app",
+        "Finder",
+        "--text",
+        "Ready",
+        "--timeout",
+        "1junk",
+      ],
+    ],
+    [
+      "wait timeout in exponent notation",
+      [
+        "compute",
+        "wait",
+        "--app",
+        "Finder",
+        "--text",
+        "Ready",
+        "--timeout",
+        "1e3",
+      ],
+    ],
+  ])("rejects invalid %s before transport dispatch", async (_label, argv) => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(["-f", "json", ...argv], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+    }
+
+    const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: { code: "invalid_input", exit_code: 2, retryable: false },
+    });
+    expect(() =>
+      validateEnvelope(envelope as Parameters<typeof validateEnvelope>[0]),
+    ).not.toThrow();
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+  });
+
+  it("observe forwards explicit app scope and a bounded candidate count", async () => {
+    cascadeMock.tryCascade.mockResolvedValue(ok({ candidates: [] }));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "observe",
+          "save the document",
+          "--app",
+          "TextEdit",
+          "--top-k",
+          "7",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_observe",
+      params: {
+        goal: "save the document",
+        app: "TextEdit",
+        topK: 7,
+      },
+    });
+  });
+
   it("capture combines snapshot and screenshot into one context packet", async () => {
     cascadeMock.tryCascade
       .mockResolvedValueOnce(
@@ -201,7 +404,18 @@ describe("unicli compute", () => {
           format: "text",
           encoding: "compact",
           data: '@e1 button "5"',
-          refs: { count: 1, scope: "Calculator" },
+          refs: {
+            count: 1,
+            scope: "window-4242",
+            provenance: {
+              records: [
+                {
+                  app: "Calculator",
+                  windowId: 4242,
+                },
+              ],
+            },
+          },
         }),
       )
       .mockResolvedValueOnce(
@@ -244,6 +458,7 @@ describe("unicli compute", () => {
       kind: "compute_screenshot",
       params: {
         app: "Calculator",
+        windowId: 4242,
       },
     });
 
@@ -254,13 +469,20 @@ describe("unicli compute", () => {
     expect(env.data).toMatchObject({
       schema_version: 1,
       app: "Calculator",
+      windowId: 4242,
       includes: ["snapshot", "screenshot"],
       snapshot: {
         ok: true,
         data: {
           encoding: "compact",
           data: '@e1 button "5"',
-          refs: { count: 1, scope: "Calculator" },
+          refs: {
+            count: 1,
+            scope: "window-4242",
+            provenance: {
+              records: [{ app: "Calculator", windowId: 4242 }],
+            },
+          },
         },
       },
       screenshot: {
@@ -276,13 +498,18 @@ describe("unicli compute", () => {
           {
             index: 0,
             action: "compute_snapshot",
-            params: { app: "Calculator", format: "compact", maxDepth: 4 },
+            params: {
+              app: "Calculator",
+              windowId: 4242,
+              format: "compact",
+              maxDepth: 4,
+            },
             ok: true,
           },
           {
             index: 1,
             action: "compute_screenshot",
-            params: { app: "Calculator" },
+            params: { app: "Calculator", windowId: 4242 },
             ok: true,
           },
         ],
@@ -305,6 +532,41 @@ describe("unicli compute", () => {
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });
 
+  it("refuses a replayable combined capture without exact snapshot identity", async () => {
+    cascadeMock.tryCascade.mockResolvedValueOnce(
+      ok({
+        format: "text",
+        encoding: "compact",
+        data: '@e1 button "5"',
+        refs: { count: 1, scope: "Calculator" },
+      }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "capture", "--app", "Calculator"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(cascadeMock.tryCascade).toHaveBeenCalledTimes(1);
+    expect(cap.getStdout()).toBe("");
+    const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(env).toMatchObject({
+      ok: false,
+      command: "compute.capture",
+      error: {
+        minimum_capability: "compute.capture.target_window",
+        exit_code: 69,
+        retryable: false,
+        suggestion: expect.stringContaining("--window-id"),
+      },
+    });
+    validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
+  });
+
   it("capture enriches screenshot evidence with image metadata and coordinate space", async () => {
     const onePixelPngBase64 =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
@@ -313,6 +575,7 @@ describe("unicli compute", () => {
       ok({
         base64: onePixelPngBase64,
         mime: "image/png",
+        bounds: { x: 10, y: 20, w: 0.5, h: 0.25 },
       }),
     );
 
@@ -345,6 +608,26 @@ describe("unicli compute", () => {
             coordinate_space: {
               kind: "image-pixels",
               origin: "top-left",
+              native_screen_to_image: {
+                input: {
+                  kind: "screen-logical",
+                  origin: "top-left",
+                },
+                bounds: {
+                  x: 10,
+                  y: 20,
+                  width: 0.5,
+                  height: 0.25,
+                },
+                affine: {
+                  a: 2,
+                  b: 0,
+                  c: 0,
+                  d: 4,
+                  e: -20,
+                  f: -80,
+                },
+              },
             },
           },
         },
@@ -359,8 +642,8 @@ describe("unicli compute", () => {
         events: [
           expect.objectContaining({
             point: {
-              x: 1,
-              y: 1,
+              x: 0,
+              y: 0,
               coordinate_space: {
                 kind: "image-pixels",
                 origin: "top-left",
@@ -452,7 +735,13 @@ describe("unicli compute", () => {
         ok({
           encoding: "compact",
           data: '@e1 button "5"',
-          refs: { count: 1, scope: "Calculator" },
+          refs: {
+            count: 1,
+            scope: "window-4242",
+            provenance: {
+              records: [{ app: "Calculator", windowId: 4242 }],
+            },
+          },
         }),
       )
       .mockResolvedValueOnce(
@@ -689,7 +978,7 @@ describe("unicli compute", () => {
     });
   });
 
-  it("normalizes focus options for mutating commands", async () => {
+  it("forwards explicit background mode with non-focusing semantics", async () => {
     cascadeMock.tryCascade.mockResolvedValue(ok({ clicked: true }));
     const cap = captureConsole();
     try {
@@ -703,7 +992,7 @@ describe("unicli compute", () => {
 
     expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
       kind: "compute_click",
-      params: { ref: "@e7", focus: false },
+      params: { ref: "@e7", background: true, focus: false },
     });
   });
 
@@ -769,6 +1058,69 @@ describe("unicli compute", () => {
     });
   });
 
+  it("attach and eval forward exact CDP renderer ids", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-cdp-target-"));
+    process.env.UNICLI_COMPUTE_CDP_SESSION_PATH = join(
+      directory,
+      "session.json",
+    );
+    cascadeMock.tryCascade
+      .mockResolvedValueOnce(
+        ok({
+          port: 9333,
+          targetId: "page-b",
+          webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-b",
+          targets: [],
+        }),
+      )
+      .mockResolvedValueOnce(ok("Second"));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "attach",
+          "--port",
+          "9333",
+          "--target-id",
+          "page-b",
+        ],
+        { from: "user" },
+      );
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "eval",
+          "document.title",
+          "--target-id",
+          "page-b",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      rmSync(directory, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_cdp_attach",
+      params: { port: 9333, targetId: "page-b" },
+    });
+    expect(cascadeMock.tryCascade.mock.calls[1]?.[1]).toMatchObject({
+      kind: "compute_evaluate",
+      params: {
+        script: "document.title",
+        port: 9333,
+        targetId: "page-b",
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-b",
+      },
+    });
+  });
+
   it("launch parses the Electron debug port before dispatching", async () => {
     cascadeMock.tryCascade.mockResolvedValue(ok({ launched: true }));
     const cap = captureConsole();
@@ -804,6 +1156,7 @@ describe("unicli compute", () => {
         app: "vscode",
         port: 9240,
         webSocketDebuggerUrl: "ws://127.0.0.1:9240/page-1",
+        targetId: "page-1",
         targets: [],
         relaunched: false,
       }),
@@ -815,11 +1168,12 @@ describe("unicli compute", () => {
         { from: "user" },
       );
 
-      expect(JSON.parse(readFileSync(file, "utf8"))).toMatchObject({
+      expect(loadCdpSession(file)).toMatchObject({
         schema_version: 1,
         app: "vscode",
         port: 9240,
         webSocketDebuggerUrl: "ws://127.0.0.1:9240/page-1",
+        targetId: "page-1",
       });
     } finally {
       cap.restore();
@@ -885,6 +1239,190 @@ describe("unicli compute", () => {
     });
   });
 
+  it("returns one structured envelope for corrupt persisted CDP state", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-cdp-corrupt-"));
+    const file = join(dir, "cdp-session.json");
+    process.env.UNICLI_COMPUTE_CDP_SESSION_PATH = file;
+    writeFileSync(file, "{");
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "eval", "document.title"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(cap.getStdout()).toBe("");
+    const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: {
+        code: "state_corrupt",
+        minimum_capability: "compute.cdp_session.state_corrupt",
+        exit_code: 78,
+        retryable: false,
+        suggestion: expect.stringContaining("unicli compute attach"),
+      },
+    });
+  });
+
+  it("returns one structured envelope for corrupt persisted refs", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-corrupt-"));
+    const file = join(dir, "refs.json");
+    process.env.UNICLI_COMPUTE_REFS_PATH = file;
+    writeFileSync(file, "{");
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(["-f", "json", "compute", "apps"], {
+        from: "user",
+      });
+    } finally {
+      cap.restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(cap.getStdout()).toBe("");
+    const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: {
+        code: "state_corrupt",
+        minimum_capability: "compute.refs.state_corrupt",
+        exit_code: 78,
+        retryable: false,
+        suggestion: expect.stringContaining("fresh compute snapshot"),
+      },
+    });
+  });
+
+  it("keeps capture state corruption inside the shared structured boundary", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-capture-refs-corrupt-"));
+    const file = join(dir, "refs.json");
+    process.env.UNICLI_COMPUTE_REFS_PATH = file;
+    writeFileSync(file, "{");
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "capture", "--include", "snapshot"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(cap.getStdout()).toBe("");
+    const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
+    expect(envelope).toMatchObject({
+      ok: false,
+      error: {
+        code: "state_corrupt",
+        minimum_capability: "compute.refs.state_corrupt",
+        exit_code: 78,
+        retryable: false,
+        suggestion: expect.stringContaining("fresh compute snapshot"),
+      },
+    });
+  });
+
+  it("never replaces an explicit app with a different persisted CDP target", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-cdp-"));
+    const file = join(dir, "cdp-session.json");
+    process.env.UNICLI_COMPUTE_CDP_SESSION_PATH = file;
+    writeFileSync(
+      file,
+      JSON.stringify({
+        schema_version: 1,
+        app: "vscode",
+        port: 9240,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9240/page-1",
+        savedAt: 123,
+      }),
+    );
+    cascadeMock.tryCascade.mockResolvedValue(ok({ format: "text", data: "" }));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "snapshot", "--app", "Calculator"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_snapshot",
+      params: {
+        app: "Calculator",
+        format: "compact",
+        maxDepth: 64,
+      },
+    });
+  });
+
+  it("never injects a persisted CDP session into a native ref wait", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-native-wait-"));
+    const refsFile = join(dir, "refs.json");
+    const sessionFile = join(dir, "cdp-session.json");
+    process.env.UNICLI_COMPUTE_REFS_PATH = refsFile;
+    process.env.UNICLI_COMPUTE_CDP_SESSION_PATH = sessionFile;
+    writeFileSync(
+      refsFile,
+      JSON.stringify({
+        schema_version: 1,
+        buckets: [
+          {
+            transport: "desktop-ax",
+            scope: "finder",
+            createdAt: Date.now(),
+            refs: [
+              {
+                alias: "@e1",
+                stable: "desktop-ax:finder:AXWindow[0]",
+                role: "AXWindow",
+                name: "Finder",
+                app: "Finder",
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    writeFileSync(
+      sessionFile,
+      JSON.stringify({
+        schema_version: 1,
+        app: "vscode",
+        port: 9240,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9240/page-1",
+        savedAt: 123,
+      }),
+    );
+    cascadeMock.tryCascade.mockResolvedValue(ok({ matched: true }));
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        ["-f", "json", "compute", "wait", "--ref", "@e1", "--state", "focused"],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+
+    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_wait",
+      params: { ref: "@e1", state: "focused", timeoutMs: 10_000 },
+    });
+  });
+
   it("loads persisted refs before compute find dispatches", async () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-compute-"));
     const file = join(dir, "refs.json");
@@ -896,14 +1434,17 @@ describe("unicli compute", () => {
         buckets: [
           {
             transport: "desktop-ax",
-            scope: "calc",
+            scope: "window-4242",
             createdAt: 123,
             refs: [
               {
                 alias: "@e1",
-                stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+                stable: "desktop-ax:window-4242:AXWindow[0]/AXButton[4]",
                 role: "AXButton",
                 name: "5",
+                app: "Calculator",
+                pid: 42,
+                windowId: 4242,
               },
             ],
           },
@@ -938,7 +1479,7 @@ describe("unicli compute", () => {
     expect(env.ok).toBe(true);
     expect(env.data).toMatchObject({
       alias: "@e1",
-      stable: "desktop-ax:calc:AXWindow[0]/AXButton[4]",
+      stable: "desktop-ax:window-4242:AXWindow[0]/AXButton[4]",
       role: "AXButton",
       name: "5",
     });

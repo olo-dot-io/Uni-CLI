@@ -52,6 +52,8 @@ interface JsonSchemaProperty {
   format?: AdapterArg["format"];
   "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
   "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
+  "x-unicli-uri-origins"?: AdapterArg["x-unicli-uri-origins"];
+  "x-unicli-uri-path-pattern"?: AdapterArg["x-unicli-uri-path-pattern"];
 }
 
 interface JsonSchema {
@@ -93,6 +95,10 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
     if (a.format) prop.format = a.format;
     if (a["x-unicli-kind"]) prop["x-unicli-kind"] = a["x-unicli-kind"];
     if (a["x-unicli-accepts"]) prop["x-unicli-accepts"] = a["x-unicli-accepts"];
+    if (a["x-unicli-uri-origins"])
+      prop["x-unicli-uri-origins"] = a["x-unicli-uri-origins"];
+    if (a["x-unicli-uri-path-pattern"])
+      prop["x-unicli-uri-path-pattern"] = a["x-unicli-uri-path-pattern"];
     properties[a.name] = prop;
     if (a.required) required.push(a.name);
   }

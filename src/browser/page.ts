@@ -4,7 +4,7 @@
  * @needs       src/browser/cdp-client.ts CDPCommandClient, key-descriptor.ts, ref-target.ts, snapshot-helpers.ts, src/types.ts, src/engine/browser/session-lease.ts, transactional file publication
  * @feeds       src/browser/bridge.ts, managed-browser.ts, browser helpers, pipeline browser steps
  * @breaks      Throws exact navigation, typed load-timeout, evaluation, selector, input, screenshot, and CDP errors from the bound target.
- * @invariants  One BrowserPage owns one root or flattened-session CDP command client; ref input uses the latest exact renderer registry and coordinate input must fit the live CSS viewport before trusted CDP dispatch; non-idempotent input is never replayed after dispatch; request cancellation reaches CDP waits, commands, and screenshot publication; navigation timeout is ambiguous rather than successful; DOM-settle and auto-scroll never hide target/transport loss; navigation listeners and timers are removed on load, timeout, error, or abort; close releases only that client's state.
+ * @invariants  One BrowserPage owns one root or flattened-session CDP command client; explicit WebSocket attachment binds that exact renderer rather than rediscovering a default page; ref input uses the latest exact renderer registry and coordinate input must fit the live CSS viewport before trusted CDP dispatch; non-idempotent input is never replayed after dispatch; request cancellation reaches CDP waits, commands, and screenshot publication; navigation timeout is ambiguous rather than successful; DOM-settle and auto-scroll never hide target/transport loss; navigation listeners and timers are removed on load, timeout, error, or abort; close releases only that client's state.
  * @side-effects Navigates and mutates a browser target, dispatches input, captures network bodies and pixels, and opens/closes one CDP connection.
  * @perf        Direct CDP operations are O(1) round trips; selector polling and snapshots scale with page complexity.
  * @concurrency CDP request ids permit overlap; broker target queues serialize mutations, and network-capture drains serialize so one response is consumed by at most one reader.
@@ -1113,6 +1113,20 @@ export class BrowserPage implements IPage {
   ): Promise<BrowserPage> {
     const client = await CDPClient.connectToChrome(port, options);
     return new BrowserPage(client);
+  }
+
+  static async connectWebSocket(
+    endpoint: string,
+    signal?: AbortSignal,
+  ): Promise<BrowserPage> {
+    const client = await CDPClient.connectToRemote(endpoint, undefined, signal);
+    try {
+      await client.send("Page.enable", undefined, undefined, signal);
+      return new BrowserPage(client);
+    } catch (error) {
+      await client.close();
+      throw error;
+    }
   }
 }
 

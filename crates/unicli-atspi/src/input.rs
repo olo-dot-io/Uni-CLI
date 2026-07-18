@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-atspi::input
+//! @does        Execute bounded keyboard and scroll input against validated Linux desktop targets.
+//! @needs       AT-SPI window/ref resolution, display-server command planners, shared sidecar requests
+//! @feeds       unicli-atspi press and scroll handlers
+//! @breaks      Invalid target resolution or display-server routing can send input to an unrelated surface.
+//! @invariants  Explicit refs resolve before input; command arguments are constructed without a shell; unsupported display servers fail closed.
+//! @side-effects Runs native keyboard, pointer, or scroll helper subprocesses against the desktop session.
+//! @perf        One target resolution and bounded helper execution per request.
+//! @concurrency Request-local command plans; desktop input itself is shared host state.
+//! @test        cargo test -p unicli-atspi
+//! @stability   internal
+//! @since       0.400.2
+
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -890,6 +903,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             "desktop-atspi:pid-1234:Window[1]",
@@ -946,6 +960,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             &crate::tree::ElementRecord {

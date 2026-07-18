@@ -187,8 +187,8 @@ export function buildCaptureVisualTimeline(
   const screenshotSpace = screenshotCoordinateSpace(packet);
   const screenshotPoint = screenshotSpace
     ? {
-        x: Math.round((screenshotSpace.width ?? 0) / 2),
-        y: Math.round((screenshotSpace.height ?? 0) / 2),
+        x: Math.round(Math.max(0, (screenshotSpace.width ?? 1) - 1) / 2),
+        y: Math.round(Math.max(0, (screenshotSpace.height ?? 1) - 1) / 2),
         coordinate_space: screenshotSpace,
       }
     : undefined;

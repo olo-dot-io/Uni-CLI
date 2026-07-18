@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-atspi::errors
+//! @does        Define structured AT-SPI sidecar failures and serialize them into the shared response contract.
+//! @needs       serde_json, unicli-shared sidecar envelopes
+//! @feeds       every unicli-atspi request handler
+//! @breaks      Losing minimum-capability or exit-code detail makes native failures indistinguishable to Agent callers.
+//! @invariants  Ordinary native failures retain their typed repair taxonomy and never become successful responses.
+//! @side-effects none
+//! @perf        Constant-size error construction and serialization.
+//! @concurrency Immutable error values are safe to move between request boundaries.
+//! @test        cargo test -p unicli-atspi
+//! @stability   internal
+//! @since       0.400.2
+
 use serde_json::Value;
 use unicli_shared::{SidecarError, SidecarResponse};
 
@@ -45,6 +58,28 @@ impl AtspiError {
             suggestion: "re-snapshot; the ref may be stale".into(),
             minimum_capability: Some("desktop-atspi.no_element".into()),
             r#ref: Some(r#ref),
+            exit_code: 66,
+        }
+    }
+
+    pub fn target_not_found(target: impl Into<String>) -> Self {
+        let target = target.into();
+        Self {
+            reason: format!("no AT-SPI window matched {target}"),
+            suggestion: "verify the app is running, then retry with app, pid, or windowId".into(),
+            minimum_capability: Some("desktop-atspi.target_not_found".into()),
+            r#ref: None,
+            exit_code: 66,
+        }
+    }
+
+    pub fn target_ambiguous(target: impl Into<String>, match_count: usize) -> Self {
+        let target = target.into();
+        Self {
+            reason: format!("{match_count} AT-SPI windows matched {target}"),
+            suggestion: "retry with an exact windowId from `unicli compute windows`".into(),
+            minimum_capability: Some("desktop-atspi.target_ambiguous".into()),
+            r#ref: None,
             exit_code: 66,
         }
     }

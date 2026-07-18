@@ -5,7 +5,7 @@
  * @needs       core envelope, ref store, snapshot encoding.
  * @feeds       transport adapters, cascade routing, engine compute steps, plugins.
  * @breaks      Compile-time mismatch in transport implementations or callers, or coercing cancellation/ambiguous delivery into an ordinary failure envelope.
- * @invariants  Request cancellation is available to open/action/snapshot boundaries; ordinary failures return envelopes, while cancellation and outcome ambiguity remain typed control-flow throws; cleanup remains unconditional and idempotent.
+ * @invariants  Request cancellation and immutable target params are available to snapshot boundaries; ordinary failures return envelopes, while cancellation and outcome ambiguity remain typed control-flow throws; cleanup remains unconditional and idempotent.
  * @side-effects none
  * @perf        Type-only declarations.
  * @concurrency AbortSignal belongs to one request and must not be replaced by process-global state.
@@ -71,6 +71,19 @@ export interface Snapshot {
   url?: string;
   title?: string;
   refs?: Record<string, unknown>;
+}
+
+/** Target-aware perception request shared by every transport snapshot. */
+export interface SnapshotRequest {
+  format?: SnapshotFormat | SnapshotEncoding;
+  fresh?: boolean;
+  signal?: AbortSignal;
+  /**
+   * Immutable target and snapshot arguments from the owning action request.
+   * Transports must ignore fields they do not understand, never substitute a
+   * different target.
+   */
+  params?: Readonly<Record<string, unknown>>;
 }
 
 /** Single typed request sent to {@link TransportAdapter.action}. */
@@ -182,11 +195,7 @@ export interface TransportAdapter {
 
   open(ctx: TransportContext): Promise<void>;
 
-  snapshot(opts?: {
-    format?: SnapshotFormat | SnapshotEncoding;
-    fresh?: boolean;
-    signal?: AbortSignal;
-  }): Promise<Snapshot>;
+  snapshot(opts?: SnapshotRequest): Promise<Snapshot>;
 
   action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>>;
 

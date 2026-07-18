@@ -7,6 +7,9 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createBrowserInvocationContext } from "../../../../src/browser/invocation-context.js";
 import {
   createBrowserInvocationScope,
@@ -157,6 +160,81 @@ describe("CdpBrowserTransport", () => {
     expect(evaluated.ok).toBe(true);
     if (evaluated.ok) expect(evaluated.data).toBe("attached renderer");
     expect(page.evaluate).toHaveBeenCalledWith("document.title");
+  });
+
+  it("attaches to the requested renderer instead of the probe default", async () => {
+    const page = makeMockPage();
+    const targets = [
+      {
+        id: "page-a",
+        type: "page",
+        title: "First",
+        url: "app://first",
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-a",
+      },
+      {
+        id: "page-b",
+        type: "page",
+        title: "Second",
+        url: "app://second",
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-b",
+      },
+    ];
+    const pageConnector = vi.fn().mockResolvedValue(page);
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("an exact target must not use the default page");
+      },
+      pageConnector,
+      cdpProbe: vi.fn().mockResolvedValue({
+        port: 9333,
+        webSocketDebuggerUrl: targets[0]!.webSocketDebuggerUrl,
+        targets,
+      }),
+    });
+    await transport.open(makeCtx());
+
+    const attached = await transport.action({
+      kind: "cdp_attach",
+      params: { port: 9333, targetId: "page-b" },
+    });
+
+    expect(attached).toMatchObject({
+      ok: true,
+      data: {
+        targetId: "page-b",
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-b",
+      },
+    });
+    expect(pageConnector).toHaveBeenCalledWith(
+      9333,
+      "ws://127.0.0.1:9333/page-b",
+    );
+  });
+
+  it("fails closed when an exact renderer target no longer exists", async () => {
+    const transport = new CdpBrowserTransport({
+      pageConnector: vi.fn(),
+      cdpProbe: vi.fn().mockResolvedValue({
+        port: 9333,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-a",
+        targets: [],
+      }),
+    });
+    await transport.open(makeCtx());
+
+    const attached = await transport.action({
+      kind: "cdp_attach",
+      params: { port: 9333, targetId: "missing" },
+    });
+
+    expect(attached).toMatchObject({
+      ok: false,
+      error: {
+        minimum_capability: "cdp-browser.cdp_attach.target_not_found",
+        exit_code: 66,
+      },
+    });
   });
 
   it("relaunches a known Electron app with its CDP port when attach by app misses", async () => {
@@ -403,6 +481,116 @@ describe("CdpBrowserTransport", () => {
     expect(page.evaluate).toHaveBeenCalledWith("document.title");
   });
 
+  it("captures a snapshot from the explicit CDP endpoint instead of the default page", async () => {
+    const page = makeMockPage({
+      snapshot: vi.fn().mockResolvedValue("attached renderer"),
+    });
+    const pageConnector = vi.fn().mockResolvedValue(page);
+    const t = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("targeted snapshots must not use the default page");
+      },
+      pageConnector,
+      cdpProbe: vi.fn(),
+    });
+    await t.open(makeCtx());
+
+    const snapshot = await t.snapshot({
+      format: "dom-ax",
+      params: {
+        port: 9240,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9240/page-1",
+      },
+    });
+
+    expect(snapshot).toEqual({ format: "dom-ax", data: "attached renderer" });
+    expect(pageConnector).toHaveBeenCalledWith(
+      9240,
+      "ws://127.0.0.1:9240/page-1",
+    );
+  });
+
+  it("uses a WebSocket-only endpoint instead of silently opening the default page", async () => {
+    const page = makeMockPage({
+      snapshot: vi.fn().mockResolvedValue("attached renderer"),
+    });
+    const pageConnector = vi.fn().mockResolvedValue(page);
+    const t = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error(
+          "WebSocket-only snapshots must not use the default page",
+        );
+      },
+      pageConnector,
+      cdpProbe: vi.fn(),
+    });
+    await t.open(makeCtx());
+
+    const snapshot = await t.snapshot({
+      format: "dom-ax",
+      params: {
+        webSocketDebuggerUrl: "ws://127.0.0.1:9444/devtools/page/target-1",
+      },
+    });
+
+    expect(snapshot).toEqual({ format: "dom-ax", data: "attached renderer" });
+    expect(pageConnector).toHaveBeenCalledWith(
+      9444,
+      "ws://127.0.0.1:9444/devtools/page/target-1",
+    );
+  });
+
+  it("resolves a port-only target to an exact renderer before allocating refs", async () => {
+    const bus = createTransportBus();
+    const page = makeMockPage({
+      evaluate: vi.fn().mockResolvedValue({
+        role: "document",
+        name: "Editor",
+        path: "document[0]",
+        scope: "renderer",
+        children: [
+          {
+            role: "button",
+            name: "Run",
+            path: "#run",
+            scope: "renderer",
+          },
+        ],
+      }),
+    });
+    const pageConnector = vi.fn().mockResolvedValue(page);
+    const cdpProbe = vi.fn().mockResolvedValue({
+      port: 9333,
+      webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/resolved-target",
+      targets: [],
+    });
+    const t = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("explicit snapshots must not use the default page");
+      },
+      pageConnector,
+      cdpProbe,
+    });
+    await t.open({ vars: {}, bus, refs: bus.refs });
+
+    await t.snapshot({ format: "json", params: { port: 9333 } });
+
+    expect(cdpProbe).toHaveBeenCalledWith(9333, undefined);
+    expect(pageConnector).toHaveBeenCalledWith(
+      9333,
+      "ws://127.0.0.1:9333/devtools/page/resolved-target",
+    );
+    const scope = String(bus.refs.buckets()[0]?.scope);
+    expect(scope).toMatch(/^renderer-[a-f0-9]{16}$/);
+    expect(bus.refs.resolveStable(`cdp-browser:${scope}:#run`)).toMatchObject({
+      cdpEndpoint: {
+        port: 9333,
+        webSocketDebuggerUrl:
+          "ws://127.0.0.1:9333/devtools/page/resolved-target",
+      },
+    });
+  });
+
   it("replaces an explicit endpoint instead of silently controlling the previous port", async () => {
     const firstPage = makeMockPage({
       evaluate: vi.fn().mockResolvedValue("first"),
@@ -425,16 +613,32 @@ describe("CdpBrowserTransport", () => {
 
     await transport.action({
       kind: "evaluate",
-      params: { script: "location.href", port: 9222 },
+      params: {
+        script: "location.href",
+        port: 9222,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9222/devtools/page/first",
+      },
     });
     const switched = await transport.action<string>({
       kind: "evaluate",
-      params: { script: "location.href", port: 9333 },
+      params: {
+        script: "location.href",
+        port: 9333,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/second",
+      },
     });
 
     expect(switched).toMatchObject({ ok: true, data: "second" });
-    expect(pageConnector).toHaveBeenNthCalledWith(1, 9222, undefined);
-    expect(pageConnector).toHaveBeenNthCalledWith(2, 9333, undefined);
+    expect(pageConnector).toHaveBeenNthCalledWith(
+      1,
+      9222,
+      "ws://127.0.0.1:9222/devtools/page/first",
+    );
+    expect(pageConnector).toHaveBeenNthCalledWith(
+      2,
+      9333,
+      "ws://127.0.0.1:9333/devtools/page/second",
+    );
     expect(firstPage.close).toHaveBeenCalledOnce();
     expect(secondPage.evaluate).toHaveBeenCalledWith("location.href");
   });
@@ -472,12 +676,20 @@ describe("CdpBrowserTransport", () => {
     await runBrowserInvocation(firstScope, async () => {
       await transport.action({
         kind: "evaluate",
-        params: { script: "1", port: 9222 },
+        params: {
+          script: "1",
+          port: 9222,
+          webSocketDebuggerUrl: "ws://127.0.0.1:9222/devtools/page/turn-a",
+        },
       });
       await runBrowserInvocation(secondScope, async () => {
         await transport.action({
           kind: "evaluate",
-          params: { script: "2", port: 9333 },
+          params: {
+            script: "2",
+            port: 9333,
+            webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/turn-b",
+          },
         });
         expect(firstPage.close).not.toHaveBeenCalled();
         expect(secondPage.close).not.toHaveBeenCalled();
@@ -571,6 +783,61 @@ describe("CdpBrowserTransport", () => {
     expect(page.screenshot).toHaveBeenCalled();
   });
 
+  it("atomically publishes a requested screenshot path at the adapter boundary", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-cdp-screenshot-"));
+    const path = join(directory, "renderer.png");
+    writeFileSync(path, "sentinel");
+    const png = Buffer.from("89504e470d0a1a0a", "hex");
+    const page = makeMockPage({
+      screenshot: vi.fn().mockResolvedValue(png),
+    });
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => page,
+    });
+    await transport.open(makeCtx());
+
+    try {
+      const result = await transport.action({
+        kind: "screenshot",
+        params: { path },
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        data: { path, mime: "image/png", bytes: png.length },
+      });
+      expect(page.screenshot).toHaveBeenCalledWith();
+      expect(readFileSync(path)).toEqual(png);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves an existing screenshot when page capture fails", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-cdp-screenshot-"));
+    const path = join(directory, "renderer.png");
+    writeFileSync(path, "sentinel");
+    const page = makeMockPage({
+      screenshot: vi.fn().mockRejectedValue(new Error("renderer disconnected")),
+    });
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => page,
+    });
+    await transport.open(makeCtx());
+
+    try {
+      const result = await transport.action({
+        kind: "screenshot",
+        params: { path },
+      });
+
+      expect(result.ok).toBe(false);
+      expect(readFileSync(path, "utf8")).toBe("sentinel");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("snapshot(format: dom-ax) delegates to IPage.snapshot", async () => {
     const page = makeMockPage();
     const t = new CdpBrowserTransport({ pageFactory: async () => page });
@@ -614,7 +881,12 @@ describe("CdpBrowserTransport", () => {
     expect(snap).toMatchObject({
       format: "text",
       encoding: "compact",
-      refs: { count: 2, scope: "renderer" },
+      refs: {
+        count: 2,
+        scope: "renderer",
+        durability: "invocation",
+        reusable: false,
+      },
     });
     expect(String(snap.data)).toContain('@e2 button "Run"');
     expect(runRef).toMatchObject({ role: "button", name: "Run" });
@@ -622,22 +894,148 @@ describe("CdpBrowserTransport", () => {
     expect(page.click).toHaveBeenCalledWith("#run");
   });
 
-  it("type can use a stable CDP ref selector", async () => {
-    const page = makeMockPage();
-    const t = new CdpBrowserTransport({ pageFactory: async () => page });
-    await t.open(makeCtx());
+  it("snapshot(format: json) replaces the target ref generation", async () => {
+    const page = makeMockPage({
+      evaluate: vi.fn().mockResolvedValue({
+        role: "document",
+        name: "Editor",
+        path: "document[0]",
+        scope: "renderer",
+        children: [
+          {
+            role: "button",
+            name: "Run",
+            path: "#run",
+            scope: "renderer",
+          },
+        ],
+      }),
+    });
+    const bus = createTransportBus();
+    const pageConnector = vi.fn().mockResolvedValue(page);
+    const t = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("explicit snapshots must not use the default page");
+      },
+      pageConnector,
+      cdpProbe: vi.fn(),
+    });
+    await t.open({ vars: {}, bus, refs: bus.refs });
 
-    const typed = await t.action({
-      kind: "type",
+    const snap = await t.snapshot({
+      format: "json",
       params: {
-        stable: "cdp-browser:renderer:#name",
-        text: "Ada",
+        port: 9333,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/target-a",
       },
     });
 
-    expect(typed.ok).toBe(true);
-    expect(page.type).toHaveBeenCalledWith("#name", "Ada");
+    expect(snap).toMatchObject({
+      format: "json",
+      encoding: "json",
+      refs: {
+        count: 2,
+        scope: expect.stringMatching(/^renderer-[a-f0-9]{16}$/),
+        durability: "cross-process",
+        reusable: true,
+      },
+    });
+    expect(JSON.parse(String(snap.data))).toMatchObject({
+      role: "document",
+      name: "Editor",
+    });
+    const scope = String(snap.refs?.scope);
+    expect(bus.refs.resolveStable(`cdp-browser:${scope}:#run`)).toMatchObject({
+      role: "button",
+      name: "Run",
+      cdpEndpoint: {
+        port: 9333,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/target-a",
+      },
+    });
   });
+
+  it("retains independent ref namespaces for two explicit renderers", async () => {
+    const pageFor = (name: string) =>
+      makeMockPage({
+        evaluate: vi.fn().mockResolvedValue({
+          role: "document",
+          name,
+          path: "document[0]",
+          scope: "renderer",
+          children: [
+            {
+              role: "button",
+              name: `Run ${name}`,
+              path: "#run",
+              scope: "renderer",
+            },
+          ],
+        }),
+      });
+    const first = pageFor("First");
+    const second = pageFor("Second");
+    const bus = createTransportBus();
+    const transport = new CdpBrowserTransport({
+      pageFactory: async () => {
+        throw new Error("explicit renderers must not use the default page");
+      },
+      pageConnector: vi
+        .fn()
+        .mockResolvedValueOnce(first)
+        .mockResolvedValueOnce(second),
+      cdpProbe: vi.fn(),
+    });
+    await transport.open({ vars: {}, bus, refs: bus.refs });
+
+    const firstSnapshot = await transport.snapshot({
+      format: "json",
+      params: {
+        port: 9222,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9222/devtools/page/first",
+      },
+    });
+    const secondSnapshot = await transport.snapshot({
+      format: "json",
+      params: {
+        port: 9333,
+        webSocketDebuggerUrl: "ws://127.0.0.1:9333/devtools/page/second",
+      },
+    });
+
+    expect(firstSnapshot.refs?.scope).not.toBe(secondSnapshot.refs?.scope);
+    expect(bus.refs.buckets()).toHaveLength(2);
+    expect(
+      bus.refs.resolveStable(
+        `cdp-browser:${String(firstSnapshot.refs?.scope)}:#run`,
+      )?.cdpEndpoint,
+    ).toMatchObject({ port: 9222 });
+    expect(
+      bus.refs.resolveStable(
+        `cdp-browser:${String(secondSnapshot.refs?.scope)}:#run`,
+      )?.cdpEndpoint,
+    ).toMatchObject({ port: 9333 });
+  });
+
+  it.each(["cdp-browser:renderer:#name", "cdp:renderer:#name"])(
+    "type can use stable CDP ref selector %s",
+    async (stable) => {
+      const page = makeMockPage();
+      const t = new CdpBrowserTransport({ pageFactory: async () => page });
+      await t.open(makeCtx());
+
+      const typed = await t.action({
+        kind: "type",
+        params: {
+          stable,
+          text: "Ada",
+        },
+      });
+
+      expect(typed.ok).toBe(true);
+      expect(page.type).toHaveBeenCalledWith("#name", "Ada");
+    },
+  );
 
   it("close releases the page", async () => {
     const page = makeMockPage();

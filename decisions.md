@@ -188,3 +188,33 @@ and visual fallback is not a universal default.
 
 Revert the positioning commit; the runtime and package contracts remain
 unchanged.
+
+## 2026-07-18 — Local evidence and exact compute state
+
+**DECISION**
+
+Keep diagnostics as bounded owner-only JSONL, while separating the generic
+recoverable file-store lock and exact source/build identity from event
+schema/storage. Use that same lock abstraction at the compute-ref persistence
+boundary so shard pruning and reads share one linearization point. Keep compute
+refs as immutable target-sharded records and publish empty latest buckets as
+tombstones. Use only Node/Rust/platform primitives already owned by the runtime;
+add no database, daemon, telemetry SDK, timing retry, or source-specific
+persistence path.
+
+**BEST PATH**
+
+Hard-link lock election, durable complete owner records, no-follow bounded
+reads, inode-checked dead-owner reclamation, two agreeing dirty-content passes,
+serialized ref record publication/pruning, exact capture identity binding, and
+target tombstones make false evidence unrepresentable at the owning local
+boundaries. Broken or concurrently changing state fails explicitly rather than
+being guessed, stolen, retried blindly, or revived.
+
+**UNSUPPORTED**
+
+An in-process logger cannot survive a terminal event that never executes or
+promise remote durability. Non-cooperating filesystem mutation and externally
+held Windows handles remain explicit I/O failures. Live Windows and Linux
+desktop validation is provided by their CI/native gates; this macOS release run
+cannot itself observe those hosts.

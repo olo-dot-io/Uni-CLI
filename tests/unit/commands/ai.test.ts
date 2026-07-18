@@ -110,6 +110,29 @@ describe("AI source discovery", () => {
     );
   });
 
+  it("distinguishes origin-owned sources from hosts, venues, and community platforms", () => {
+    const rows = new Map(
+      listAiLandscapeRows().map((row) => [String(row.id), row]),
+    );
+
+    expect(rows.get("nvidia")).toMatchObject({
+      first_party: true,
+      evidence_role: "origin",
+    });
+    expect(rows.get("hugging-face")).toMatchObject({
+      first_party: false,
+      evidence_role: "artifact-host",
+    });
+    expect(rows.get("arxiv")).toMatchObject({
+      first_party: false,
+      evidence_role: "publication-venue",
+    });
+    expect(rows.get("github")).toMatchObject({
+      first_party: false,
+      evidence_role: "community-platform",
+    });
+  });
+
   it("keeps catalog identities, domains, repositories, and profile source refs unambiguous", () => {
     const ids = AI_PRIMARY_SOURCES.map((source) => source.id);
     const repositories = AI_PRIMARY_SOURCES.flatMap((source) =>
@@ -468,9 +491,36 @@ describe("AI content normalization", () => {
 
     expect(records[0]).toMatchObject({
       author: expected,
+      publisher: "",
       published_at: "2026",
       metrics: { cited_by_count: 12, references_count: 34 },
     });
+  });
+
+  it("keeps an explicit publisher separate from a paper's author list", () => {
+    const [record] = coerceAiContentRecords(
+      [
+        {
+          id: "paper-2",
+          title: "Typed scholarly provenance",
+          authors: ["Ada Lovelace", "Grace Hopper"],
+          publisher: "Association for Computing Machinery",
+          source_url: "https://www.semanticscholar.org/paper/paper-2",
+        },
+      ],
+      {
+        ref: "semantic-scholar.search",
+        site: "semantic-scholar",
+        name: "search",
+        kind: "paper",
+        sourceClass: "community",
+      },
+      "scholarly provenance",
+      "2026-07-17T02:00:00Z",
+    );
+
+    expect(record.author).toBe("Ada Lovelace, Grace Hopper");
+    expect(record.publisher).toBe("Association for Computing Machinery");
   });
 
   it("recognizes Huawei Ascend vocabulary without relying on one domain", () => {

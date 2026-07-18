@@ -203,6 +203,8 @@ interface YamlArg {
   format?: AdapterArg["format"];
   "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
   "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
+  "x-unicli-uri-origins"?: AdapterArg["x-unicli-uri-origins"];
+  "x-unicli-uri-path-pattern"?: AdapterArg["x-unicli-uri-path-pattern"];
 }
 
 function extractBalancedLiteral(
@@ -536,6 +538,8 @@ export function loadAdaptersFromDir(dir: string): number {
               format: argDef.format,
               "x-unicli-kind": argDef["x-unicli-kind"],
               "x-unicli-accepts": argDef["x-unicli-accepts"],
+              "x-unicli-uri-origins": argDef["x-unicli-uri-origins"],
+              "x-unicli-uri-path-pattern": argDef["x-unicli-uri-path-pattern"],
             }),
           );
         }

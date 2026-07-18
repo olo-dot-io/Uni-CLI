@@ -1,7 +1,7 @@
 /**
  * @owner       src::engine::kernel::execute
  * @does        Builds invocations, runs the shared stage chain, and emits privacy-safe terminal tool-call diagnostics.
- * @needs       registry resolution, compiled command cache, explicit kernel stages, local event log
+ * @needs       registry resolution, compiled command cache, explicit kernel stages, CLI parent correlation, local event log
  * @feeds       CLI/MCP/ACP/bench/hub transport renderers through InvocationResult and local usage projection
  * @breaks      Surface parity when wrappers rebuild validation, authorization, execution, diagnostics, envelopes, or tool-call observation.
  * @invariants  Cancellation is checked before dispatch; authorized effect determines outcome ambiguity; log failure warns but never replaces a settled operation result.
@@ -27,7 +27,11 @@ import {
   validateKernelInput,
 } from "./stages.js";
 import { KernelLookupError } from "./errors.js";
-import type { Invocation, InvocationResult } from "./types.js";
+import type {
+  Invocation,
+  InvocationDiagnosticIdentity,
+  InvocationResult,
+} from "./types.js";
 import { newULID } from "./ulid.js";
 import {
   appendLocalEvent,
@@ -36,7 +40,11 @@ import {
   localEventWarning,
 } from "../../runtime/local-event-log.js";
 import type { KernelCommandContext } from "./stages.js";
-import { observeCliTrace } from "../../runtime/cli-invocation-log.js";
+import {
+  currentCliInvocationId,
+  observeCliLocalLogWarning,
+  observeCliTrace,
+} from "../../runtime/cli-invocation-log.js";
 
 export { KernelLookupError };
 
@@ -55,10 +63,22 @@ export function buildInvocation(
     approved?: boolean;
     rememberApproval?: boolean;
     signal?: AbortSignal;
+    parentInvocationId?: string;
+    operationRole?: "direct" | "nested";
   } = {},
 ): Invocation | null {
   const resolved = resolveCommand(site, cmd);
   if (!resolved) return null;
+  const diagnosticParentInvocationId =
+    options.parentInvocationId ??
+    (surface === "cli" ? currentCliInvocationId() : undefined);
+  const diagnosticIdentity: InvocationDiagnosticIdentity =
+    diagnosticParentInvocationId
+      ? {
+          diagnosticParentInvocationId,
+          diagnosticRole: options.operationRole ?? "nested",
+        }
+      : { diagnosticRole: "standalone" };
   return {
     adapter: resolved.adapter,
     command: resolved.command,
@@ -70,6 +90,7 @@ export function buildInvocation(
     rememberApproval: options.rememberApproval,
     signal: options.signal,
     trace_id: newULID(),
+    ...diagnosticIdentity,
   };
 }
 
@@ -92,6 +113,9 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       createLocalEvent({
         event_name: "unicli.tool.call.completed",
         invocation_id: inv.trace_id,
+        ...(inv.diagnosticParentInvocationId
+          ? { parent_invocation_id: inv.diagnosticParentInvocationId }
+          : {}),
         trace_id: inv.trace_id,
         transport: inv.surface,
         command: ctx.key,
@@ -99,7 +123,7 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
         cmd: inv.cmdName,
         strategy: ctx.strategy ?? "unknown",
         target_surface: ctx.targetSurface,
-        adapter_path: ctx.adapterPath,
+        operation_role: inv.diagnosticRole,
         outcome:
           result.error !== undefined
             ? "error"
@@ -128,7 +152,10 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
       }),
     ),
   );
-  if (warning) result.warnings.push(warning);
+  if (warning) {
+    if (inv.surface === "cli") observeCliLocalLogWarning(warning);
+    result.warnings.push(warning);
+  }
   return result;
 }
 

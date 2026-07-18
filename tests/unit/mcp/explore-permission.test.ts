@@ -2,6 +2,7 @@ import {
   chmodSync,
   existsSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -93,5 +94,60 @@ describe("MCP explore authorization", () => {
         },
       },
     });
+  });
+
+  it("disables both current and legacy child logging protocols", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "unicli-mcp-explore-env-"));
+    temporaryDirectories.push(directory);
+    const markerPath = join(directory, "child-env.txt");
+    const shimPath = join(directory, "unicli");
+    const policyPath = join(directory, "permission-rules.json");
+
+    writeFileSync(
+      policyPath,
+      JSON.stringify({ schema_version: "2", default: "allow", rules: [] }),
+    );
+    // REASON: the PATH shim observes the real subprocess environment without replacing owned MCP or authorization modules.
+    writeFileSync(
+      shimPath,
+      `#!/bin/sh\nprintf '%s,%s\n' "$UNICLI_NO_LOG" "$UNICLI_NO_LEDGER" > ${JSON.stringify(markerPath)}\nprintf '{"shim":true}\n'\n`,
+    );
+    chmodSync(shimPath, 0o755);
+    process.env.PATH = `${directory}:${originalPath ?? ""}`;
+    process.env.UNICLI_PERMISSION_RULES_PATH = policyPath;
+
+    const handler = buildHandler(buildDefaultTools());
+    const context = {
+      transport: "mcp-stdio" as const,
+      mcpSessionId: "logging-compatibility",
+    };
+    const created = await handler(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "unicli_explore",
+          arguments: { url: "https://example.com" },
+          task: {},
+        },
+      },
+      context,
+    );
+    const taskId = (
+      created?.result as { task?: { taskId?: unknown } } | undefined
+    )?.task?.taskId;
+    expect(taskId).toEqual(expect.any(String));
+    await handler(
+      {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tasks/result",
+        params: { taskId },
+      },
+      context,
+    );
+
+    expect(readFileSync(markerPath, "utf-8").trim()).toBe("1,1");
   });
 });

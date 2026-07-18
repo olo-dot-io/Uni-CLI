@@ -1,14 +1,14 @@
 /**
  * @owner       src/mcp/handler.ts
- * @does        Dispatch MCP JSON-RPC methods and durable Tasks, expose callable-surface metadata for adapter versus fixed-core discovery entries, and run each tool call inside its transport-derived browser invocation scope.
- * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation, browser invocation context/scope/runtime probe, generate permission, constants
+ * @does        Dispatch and correlate MCP JSON-RPC tools/Tasks, expose callable-surface metadata, and run each tool call inside its browser invocation scope.
+ * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation/local observation, browser invocation context/scope/runtime probe, generate permission, constants
  * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
  * @breaks      Invalid methods/arguments return JSON-RPC errors; fixed-core unicli_run attempts return an explicit native-CLI route; tool and browser-finalization failures propagate to the owning transport.
- * @invariants  Discovery marks whether unicli_run supports each command; every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them; transport close settles tasks before ending every no-longer-referenced Agent browser session without starting an absent broker, and retains cleanup ownership until every available broker acknowledgement succeeds.
- * @side-effects Executes registered tools, adapters, elicitation resolution, browser turn finalizers, and transport-owned browser-session cleanup.
- * @perf        Tool lookup is linear in the selected MCP profile; browser scope setup is O(1).
- * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns; transport cleanup is serialized so closeSession/closeAll cannot double-release one broker session.
- * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-browser-invocation.test.ts, tests/unit/mcp/browser-control.test.ts
+ * @invariants  Discovery identifies callable adapters; every tools/call receives browser and diagnostic identities; mutations require session-scoped Tasks; transport close settles Tasks and browser sessions; raw unknown names never enter diagnostics.
+ * @side-effects Executes registered tools, adapters, elicitation resolution, browser finalizers, transport cleanup, and bounded terminal diagnostic appends.
+ * @perf        Tool lookup is linear in the selected profile; observation is linear in response bytes; browser scope setup is O(1).
+ * @concurrency Request-local observations and async-local browser scopes isolate calls; transport cleanup is serialized.
+ * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp/logging.test.ts, tests/unit/mcp-browser-invocation.test.ts, tests/unit/mcp/browser-control.test.ts
  * @stability   stable
  * @since       2026-04-01
  */
@@ -48,6 +48,13 @@ import {
   resolveGenerateOperation,
 } from "../commands/generate-permission.js";
 import { McpTaskManager } from "./tasks.js";
+import { localLoggingDisabledChildEnv } from "../runtime/child-process-env.js";
+import {
+  completeMcpCallObservation,
+  createMcpCallObservation,
+  createMcpErrorObservation,
+  recordThrownMcpCall,
+} from "./local-observation.js";
 
 export type { JsonRpcRequest, JsonRpcResponse };
 
@@ -190,6 +197,7 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
 async function handleRunCommand(
   params: Record<string, unknown>,
   signal?: AbortSignal,
+  parentInvocationId?: string,
 ): Promise<McpToolResult> {
   const site = params.site as string;
   const command = params.command as string;
@@ -249,6 +257,7 @@ async function handleRunCommand(
     cmdName: command,
     args,
     signal,
+    parentInvocationId,
   });
 }
 
@@ -260,6 +269,7 @@ async function handleExpandedTool(
   toolName: string,
   args: Record<string, unknown>,
   signal?: AbortSignal,
+  parentInvocationId?: string,
 ): Promise<McpToolResult | undefined> {
   if (!toolName.startsWith("unicli_")) return undefined;
   const entry = expandedRegistry.get(toolName);
@@ -268,6 +278,7 @@ async function handleExpandedTool(
     cmdName: entry.cmdName,
     args: expandedToolArgs(args),
     signal,
+    parentInvocationId,
   });
 }
 
@@ -370,6 +381,7 @@ async function dispatchBuiltin(
   name: string,
   toolArgs: Record<string, unknown>,
   signal?: AbortSignal,
+  parentInvocationId?: string,
 ): Promise<JsonRpcResponse | undefined> {
   switch (name) {
     case "unicli_list":
@@ -379,7 +391,11 @@ async function dispatchBuiltin(
     }
     case "unicli_run":
     case "run_command": {
-      const result = await handleRunCommand(toolArgs, signal);
+      const result = await handleRunCommand(
+        toolArgs,
+        signal,
+        parentInvocationId,
+      );
       return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
     }
     case "unicli_search":
@@ -486,6 +502,7 @@ async function dispatchExplore(
       timeout: 120_000,
       encoding: "utf-8",
       signal,
+      env: localLoggingDisabledChildEnv(),
     });
     return {
       jsonrpc: "2.0",
@@ -530,12 +547,13 @@ async function handleToolsCall(
   const params = req.params as
     | { name: string; arguments?: Record<string, unknown> }
     | undefined;
+  const observation = createMcpCallObservation(params?.name);
   if (!params?.name) {
-    return {
+    return completeMcpCallObservation(observation, {
       jsonrpc: "2.0",
       id,
       error: { code: -32602, message: "Missing tool name" },
-    };
+    });
   }
   const invocationContext = createBrowserInvocationContext({
     transport: requestContext?.transport ?? "mcp-stdio",
@@ -548,39 +566,53 @@ async function handleToolsCall(
     ...browserPolicy,
     signal: requestContext?.signal,
   });
-  return runBrowserInvocation(scope, async () => {
-    const toolArgs = params.arguments ?? {};
-    const directTool = tools.find((tool) => tool.name === params.name);
-    if (directTool?.handler) {
-      const result = await directTool.handler(toolArgs, {
-        signal: requestContext?.signal,
-      });
-      return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
+  try {
+    const response = await runBrowserInvocation(scope, async () => {
+      const toolArgs = params.arguments ?? {};
+      const directTool = tools.find((tool) => tool.name === params.name);
+      if (directTool?.handler) {
+        const result = await directTool.handler(toolArgs, {
+          signal: requestContext?.signal,
+        });
+        return { jsonrpc: "2.0" as const, id, result: annotateIfLarge(result) };
+      }
+      const builtin = await dispatchBuiltin(
+        id,
+        params.name,
+        toolArgs,
+        requestContext?.signal,
+        observation.invocationId,
+      );
+      if (builtin) return builtin;
+      const result = await handleExpandedTool(
+        params.name,
+        toolArgs,
+        requestContext?.signal,
+        observation.invocationId,
+      );
+      if (result) {
+        return { jsonrpc: "2.0" as const, id, result: annotateIfLarge(result) };
+      }
+      return {
+        jsonrpc: "2.0" as const,
+        id,
+        error: {
+          code: -32602,
+          message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
+        },
+      };
+    });
+    return completeMcpCallObservation(observation, response);
+  } catch (error) {
+    const warning = recordThrownMcpCall(observation);
+    if (warning) {
+      throw new AggregateError(
+        [error, new Error(warning)],
+        "MCP tool execution and local diagnostics both failed",
+      );
     }
-    const builtin = await dispatchBuiltin(
-      id,
-      params.name,
-      toolArgs,
-      requestContext?.signal,
-    );
-    if (builtin) return builtin;
-    const result = await handleExpandedTool(
-      params.name,
-      toolArgs,
-      requestContext?.signal,
-    );
-    if (result) {
-      return { jsonrpc: "2.0", id, result: annotateIfLarge(result) };
-    }
-    return {
-      jsonrpc: "2.0",
-      id,
-      error: {
-        code: -32602,
-        message: `Unknown tool: ${params.name}. Use unicli_list to see available commands.`,
-      },
-    };
-  });
+    throw error;
+  }
 }
 
 function handleElicitationResponse(
@@ -638,6 +670,7 @@ export function buildHandler(
   ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
     const id = req.id ?? null;
     const sessionId = requestContext?.mcpSessionId ?? "mcp:default";
+    const startedAt = Date.now();
 
     switch (req.method) {
       case "initialize":
@@ -651,29 +684,41 @@ export function buildHandler(
         const params = req.params;
         const tool = resolveAdvertisedTool(advertisedTools, params?.name);
         if (!tool) {
-          return {
-            jsonrpc: "2.0",
-            id,
-            error: {
-              code: -32602,
-              message: `Unknown tool: ${String(params?.name ?? "")}. Use unicli_list to see available commands.`,
+          return completeMcpCallObservation(
+            createMcpErrorObservation("unknown_tool", startedAt),
+            {
+              jsonrpc: "2.0",
+              id,
+              error: {
+                code: -32602,
+                message: `Unknown tool: ${String(params?.name ?? "")}. Use unicli_list to see available commands.`,
+              },
             },
-          };
+          );
         }
         const requestedTask = parseTaskRequest(params);
         if (requestedTask instanceof Error) {
-          return {
-            jsonrpc: "2.0",
-            id,
-            error: { code: -32602, message: requestedTask.message },
-          };
+          return completeMcpCallObservation(
+            createMcpCallObservation(tool.name, startedAt),
+            {
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32602, message: requestedTask.message },
+            },
+          );
         }
         const taskSupport = tool.execution?.taskSupport ?? "forbidden";
         if (requestedTask === undefined && taskSupport === "required") {
-          return taskSupportError(id, tool.name, "requires task augmentation");
+          return completeMcpCallObservation(
+            createMcpCallObservation(tool.name, startedAt),
+            taskSupportError(id, tool.name, "requires task augmentation"),
+          );
         }
         if (requestedTask !== undefined && taskSupport === "forbidden") {
-          return taskSupportError(id, tool.name, "forbids task augmentation");
+          return completeMcpCallObservation(
+            createMcpCallObservation(tool.name, startedAt),
+            taskSupportError(id, tool.name, "forbids task augmentation"),
+          );
         }
         if (requestedTask !== undefined) {
           return taskManager.create({
@@ -726,14 +771,17 @@ export function buildHandler(
         return { jsonrpc: "2.0", id, result: {} };
       default:
         if (id !== null && id !== undefined) {
-          return {
-            jsonrpc: "2.0",
-            id,
-            error: {
-              code: -32601,
-              message: `Method not found: ${req.method}`,
+          return completeMcpCallObservation(
+            createMcpErrorObservation("protocol_error", startedAt),
+            {
+              jsonrpc: "2.0",
+              id,
+              error: {
+                code: -32601,
+                message: `Method not found: ${req.method}`,
+              },
             },
-          };
+          );
         }
         return undefined;
     }
@@ -862,7 +910,7 @@ function taskSupportError(
   return {
     jsonrpc: "2.0",
     id,
-    error: { code: -32601, message: `Tool ${toolName} ${reason}` },
+    error: { code: -32602, message: `Tool ${toolName} ${reason}` },
   };
 }
 

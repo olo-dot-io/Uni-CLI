@@ -1,15 +1,15 @@
 /**
  * @owner       src::runtime::local-event-log
- * @does        Persists bounded, privacy-safe diagnostic events for CLI and shared-kernel invocations.
- * @needs       user-home resolution, package version, append-only filesystem primitives
+ * @does        Persists and strictly reads versioned, bounded, privacy-safe terminal diagnostic events.
+ * @needs       source identity, recoverable event-store lock, user-home resolution, package version, synchronous filesystem primitives
  * @feeds       usage reporting, local incident diagnosis, CLI/MCP/ACP dogfood evidence
- * @breaks      Silent write loss, unbounded retention, or high-cardinality payloads make local diagnosis incomplete or unsafe.
- * @invariants  Events contain allowlisted scalar metadata only; UTC daily files are owner-only; malformed complete records fail visibly.
- * @side-effects Appends one JSON line and prunes expired UTC day files at most once per process/day/store.
- * @perf        One bounded synchronous append per completed operation; retention scans once per UTC day.
- * @concurrency O_APPEND plus a single bounded write prevents shared-offset races between local processes.
+ * @breaks      Invalid schemas, quota exhaustion, lock contention, or filesystem failures surface as typed local-log errors.
+ * @invariants  Schema-v2 writes and schema-v1/v2 reads are closed and scalar-only; retained JSONL bytes never exceed daily or total caps; readers reject symlinks, non-files, and identities that change after inspection; explicit existing roots keep their mode.
+ * @side-effects Serializes readers and writers with a recoverable process-held lock, prunes expired UTC files before append, and writes one bounded JSON line.
+ * @perf        O(retained day files) maintenance per append and O(retained bytes) per read; no resident daemon.
+ * @concurrency One exclusive store lock makes prune, quota admission, append, and reads serializable across cooperating processes.
  * @test        tests/unit/local-event-log.test.ts and tests/unit/engine/invoke.test.ts
- * @stability   additive schema v1
+ * @stability   schema v2 writes with strict schema v1 read compatibility
  * @since       2026-07-18
  */
 
@@ -18,22 +18,38 @@ import {
   closeSync,
   constants as fsConstants,
   existsSync,
+  fstatSync,
+  fsyncSync,
+  lstatSync,
   mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
-  statSync,
   unlinkSync,
   writeSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 import { VERSION } from "../constants.js";
 import { userHome } from "../engine/user-home.js";
+import {
+  _resetSourceIdentityForTests,
+  serviceSourceIdentity,
+  type ServiceSourceState,
+} from "./source-identity.js";
+import {
+  RecoverableFileLockError,
+  withRecoverableFileStoreLock,
+} from "./recoverable-file-lock.js";
 
-export const LOCAL_EVENT_SCHEMA_VERSION = "1" as const;
+export const LOCAL_EVENT_SCHEMA_VERSION = "2" as const;
+export const LEGACY_LOCAL_EVENT_SCHEMA_VERSION = "1" as const;
 export const DEFAULT_LOG_RETENTION_DAYS = 30;
 export const MAX_LOCAL_EVENT_BYTES = 16 * 1024;
+export const MAX_LOCAL_DAY_BYTES = 16 * 1024 * 1024;
+export const MAX_LOCAL_TOTAL_BYTES = 128 * 1024 * 1024;
+
+const DAY_FILE_PATTERN = /^(\d{4}-\d{2}-\d{2})\.jsonl$/;
+const MAX_SCALAR_STRING_BYTES = 1024;
 
 export type LocalEventName =
   | "unicli.cli.invocation.completed"
@@ -41,9 +57,13 @@ export type LocalEventName =
 export type LocalEventOutcome = "success" | "empty" | "error";
 export type LocalEventSeverity = "INFO" | "WARN" | "ERROR";
 export type LocalEventTransport = "cli" | "mcp" | "acp" | "bench" | "hub";
+export type LocalEventOperationRole =
+  | "invocation"
+  | "direct"
+  | "nested"
+  | "standalone";
 
-export interface LocalDiagnosticEvent {
-  schema_version: typeof LOCAL_EVENT_SCHEMA_VERSION;
+interface LocalDiagnosticFields {
   event_name: LocalEventName;
   timestamp: string;
   observed_timestamp: string;
@@ -51,6 +71,8 @@ export interface LocalDiagnosticEvent {
   service_name: "unicli";
   service_version: string;
   service_revision?: string;
+  source_state?: ServiceSourceState;
+  source_digest?: string;
   invocation_id: string;
   trace_id?: string;
   transport: LocalEventTransport;
@@ -59,7 +81,6 @@ export interface LocalDiagnosticEvent {
   cmd?: string;
   strategy?: string;
   target_surface?: string;
-  adapter_path?: string;
   outcome: LocalEventOutcome;
   exit_code: number;
   duration_ms: number;
@@ -78,15 +99,44 @@ export interface LocalDiagnosticEvent {
   arch: string;
 }
 
+export interface LocalDiagnosticEventV1 extends LocalDiagnosticFields {
+  schema_version: typeof LEGACY_LOCAL_EVENT_SCHEMA_VERSION;
+  adapter_path?: string;
+}
+
+export interface LocalDiagnosticEventV2 extends LocalDiagnosticFields {
+  schema_version: typeof LOCAL_EVENT_SCHEMA_VERSION;
+  parent_invocation_id?: string;
+  operation_role: LocalEventOperationRole;
+}
+
+export type LocalDiagnosticEvent =
+  | LocalDiagnosticEventV1
+  | LocalDiagnosticEventV2;
+
 export interface LocalEventStore {
   rootDir: string;
   retentionDays: number;
+  preserveExistingRootMode?: boolean;
+}
+
+export interface ReadLocalEventsOptions {
+  now?: number;
+}
+
+interface InspectedLocalEventFile {
+  path: string;
+  dev: number;
+  ino: number;
+  size: number;
 }
 
 export type LocalEventLogErrorCode =
   | "invalid_config"
   | "invalid_event"
   | "event_too_large"
+  | "capacity_exceeded"
+  | "lock_timeout"
   | "malformed_jsonl"
   | "io_error";
 
@@ -103,15 +153,10 @@ export class LocalEventLogError extends Error {
 }
 
 export type AppendLocalEventResult =
-  | {
-      ok: true;
-      path?: string;
-      disabled?: true;
-      maintenance_error?: LocalEventLogError;
-    }
+  | { ok: true; path?: string; disabled?: true }
   | { ok: false; error: LocalEventLogError };
 
-const EVENT_KEYS = new Set<keyof LocalDiagnosticEvent>([
+const COMMON_EVENT_KEYS = [
   "schema_version",
   "event_name",
   "timestamp",
@@ -120,6 +165,8 @@ const EVENT_KEYS = new Set<keyof LocalDiagnosticEvent>([
   "service_name",
   "service_version",
   "service_revision",
+  "source_state",
+  "source_digest",
   "invocation_id",
   "trace_id",
   "transport",
@@ -128,7 +175,6 @@ const EVENT_KEYS = new Set<keyof LocalDiagnosticEvent>([
   "cmd",
   "strategy",
   "target_surface",
-  "adapter_path",
   "outcome",
   "exit_code",
   "duration_ms",
@@ -145,34 +191,68 @@ const EVENT_KEYS = new Set<keyof LocalDiagnosticEvent>([
   "node_version",
   "platform",
   "arch",
+] as const;
+const V1_EVENT_KEYS = new Set<string>([...COMMON_EVENT_KEYS, "adapter_path"]);
+const V2_EVENT_KEYS = new Set<string>([
+  ...COMMON_EVENT_KEYS,
+  "parent_invocation_id",
+  "operation_role",
 ]);
-
-const prunedStoreDays = new Set<string>();
-let cachedServiceRevision: string | undefined | null = null;
+const OPTIONAL_STRING_KEYS = [
+  "service_revision",
+  "trace_id",
+  "site",
+  "cmd",
+  "strategy",
+  "target_surface",
+  "error_type",
+  "provider",
+  "profile_source",
+] as const;
+const OPTIONAL_BOOLEAN_KEYS = [
+  "retryable",
+  "outcome_ambiguous",
+  "target_unusable",
+] as const;
+const OPTIONAL_INTEGER_KEYS = [
+  "result_count",
+  "result_bytes",
+  "error_step",
+] as const;
 
 export function createLocalEventStore(
   options: { rootDir?: string; retentionDays?: number; homeDir?: string } = {},
 ): LocalEventStore {
-  const retentionDays =
+  const retentionDays = validateRetentionDays(
     options.retentionDays ??
-    parseRetentionDays(process.env.UNICLI_LOG_RETENTION_DAYS);
+      parseRetentionDays(process.env.UNICLI_LOG_RETENTION_DAYS),
+  );
+  const configuredRoot = options.rootDir ?? process.env.UNICLI_LOG_ROOT;
   const rootDir =
-    options.rootDir ??
-    process.env.UNICLI_LOG_ROOT ??
+    configuredRoot ??
     join(options.homeDir ?? userHome(), ".unicli", "logs", "events");
-  return { rootDir, retentionDays };
+  if (rootDir.trim().length === 0) {
+    throw new LocalEventLogError(
+      "invalid_config",
+      "local event root must not be empty",
+    );
+  }
+  return {
+    rootDir,
+    retentionDays,
+    preserveExistingRootMode: configuredRoot !== undefined,
+  };
 }
 
 export function localEventPath(
   store: LocalEventStore,
   timestamp: string,
 ): string {
-  const day = utcDay(timestamp);
-  return join(store.rootDir, `${day}.jsonl`);
+  return join(store.rootDir, utcDay(timestamp) + ".jsonl");
 }
 
 export function appendLocalEvent(
-  event: LocalDiagnosticEvent,
+  event: LocalDiagnosticEventV2,
   store?: LocalEventStore,
 ): AppendLocalEventResult {
   if (localLoggingDisabled()) return { ok: true, disabled: true };
@@ -180,25 +260,25 @@ export function appendLocalEvent(
   let path: string | undefined;
   try {
     const resolvedStore = store ?? createLocalEventStore();
-    assertLocalEvent(event);
+    assertCurrentLocalEvent(event);
     path = localEventPath(resolvedStore, event.timestamp);
-    const line = Buffer.from(`${JSON.stringify(event)}\n`, "utf-8");
+    const line = Buffer.from(JSON.stringify(event) + "\n", "utf-8");
     if (line.byteLength > MAX_LOCAL_EVENT_BYTES) {
       throw new LocalEventLogError(
         "event_too_large",
-        `local event exceeds ${String(MAX_LOCAL_EVENT_BYTES)} bytes`,
+        "local event exceeds " + String(MAX_LOCAL_EVENT_BYTES) + " bytes",
         path,
       );
     }
 
-    mkdirOwnerOnly(resolvedStore.rootDir);
-    appendOneWrite(path, line);
-    const maintenanceError = pruneOncePerUtcDay(resolvedStore, event.timestamp);
-    return {
-      ok: true,
-      path,
-      ...(maintenanceError ? { maintenance_error: maintenanceError } : {}),
-    };
+    ensureEventRoot(resolvedStore);
+    withRecoverableFileStoreLock(resolvedStore.rootDir, () => {
+      const now = Date.now();
+      pruneExpiredFiles(resolvedStore, now);
+      assertStoreCapacity(resolvedStore, path!, line.byteLength);
+      appendOneWrite(path!, line);
+    });
+    return { ok: true, path };
   } catch (error) {
     return {
       ok: false,
@@ -209,56 +289,76 @@ export function appendLocalEvent(
 
 export function readLocalEvents(
   store: LocalEventStore = createLocalEventStore(),
+  options: ReadLocalEventsOptions = {},
 ): LocalDiagnosticEvent[] {
   if (!existsSync(store.rootDir)) return [];
+  const now = options.now ?? Date.now();
+  if (!Number.isFinite(now)) {
+    throw new LocalEventLogError(
+      "invalid_config",
+      "local event read time must be finite",
+      store.rootDir,
+    );
+  }
 
-  let names: string[];
   try {
-    names = readdirSync(store.rootDir)
-      .filter((name) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(name))
-      .sort();
+    return withRecoverableFileStoreLock(store.rootDir, () => {
+      const files = inspectRetainedEventFiles(
+        retainedEventFileNames(store, now).map((name) =>
+          join(store.rootDir, name),
+        ),
+      );
+      const events: LocalDiagnosticEvent[] = [];
+      for (const file of files) {
+        const path = file.path;
+        let raw: string;
+        try {
+          raw = readInspectedLocalEventFile(file);
+        } catch (error) {
+          throw asLocalEventLogError(
+            error,
+            path,
+            "failed to read local event log",
+          );
+        }
+        const lines = raw.split(/\r?\n/);
+        lines.forEach((lineText, index) => {
+          if (lineText.trim().length === 0) return;
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(lineText);
+            assertStoredLocalEvent(parsed);
+          } catch (error) {
+            const detail = error instanceof Error ? ": " + error.message : "";
+            throw new LocalEventLogError(
+              "malformed_jsonl",
+              "malformed local event JSONL at " +
+                path +
+                " (line " +
+                String(index + 1) +
+                ")" +
+                detail,
+              path,
+              index + 1,
+            );
+          }
+          events.push(parsed);
+        });
+      }
+      return events;
+    });
   } catch (error) {
     throw asLocalEventLogError(
       error,
       store.rootDir,
-      "failed to list local event log",
+      "failed to read local event log",
     );
   }
-
-  const events: LocalDiagnosticEvent[] = [];
-  for (const name of names) {
-    const path = join(store.rootDir, name);
-    let raw: string;
-    try {
-      raw = readFileSync(path, "utf-8");
-    } catch (error) {
-      throw asLocalEventLogError(error, path, "failed to read local event log");
-    }
-    const lines = raw.split(/\r?\n/);
-    lines.forEach((lineText, index) => {
-      if (lineText.trim().length === 0) return;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(lineText);
-        assertLocalEvent(parsed);
-      } catch (error) {
-        const detail = error instanceof Error ? `: ${error.message}` : "";
-        throw new LocalEventLogError(
-          "malformed_jsonl",
-          `malformed local event JSONL at ${path} (line ${String(index + 1)})${detail}`,
-          path,
-          index + 1,
-        );
-      }
-      events.push(parsed);
-    });
-  }
-  return events;
 }
 
 export function createLocalEvent(
   input: Omit<
-    LocalDiagnosticEvent,
+    LocalDiagnosticEventV2,
     | "schema_version"
     | "timestamp"
     | "observed_timestamp"
@@ -266,14 +366,16 @@ export function createLocalEvent(
     | "service_name"
     | "service_version"
     | "service_revision"
+    | "source_state"
+    | "source_digest"
     | "process_id"
     | "node_version"
     | "platform"
     | "arch"
   > & { timestamp?: string },
-): LocalDiagnosticEvent {
+): LocalDiagnosticEventV2 {
   const timestamp = input.timestamp ?? new Date().toISOString();
-  const revision = serviceRevision();
+  const sourceIdentity = serviceSourceIdentity();
   return {
     schema_version: LOCAL_EVENT_SCHEMA_VERSION,
     event_name: input.event_name,
@@ -287,8 +389,15 @@ export function createLocalEvent(
           : "INFO",
     service_name: "unicli",
     service_version: VERSION,
-    ...(revision ? { service_revision: revision } : {}),
+    ...(sourceIdentity.revision
+      ? { service_revision: sourceIdentity.revision }
+      : {}),
+    ...(sourceIdentity.state ? { source_state: sourceIdentity.state } : {}),
+    ...(sourceIdentity.digest ? { source_digest: sourceIdentity.digest } : {}),
     invocation_id: input.invocation_id,
+    ...(input.parent_invocation_id
+      ? { parent_invocation_id: input.parent_invocation_id }
+      : {}),
     ...(input.trace_id ? { trace_id: input.trace_id } : {}),
     transport: input.transport,
     command: input.command,
@@ -296,7 +405,7 @@ export function createLocalEvent(
     ...(input.cmd ? { cmd: input.cmd } : {}),
     ...(input.strategy ? { strategy: input.strategy } : {}),
     ...(input.target_surface ? { target_surface: input.target_surface } : {}),
-    ...(input.adapter_path ? { adapter_path: input.adapter_path } : {}),
+    operation_role: input.operation_role,
     outcome: input.outcome,
     exit_code: input.exit_code,
     duration_ms: input.duration_ms,
@@ -327,11 +436,7 @@ export function createLocalEvent(
 export function localEventWarning(
   result: AppendLocalEventResult,
 ): string | undefined {
-  if (!result.ok) return `[local-log] ${result.error.message}`;
-  if (result.maintenance_error) {
-    return `[local-log] ${result.maintenance_error.message}`;
-  }
-  return undefined;
+  return result.ok ? undefined : "[local-log] " + result.error.message;
 }
 
 export function isLocalLoggingEnabled(): boolean {
@@ -339,8 +444,7 @@ export function isLocalLoggingEnabled(): boolean {
 }
 
 export function _resetLocalEventLogForTests(): void {
-  prunedStoreDays.clear();
-  cachedServiceRevision = null;
+  _resetSourceIdentityForTests();
 }
 
 function localLoggingDisabled(): boolean {
@@ -351,20 +455,26 @@ function localLoggingDisabled(): boolean {
 
 function parseRetentionDays(raw: string | undefined): number {
   if (raw === undefined) return DEFAULT_LOG_RETENTION_DAYS;
-  if (!/^\d+$/.test(raw)) {
-    throw new LocalEventLogError(
-      "invalid_config",
-      "UNICLI_LOG_RETENTION_DAYS must be an integer from 1 to 3650",
-    );
+  if (!/^\d+$/.test(raw)) throw invalidRetentionConfig();
+  return Number(raw);
+}
+
+function validateRetentionDays(retentionDays: number): number {
+  if (
+    !Number.isSafeInteger(retentionDays) ||
+    retentionDays < 1 ||
+    retentionDays > 3650
+  ) {
+    throw invalidRetentionConfig();
   }
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 1 || value > 3650) {
-    throw new LocalEventLogError(
-      "invalid_config",
-      "UNICLI_LOG_RETENTION_DAYS must be an integer from 1 to 3650",
-    );
-  }
-  return value;
+  return retentionDays;
+}
+
+function invalidRetentionConfig(): LocalEventLogError {
+  return new LocalEventLogError(
+    "invalid_config",
+    "UNICLI_LOG_RETENTION_DAYS must be an integer from 1 to 3650",
+  );
 }
 
 function utcDay(timestamp: string): string {
@@ -372,15 +482,179 @@ function utcDay(timestamp: string): string {
   if (!Number.isFinite(millis)) {
     throw new LocalEventLogError(
       "invalid_event",
-      `invalid event timestamp: ${timestamp}`,
+      "invalid event timestamp: " + timestamp,
     );
   }
   return new Date(millis).toISOString().slice(0, 10);
 }
 
-function mkdirOwnerOnly(path: string): void {
-  mkdirSync(path, { recursive: true, mode: 0o700 });
-  if (process.platform !== "win32") chmodSync(path, 0o700);
+function retentionCutoffDay(retentionDays: number, now: number): string {
+  const currentDay = utcDay(new Date(now).toISOString());
+  const cutoffMillis =
+    Date.parse(currentDay + "T00:00:00.000Z") -
+    (retentionDays - 1) * 86_400_000;
+  return new Date(cutoffMillis).toISOString().slice(0, 10);
+}
+
+function ensureEventRoot(store: LocalEventStore): void {
+  const existed = existsSync(store.rootDir);
+  mkdirSync(store.rootDir, { recursive: true, mode: 0o700 });
+  if (
+    process.platform !== "win32" &&
+    (!existed || store.preserveExistingRootMode !== true)
+  ) {
+    chmodSync(store.rootDir, 0o700);
+  }
+}
+
+function retainedEventFileNames(store: LocalEventStore, now: number): string[] {
+  const cutoff = retentionCutoffDay(store.retentionDays, now);
+  let names: string[];
+  try {
+    names = readdirSync(store.rootDir);
+  } catch (error) {
+    throw asLocalEventLogError(
+      error,
+      store.rootDir,
+      "failed to list local event log",
+    );
+  }
+  return names
+    .filter((name) => {
+      const match = DAY_FILE_PATTERN.exec(name);
+      return match !== null && match[1] >= cutoff;
+    })
+    .sort();
+}
+
+function inspectRetainedEventFiles(
+  paths: readonly string[],
+): InspectedLocalEventFile[] {
+  let totalBytes = 0;
+  const files = paths.map((path) => {
+    const stats = lstatSync(path);
+    if (!stats.isFile()) {
+      throw new LocalEventLogError(
+        "io_error",
+        "local event path is not a regular file: " + path,
+        path,
+      );
+    }
+    if (stats.size > MAX_LOCAL_DAY_BYTES) {
+      throw new LocalEventLogError(
+        "capacity_exceeded",
+        "local event day exceeds " + String(MAX_LOCAL_DAY_BYTES) + " bytes",
+        path,
+      );
+    }
+    totalBytes += stats.size;
+    return { path, dev: stats.dev, ino: stats.ino, size: stats.size };
+  });
+  if (totalBytes > MAX_LOCAL_TOTAL_BYTES) {
+    throw new LocalEventLogError(
+      "capacity_exceeded",
+      "local event store exceeds " + String(MAX_LOCAL_TOTAL_BYTES) + " bytes",
+      paths[0],
+    );
+  }
+  return files;
+}
+
+function readInspectedLocalEventFile(file: InspectedLocalEventFile): string {
+  const noFollow =
+    typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0;
+  let fd: number | undefined;
+  let readFailure: unknown;
+  let bytes: Buffer | undefined;
+  try {
+    fd = openSync(file.path, fsConstants.O_RDONLY | noFollow);
+    const opened = fstatSync(fd);
+    if (
+      !opened.isFile() ||
+      opened.dev !== file.dev ||
+      opened.ino !== file.ino ||
+      opened.size !== file.size
+    ) {
+      throw new LocalEventLogError(
+        "io_error",
+        "local event file identity changed after inspection: " + file.path,
+        file.path,
+      );
+    }
+    bytes = readFileSync(fd);
+    if (bytes.byteLength !== file.size) {
+      throw new LocalEventLogError(
+        "io_error",
+        "local event file size changed while reading: " + file.path,
+        file.path,
+      );
+    }
+  } catch (error) {
+    readFailure = error;
+  }
+
+  let closeFailure: unknown;
+  if (fd !== undefined) {
+    try {
+      closeSync(fd);
+    } catch (error) {
+      closeFailure = error;
+    }
+  }
+  if (readFailure !== undefined && closeFailure !== undefined) {
+    throw new AggregateError(
+      [readFailure, closeFailure],
+      "local event read and file close both failed",
+    );
+  }
+  if (readFailure !== undefined) throw readFailure;
+  if (closeFailure !== undefined) throw closeFailure;
+  return bytes!.toString("utf-8");
+}
+
+function pruneExpiredFiles(store: LocalEventStore, now: number): void {
+  const cutoff = retentionCutoffDay(store.retentionDays, now);
+  for (const name of readdirSync(store.rootDir)) {
+    const match = DAY_FILE_PATTERN.exec(name);
+    if (match && match[1] < cutoff) unlinkSync(join(store.rootDir, name));
+  }
+}
+
+function assertStoreCapacity(
+  store: LocalEventStore,
+  targetPath: string,
+  appendBytes: number,
+): void {
+  let dayBytes = 0;
+  let totalBytes = 0;
+  for (const name of readdirSync(store.rootDir)) {
+    if (!DAY_FILE_PATTERN.test(name)) continue;
+    const path = join(store.rootDir, name);
+    const fileStat = lstatSync(path);
+    if (!fileStat.isFile()) {
+      throw new LocalEventLogError(
+        "io_error",
+        "local event path is not a regular file: " + path,
+        path,
+      );
+    }
+    totalBytes += fileStat.size;
+    if (resolve(path) === resolve(targetPath)) dayBytes = fileStat.size;
+  }
+  if (dayBytes + appendBytes > MAX_LOCAL_DAY_BYTES) {
+    throw new LocalEventLogError(
+      "capacity_exceeded",
+      "local event day exceeds " + String(MAX_LOCAL_DAY_BYTES) + " bytes",
+      targetPath,
+    );
+  }
+  if (totalBytes + appendBytes > MAX_LOCAL_TOTAL_BYTES) {
+    throw new LocalEventLogError(
+      "capacity_exceeded",
+      "local event store exceeds " + String(MAX_LOCAL_TOTAL_BYTES) + " bytes",
+      store.rootDir,
+    );
+  }
 }
 
 function appendOneWrite(path: string, line: Buffer): void {
@@ -394,50 +668,46 @@ function appendOneWrite(path: string, line: Buffer): void {
   let fd: number | undefined;
   try {
     fd = openSync(path, flags, 0o600);
+    const fileStat = fstatSync(fd);
+    if (!fileStat.isFile()) {
+      throw new LocalEventLogError(
+        "io_error",
+        "local event path is not a regular file: " + path,
+        path,
+      );
+    }
     if (process.platform !== "win32") chmodSync(path, 0o600);
     const written = writeSync(fd, line, 0, line.byteLength);
     if (written !== line.byteLength) {
       throw new LocalEventLogError(
         "io_error",
-        `short local event write: ${String(written)}/${String(line.byteLength)} bytes`,
+        "short local event write: " +
+          String(written) +
+          "/" +
+          String(line.byteLength) +
+          " bytes",
         path,
       );
     }
+    fsyncSync(fd);
   } finally {
     if (fd !== undefined) closeSync(fd);
   }
 }
 
-function pruneOncePerUtcDay(
-  store: LocalEventStore,
-  timestamp: string,
-): LocalEventLogError | undefined {
-  const day = utcDay(timestamp);
-  const key = `${resolve(store.rootDir)}\0${day}`;
-  if (prunedStoreDays.has(key)) return undefined;
-  prunedStoreDays.add(key);
-  try {
-    const cutoffMillis =
-      Date.parse(`${day}T00:00:00.000Z`) -
-      (store.retentionDays - 1) * 86_400_000;
-    const cutoff = new Date(cutoffMillis).toISOString().slice(0, 10);
-    for (const name of readdirSync(store.rootDir)) {
-      const match = /^(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(name);
-      if (match && match[1] < cutoff) {
-        unlinkSync(join(store.rootDir, name));
-      }
-    }
-    return undefined;
-  } catch (error) {
-    return asLocalEventLogError(
-      error,
-      store.rootDir,
-      "failed to prune expired local event logs",
+function assertCurrentLocalEvent(
+  value: unknown,
+): asserts value is LocalDiagnosticEventV2 {
+  assertStoredLocalEvent(value);
+  if (value.schema_version !== LOCAL_EVENT_SCHEMA_VERSION) {
+    throw new LocalEventLogError(
+      "invalid_event",
+      "new local events must use schema version 2",
     );
   }
 }
 
-function assertLocalEvent(
+function assertStoredLocalEvent(
   value: unknown,
 ): asserts value is LocalDiagnosticEvent {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -447,51 +717,221 @@ function assertLocalEvent(
     );
   }
   const event = value as Record<string, unknown>;
-  for (const key of Object.keys(event)) {
-    if (!EVENT_KEYS.has(key as keyof LocalDiagnosticEvent)) {
-      throw new LocalEventLogError(
-        "invalid_event",
-        `local event contains non-allowlisted field: ${key}`,
-      );
-    }
-  }
-  if (
-    event.schema_version !== LOCAL_EVENT_SCHEMA_VERSION ||
-    !["unicli.cli.invocation.completed", "unicli.tool.call.completed"].includes(
-      String(event.event_name),
-    ) ||
-    event.service_name !== "unicli" ||
-    typeof event.service_version !== "string" ||
-    typeof event.timestamp !== "string" ||
-    typeof event.observed_timestamp !== "string" ||
-    typeof event.invocation_id !== "string" ||
-    typeof event.command !== "string" ||
-    !["cli", "mcp", "acp", "bench", "hub"].includes(String(event.transport)) ||
-    !["success", "empty", "error"].includes(String(event.outcome)) ||
-    typeof event.exit_code !== "number" ||
-    typeof event.duration_ms !== "number"
-  ) {
+  const schemaVersion = event.schema_version;
+  const allowedKeys =
+    schemaVersion === LEGACY_LOCAL_EVENT_SCHEMA_VERSION
+      ? V1_EVENT_KEYS
+      : schemaVersion === LOCAL_EVENT_SCHEMA_VERSION
+        ? V2_EVENT_KEYS
+        : undefined;
+  if (!allowedKeys) {
     throw new LocalEventLogError(
       "invalid_event",
-      "local event is missing required schema-v1 fields",
+      "local event has an unsupported schema version",
     );
   }
-  utcDay(event.timestamp);
-  utcDay(event.observed_timestamp);
-  for (const [key, field] of Object.entries(event)) {
-    if (field !== undefined && typeof field === "object") {
+  for (const key of Object.keys(event)) {
+    if (!allowedKeys.has(key)) {
       throw new LocalEventLogError(
         "invalid_event",
-        `local event field ${key} must be scalar`,
-      );
-    }
-    if (typeof field === "string" && Buffer.byteLength(field, "utf-8") > 1024) {
-      throw new LocalEventLogError(
-        "invalid_event",
-        `local event field ${key} exceeds 1024 bytes`,
+        "local event contains non-allowlisted field: " + key,
       );
     }
   }
+
+  assertRequiredString(event, "timestamp");
+  assertRequiredString(event, "observed_timestamp");
+  assertCanonicalTimestamp(event.timestamp, "timestamp");
+  assertCanonicalTimestamp(event.observed_timestamp, "observed_timestamp");
+  assertEnum(event, "event_name", [
+    "unicli.cli.invocation.completed",
+    "unicli.tool.call.completed",
+  ]);
+  assertEnum(event, "severity_text", ["INFO", "WARN", "ERROR"]);
+  assertEnum(event, "transport", ["cli", "mcp", "acp", "bench", "hub"]);
+  assertEnum(event, "outcome", ["success", "empty", "error"]);
+  if (event.service_name !== "unicli") {
+    throw invalidField("service_name", "must equal unicli");
+  }
+  for (const key of [
+    "service_version",
+    "invocation_id",
+    "command",
+    "node_version",
+    "platform",
+    "arch",
+  ] as const) {
+    assertRequiredString(event, key);
+  }
+  for (const key of OPTIONAL_STRING_KEYS) assertOptionalString(event, key);
+  assertOptionalString(event, "source_digest");
+  if (event.source_state !== undefined) {
+    assertEnum(event, "source_state", [
+      "clean",
+      "dirty",
+      "unknown",
+      "packaged",
+    ]);
+  }
+  if (
+    event.source_digest !== undefined &&
+    (event.source_state !== "dirty" ||
+      !/^[0-9a-f]{64}$/.test(event.source_digest as string))
+  ) {
+    throw invalidField(
+      "source_digest",
+      "must be a lowercase SHA-256 digest present only for dirty source",
+    );
+  }
+  assertInteger(event, "exit_code", 0, 255);
+  assertFiniteNonNegative(event, "duration_ms");
+  assertInteger(event, "process_id", 1, Number.MAX_SAFE_INTEGER);
+  for (const key of OPTIONAL_INTEGER_KEYS) assertOptionalInteger(event, key);
+  for (const key of OPTIONAL_BOOLEAN_KEYS) assertOptionalBoolean(event, key);
+  const expectedSeverity =
+    event.outcome === "error"
+      ? "ERROR"
+      : event.outcome === "empty"
+        ? "WARN"
+        : "INFO";
+  if (event.severity_text !== expectedSeverity) {
+    throw invalidField("severity_text", "must equal " + expectedSeverity);
+  }
+
+  if (schemaVersion === LEGACY_LOCAL_EVENT_SCHEMA_VERSION) {
+    assertOptionalString(event, "adapter_path");
+    return;
+  }
+  assertOptionalString(event, "parent_invocation_id");
+  assertEnum(event, "operation_role", [
+    "invocation",
+    "direct",
+    "nested",
+    "standalone",
+  ]);
+  const role = event.operation_role;
+  const hasParent = typeof event.parent_invocation_id === "string";
+  if ((role === "direct" || role === "nested") !== hasParent) {
+    throw invalidField(
+      "parent_invocation_id",
+      "is required exactly for direct and nested operations",
+    );
+  }
+}
+
+function assertRequiredString(
+  event: Record<string, unknown>,
+  key: string,
+): void {
+  const field = event[key];
+  if (typeof field !== "string" || field.length === 0) {
+    throw invalidField(key, "must be a non-empty string");
+  }
+  assertBoundedString(key, field);
+}
+
+function assertOptionalString(
+  event: Record<string, unknown>,
+  key: string,
+): void {
+  const field = event[key];
+  if (field === undefined) return;
+  if (typeof field !== "string" || field.length === 0) {
+    throw invalidField(key, "must be a non-empty string when present");
+  }
+  assertBoundedString(key, field);
+}
+
+function assertBoundedString(key: string, field: string): void {
+  if (Buffer.byteLength(field, "utf-8") > MAX_SCALAR_STRING_BYTES) {
+    throw invalidField(
+      key,
+      "exceeds " + String(MAX_SCALAR_STRING_BYTES) + " bytes",
+    );
+  }
+}
+
+function assertEnum(
+  event: Record<string, unknown>,
+  key: string,
+  allowed: readonly string[],
+): void {
+  if (
+    typeof event[key] !== "string" ||
+    !allowed.includes(event[key] as string)
+  ) {
+    throw invalidField(key, "must be one of " + allowed.join(", "));
+  }
+}
+
+function assertCanonicalTimestamp(timestamp: unknown, key: string): void {
+  if (typeof timestamp !== "string") {
+    throw invalidField(key, "must be a string");
+  }
+  const millis = Date.parse(timestamp);
+  if (
+    !Number.isFinite(millis) ||
+    new Date(millis).toISOString() !== timestamp
+  ) {
+    throw invalidField(key, "must be a canonical UTC ISO-8601 timestamp");
+  }
+}
+
+function assertFiniteNonNegative(
+  event: Record<string, unknown>,
+  key: string,
+): void {
+  const field = event[key];
+  if (typeof field !== "number" || !Number.isFinite(field) || field < 0) {
+    throw invalidField(key, "must be a finite non-negative number");
+  }
+}
+
+function assertInteger(
+  event: Record<string, unknown>,
+  key: string,
+  minimum: number,
+  maximum: number,
+): void {
+  const field = event[key];
+  if (
+    typeof field !== "number" ||
+    !Number.isSafeInteger(field) ||
+    field < minimum ||
+    field > maximum
+  ) {
+    throw invalidField(
+      key,
+      "must be a safe integer from " +
+        String(minimum) +
+        " to " +
+        String(maximum),
+    );
+  }
+}
+
+function assertOptionalInteger(
+  event: Record<string, unknown>,
+  key: string,
+): void {
+  if (event[key] === undefined) return;
+  assertInteger(event, key, 0, Number.MAX_SAFE_INTEGER);
+}
+
+function assertOptionalBoolean(
+  event: Record<string, unknown>,
+  key: string,
+): void {
+  if (event[key] !== undefined && typeof event[key] !== "boolean") {
+    throw invalidField(key, "must be boolean when present");
+  }
+}
+
+function invalidField(key: string, requirement: string): LocalEventLogError {
+  return new LocalEventLogError(
+    "invalid_event",
+    "local event field " + key + " " + requirement,
+  );
 }
 
 function asLocalEventLogError(
@@ -500,75 +940,9 @@ function asLocalEventLogError(
   prefix: string,
 ): LocalEventLogError {
   if (error instanceof LocalEventLogError) return error;
+  if (error instanceof RecoverableFileLockError) {
+    return new LocalEventLogError(error.code, error.message, error.path);
+  }
   const message = error instanceof Error ? error.message : String(error);
-  return new LocalEventLogError("io_error", `${prefix}: ${message}`, path);
-}
-
-function serviceRevision(): string | undefined {
-  if (cachedServiceRevision !== null) return cachedServiceRevision;
-  const explicit = process.env.UNICLI_BUILD_REVISION;
-  if (explicit && /^[0-9a-f]{7,64}$/i.test(explicit)) {
-    cachedServiceRevision = explicit.toLowerCase();
-    return cachedServiceRevision;
-  }
-  cachedServiceRevision = revisionFromGitMetadata();
-  return cachedServiceRevision;
-}
-
-function revisionFromGitMetadata(): string | undefined {
-  let current = dirname(fileURLToPath(import.meta.url));
-  for (let depth = 0; depth < 6; depth += 1) {
-    const marker = join(current, ".git");
-    if (existsSync(marker)) {
-      try {
-        const markerStat = statSync(marker);
-        const gitDir = markerStat.isDirectory()
-          ? marker
-          : resolveGitDirectory(marker, readFileSync(marker, "utf-8"));
-        return readGitHead(gitDir);
-      } catch {
-        return undefined;
-      }
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return undefined;
-}
-
-function resolveGitDirectory(marker: string, text: string): string {
-  const match = /^gitdir:\s*(.+)\s*$/m.exec(text);
-  if (!match) throw new Error("invalid .git file");
-  return isAbsolute(match[1]) ? match[1] : resolve(dirname(marker), match[1]);
-}
-
-function readGitHead(gitDir: string): string | undefined {
-  const head = readFileSync(join(gitDir, "HEAD"), "utf-8").trim();
-  if (/^[0-9a-f]{40,64}$/i.test(head)) return head.toLowerCase();
-  const refMatch = /^ref:\s*(.+)$/.exec(head);
-  if (!refMatch) return undefined;
-  const ref = refMatch[1];
-  const roots = [gitDir];
-  const commonDirPath = join(gitDir, "commondir");
-  if (existsSync(commonDirPath)) {
-    const common = readFileSync(commonDirPath, "utf-8").trim();
-    roots.push(isAbsolute(common) ? common : resolve(gitDir, common));
-  }
-  for (const root of roots) {
-    const looseRef = join(root, ref);
-    if (existsSync(looseRef)) {
-      const revision = readFileSync(looseRef, "utf-8").trim();
-      if (/^[0-9a-f]{40,64}$/i.test(revision)) return revision.toLowerCase();
-    }
-    const packedRefs = join(root, "packed-refs");
-    if (!existsSync(packedRefs)) continue;
-    for (const line of readFileSync(packedRefs, "utf-8").split(/\r?\n/)) {
-      const [revision, packedRef] = line.split(" ");
-      if (packedRef === ref && /^[0-9a-f]{40,64}$/i.test(revision)) {
-        return revision.toLowerCase();
-      }
-    }
-  }
-  return undefined;
+  return new LocalEventLogError("io_error", prefix + ": " + message, path);
 }

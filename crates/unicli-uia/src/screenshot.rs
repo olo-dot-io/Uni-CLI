@@ -1,10 +1,24 @@
+//! @owner       crates::unicli-uia::screenshot
+//! @does        Capture Windows desktop, exact HWND, or resolved-element screenshots through native UI Automation boundaries.
+//! @needs       UIA window enumeration/ref resolution, Win32 capture backend
+//! @feeds       desktop-uia compute screenshot responses
+//! @breaks      Ignoring an explicit app, pid, or HWND can capture an unrelated foreground surface.
+//! @invariants  Explicit targets are validated before enumeration and exact HWND requests never broaden to the first available window.
+//! @side-effects Reads the desktop framebuffer into a request-owned PNG buffer; the host transport owns final-path publication.
+//! @perf        One native enumeration plus one bounded capture per request.
+//! @concurrency Each request owns its output path; shared desktop state is observed but not mutated.
+//! @test        cargo test -p unicli-uia
+//! @stability   internal
+//! @since       0.400.2
+
 use serde_json::Value;
 use unicli_shared::SidecarRequest;
 
 use crate::errors::{backend_unavailable, HandlerResult, UiaError};
 use crate::tree::{
     enumerate_top_level_windows, resolve_descendant_element_ref, resolve_top_level_window_ref,
-    ElementBounds, ElementRecord, State, WindowRecord,
+    validate_window_target_params, window_matches_params, ElementBounds, ElementRecord, State,
+    WindowRecord,
 };
 
 #[cfg(any(target_os = "windows", test))]
@@ -16,6 +30,7 @@ pub fn handle(_state: &mut State, request: &SidecarRequest) -> HandlerResult {
     }
 
     let windows = enumerate_top_level_windows()?;
+    validate_window_target_params(&request.params)?;
     if let Some(stable) = read_stable_ref(&request.params) {
         if let Some((window, element, path)) = resolve_descendant_element_ref(&windows, stable) {
             let bounds = require_descendant_bounds(element, stable)?;
@@ -32,8 +47,15 @@ pub fn handle(_state: &mut State, request: &SidecarRequest) -> HandlerResult {
         "mime": "image/png",
         "width": capture.width,
         "height": capture.height,
+        "bounds": {
+            "x": capture.origin_x,
+            "y": capture.origin_y,
+            "width": capture.width,
+            "height": capture.height,
+        },
         "stable": stable_ref_for_window(&windows, window),
         "hwnd": window.hwnd,
+        "windowId": window.hwnd,
         "pid": window.pid,
         "title": window.title,
     }))
@@ -51,6 +73,7 @@ fn resolve_requested_window<'a>(
     windows: &'a [WindowRecord],
     params: &Value,
 ) -> Result<&'a WindowRecord, UiaError> {
+    validate_window_target_params(params)?;
     if let Some(stable) = params
         .get("stable")
         .or_else(|| params.get("ref"))
@@ -60,35 +83,25 @@ fn resolve_requested_window<'a>(
             .ok_or_else(|| UiaError::no_element(stable.to_string()));
     }
 
-    windows
+    let matches: Vec<&WindowRecord> = windows
         .iter()
-        .find(|window| window_matches_params(window, params))
-        .ok_or_else(|| UiaError::no_element("top-level window screenshot query"))
+        .filter(|window| window_matches_params(window, params))
+        .collect();
+    match matches.as_slice() {
+        [window] => Ok(*window),
+        [] => Err(UiaError::target_not_found("screenshot window target")),
+        _ => Err(UiaError::target_ambiguous(
+            "screenshot window target",
+            matches.len(),
+        )),
+    }
 }
 
-fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
-    let pid_filter = params
-        .get("pid")
-        .and_then(Value::as_u64)
-        .map(|pid| pid as u32);
-    let app_filter = params
-        .get("app")
-        .and_then(Value::as_str)
-        .map(|app| app.to_ascii_lowercase());
-
-    pid_filter.map_or(true, |pid| window.pid == pid)
-        && app_filter
-            .as_ref()
-            .map_or(true, |app| window.title.to_ascii_lowercase().contains(app))
-}
-
-fn stable_ref_for_window(windows: &[WindowRecord], target: &WindowRecord) -> String {
-    let index = windows
-        .iter()
-        .filter(|window| window.pid == target.pid)
-        .position(|window| window.hwnd == target.hwnd)
-        .unwrap_or(0);
-    format!("desktop-uia:pid-{}:Window[{index}]", target.pid)
+fn stable_ref_for_window(_windows: &[WindowRecord], target: &WindowRecord) -> String {
+    format!(
+        "desktop-uia:window-{}:Window[0]",
+        target.hwnd.to_ascii_lowercase()
+    )
 }
 
 fn screenshot_response_for_descendant(
@@ -111,6 +124,7 @@ fn screenshot_response_for_descendant(
         "height": capture.height,
         "stable": stable,
         "hwnd": window.hwnd,
+        "windowId": window.hwnd,
         "pid": window.pid,
         "title": window.title,
         "target": target,
@@ -152,6 +166,8 @@ struct CapturedPng {
     bytes: Vec<u8>,
     width: u32,
     height: u32,
+    origin_x: i32,
+    origin_y: i32,
 }
 
 #[cfg(target_os = "windows")]
@@ -189,6 +205,8 @@ fn captured_png_from_bgra(bitmap: BgraImage) -> Result<CapturedPng, UiaError> {
         bytes,
         width: bitmap.width,
         height: bitmap.height,
+        origin_x: bitmap.origin_x,
+        origin_y: bitmap.origin_y,
     })
 }
 
@@ -646,12 +664,14 @@ mod tests {
                 states: vec!["enabled".into()],
                 children: vec![],
             },
-            "desktop-uia:pid-42:Window[0]/Button[1]",
+            "desktop-uia:window-0x2a:Window[0]/Button[1]",
             "Window[0]/Button[1]",
             CapturedPng {
                 bytes: vec![137, 80, 78, 71],
                 width: 40,
                 height: 50,
+                origin_x: 20,
+                origin_y: 30,
             },
         );
 
@@ -664,8 +684,9 @@ mod tests {
                 "mime": "image/png",
                 "width": 40,
                 "height": 50,
-                "stable": "desktop-uia:pid-42:Window[0]/Button[1]",
+                "stable": "desktop-uia:window-0x2a:Window[0]/Button[1]",
                 "hwnd": "0x2a",
+                "windowId": "0x2a",
                 "pid": 42,
                 "title": "Calculator",
                 "target": {
@@ -681,5 +702,39 @@ mod tests {
                 },
             }),
         );
+    }
+
+    #[test]
+    fn requested_window_honors_string_and_numeric_hwnd_and_rejects_ambiguity() {
+        let windows = [
+            WindowRecord {
+                hwnd: "0x2a".into(),
+                pid: 42,
+                title: "Calculator One".into(),
+                children: vec![],
+            },
+            WindowRecord {
+                hwnd: "0x2b".into(),
+                pid: 42,
+                title: "Calculator Two".into(),
+                children: vec![],
+            },
+        ];
+
+        let selected =
+            resolve_requested_window(&windows, &serde_json::json!({ "windowId": "0x2b" }))
+                .expect("exact hwnd target");
+        assert_eq!(selected.hwnd, "0x2b");
+        assert_eq!(
+            stable_ref_for_window(&windows, selected),
+            "desktop-uia:window-0x2b:Window[0]",
+        );
+        let numeric = resolve_requested_window(&windows, &serde_json::json!({ "windowId": 43 }))
+            .expect("numeric hwnd resolves to the same native id");
+        assert_eq!(numeric.hwnd, "0x2b");
+        let ambiguous =
+            resolve_requested_window(&windows, &serde_json::json!({ "app": "Calculator" }))
+                .expect_err("a broad app query must not silently select a window");
+        assert!(format!("{ambiguous:?}").contains("desktop-uia.target_ambiguous"));
     }
 }

@@ -338,6 +338,12 @@ function serializeArgs(args) {
     if (def["x-unicli-accepts"]) {
       arg["x-unicli-accepts"] = def["x-unicli-accepts"];
     }
+    if (def["x-unicli-uri-origins"]) {
+      arg["x-unicli-uri-origins"] = def["x-unicli-uri-origins"];
+    }
+    if (def["x-unicli-uri-path-pattern"]) {
+      arg["x-unicli-uri-path-pattern"] = def["x-unicli-uri-path-pattern"];
+    }
     return arg;
   });
 }

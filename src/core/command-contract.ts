@@ -60,6 +60,8 @@ export interface CommandContractInputProperty {
   format?: AdapterArg["format"];
   "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
   "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
+  "x-unicli-uri-origins"?: AdapterArg["x-unicli-uri-origins"];
+  "x-unicli-uri-path-pattern"?: AdapterArg["x-unicli-uri-path-pattern"];
 }
 
 export interface CommandContractInputSchema {
@@ -202,6 +204,18 @@ function buildInputSchema(
     }
     if ("x-unicli-accepts" in arg && arg["x-unicli-accepts"] !== undefined) {
       property["x-unicli-accepts"] = arg["x-unicli-accepts"];
+    }
+    if (
+      "x-unicli-uri-origins" in arg &&
+      arg["x-unicli-uri-origins"] !== undefined
+    ) {
+      property["x-unicli-uri-origins"] = arg["x-unicli-uri-origins"];
+    }
+    if (
+      "x-unicli-uri-path-pattern" in arg &&
+      arg["x-unicli-uri-path-pattern"] !== undefined
+    ) {
+      property["x-unicli-uri-path-pattern"] = arg["x-unicli-uri-path-pattern"];
     }
     properties[arg.name] = property;
     if (arg.required === true) required.push(arg.name);

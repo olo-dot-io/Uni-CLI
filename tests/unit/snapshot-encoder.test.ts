@@ -67,6 +67,7 @@ describe("encodeSnapshot", () => {
         scope: "pid-300",
         bounds: { x: 1600, y: 120, w: 900, h: 700 },
         screenIndex: 1,
+        windowId: 4242,
       },
       {
         transport: "desktop-ax",
@@ -82,6 +83,7 @@ describe("encodeSnapshot", () => {
     ).toMatchObject({
       bounds: { x: 1600, y: 120, w: 900, h: 700 },
       screenIndex: 1,
+      windowId: 4242,
     });
   });
 

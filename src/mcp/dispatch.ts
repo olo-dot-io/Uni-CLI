@@ -1,9 +1,16 @@
 /**
  * @owner       src/mcp/dispatch.ts
- * @does        Dispatch cancellable MCP tool calls through the shared invocation kernel and shape stable text/image MCP envelopes.
+ * @does        Dispatch correlated, cancellable MCP tool calls through the shared invocation kernel and shape stable text/image MCP envelopes.
  * @needs       invocation kernel, run recorder, argument coercion, adapter types
  * @feeds       MCP default and expanded tool handlers
  * @breaks      Bypassing this boundary breaks CLI/MCP envelope, authorization, recording, or cancellation parity.
+ * @invariants  Handler-owned parent IDs reach the kernel unchanged; flat MCP args remain backward-compatible.
+ * @side-effects Executes one adapter invocation and may persist its run receipt and diagnostic event.
+ * @perf        One argument coercion and one shared-kernel call per resolved MCP command.
+ * @concurrency Request cancellation and diagnostic identity remain invocation-local.
+ * @test        tests/unit/mcp/tools.test.ts and tests/unit/mcp/logging.test.ts
+ * @stability   stable
+ * @since       2026-04-19
  *
  * v0.213.3 R2: every MCP tool call funnels through the invocation kernel so
  * the CLI and MCP surfaces produce byte-identical envelopes (modulo trace_id
@@ -41,6 +48,7 @@ export interface ResolvedCommandExecution {
   cmdName: string;
   args: Record<string, unknown>;
   signal?: AbortSignal;
+  parentInvocationId?: string;
 }
 
 /**
@@ -92,7 +100,7 @@ export async function runResolvedCommand(
   cmd: AdapterCommand,
   execution: ResolvedCommandExecution,
 ): Promise<McpToolResult> {
-  const { cmdName, args, signal } = execution;
+  const { cmdName, args, signal, parentInvocationId } = execution;
   // MCP preserves the flat-params contract. Apply the default `limit: 20`
   // only when the adapter declares a `limit` arg — the kernel's ajv
   // validator runs in strict mode (`additionalProperties: false`), so
@@ -115,7 +123,11 @@ export async function runResolvedCommand(
       args: mergedArgs,
       source: "mcp",
     },
-    { signal },
+    {
+      signal,
+      parentInvocationId,
+      operationRole: parentInvocationId ? "direct" : undefined,
+    },
   );
   if (!inv) {
     // Already filtered by handleRunCommand / handleExpandedTool before this

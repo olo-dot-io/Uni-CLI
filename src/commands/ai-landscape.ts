@@ -1,10 +1,10 @@
 /**
  * @owner       src::commands::ai-landscape
- * @does        Defines the maintained AI primary-source directory and practitioner-role profiles used for precise official-domain selection, source attribution, discovery, and current-information pulses.
+ * @does        Defines the maintained AI source directory and practitioner-role profiles used for precise official-domain selection, evidence-role attribution, discovery, and current-information pulses.
  * @needs       Stable first-party domains/repositories and registry source refs verified by live probes or upstream source.
  * @feeds       src/commands/ai.ts, src/commands/ai-content.ts, and ai.landscape/pulse/search outputs.
- * @breaks      Stale domains, generic GitHub-domain attribution, or role profiles without bounded source/query scopes make primary evidence noisy or falsely official.
- * @invariants  Catalog entries represent maintainer-owned surfaces; generic community hosts are never treated as official without a matching repository; explicit site: scopes always outrank inferred domains.
+ * @breaks      Stale domains, generic GitHub-domain attribution, conflated origin/host/venue roles, or profiles without bounded source/query scopes make evidence noisy or falsely first-party.
+ * @invariants  Origin publishers, artifact hosts, publication venues, and community platforms remain distinct; generic community hosts are never treated as official without a matching repository; explicit site: scopes always outrank inferred domains.
  * @side-effects None.
  * @perf        O(S * (D + R + K)) over a bounded static catalog.
  * @concurrency safe
@@ -46,6 +46,12 @@ export interface AiPrimarySource {
   topics: string[];
   channels: string[];
 }
+
+export type AiEvidenceRole =
+  | "origin"
+  | "artifact-host"
+  | "publication-venue"
+  | "community-platform";
 
 export interface AiRoleProfile {
   id: AiRoleProfileId;
@@ -2088,6 +2094,20 @@ export function selectAiOfficialDomains(
   return [...new Set([...primaryDomains, ...secondaryDomains])].slice(0, limit);
 }
 
+export function selectAiPrimaryTargets(
+  ids: readonly string[],
+): AiPrimarySource[] {
+  const requested = new Set(ids);
+  return AI_PRIMARY_SOURCES.filter((candidate) => requested.has(candidate.id));
+}
+
+function evidenceRole(candidate: AiPrimarySource): AiEvidenceRole {
+  if (candidate.type === "model-hub") return "artifact-host";
+  if (candidate.type === "research") return "publication-venue";
+  if (candidate.type === "community") return "community-platform";
+  return "origin";
+}
+
 export function listAiLandscapeRows(
   profileValue?: string,
 ): Array<Record<string, unknown>> {
@@ -2098,18 +2118,22 @@ export function listAiLandscapeRows(
       profile.id === "all" ||
       candidate.roles.includes(profile.id) ||
       candidate.roles.includes("all"),
-  ).map((candidate) => ({
-    id: candidate.id,
-    name: candidate.name,
-    type: candidate.type,
-    roles: candidate.roles.join(", "),
-    domains: candidate.domains.join(", "),
-    repositories: candidate.repositories.join(", "),
-    channels: candidate.channels.join(", "),
-    topics: candidate.topics.join(", "),
-    first_party: true,
-    next_search: `unicli ai search '${candidate.name}' --profile ${profile?.id ?? candidate.roles.find((role) => role !== "all") ?? "all"}`,
-  }));
+  ).map((candidate) => {
+    const role = evidenceRole(candidate);
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      type: candidate.type,
+      roles: candidate.roles.join(", "),
+      domains: candidate.domains.join(", "),
+      repositories: candidate.repositories.join(", "),
+      channels: candidate.channels.join(", "),
+      topics: candidate.topics.join(", "),
+      evidence_role: role,
+      first_party: role === "origin",
+      next_search: `unicli ai search '${candidate.name}' --profile ${profile?.id ?? candidate.roles.find((candidateRole) => candidateRole !== "all") ?? "all"}`,
+    };
+  });
 }
 
 export function listAiProfileRows(): Array<Record<string, unknown>> {

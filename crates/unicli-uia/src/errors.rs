@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-uia::errors
+//! @does        Define structured UI Automation sidecar failures and serialize them into the shared response contract.
+//! @needs       serde_json, unicli-shared sidecar envelopes
+//! @feeds       every unicli-uia request handler
+//! @breaks      Losing minimum-capability or exit-code detail makes native failures indistinguishable to Agent callers.
+//! @invariants  Ordinary native failures retain their typed repair taxonomy and never become successful responses.
+//! @side-effects none
+//! @perf        Constant-size error construction and serialization.
+//! @concurrency Immutable error values are safe to move between request boundaries.
+//! @test        cargo test -p unicli-uia
+//! @stability   internal
+//! @since       0.400.2
+
 use serde_json::Value;
 use unicli_shared::{SidecarError, SidecarResponse};
 
@@ -43,6 +56,28 @@ impl UiaError {
             suggestion: "re-snapshot; the ref may be stale".into(),
             minimum_capability: Some("desktop-uia.no_element".into()),
             r#ref: Some(r#ref),
+            exit_code: 66,
+        }
+    }
+
+    pub fn target_not_found(target: impl Into<String>) -> Self {
+        let target = target.into();
+        Self {
+            reason: format!("no UIA window matched {target}"),
+            suggestion: "verify the app is running, then retry with app, pid, or windowId".into(),
+            minimum_capability: Some("desktop-uia.target_not_found".into()),
+            r#ref: None,
+            exit_code: 66,
+        }
+    }
+
+    pub fn target_ambiguous(target: impl Into<String>, match_count: usize) -> Self {
+        let target = target.into();
+        Self {
+            reason: format!("{match_count} UIA windows matched {target}"),
+            suggestion: "retry with an exact windowId from `unicli compute windows`".into(),
+            minimum_capability: Some("desktop-uia.target_ambiguous".into()),
+            r#ref: None,
             exit_code: 66,
         }
     }

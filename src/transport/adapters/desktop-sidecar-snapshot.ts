@@ -1,10 +1,10 @@
 /**
  * @owner       src::transport::adapters::desktop-sidecar-snapshot
- * @does        Normalize UIA/AT-SPI snapshot payloads into public encodings and replace their action-ref bucket.
+ * @does        Normalize UIA/AT-SPI snapshot payloads into public encodings, inherit exact window identity, and replace their action-ref bucket.
  * @needs       snapshot encoder, ref store, transport snapshot types
  * @feeds       Windows UIA and Linux AT-SPI transports
- * @breaks      Returning fresh JSON with an old persisted bucket makes the next action stale or immediately expired.
- * @invariants  Every explicit compact, tree, or JSON snapshot replaces the matching transport/scope bucket with refs from that exact tree.
+ * @breaks      Returning fresh JSON with an old persisted bucket or dropping a native window id makes the next action stale or target-ambiguous.
+ * @invariants  Every explicit compact, tree, or JSON snapshot replaces the matching transport/scope bucket with refs from that exact tree; descendants inherit app/pid/window identity from their exact native window.
  * @side-effects Replaces one caller-owned ref bucket.
  * @perf        One normalization and encoding traversal per snapshot.
  * @concurrency Caller-owned transport serialization protects the ref replacement.
@@ -66,13 +66,26 @@ export function snapshotFromSidecarRaw(
   };
 }
 
-function normalizeRawAxNode(input: unknown): RawAxNode {
+function normalizeRawAxNode(
+  input: unknown,
+  inherited: {
+    app?: string;
+    pid?: number;
+    windowId?: number | string;
+  } = {},
+): RawAxNode {
   const record = asRecord(input);
   const role = readString(record.role, "Unknown");
   const path = readString(record.path, `${role}[0]`);
   const scope = readString(record.scope, "desktop");
+  const app = readOptionalString(record.app) ?? inherited.app;
+  const pid = readOptionalNumber(record.pid) ?? inherited.pid;
+  const windowId =
+    readOptionalNativeWindowId(record.windowId) ?? inherited.windowId;
   const children = Array.isArray(record.children)
-    ? record.children.map(normalizeRawAxNode)
+    ? record.children.map((child) =>
+        normalizeRawAxNode(child, { app, pid, windowId }),
+      )
     : undefined;
 
   return {
@@ -85,8 +98,9 @@ function normalizeRawAxNode(input: unknown): RawAxNode {
     children,
     path,
     scope,
-    app: readOptionalString(record.app),
-    pid: readOptionalNumber(record.pid),
+    app,
+    pid,
+    windowId,
   };
 }
 
@@ -120,6 +134,15 @@ function readOptionalNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function readOptionalNativeWindowId(
+  value: unknown,
+): number | string | undefined {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
+    return value;
+  }
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function readStringArray(value: unknown): readonly string[] | undefined {

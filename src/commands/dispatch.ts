@@ -269,6 +269,7 @@ export function registerAdapterDispatch(program: Command): void {
             permissionProfile: rootOpts.permissionProfile,
             approved: rootOpts.yes === true,
             rememberApproval: rootOpts.rememberApproval === true,
+            operationRole: "direct",
           },
         );
 

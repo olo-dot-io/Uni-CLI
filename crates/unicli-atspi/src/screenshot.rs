@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-atspi::screenshot
+//! @does        Capture Linux desktop, exact top-level-window, or resolved-element screenshots through the active display server.
+//! @needs       AT-SPI window enumeration/ref resolution, grim, gnome-screenshot, ImageMagick import, X11 xdotool
+//! @feeds       desktop-atspi compute screenshot responses
+//! @breaks      Ignoring an explicit app, pid, or native window id can capture an unrelated foreground surface.
+//! @invariants  Explicit targets are validated before enumeration; exact window requests never broaden to the first available window; helpers write only request-owned temporary files and every outcome attempts cleanup.
+//! @side-effects Runs platform screenshot subprocesses and writes then removes one temporary PNG; the host transport owns final-path publication.
+//! @perf        One native enumeration plus one screenshot subprocess per request.
+//! @concurrency Each request owns its output path; shared desktop state is observed but not mutated.
+//! @test        cargo test -p unicli-atspi
+//! @stability   internal
+//! @since       0.400.2
+
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -10,7 +23,8 @@ use unicli_shared::SidecarRequest;
 use crate::errors::{backend_unavailable, AtspiError, HandlerResult};
 use crate::tree::{
     enumerate_top_level_windows, resolve_descendant_element_ref, resolve_top_level_window_ref,
-    ElementBounds, ElementRecord, State, WindowRecord,
+    validate_window_target_params, window_matches_params, ElementBounds, ElementRecord, State,
+    WindowRecord,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,44 +61,58 @@ pub fn handle(_state: &mut State, request: &SidecarRequest) -> HandlerResult {
         return Ok(screenshot_response_for_window(window, &stable, screenshot));
     }
 
+    if has_explicit_window_target(&request.params) {
+        let windows = enumerate_top_level_windows()?;
+        let window = resolve_requested_window(&windows, &request.params)?;
+        let screenshot = capture_window_screenshot(&request.params, window)?;
+        return Ok(screenshot_response_for_window(
+            window,
+            &format!(
+                "desktop-atspi:window-{}:Window[0]",
+                window.id.to_ascii_lowercase()
+            ),
+            screenshot,
+        ));
+    }
+
     capture_screenshot(&request.params)
 }
 
+fn has_explicit_window_target(params: &Value) -> bool {
+    ["app", "pid", "windowId", "bundleId", "processName"]
+        .iter()
+        .any(|key| params.get(*key).is_some())
+}
+
+fn resolve_requested_window<'a>(
+    windows: &'a [WindowRecord],
+    params: &Value,
+) -> Result<&'a WindowRecord, AtspiError> {
+    validate_window_target_params(params)?;
+    let matches: Vec<&WindowRecord> = windows
+        .iter()
+        .filter(|window| window_matches_params(window, params))
+        .collect();
+    match matches.as_slice() {
+        [window] => Ok(*window),
+        [] => Err(AtspiError::target_not_found("screenshot window target")),
+        _ => Err(AtspiError::target_ambiguous(
+            "screenshot window target",
+            matches.len(),
+        )),
+    }
+}
+
 fn capture_screenshot(params: &Value) -> HandlerResult {
-    let requested_path = read_path(params);
-    let path = requested_path
-        .clone()
-        .unwrap_or_else(|| temporary_screenshot_path().to_string_lossy().into_owned());
+    reject_requested_path(params)?;
+    let path = temporary_screenshot_path().to_string_lossy().into_owned();
     let plan = screenshot_command_for(display_server_from_env(), &path, command_exists)?;
-    run_command(&plan)?;
-
-    let response = if requested_path.is_some() {
-        serde_json::json!({
-            "path": path,
-            "mime": "image/png",
-            "backend": plan.program,
-        })
-    } else {
-        let bytes = fs::read(&path).map_err(|err| {
-            AtspiError::unavailable(format!("failed to read screenshot file {path}: {err}"))
-        })?;
-        let _ = fs::remove_file(&path);
-        serde_json::json!({
-            "base64": base64_encode(&bytes),
-            "mime": "image/png",
-            "bytes": bytes.len(),
-            "backend": plan.program,
-        })
-    };
-
-    Ok(response)
+    capture_temporary_png(&plan, &path)
 }
 
 fn capture_window_screenshot(params: &Value, window: &WindowRecord) -> HandlerResult {
-    let requested_path = read_path(params);
-    let path = requested_path
-        .clone()
-        .unwrap_or_else(|| temporary_screenshot_path().to_string_lossy().into_owned());
+    reject_requested_path(params)?;
+    let path = temporary_screenshot_path().to_string_lossy().into_owned();
     let plan = window_screenshot_command_for(
         display_server_from_env(),
         &path,
@@ -93,69 +121,21 @@ fn capture_window_screenshot(params: &Value, window: &WindowRecord) -> HandlerRe
         command_exists,
     )?;
 
-    if !plan_targets_window(&plan, &window.id) {
-        crate::invoke::focus_top_level_window(window)?;
-    }
+    let mut response = capture_temporary_png(&plan, &path)?;
 
-    run_command(&plan)?;
-
-    let mut response = if requested_path.is_some() {
-        serde_json::json!({
-            "path": path,
-            "mime": "image/png",
-            "backend": plan.program,
-        })
-    } else {
-        let bytes = fs::read(&path).map_err(|err| {
-            AtspiError::unavailable(format!("failed to read screenshot file {path}: {err}"))
-        })?;
-        let _ = fs::remove_file(&path);
-        serde_json::json!({
-            "base64": base64_encode(&bytes),
-            "mime": "image/png",
-            "bytes": bytes.len(),
-            "backend": plan.program,
-        })
-    };
-
-    if plan_targets_window(&plan, &window.id) {
-        response["scope"] = serde_json::json!("window");
-        response["windowId"] = serde_json::json!(window.id);
-    } else {
-        response["scope"] = serde_json::json!("screen_after_focus");
-    }
+    response["scope"] = serde_json::json!("window");
+    response["windowId"] = serde_json::json!(window.id);
 
     Ok(response)
 }
 
 fn capture_region_screenshot(params: &Value, bounds: &ElementBounds) -> HandlerResult {
-    let requested_path = read_path(params);
-    let path = requested_path
-        .clone()
-        .unwrap_or_else(|| temporary_screenshot_path().to_string_lossy().into_owned());
+    reject_requested_path(params)?;
+    let path = temporary_screenshot_path().to_string_lossy().into_owned();
     let plan =
         region_screenshot_command_for(display_server_from_env(), &path, bounds, command_exists)?;
 
-    run_command(&plan)?;
-
-    let mut response = if requested_path.is_some() {
-        serde_json::json!({
-            "path": path,
-            "mime": "image/png",
-            "backend": plan.program,
-        })
-    } else {
-        let bytes = fs::read(&path).map_err(|err| {
-            AtspiError::unavailable(format!("failed to read screenshot file {path}: {err}"))
-        })?;
-        let _ = fs::remove_file(&path);
-        serde_json::json!({
-            "base64": base64_encode(&bytes),
-            "mime": "image/png",
-            "bytes": bytes.len(),
-            "backend": plan.program,
-        })
-    };
+    let mut response = capture_temporary_png(&plan, &path)?;
     response["scope"] = serde_json::json!("region");
     response["bounds"] = bounds_node(bounds);
     Ok(response)
@@ -182,15 +162,25 @@ fn screenshot_response_for_window(
     stable: &str,
     screenshot: serde_json::Value,
 ) -> serde_json::Value {
-    serde_json::json!({
+    let mut response = serde_json::json!({
         "captured": true,
         "via": "top_level_window_screenshot_helper",
         "stable": stable,
         "id": window.id,
+        "windowId": window.id,
         "pid": window.pid,
         "title": window.title,
         "screenshot": screenshot,
-    })
+    });
+    if let Some(bounds) = &window.bounds {
+        response["bounds"] = serde_json::json!({
+            "x": bounds.x,
+            "y": bounds.y,
+            "width": bounds.width,
+            "height": bounds.height,
+        });
+    }
+    response
 }
 
 fn screenshot_response_for_descendant(
@@ -209,6 +199,7 @@ fn screenshot_response_for_descendant(
         "via": "descendant_bounds_screenshot_helper",
         "stable": stable,
         "id": window.id,
+        "windowId": window.id,
         "pid": window.pid,
         "title": window.title,
         "target": target,
@@ -247,13 +238,41 @@ fn bounds_node(bounds: &ElementBounds) -> serde_json::Value {
     })
 }
 
-fn read_path(params: &Value) -> Option<String> {
-    params
-        .get("path")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(String::from)
+fn reject_requested_path(params: &Value) -> Result<(), AtspiError> {
+    if params.get("path").is_some() {
+        return Err(AtspiError::invalid_input(
+            "AT-SPI screenshot path publication is owned by the host transport",
+        ));
+    }
+    Ok(())
+}
+
+fn capture_temporary_png(plan: &CommandPlan, path: &str) -> HandlerResult {
+    let capture = run_command(plan).and_then(|()| {
+        fs::read(path).map_err(|err| {
+            AtspiError::unavailable(format!("failed to read screenshot file {path}: {err}"))
+        })
+    });
+    let cleanup_error = match fs::remove_file(path) {
+        Ok(()) => None,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => Some(error),
+    };
+    match (capture, cleanup_error) {
+        (Ok(bytes), None) => Ok(serde_json::json!({
+                "base64": base64_encode(&bytes),
+                "mime": "image/png",
+                "bytes": bytes.len(),
+                "backend": plan.program,
+            })),
+        (Ok(_), Some(error)) => Err(AtspiError::unavailable(format!(
+            "screenshot succeeded but temporary file cleanup failed for {path}: {error}"
+        ))),
+        (Err(capture_error), None) => Err(capture_error),
+        (Err(capture_error), Some(cleanup_error)) => Err(AtspiError::unavailable(format!(
+            "screenshot failed ({capture_error:?}) and temporary file cleanup failed for {path}: {cleanup_error}"
+        ))),
+    }
 }
 
 fn display_server_from_env() -> DisplayServer {
@@ -339,7 +358,9 @@ fn window_screenshot_command_for(
         }
     }
 
-    screenshot_command_for(server, path, exists)
+    Err(AtspiError::unavailable(
+        "no screenshot backend can capture the requested window without exposing the full desktop",
+    ))
 }
 
 fn region_screenshot_command_for(
@@ -355,13 +376,6 @@ fn region_screenshot_command_for(
             "no WAYLAND_DISPLAY or DISPLAY environment is available for region screenshot capture",
         )),
     }
-}
-
-fn plan_targets_window(plan: &CommandPlan, window_id: &str) -> bool {
-    (plan.program == "import"
-        && plan.args.first().map(String::as_str) == Some("-window")
-        && plan.args.get(1).map(String::as_str) == Some(window_id))
-        || (plan.program == "grim" && plan.args.first().map(String::as_str) == Some("-g"))
 }
 
 fn wayland_screenshot_command(
@@ -445,7 +459,7 @@ fn wayland_region_screenshot_command(
 fn temporary_screenshot_path() -> PathBuf {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_millis())
+        .map(|duration| duration.as_nanos())
         .unwrap_or(0);
     env::temp_dir().join(format!(
         "unicli-atspi-screenshot-{}-{now}.png",
@@ -512,6 +526,45 @@ fn base64_encode(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn requested_window_honors_string_and_numeric_x11_id_and_rejects_ambiguity() {
+        let windows = [
+            WindowRecord {
+                id: "0x03a00007".into(),
+                pid: 1234,
+                title: "Calculator One".into(),
+                desktop: "0".into(),
+                host: "host".into(),
+                bounds: None,
+                states: vec![],
+                children: vec![],
+            },
+            WindowRecord {
+                id: "0x03a00008".into(),
+                pid: 1234,
+                title: "Calculator Two".into(),
+                desktop: "0".into(),
+                host: "host".into(),
+                bounds: None,
+                states: vec![],
+                children: vec![],
+            },
+        ];
+
+        let selected =
+            resolve_requested_window(&windows, &serde_json::json!({ "windowId": "0x03a00008" }))
+                .expect("exact X11 window target");
+        assert_eq!(selected.id, "0x03a00008");
+        let numeric =
+            resolve_requested_window(&windows, &serde_json::json!({ "windowId": 0x03a00008 }))
+                .expect("numeric X11 id resolves to the same native window");
+        assert_eq!(numeric.id, "0x03a00008");
+        let ambiguous =
+            resolve_requested_window(&windows, &serde_json::json!({ "app": "Calculator" }))
+                .expect_err("a broad app query must not silently select a window");
+        assert!(format!("{ambiguous:?}").contains("desktop-atspi.target_ambiguous"));
+    }
 
     #[test]
     fn wayland_screenshot_uses_gnome_screenshot_when_available() {
@@ -661,9 +714,10 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
-            "desktop-atspi:pid-1234:Window[1]",
+            "desktop-atspi:window-0x03a00008:Window[0]",
             serde_json::json!({
                 "path": "/tmp/shot.png",
                 "mime": "image/png",
@@ -676,8 +730,9 @@ mod tests {
             serde_json::json!({
                 "captured": true,
                 "via": "top_level_window_screenshot_helper",
-                "stable": "desktop-atspi:pid-1234:Window[1]",
+                "stable": "desktop-atspi:window-0x03a00008:Window[0]",
                 "id": "0x03a00008",
+                "windowId": "0x03a00008",
                 "pid": 1234,
                 "title": "Terminal Settings",
                 "screenshot": {
@@ -699,6 +754,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             &crate::tree::ElementRecord {
@@ -714,7 +770,7 @@ mod tests {
                 states: vec!["enabled".into()],
                 children: vec![],
             },
-            "desktop-atspi:pid-1234:Window[0]/push_button[1]",
+            "desktop-atspi:window-0x03a00008:Window[0]/push_button[1]",
             "Window[0]/push_button[1]",
             serde_json::json!({
                 "path": "/tmp/element.png",
@@ -729,8 +785,9 @@ mod tests {
             serde_json::json!({
                 "captured": true,
                 "via": "descendant_bounds_screenshot_helper",
-                "stable": "desktop-atspi:pid-1234:Window[0]/push_button[1]",
+                "stable": "desktop-atspi:window-0x03a00008:Window[0]/push_button[1]",
                 "id": "0x03a00008",
+                "windowId": "0x03a00008",
                 "pid": 1234,
                 "title": "Calculator",
                 "target": {

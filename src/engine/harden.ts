@@ -1,37 +1,27 @@
 /**
- * Input hardening — agents hallucinate differently from humans. A typo
- * like `../../../.ssh` is near-impossible for a person but routine for an
- * LLM confusing path segments. This module validates the resolved ArgBag
- * against the schema the adapter *declares*, not regex heuristics on arg
- * names (v0.213.3: D5 locked — no fallback to `looksLike*`).
- *
- * Dispatch order for each string arg:
- *   1. Always-on: ASCII control-char check (below 0x20, except \t\n\r)
- *   2. `format: "uri"` (+ the other draft-2020-12 standard formats)
- *      → ajv format-assertion — fails closed
- *   3. `x-unicli-kind: "path"`        → validatePathArg (traversal + NUL + sandbox)
- *   4. `x-unicli-kind: "adapter-ref"` → `<site>/<command>` regex
- *   5. `x-unicli-kind: "selector"`    → reject `<script` or unescaped backtick
- *   6. `x-unicli-kind: "shell-safe"`  → reject `$` `` ` `` `;` `|` `&` `>`
- *   7. `x-unicli-kind: "id"`          → reject URL punctuation (`?` `#`) and
- *                                        percent-escapes; IDs are bare tokens
- *   8. If a kind check fails, `x-unicli-accepts` lists secondary kinds
- *      that can salvage the value (dual-accept fallback).
- *   9. No format / kind declared → freeform; only the control-char gate
- *      applies (codemod in Phase 4 migrates YAML adapters; unannotated
- *      args stay permissive until then).
- *
- * Violations throw `InputHardeningError` with a directional suggestion
- * so that the agent can patch the failing call deterministically.
- *
- * NOTE: kept the `InputHardeningError` class and its `{argName, suggestion}`
- * fields intact — MCP/ACP surfaces depend on them for `structuredContent`.
+ * @owner       src::engine::harden
+ * @does        Validate resolved adapter arguments against declared standard formats, URI shapes, and Uni-CLI hardening kinds.
+ * @needs       node path, Ajv 2020, ajv-formats, RE2JS, AdapterArg
+ * @feeds       invocation-kernel hardening and adapter-schema compilation
+ * @breaks      InputHardeningError rejects invalid caller values; TypeError rejects malformed URI-shape declarations during compilation.
+ * @invariants  Validation follows declarations rather than argument-name heuristics; URI origins are canonical HTTP(S), credentials are forbidden, and RE2 pathname expressions match the complete parsed path.
+ * @side-effects Reads CWD and home-directory environment values for path validation.
+ * @perf        O(argument bytes) per invocation; standard formats and bounded RE2 pathname expressions compile once per process.
+ * @concurrency Module caches are process-local and populated synchronously.
+ * @test        tests/unit/engine/harden-schema.test.ts
+ * @stability   stable
+ * @since       2026-04-18
  */
 
 import { isAbsolute, resolve as resolvePath, relative, sep } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { RE2JS } from "re2js";
 import type { AdapterArg } from "../types.js";
+
+const MAX_URI_ORIGINS = 16;
+const MAX_URI_PATH_PATTERN_LENGTH = 512;
+const compiledUriPathPatterns = new Map<string, RE2JS>();
 
 export class InputHardeningError extends Error {
   constructor(
@@ -301,6 +291,101 @@ function validateFormatArg(
   );
 }
 
+function uriPathPattern(source: string): RE2JS {
+  let compiled = compiledUriPathPatterns.get(source);
+  if (!compiled) {
+    compiled = RE2JS.compile(source);
+    compiledUriPathPatterns.set(source, compiled);
+  }
+  return compiled;
+}
+
+/** Reject malformed adapter declarations before they reach invocation time. */
+export function assertUriShapeDeclarations(args: readonly AdapterArg[]): void {
+  for (const arg of args) {
+    const origins = arg["x-unicli-uri-origins"];
+    const pattern = arg["x-unicli-uri-path-pattern"];
+    if (origins === undefined && pattern === undefined) continue;
+    if (arg.format !== "uri") {
+      throw new TypeError(`arg "${arg.name}" URI shape requires format: uri`);
+    }
+    if (
+      origins !== undefined &&
+      (!Array.isArray(origins) ||
+        origins.length === 0 ||
+        origins.length > MAX_URI_ORIGINS ||
+        new Set(origins).size !== origins.length)
+    ) {
+      throw new TypeError(`arg "${arg.name}" has invalid URI origins`);
+    }
+    for (const origin of origins ?? []) {
+      let parsed: URL;
+      try {
+        parsed = new URL(origin);
+      } catch {
+        throw new TypeError(`arg "${arg.name}" has invalid URI origin`);
+      }
+      if (
+        !["http:", "https:"].includes(parsed.protocol) ||
+        parsed.username ||
+        parsed.password ||
+        parsed.origin !== origin ||
+        parsed.pathname !== "/" ||
+        parsed.search ||
+        parsed.hash
+      ) {
+        throw new TypeError(
+          `arg "${arg.name}" URI origins must be canonical HTTP(S) origins`,
+        );
+      }
+    }
+    if (pattern !== undefined) {
+      if (!pattern || pattern.length > MAX_URI_PATH_PATTERN_LENGTH) {
+        throw new TypeError(`arg "${arg.name}" has invalid URI path pattern`);
+      }
+      try {
+        uriPathPattern(pattern);
+      } catch {
+        throw new TypeError(
+          `arg "${arg.name}" has invalid RE2 URI path pattern`,
+        );
+      }
+    }
+  }
+}
+
+function validateUriShapeArg(
+  name: string,
+  value: string,
+  arg: AdapterArg,
+): void {
+  const origins = arg["x-unicli-uri-origins"];
+  const pattern = arg["x-unicli-uri-path-pattern"];
+  if (origins === undefined && pattern === undefined) return;
+  const parsed = new URL(value);
+  if (parsed.username || parsed.password) {
+    throw new InputHardeningError(
+      `URI arg "${name}" must not contain credentials`,
+      name,
+      "remove embedded URI credentials and retry",
+    );
+  }
+  if (origins && !origins.includes(parsed.origin)) {
+    throw new InputHardeningError(
+      `URI arg "${name}" has an undeclared origin`,
+      name,
+      `use one of: ${origins.join(", ")}`,
+    );
+  }
+  if (pattern && !uriPathPattern(pattern).matches(parsed.pathname)) {
+    throw new InputHardeningError(
+      `URI arg "${name}" has an unsupported path`,
+      name,
+      "pass a URI whose path matches the adapter contract",
+    );
+  }
+}
+
 type Kind = NonNullable<AdapterArg["x-unicli-kind"]>;
 
 function validateKind(name: string, value: string, kind: Kind): void {
@@ -360,6 +445,7 @@ export function hardenArgs(
 
     // Standard-vocab format check (fails closed).
     if (declared.format) {
+      let matchedPrimaryFormat = true;
       try {
         validateFormatArg(name, value, declared.format);
       } catch (err) {
@@ -369,13 +455,16 @@ export function hardenArgs(
         const accepts = declared["x-unicli-accepts"] ?? [];
         if (declared.format === "uri" && accepts.includes("id")) {
           if (tryAcceptId(value)) {
-            // primary failed but secondary passed
+            matchedPrimaryFormat = false;
           } else {
             throw err;
           }
         } else {
           throw err;
         }
+      }
+      if (declared.format === "uri" && matchedPrimaryFormat) {
+        validateUriShapeArg(name, value, declared);
       }
       // Double-URL-encoding warning applies even on success.
       if (declared.format === "uri") {

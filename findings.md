@@ -731,3 +731,38 @@ official generation paths disagreed only on marker whitespace. The root fix
 adds canonical AGENTS formatting to the stats chain. A real
 `npm run stats && npm run docs:prepare` run left the complete binary diff
 unchanged; the final re-review reported zero unresolved P0, P1, or P2 findings.
+
+## 2026-07-18 — Reliability and local-observation closure
+
+- Cross-surface Agent dogfood found target drift, false wait success, stale ref
+  resurrection, weak native identities, screenshot publication races, raw
+  unknown-command diagnostics, uncorrelated MCP wrappers, stale local-log
+  locks, and relevance-blind deep retrieval. All reproduced P0–P3 findings were
+  repaired at their owning runtime boundaries rather than adapter-specific
+  fallbacks.
+- Real GitHub dogfood proved the advertised `OWNER/REPO#NUMBER` thread form was
+  not accepted by `gh issue view`; the adapters now require exact issue/PR URLs,
+  and repair requires the original argv for parameterized commands.
+- Source identity now brackets two agreeing untracked-content hashes with Git
+  metadata and HEAD checks. Local-log readers preflight no-follow regular-file
+  identity and byte ceilings. Empty compute buckets publish tombstones so old
+  persistent refs cannot return in another process.
+- Primary filesystem evidence: Node v22.17 documentation and current libuv
+  Windows handle sharing support overwrite rename/delete semantics; the open
+  `nodejs/node#29481` thread attributes residual EPERM to external handles and
+  antivirus, so no grace-period retry workaround was introduced.
+- Closure audit reproduced a cross-process compute-ref race: a writer could
+  prune a shard after a reader enumerated it but before the read, misclassifying
+  a normal generation change as corruption. Ref readers and publishers now use
+  the same recoverable file-store lock. A real 4-writer/4-reader replay
+  completed all 2,480 operations with zero errors or residual lock artifacts;
+  a held-live-owner regression maps timeout to retryable
+  `compute.refs.lock_contention` and temporary-failure exit 75.
+- Closure audit also forced an app-only combined capture to resolve snapshot
+  window 101 and screenshot window 202. Capture now derives one exact window
+  from snapshot ref provenance, binds the screenshot and trajectory to it, and
+  fails closed if the identity is absent or changes.
+- Commander option errors bypassed the structured output boundary and echoed a
+  raw unknown token. Parser control flow now maps to a stable `invalid_input`
+  envelope and matching local event without retaining argv. Exact GitHub thread
+  URL shapes are validated before the external `gh` process is invoked.

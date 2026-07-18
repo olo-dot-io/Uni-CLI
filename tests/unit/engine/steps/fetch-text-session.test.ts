@@ -29,6 +29,31 @@ function mockOnce(handler: (url: string, init: RequestInit) => Response): {
 }
 
 describe("fetch_text capture_cookies", () => {
+  it("describes HTTP 429 as a retry-window failure rather than a stale URL", async () => {
+    mockOnce(
+      () =>
+        new Response("rate limited", {
+          status: 429,
+          statusText: "Too Many Requests",
+        }),
+    );
+
+    await expect(
+      fetchTextResource(
+        "https://example.com/rate-limited",
+        { url: "https://example.com/rate-limited", retry: 1 },
+        {},
+        0,
+      ),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({
+        statusCode: 429,
+        retryable: true,
+        suggestion: expect.stringMatching(/wait|retry window/i),
+      }),
+    });
+  });
+
   it.each([
     "application/yaml",
     "application/x-yaml",

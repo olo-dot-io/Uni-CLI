@@ -79,9 +79,10 @@ Current Windows UIA support has two layers:
   tree. Descendant invoke, value, and focus actions prefer UIA patterns before
   bounded fallback paths; descendant screenshot crops the owning window bitmap.
 
-Stable top-level refs look like `desktop-uia:pid-1234:Window[0]`. When passed to
+Stable top-level refs look like `desktop-uia:window-0x2b:Window[0]`. When passed to
 wait, Uni-CLI polls the native top-level window inventory for a matching
-role/name/title/app/pid filter until timeout. Observe ranks the same top-level
+role/name/title/app/pid filter until timeout. The HWND-bound scope prevents a
+PID-local window reorder from changing the target. Observe ranks the same top-level
 window refs by goal/title token overlap. Assert checks the same inventory for
 top-level title text and visible/appear/enabled state.
 
@@ -162,7 +163,7 @@ Fallback: use CDP for Electron/browser targets or visual fallback.
 ## desktop-atspi.invalid_input
 
 Cause: a Linux AT-SPI action received a `ref` or `stable` token that is not a
-`desktop-atspi:pid-<pid>:Window[<n>]` top-level window token.
+`desktop-atspi:window-<native-id>:Window[0]` exact-window token.
 
 Remedy: run `unicli compute snapshot --format compact` or
 `unicli compute find --first` on Linux, then retry with the fresh ref emitted by
@@ -196,7 +197,8 @@ Current Linux AT-SPI support has two layers:
   `grim -g` for known Wayland/top-level bounds, and region capture for bounded
   descendant refs.
 
-Stable top-level refs look like `desktop-atspi:pid-1234:Window[0]`. When passed
+Stable top-level refs look like
+`desktop-atspi:window-0x03a00007:Window[0]`. When passed
 to type, scroll, or screenshot actions, Uni-CLI uses native operations when
 available and activates the top-level window only for helper fallbacks. On X11
 with ImageMagick `import`, screenshot uses the resolved top-level window id
@@ -324,7 +326,7 @@ Fallback: use `unicli compute windows --app <name>` to choose a visible window.
 Cause: the target element exists but is disabled.
 
 Remedy: wait for it to become enabled with
-`unicli compute wait --state enabled`.
+`unicli compute wait --ref <ref> --state enabled`.
 
 Fallback: snapshot the surrounding UI and act on the prerequisite control.
 

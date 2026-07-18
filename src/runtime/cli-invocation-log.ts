@@ -1,10 +1,10 @@
 /**
  * @owner       src::runtime::cli-invocation-log
- * @does        Correlates one CLI process with rendered envelopes and persists its terminal invocation event.
+ * @does        Correlates one CLI process, its nested kernel calls, rendered envelopes, and its terminal invocation event.
  * @needs       local event store, formatter observations, process exit semantics
  * @feeds       default local diagnostic log for core, fast-path, and adapter CLI calls
  * @breaks      Capturing raw argv leaks user input; missing exit finalization leaves core commands invisible.
- * @invariants  Raw arguments are never persisted; the exit hook performs only synchronous local I/O and never changes the command exit code.
+ * @invariants  Raw arguments are never persisted; every child can reference one process invocation ID; one local-log failure is surfaced once.
  * @side-effects Registers exit and uncaught-exception monitor hooks and appends one event per non-metadata CLI process.
  * @perf        Constant in argv length with one append at process exit.
  * @concurrency One active CLI invocation per Node process.
@@ -34,6 +34,7 @@ interface ActiveCliInvocation {
   errorStep?: number;
   outcomeAmbiguous?: boolean;
   targetUnusable?: boolean;
+  observedLocalLogWarnings: Set<string>;
 }
 
 export interface BeginCliInvocationOptions {
@@ -49,12 +50,12 @@ export function beginCliInvocationLogging(
   options: BeginCliInvocationOptions = {},
 ): void {
   if (activeInvocation || !isLocalLoggingEnabled()) return;
-  const argv = options.argv ?? process.argv;
   activeInvocation = {
     invocationId: randomUUID(),
     startedAt: options.startedAt ?? Date.now(),
-    command: fallbackCommand(argv.slice(2)),
+    command: "core.unknown",
     outputBytes: 0,
+    observedLocalLogWarnings: new Set(),
   };
   if (options.registerProcessHooks !== false) registerProcessHooks();
 }
@@ -79,6 +80,14 @@ export function observeCliTrace(traceId: string): void {
   activeInvocation.traceId = traceId;
 }
 
+export function currentCliInvocationId(): string | undefined {
+  return activeInvocation?.invocationId;
+}
+
+export function observeCliLocalLogWarning(warning: string): void {
+  activeInvocation?.observedLocalLogWarnings.add(warning);
+}
+
 export function observeCliInternalFailure(): void {
   if (!activeInvocation) return;
   activeInvocation.errorType = "internal_error";
@@ -91,7 +100,7 @@ export function completeCliInvocation(exitCode: number): string | undefined {
   if (!invocation) return undefined;
   const outcome =
     exitCode === 0 ? "success" : exitCode === 66 ? "empty" : "error";
-  return localEventWarning(
+  const warning = localEventWarning(
     appendLocalEvent(
       createLocalEvent({
         event_name: "unicli.cli.invocation.completed",
@@ -99,6 +108,7 @@ export function completeCliInvocation(exitCode: number): string | undefined {
         ...(invocation.traceId ? { trace_id: invocation.traceId } : {}),
         transport: "cli",
         command: invocation.command,
+        operation_role: "invocation",
         ...(invocation.targetSurface
           ? { target_surface: invocation.targetSurface }
           : {}),
@@ -124,6 +134,9 @@ export function completeCliInvocation(exitCode: number): string | undefined {
       }),
     ),
   );
+  return warning && !invocation.observedLocalLogWarnings.has(warning)
+    ? warning
+    : undefined;
 }
 
 export function _resetCliInvocationLogForTests(): void {
@@ -138,35 +151,4 @@ function registerProcessHooks(): void {
     const warning = completeCliInvocation(code);
     if (warning) process.stderr.write(`${warning}\n`);
   });
-}
-
-function fallbackCommand(args: string[]): string {
-  const token = firstCommandToken(args);
-  return token && /^[a-z0-9_-]+$/i.test(token)
-    ? `core.${token.toLowerCase()}`
-    : "core.unknown";
-}
-
-function firstCommandToken(args: string[]): string | undefined {
-  const optionsWithValues = new Set([
-    "-f",
-    "--format",
-    "--args-file",
-    "--permission-profile",
-    "--select",
-    "--fields",
-    "--pluck",
-    "--pluck0",
-  ]);
-  for (let index = 0; index < args.length; index += 1) {
-    const token = args[index];
-    if (optionsWithValues.has(token)) {
-      index += 1;
-      continue;
-    }
-    if (token.startsWith("--") && token.includes("=")) continue;
-    if (token.startsWith("-")) continue;
-    return token;
-  }
-  return undefined;
 }

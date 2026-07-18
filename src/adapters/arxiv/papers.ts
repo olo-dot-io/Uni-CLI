@@ -1,10 +1,10 @@
 /**
  * @owner   src/adapters/arxiv/papers.ts
- * @does    Register agent-facing arXiv author, recent category, and PDF text-read commands.
- * @needs   export.arxiv.org Atom API, arxiv.org PDF URLs, category/id validation, conservative XML parsing, pdftotext.
- * @feeds   surface coverage ledger, scholarly search/read workflow, arXiv category monitoring.
- * @breaks  arXiv Atom/PDF shape drift, weak category/id parsing, denied PDF downloads, missing pdftotext, or silent empty feeds hide paper discovery/read failures.
- * @invariants  arXiv ids are normalized before URL construction; read returns PDF-derived text only and labels `text_source=pdf`.
+ * @does    Register agent-facing arXiv natural/structured search, author, recent category, and PDF text-read commands.
+ * @needs   export.arxiv.org Atom API, arxiv.org PDF URLs, shared fetch_text/retrieval relevance boundaries, category/id/query validation, conservative XML parsing, pdftotext.
+ * @feeds   AI and scholarly search/read workflows, surface coverage ledger, and arXiv category monitoring.
+ * @breaks  arXiv query/Atom/PDF shape drift, weak category/id parsing, denied PDF downloads, missing pdftotext, or relevance-blind latest sorting hide paper discovery/read failures.
+ * @invariants  Natural multi-term search compiles every meaningful term into an explicit arXiv field clause and filters before limiting; caller-authored arXiv field syntax is preserved; ids are normalized before URL construction; read returns PDF-derived text only and labels `text_source=pdf`.
  * @side-effects HTTPS egress to export.arxiv.org and arxiv.org; read writes PDFs under the requested output directory and executes pdftotext.
  * @perf        O(limit) for Atom discovery; O(PDF bytes + extracted pages) for read.
  * @concurrency safe - per-command local state only
@@ -19,6 +19,13 @@ import { promisify } from "node:util";
 
 import { cli, Strategy } from "../../registry.js";
 import { httpDownload, sanitizeFilename } from "../../engine/download.js";
+import { fetchTextResource } from "../../engine/steps/fetch-text.js";
+import {
+  analyzeRetrievalQuery,
+  scoreRetrievalAlternatives,
+  scoreRetrievalCandidate,
+  splitRetrievalDisjunction,
+} from "../../engine/retrieval-relevance.js";
 
 const ARXIV_BASE = "https://export.arxiv.org/api/query";
 const CATEGORY_RE = /^[a-z]+(?:-[a-z]+)*(?:\.[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)?$/;
@@ -161,16 +168,22 @@ export function parseArxivEntries(xml: string): ArxivEntry[] {
   return out;
 }
 
-async function fetchArxiv(params: URLSearchParams): Promise<string> {
-  const response = await fetch(`${ARXIV_BASE}?${params.toString()}`, {
-    headers: {
+async function fetchArxiv(
+  params: URLSearchParams,
+  signal?: AbortSignal,
+): Promise<string> {
+  const url = `${ARXIV_BASE}?${params.toString()}`;
+  const resource = await fetchTextResource(
+    url,
+    { url, retry: 1 },
+    {
       "User-Agent": "unicli-arxiv/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
       Accept: "application/atom+xml, application/xml, text/xml",
     },
-  });
-  if (!response.ok)
-    throw new Error(`arXiv API returned HTTP ${response.status}.`);
-  return response.text();
+    -1,
+    { signal },
+  );
+  return resource.text;
 }
 
 function compactRows(entries: ArxivEntry[]): Array<Record<string, unknown>> {
@@ -182,6 +195,149 @@ function compactRows(entries: ArxivEntry[]): Array<Record<string, unknown>> {
     primary_category: entry.primary_category,
     url: entry.url,
   }));
+}
+
+function searchRows(entries: ArxivEntry[]): Array<Record<string, unknown>> {
+  return entries.map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    authors: entry.authors,
+    published: entry.published,
+    updated: entry.updated,
+    summary: entry.abstract,
+    primary_category: entry.primary_category,
+    url: entry.url,
+  }));
+}
+
+function requireArxivSearchQuery(value: unknown): string {
+  const query = String(value ?? "").trim();
+  if (!query) throw new Error("arxiv search query cannot be empty.");
+  return query;
+}
+
+function requireArxivSort(value: unknown): "relevance" | "submittedDate" {
+  const sort = String(value ?? "relevance");
+  if (sort !== "relevance" && sort !== "submittedDate") {
+    throw new Error("arxiv sort must be relevance or submittedDate.");
+  }
+  return sort;
+}
+
+function hasArxivFieldSyntax(query: string): boolean {
+  return /(?:^|[\s(])(?:all|ti|au|abs|co|jr|cat|rn|id):/i.test(query);
+}
+
+function arxivFieldValue(value: string): string {
+  const escaped = value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return /^[\p{L}\p{N}_+.#/-]+$/u.test(value) ? escaped : `"${escaped}"`;
+}
+
+export function compileArxivSearchQuery(value: unknown): string {
+  const query = requireArxivSearchQuery(value);
+  if (hasArxivFieldSyntax(query)) return query;
+  if (/(?:^|\s)(?:NOT|ANDNOT)(?:\s|$)/i.test(query)) {
+    throw new Error(
+      "Natural arXiv exclusion requires explicit field syntax such as all:term ANDNOT all:excluded.",
+    );
+  }
+
+  const alternatives = splitRetrievalDisjunction(query);
+  const compiled = alternatives.map((alternative) => {
+    const phrases = [...alternative.matchAll(/"([^"\n]+)"/g)]
+      .map((match) => match[1].trim())
+      .filter(Boolean);
+    const remaining = alternative.replaceAll(/"[^"\n]+"/g, " ");
+    const terms = analyzeRetrievalQuery(remaining).terms;
+    const clauses = [
+      ...phrases.map((phrase) => `all:${arxivFieldValue(phrase)}`),
+      ...terms.map((term) => `all:${arxivFieldValue(term)}`),
+    ];
+    return clauses.length > 0
+      ? clauses.join(" AND ")
+      : `all:${arxivFieldValue(alternative)}`;
+  });
+  return compiled.length > 1
+    ? compiled.map((clause) => `(${clause})`).join(" OR ")
+    : compiled[0];
+}
+
+export async function searchArxivPapers(
+  kwargs: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<Array<Record<string, unknown>>> {
+  const query = requireArxivSearchQuery(kwargs.query);
+  const limit = requireArxivLimit(kwargs.limit, 10);
+  const sort = requireArxivSort(kwargs.sort);
+  const candidateLimit = Math.min(Math.max(limit * 3, 20), 50);
+  const params = new URLSearchParams({
+    search_query: compileArxivSearchQuery(query),
+    max_results: String(candidateLimit),
+    sortBy: sort,
+    sortOrder: "descending",
+  });
+  const entries = parseArxivEntries(await fetchArxiv(params, signal));
+  if (hasArxivFieldSyntax(query)) return searchRows(entries.slice(0, limit));
+
+  const alternatives = splitRetrievalDisjunction(query);
+  const analyses = alternatives.map(analyzeRetrievalQuery);
+  const analysis = analyzeRetrievalQuery(query);
+  const isDisjunctive = alternatives.length > 1;
+  let relevant = entries
+    .map((entry, sourceIndex) => ({
+      entry,
+      sourceIndex,
+      relevance: scoreRetrievalAlternatives(
+        analyses,
+        {
+          title: entry.title,
+          summary: entry.abstract,
+          url: entry.url,
+        },
+        { requireAllTerms: true },
+      ),
+    }))
+    .filter(({ relevance }) => relevance.qualifies);
+  if (
+    !isDisjunctive &&
+    analysis.phrases.length === 0 &&
+    analysis.terms.length > 1
+  ) {
+    const phraseLayers = [
+      [analysis.terms.join(" ")],
+      analysis.terms.slice(0, -1).map((term, index) => {
+        return `${term} ${analysis.terms[index + 1]}`;
+      }),
+    ];
+    for (const phrases of phraseLayers) {
+      const phraseMatches = relevant.filter(({ entry }) =>
+        phrases.some(
+          (phrase) =>
+            scoreRetrievalCandidate(
+              { ...analysis, phrases: [phrase] },
+              {
+                title: entry.title,
+                summary: entry.abstract,
+                url: entry.url,
+              },
+              { requireAllTerms: true },
+            ).qualifies,
+        ),
+      );
+      if (phraseMatches.length > 0) {
+        relevant = phraseMatches;
+        break;
+      }
+    }
+  }
+  if (sort === "relevance") {
+    relevant.sort(
+      (left, right) =>
+        right.relevance.score - left.relevance.score ||
+        left.sourceIndex - right.sourceIndex,
+    );
+  }
+  return searchRows(relevant.slice(0, limit).map(({ entry }) => entry));
 }
 
 function arxivPdfUrl(id: string): string {
@@ -339,6 +495,43 @@ export async function readArxivPaper(
     retrieved_at: new Date().toISOString(),
   };
 }
+
+cli({
+  site: "arxiv",
+  name: "search",
+  description: "Search arXiv papers with precise natural or fielded queries",
+  domain: "export.arxiv.org",
+  strategy: Strategy.PUBLIC,
+  adapter_path: "src/adapters/arxiv/papers.ts",
+  args: [
+    {
+      name: "query",
+      type: "str",
+      required: true,
+      positional: true,
+      description: "Natural-language terms or explicit arXiv query syntax",
+    },
+    { name: "limit", type: "int", default: 10, description: "Max papers" },
+    {
+      name: "sort",
+      type: "str",
+      default: "relevance",
+      choices: ["relevance", "submittedDate"],
+      description: "Sort by relevance or newest submission",
+    },
+  ],
+  columns: ["title", "authors", "published", "id"],
+  retrieval: {
+    operation: "discover",
+    result_kind: "paper",
+    source_class: "hosted-artifact",
+    arguments: { query: "query", limit: "limit", sort: "sort" },
+  },
+  capabilities: ["http.fetch", "scholar.search"],
+  minimum_capability: "http.fetch",
+  func: async (_page, kwargs, context) =>
+    searchArxivPapers(kwargs, context?.signal),
+});
 
 cli({
   site: "arxiv",

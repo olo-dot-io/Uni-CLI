@@ -4,7 +4,7 @@
  * @needs       transport ref allocator
  * @feeds       desktop AX, UIA, and AT-SPI snapshots plus persisted compute refs
  * @breaks      A snapshot that renders fresh state but retains old refs makes the next action target stale geometry or fail as expired.
- * @invariants  Compact, tree, and JSON formats allocate the same traversal refs; output encoding never changes ref identity or scope.
+ * @invariants  Compact, tree, and JSON formats allocate the same traversal refs; output encoding never changes ref identity, exact native window, CDP endpoint, or scope.
  * @side-effects Mutates only the caller-owned ref allocator.
  * @perf        One bounded tree traversal per snapshot.
  * @concurrency Safe when each snapshot owns its allocator.
@@ -14,6 +14,7 @@
  */
 
 import type { ElementRef, RefAllocator } from "./refs.js";
+import type { CdpEndpoint } from "./cdp-endpoint.js";
 
 export type SnapshotEncoding = "compact" | "tree" | "json";
 
@@ -29,6 +30,7 @@ export interface RawAxNode {
   scope: string;
   app?: string;
   pid?: number;
+  windowId?: number | string;
 }
 
 export interface EncodeOpts {
@@ -39,6 +41,7 @@ export interface EncodeOpts {
   includeBounds?: boolean;
   transport: string;
   alloc: RefAllocator;
+  cdpEndpoint?: CdpEndpoint;
 }
 
 export function encodeSnapshot(
@@ -47,7 +50,7 @@ export function encodeSnapshot(
 ): { encoded: string; refCount: number } {
   const format = opts.format ?? "compact";
   const lines: string[] = [];
-  walk(root, opts, lines, 0);
+  walk(root, opts, lines, 0, opts.cdpEndpoint);
   return {
     encoded: format === "json" ? JSON.stringify(root) : lines.join("\n"),
     refCount: opts.alloc.size,
@@ -59,6 +62,7 @@ function walk(
   opts: EncodeOpts,
   lines: string[],
   depth: number,
+  inheritedCdpEndpoint?: CdpEndpoint,
 ): void {
   const maxDepth = opts.maxDepth ?? 64;
   if (depth > maxDepth) return;
@@ -70,6 +74,7 @@ function walk(
   const include =
     (!opts.interactiveOnly || interactive) &&
     (!namedOnly || named || depth === 0);
+  const cdpEndpoint = inheritedCdpEndpoint;
 
   if (include) {
     const ref = opts.alloc.alloc({
@@ -82,6 +87,8 @@ function walk(
       states: node.states,
       app: node.app,
       pid: node.pid,
+      windowId: node.windowId,
+      cdpEndpoint,
     });
     lines.push(
       formatLine(ref, {
@@ -94,7 +101,7 @@ function walk(
   }
 
   for (const child of node.children ?? []) {
-    walk(child, opts, lines, depth + 1);
+    walk(child, opts, lines, depth + 1, cdpEndpoint);
   }
 }
 

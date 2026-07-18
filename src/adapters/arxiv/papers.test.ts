@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveCommand } from "../../registry.js";
 import {
   arxivArtifactFilename,
+  compileArxivSearchQuery,
   decodeArxivEntities,
   normalizeArxivId,
   parseArxivEntries,
@@ -11,6 +12,10 @@ import {
   requireArxivPageRange,
   requireArxivLimit,
 } from "./papers.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("arxiv agent-facing author and recent commands", () => {
   it("validates author, category, and limit inputs", () => {
@@ -62,6 +67,85 @@ describe("arxiv agent-facing author and recent commands", () => {
     );
     expect(resolveCommand("arxiv", "read")?.command.executables).toEqual([
       "pdftotext",
+    ]);
+  });
+
+  it("compiles natural multi-term queries without changing explicit arXiv syntax", () => {
+    expect(compileArxivSearchQuery("continuous batching")).toBe(
+      "all:continuous AND all:batching",
+    );
+    expect(compileArxivSearchQuery('"continuous batching"')).toBe(
+      'all:"continuous batching"',
+    );
+    expect(
+      compileArxivSearchQuery('ti:"continuous batching" AND cat:cs.LG'),
+    ).toBe('ti:"continuous batching" AND cat:cs.LG');
+    expect(compileArxivSearchQuery('NVLink OR "Infinity Fabric"')).toBe(
+      '(all:nvlink) OR (all:"Infinity Fabric")',
+    );
+    expect(() => compileArxivSearchQuery("NVLink NOT Ethernet")).toThrow(
+      "explicit field syntax",
+    );
+  });
+
+  it("keeps latest arXiv results query-relevant before applying the result limit", async () => {
+    let requestedUrl = "";
+    // REASON: arXiv is the external boundary; the registered adapter and Atom parser run unchanged.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        requestedUrl = String(input);
+        return new Response(
+          `
+          <feed>
+            <entry>
+              <id>http://arxiv.org/abs/2607.00001v1</id>
+              <title>Unrelated graph representation learning</title>
+              <summary>A fresh but unrelated machine learning paper.</summary>
+              <published>2026-07-18T00:00:00Z</published>
+              <author><name>Unrelated Author</name></author>
+            </entry>
+            <entry>
+              <id>http://arxiv.org/abs/2607.00003v1</id>
+              <title>Continuous optimization for cloud serving</title>
+              <summary>Dynamic batching appears as one independent baseline.</summary>
+              <published>2026-07-18T00:00:00Z</published>
+              <author><name>Broad Match Author</name></author>
+            </entry>
+            <entry>
+              <id>http://arxiv.org/abs/2607.00002v1</id>
+              <title>Continuous Batching for Efficient LLM Serving</title>
+              <summary>We analyze continuous request scheduling and dynamic batching.</summary>
+              <published>2026-07-17T00:00:00Z</published>
+              <author><name>Serving Researcher</name></author>
+            </entry>
+          </feed>`,
+          {
+            status: 200,
+            headers: { "content-type": "application/atom+xml" },
+          },
+        );
+      }),
+    );
+
+    const command = resolveCommand("arxiv", "search")?.command;
+    const rows = (await command?.func?.(null as never, {
+      query: "continuous batching",
+      limit: 1,
+      sort: "submittedDate",
+    })) as Array<Record<string, unknown>>;
+    const request = new URL(requestedUrl);
+
+    expect(request.searchParams.get("search_query")).toBe(
+      "all:continuous AND all:batching",
+    );
+    expect(Number(request.searchParams.get("max_results"))).toBeGreaterThan(1);
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: "2607.00002",
+        title: "Continuous Batching for Efficient LLM Serving",
+        summary: expect.stringContaining("continuous request scheduling"),
+      }),
     ]);
   });
 

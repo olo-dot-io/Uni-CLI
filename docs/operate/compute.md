@@ -22,9 +22,15 @@ unicli compute find --role input --text 8 --first
 unicli compute click @e7
 ```
 
-Snapshots return compact element refs such as `@e7`. The latest ref bucket is
-kept by the transport bus so follow-up actions can dereference aliases without
-coordinates. When a structured transport reports bounds, the refs preserve
+Snapshots return compact element refs such as `@e7`. The transport bus keeps
+the latest bucket for each exact target scope. A short alias resolves directly
+only when one live scope owns it; where a command accepts `windowId` or a CDP
+endpoint, that exact hint can disambiguate duplicate aliases, otherwise use the
+stable ref included in provenance. Successful snapshots persist only ref
+buckets carrying immutable native window identity or an explicit CDP renderer
+endpoint. A later CLI process can reuse those exact refs. Broker-owned,
+invocation-only CDP refs stay turn-scoped and create no empty persistence
+record. When a structured transport reports bounds, the refs preserve
 screen-relative coordinates and `screenIndex` so follow-up actions can target
 the same monitor in multi-display setups.
 When a snapshot node includes a visible/current value, compact output and stored
@@ -53,7 +59,11 @@ structured error envelopes. The packet succeeds when at least one requested part
 is captured and records per-part errors when the other part is unavailable.
 When screenshot bytes are available, the screenshot part includes `image`
 metadata with byte count, SHA-256, dimensions, and an image-pixel coordinate
-space whose origin is the top-left corner. Packets also include a replayable
+space whose origin is the top-left corner. When a native transport also reports
+logical screen bounds, `image.coordinate_space.native_screen_to_image` carries
+those bounds plus the explicit six-value affine transform from screen-logical
+coordinates into image pixels; consumers must not infer display scale or crop
+offset. Packets also include a replayable
 trajectory listing the `compute_snapshot` and `compute_screenshot` actions,
 params, ordering, and per-step success state that produced the packet.
 The packet also includes `visual_timeline`, a protocol-level replay hint for
@@ -140,26 +150,26 @@ unicli describe compute capture
 
 ## Commands
 
-| Command                                           | Purpose                                            |
-| ------------------------------------------------- | -------------------------------------------------- |
-| `compute apps`                                    | List running apps                                  |
-| `compute windows --app <name>`                    | List windows                                       |
-| `compute snapshot --app <name> --format compact`  | Capture a compact/tree/json accessibility snapshot |
-| `compute capture --app <name>`                    | Capture snapshot refs and screenshot evidence      |
-| `compute capture --copy-reference`                | Save and copy `[app-shots ...]` handoff markup     |
-| `compute find --role <role> --name/--text <text>` | Find matching refs by label or value               |
-| `compute click <ref>`                             | Click a ref                                        |
-| `compute type <ref> <text>`                       | Set or type text                                   |
-| `compute press <combo>`                           | Send a key combo                                   |
-| `compute scroll <ref>`                            | Scroll a ref                                       |
-| `compute launch <app>`                            | Launch an app                                      |
-| `compute screenshot [path]`                       | Capture a screenshot                               |
-| `compute attach --app <name>`                     | Attach CDP to a renderer                           |
-| `compute attach --app <name> --confirm-relaunch`  | Allow risky app relaunch for CDP attach            |
-| `compute eval <js>`                               | Evaluate JS in an attached renderer                |
-| `compute wait --ref <ref>`                        | Wait for an element/text/state                     |
-| `compute observe <goal>`                          | Rank refs for a natural-language goal              |
-| `compute assert --text <text>`                    | Assert visible state                               |
+| Command                                           | Purpose                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `compute apps`                                    | List running apps                                                        |
+| `compute windows --app <name>`                    | List windows                                                             |
+| `compute snapshot --app <name> --format compact`  | Capture a compact/tree/json accessibility snapshot                       |
+| `compute capture --app <name>`                    | Capture snapshot refs and screenshot evidence                            |
+| `compute capture --copy-reference`                | Save and copy `[app-shots ...]` handoff markup                           |
+| `compute find --role <role> --name/--text <text>` | Find matching refs by label or value                                     |
+| `compute click <ref> --background`                | Click a ref while explicitly preserving background mode                  |
+| `compute type <ref> <text>`                       | Set or type text                                                         |
+| `compute press <combo>`                           | Send a key combo                                                         |
+| `compute scroll <ref>`                            | Scroll a ref                                                             |
+| `compute launch <app>`                            | Launch an app                                                            |
+| `compute screenshot [path]`                       | Capture a screenshot                                                     |
+| `compute attach --app <name>`                     | Attach CDP to a renderer                                                 |
+| `compute attach --app <name> --confirm-relaunch`  | Allow risky app relaunch for CDP attach                                  |
+| `compute eval <js>`                               | Evaluate JS in an attached renderer                                      |
+| `compute wait --ref <ref>`                        | Poll one exact target for appear/disappear/focused/enabled/checked state |
+| `compute observe <goal> --app <name> --top-k <n>` | Rank up to 1-50 refs for a natural-language goal                         |
+| `compute assert --text <text> --state visible`    | Assert text or enabled/focused/checked/visible state                     |
 
 ## Output
 
@@ -185,6 +195,13 @@ unicli compute snapshot --app TextEdit -f json
 Failures include a `minimum_capability` key and may include a structured
 `remedy` with a command or deeplink. See
 [Compute Troubleshooting](troubleshooting.md) for the remedy catalog.
+
+Refs are target-bound capabilities, not reusable selectors. Native refs encode
+the exact OS window id (`desktop-ax:window-…`, `desktop-uia:window-…`, or
+`desktop-atspi:window-…`) and CDP refs retain the exact renderer WebSocket.
+Legacy refs without this identity fail closed and require a fresh snapshot.
+`compute wait` takes a fresh snapshot of that same immutable target on every
+observation; elapsed time or a different foreground window cannot satisfy it.
 
 ## Live Smoke
 
@@ -264,6 +281,8 @@ prefer native UIA patterns before bounded fallback paths; invoke also tries
 toggle and selection item patterns for controls such as checkboxes, radio
 buttons, and selectable list rows, while numeric set-value inputs can use
 RangeValuePattern for sliders and spinners.
+Every emitted UIA ref is scoped by exact HWND rather than PID-local window
+position, so window reordering cannot redirect a later action.
 The UIA sidecar also supports direct app launch through PowerShell
 `Start-Process`; the public compute launch cascade still tries subprocess first.
 
@@ -282,6 +301,8 @@ a real window id exists, and Wayland/top-level bounds use `grim -g` when bounds
 are known.
 The AT-SPI sidecar also supports direct app launch through `gtk-launch`; the
 public compute launch cascade still tries subprocess first.
+Every emitted AT-SPI ref is scoped by the exact native X11/AT-SPI window id;
+PID-local window indexes are no longer accepted as durable identity.
 
 ## CDP Attach
 

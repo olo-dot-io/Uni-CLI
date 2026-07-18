@@ -3,8 +3,8 @@
  * @does        Builds bounded HATEOAS command hints for success and failure envelopes.
  * @needs       auth guidance, executable-auth metadata, and canonical adapter-repair eligibility
  * @feeds       default AgentEnvelope next_actions across adapter commands
- * @breaks      Misclassified hints can send agents into retries or source edits that cannot fix the owning failure.
- * @invariants  Auth/network/rate-limit failures never recommend adapter repair; drift classes describe repair as verification only.
+ * @breaks      Misclassified or duplicate hints can send agents into repeated retries or source edits that cannot fix the owning failure.
+ * @invariants  Auth/network/rate-limit failures never recommend adapter repair; drift classes describe repair as verification only; each returned command appears at most once.
  * @side-effects None.
  * @perf        O(1) with a bounded action list.
  * @concurrency Pure and reentrant.
@@ -21,6 +21,15 @@ import {
   browserCookieCaptureCommand,
 } from "./auth-guidance.js";
 import { isAdapterRepairCandidate } from "../engine/repair/failure-classifier.js";
+
+function uniqueActions(actions: AgentNextAction[]): AgentNextAction[] {
+  const seen = new Set<string>();
+  return actions.filter((action) => {
+    if (seen.has(action.command)) return false;
+    seen.add(action.command);
+    return true;
+  });
+}
 
 /** Hints shown alongside a successful result for site-<cmd>. */
 export function defaultSuccessNextActions(
@@ -78,11 +87,25 @@ export function defaultErrorNextActions(
     const exactRetries = (auth?.alternatives ?? []).filter((command) =>
       command.startsWith("unicli ai search "),
     );
+    const directTargets = [...new Set(auth?.alternatives ?? [])]
+      .filter(
+        (command) =>
+          command.startsWith("unicli ") &&
+          !command.startsWith("unicli ai search ") &&
+          command !== "unicli ai sources" &&
+          !command.startsWith("unicli repair ai search"),
+      )
+      .slice(0, 4);
     actions.push(
       ...exactRetries.map((command) => ({
         command,
         description:
           "Retry the same AI scope with the unsupported strict freshness bound removed",
+      })),
+      ...directTargets.map((command) => ({
+        command,
+        description:
+          "Inspect a maintained first-party target reported by the empty AI scope",
       })),
       {
         command: "unicli ai sources",
@@ -136,7 +159,7 @@ export function defaultErrorNextActions(
         },
       },
     );
-    return actions;
+    return uniqueActions(actions);
   }
 
   if (site === "ai" && cmdName === "read" && errCode === "challenge_required") {
@@ -150,7 +173,7 @@ export function defaultErrorNextActions(
           "Retry through the concrete reader or source boundary reported by ai.read",
       })),
     );
-    return actions;
+    return uniqueActions(actions);
   }
 
   if (
@@ -231,5 +254,5 @@ export function defaultErrorNextActions(
     });
   }
 
-  return actions;
+  return uniqueActions(actions);
 }

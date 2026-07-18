@@ -1,9 +1,16 @@
 /**
  * @owner       src/engine/kernel/types.ts
- * @does        Define cancellable invocation, compiled-command, result, and diagnostic contracts.
+ * @does        Define cancellable invocation, parent correlation, compiled-command, result, and diagnostic contracts.
  * @needs       resolved arguments, output envelopes, adapter domain types
  * @feeds       kernel execution, session recording, CLI/MCP/ACP surfaces
  * @breaks      Type drift here breaks cross-surface execution and cancellation semantics.
+ * @invariants  Direct and nested diagnostics always carry a parent invocation; standalone diagnostics never do.
+ * @side-effects none
+ * @perf        Type-only module with no runtime allocation.
+ * @concurrency Immutable request-owned contracts are safe to pass across async boundaries.
+ * @test        tests/unit/engine/invoke.test.ts and tests/unit/kernel-stage-parity.test.ts
+ * @stability   stable
+ * @since       2026-04-19
  *
  * Pure type declarations only; no runtime dependencies beyond shared domain
  * types. Kept isolated so surfaces (MCP/ACP/CLI) can import types without
@@ -18,7 +25,7 @@ import type {
   AdapterManifest,
 } from "../../types.js";
 
-export interface Invocation {
+interface InvocationCore {
   adapter: AdapterManifest;
   command: AdapterCommand;
   cmdName: string;
@@ -32,6 +39,18 @@ export interface Invocation {
   /** ULID — 26-char Crockford Base32, time-sortable and monotonic within ms. */
   trace_id: string;
 }
+
+export type InvocationDiagnosticIdentity =
+  | {
+      diagnosticParentInvocationId: string;
+      diagnosticRole: "direct" | "nested";
+    }
+  | {
+      diagnosticParentInvocationId?: never;
+      diagnosticRole: "standalone";
+    };
+
+export type Invocation = InvocationCore & InvocationDiagnosticIdentity;
 
 export type AjvValidateFn = {
   (data: unknown): boolean;

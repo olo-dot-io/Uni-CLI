@@ -11,6 +11,7 @@
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { assertUriShapeDeclarations } from "../harden.js";
 
 import type {
   AdapterArg,
@@ -70,13 +71,16 @@ function buildJsonSchema(args: AdapterArg[]): Record<string, unknown> {
     if (a.default !== undefined) prop.default = a.default;
     if (a.choices && a.choices.length > 0) prop.enum = a.choices;
     if (a.format) prop.format = a.format;
-    // x-unicli-kind / x-unicli-accepts are non-standard extension keywords;
+    // x-unicli hardening declarations are non-standard extension keywords;
     // Ajv is strict about unknown keywords, so we pass them through as
     // annotations under a nested `x-unicli` bag that Ajv's schema cloner
     // strips before compilation.
     const ext: Record<string, unknown> = {};
     if (a["x-unicli-kind"]) ext.kind = a["x-unicli-kind"];
     if (a["x-unicli-accepts"]) ext.accepts = a["x-unicli-accepts"];
+    if (a["x-unicli-uri-origins"]) ext.uriOrigins = a["x-unicli-uri-origins"];
+    if (a["x-unicli-uri-path-pattern"])
+      ext.uriPathPattern = a["x-unicli-uri-path-pattern"];
     if (Object.keys(ext).length > 0) prop["x-unicli"] = ext;
     properties[a.name] = prop;
     if (a.required) required.push(a.name);
@@ -122,6 +126,7 @@ function buildExample(args: AdapterArg[]): Record<string, unknown> {
  */
 export function compileCommand(cmd: AdapterCommand): CompiledCommand {
   const args = cmd.adapterArgs ?? [];
+  assertUriShapeDeclarations(args);
   const jsonSchema = buildJsonSchema(args);
   const ajv = getAjv();
   // Strip `x-unicli` from the schema passed to Ajv — Ajv's strict mode

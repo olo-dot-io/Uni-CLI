@@ -1,12 +1,12 @@
 /**
  * @owner       src::commands::ai
- * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, normalization, provenance, deduplication, and AI enrichment over the domain-neutral retrieval contract.
+ * @does        Provides profile-aware AI search/pulse, source and primary-target discovery, query relevance, normalization, provenance, deduplication, and AI enrichment over the domain-neutral retrieval contract.
  * @needs       src/commands/ai-content.ts, src/commands/ai-landscape.ts, adapter retrieval metadata, shared kernel execution, and the evidence-document reader
  * @feeds       Agent AI research loops through `unicli ai search|pulse|read|sources|landscape|profiles`
- * @breaks      Missing AI source-pack refs, weak domain enrichment, silent source failures, or lossy normalization make current AI evidence undiscoverable or untraceable.
- * @invariants  Search executes only registered read-only retrieval commands selected by AI profiles after the outer orchestrator is authorized; internal fan-out passes only declared mapped args; partial failures are counted on every row and detailed once per response; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
+ * @breaks      Missing AI source-pack refs, relevance-blind fusion, weak domain enrichment, silent source failures, or lossy normalization make current AI evidence undiscoverable or untraceable.
+ * @invariants  Search executes only registered read-only retrieval commands selected by AI profiles after the outer orchestrator is authorized; internal fan-out passes only declared mapped args; natural multi-term queries require meaningful overlap before freshness/limit selection; partial and all-empty failures retain concrete source recovery; every result retains source adapter, command, canonical URL, retrieval time, and inferred provenance class.
  * @side-effects Search and pulse execute registered read-only adapters; read may create and remove one temporary PDF artifact while extracting text; sources, landscape, and profiles are network-free.
- * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; HTML readers are bounded to 30 seconds and PDF extraction to 60 seconds; normalization and reciprocal-rank fusion are O(S * R).
+ * @perf        Source fan-out is bounded to six concurrent requests with a 20-second per-source deadline; HTML readers are bounded to 30 seconds and PDF extraction to 60 seconds; normalization, query scoring, and reciprocal-rank fusion are O(S * R * Q).
  * @concurrency Independent source invocations run in a bounded worker pool; each owns an abort signal and result state.
  * @test        tests/unit/commands/ai.test.ts, tests/unit/adapters/ai-intelligence.test.ts, plus live ai/hf/gh/web probes
  * @stability   experimental
@@ -29,9 +29,16 @@ import {
   listAiProfileRows,
   resolveAiRoleProfile,
   selectAiOfficialDomains,
+  selectAiPrimaryTargets,
   type AiRoleProfileId,
 } from "./ai-landscape.js";
 import { mapConcurrent } from "../engine/download.js";
+import {
+  analyzeRetrievalQuery,
+  isSpecificSingleTermQuery,
+  scoreRetrievalAlternatives,
+  splitRetrievalDisjunction,
+} from "../engine/retrieval-relevance.js";
 import {
   EvidenceReadFailure,
   readEvidenceDocument,
@@ -581,6 +588,87 @@ function filterProfilePhraseNoise(
   });
 }
 
+function rankAiRowsByQuery(
+  rows: AiContentRecord[],
+  query: string,
+  mode: "relevance" | "latest",
+): AiContentRecord[] {
+  const alternatives = splitRetrievalDisjunction(query);
+  const alternativeAnalyses = alternatives.map(analyzeRetrievalQuery);
+  const analysis = analyzeRetrievalQuery(query);
+  const enforceSpecificTerm = isSpecificSingleTermQuery(query, analysis);
+  const enforceAlternative = alternatives.length > 1;
+  const scored = rows.map((row, sourceIndex) => ({
+    row,
+    sourceIndex,
+    relevance: scoreRetrievalAlternatives(
+      alternativeAnalyses,
+      {
+        title: row.title,
+        summary: row.summary,
+        tags: row.tags,
+        url: row.url,
+      },
+      { requireAllTerms: enforceSpecificTerm || enforceAlternative },
+    ),
+  }));
+  const enforceQualification =
+    enforceSpecificTerm ||
+    enforceAlternative ||
+    analysis.terms.length > 1 ||
+    analysis.phrases.length > 0;
+  const qualified = enforceQualification
+    ? scored.filter(({ relevance }) => relevance.qualifies)
+    : scored;
+  qualified.sort((left, right) => {
+    if (mode === "latest") {
+      const byTime =
+        (timestampMillis(right.row) ?? Number.NEGATIVE_INFINITY) -
+        (timestampMillis(left.row) ?? Number.NEGATIVE_INFINITY);
+      if (byTime) return byTime;
+    }
+    return (
+      right.relevance.score - left.relevance.score ||
+      (right.row.rrf_score ?? 0) - (left.row.rrf_score ?? 0) ||
+      left.sourceIndex - right.sourceIndex
+    );
+  });
+  return qualified.map(({ row }) => row);
+}
+
+function officialTargetRecovery(
+  vendorIds: readonly string[],
+): { suggestion: string; alternatives: string[] } | undefined {
+  const targets = selectAiPrimaryTargets(vendorIds);
+  if (targets.length === 0) return undefined;
+  const surfaces = targets.map((target) => {
+    const locations = [
+      ...target.domains.map((domain) => `https://${domain}`),
+      ...target.repositories.map(
+        (repository) => `https://github.com/${repository}`,
+      ),
+    ];
+    return `${target.name}: ${locations.join(", ")}`;
+  });
+  const alternatives = [
+    ...new Set(
+      targets.flatMap((target) => [
+        ...target.domains.map(
+          (domain) => `unicli ai read ${shellQuote(`https://${domain}`)}`,
+        ),
+        ...target.repositories.map(
+          (repository) =>
+            `unicli ai read ${shellQuote(`https://github.com/${repository}`)}`,
+        ),
+      ]),
+    ),
+  ].slice(0, 4);
+  return {
+    suggestion: `The searchable sources returned no matching row; inspect the maintained first-party roots directly rather than treating search-index absence as source absence. ${surfaces.join("; ")}`,
+    alternatives,
+  };
+}
+
 export async function searchAiContent(
   query: string,
   opts: AiSearchOptions = {},
@@ -685,6 +773,8 @@ export async function searchAiContent(
       requestedVendors.some((vendor) => row.vendors.includes(vendor)),
     );
   }
+  const freshnessMode = opts.sort === "latest" ? "latest" : "relevance";
+  rows = rankAiRowsByQuery(rows, normalizedQuery, freshnessMode);
   const unverifiableBeforeSince = opts.since
     ? rows.filter((row) => timestampMillis(row) === undefined).length
     : 0;
@@ -693,15 +783,6 @@ export async function searchAiContent(
     rows = rows.filter((row) => {
       const timestamp = timestampMillis(row);
       return timestamp !== undefined && timestamp >= sinceMillis;
-    });
-  }
-  const freshnessMode = opts.sort === "latest" ? "latest" : "relevance";
-  if (freshnessMode === "latest") {
-    rows.sort((left, right) => {
-      const byTime =
-        (timestampMillis(right) ?? Number.NEGATIVE_INFINITY) -
-        (timestampMillis(left) ?? Number.NEGATIVE_INFINITY);
-      return byTime || (right.rrf_score ?? 0) - (left.rrf_score ?? 0);
     });
   }
   rows = rows.slice(0, limit);
@@ -719,18 +800,23 @@ export async function searchAiContent(
     const freshnessSuggestion = freshnessGap
       ? `${unverifiableBeforeSince} normalized source result(s) lacked a source or search-index timestamp, so the strict --since bound excluded them. Retry without --since, inspect timestamp_origin, then refresh a canonical candidate with \`unicli ai read <url>\`.`
       : undefined;
+    const targetRecovery = officialTargetRecovery(requestedVendors);
+    const suggestions = [
+      freshnessSuggestion,
+      sourceFailures.length > 0
+        ? `Source failures: ${sourceFailures.join("; ")}`
+        : undefined,
+      targetRecovery?.suggestion,
+    ].filter((value): value is string => Boolean(value));
     throw new AiCommandFailure({
       code: uniformFailureCode ?? "empty_result",
       message: freshnessGap
         ? `No timestamp-verifiable results matched --since ${opts.since} across ${sources.length} registered sources.`
         : `No normalized results matched across ${sources.length} registered sources.`,
       suggestion:
-        freshnessSuggestion && sourceFailures.length > 0
-          ? `${freshnessSuggestion} Source failures: ${sourceFailures.join("; ")}`
-          : (freshnessSuggestion ??
-            (sourceFailures.length > 0
-              ? sourceFailures.join("; ")
-              : "Broaden the query or run `unicli ai sources` to choose a wider source scope.")),
+        suggestions.length > 0
+          ? suggestions.join(" ")
+          : "Broaden the query or run `unicli ai sources` to choose a wider source scope.",
       retryable: errors.some((error) => error.retryable === true),
       alternatives: [
         ...new Set([
@@ -738,6 +824,7 @@ export async function searchAiContent(
           ...(freshnessGap
             ? [retryAiSearchCommand(normalizedQuery, opts, true)]
             : []),
+          ...(targetRecovery?.alternatives ?? []),
           "unicli ai sources",
         ]),
       ],
@@ -853,13 +940,36 @@ export async function pulseAiContent(
   }
   rows = rows.slice(0, limit);
   if (rows.length === 0) {
+    const laneErrors = outcomes.flatMap((outcome) =>
+      outcome.error ? [outcome.error] : [],
+    );
+    const uniformFailureCode =
+      laneErrors.length === outcomes.length &&
+      new Set(laneErrors.map((error) => error.code)).size === 1
+        ? laneErrors[0]?.code
+        : undefined;
+    const sourceFailures = errors.map(
+      (error) =>
+        `${error.ref}: ${error.code} ${error.message}; ${error.suggestion}`,
+    );
     throw new AiCommandFailure({
-      code: "empty_result",
+      code: uniformFailureCode ?? "empty_result",
       message: `No timestamp-verifiable ${profile.name} pulse results matched the ${window} window.`,
       suggestion:
-        "Broaden --window, provide --query, or inspect `unicli ai sources` for source-specific recovery.",
+        sourceFailures.length > 0
+          ? `Every pulse lane was empty or failed. Source failures: ${sourceFailures.join("; ")}`
+          : "Broaden --window, provide --query, or inspect `unicli ai sources` for source-specific recovery.",
       retryable: errors.some((error) => error.retryable === true),
-      alternatives: ["unicli ai sources", "unicli ai pulse --window all"],
+      alternatives: [
+        ...new Set([
+          ...errors.flatMap((error) => [
+            ...error.alternatives,
+            error.retry_command,
+          ]),
+          "unicli ai sources",
+          ...(window === "all" ? [] : ["unicli ai pulse --window all"]),
+        ]),
+      ],
     });
   }
   return rows.map((row, index) => ({

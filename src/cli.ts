@@ -1,10 +1,10 @@
 /**
  * @owner       src::cli
  * @does        Builds the Commander command tree and dispatches full CLI operations after the manifest fast path.
- * @needs       command registrars, adapter registry/loader, pipeline engine, proxy-aware network, update check
+ * @needs       command registrars, adapter registry/loader, pipeline engine, proxy-aware network, update check, Commander error boundary
  * @feeds       src/main.ts and CLI-focused integration tests
  * @breaks      Command parsing, adapter loading, or command handlers propagate semantic CLI exit codes.
- * @invariants  One command tree owns every non-fast-path invocation; proxy installation precedes network-capable handlers.
+ * @invariants  One command tree owns every non-fast-path invocation; proxy installation precedes network-capable handlers; unknown user tokens never become diagnostic command identities.
  * @side-effects Loads adapters, installs global proxy-aware fetch, checks cached updates, writes CLI output.
  * @perf        Full path loads the adapter registry; discovery-only invocations stay on src/fast-path.ts.
  * @concurrency One command tree per createCli call; process-wide network installation is idempotent.
@@ -82,9 +82,17 @@ import { checkForUpdates } from "./engine/update-check.js";
 import { installProxyAwareFetch } from "./engine/proxy.js";
 import type { OutputFormat } from "./types.js";
 import { runBrowserDoctor } from "./browser/doctor.js";
+import {
+  handleCommanderError,
+  installCommanderErrorBoundary,
+} from "./output/commander-error.js";
+
+export { handleCommanderError };
 
 export async function createCli(): Promise<Command> {
   const program = new Command();
+
+  installCommanderErrorBoundary(program);
 
   installProxyAwareFetch();
 
@@ -567,6 +575,26 @@ export async function createCli(): Promise<Command> {
         });
     }
   }
+
+  program.on("command:*", () => {
+    const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+    process.exitCode = ExitCode.USAGE_ERROR;
+    process.stderr.write(
+      format(null, undefined, fmt, {
+        command: "core.unknown",
+        duration_ms: 0,
+        surface: "system",
+        error: {
+          code: "invalid_input",
+          message: "unknown CLI command",
+          suggestion: "run `unicli --help` or `unicli search <intent>`",
+          exit_code: ExitCode.USAGE_ERROR,
+          retryable: false,
+          alternatives: ["unicli --help", "unicli search <intent>"],
+        },
+      }) + "\n",
+    );
+  });
 
   // Handle internal completion requests
   if (process.argv.includes("--get-completions")) {

@@ -202,14 +202,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   compute_cdp_attach: { transports: ["cdp-browser"] },
   compute_evaluate: { transports: ["cdp-browser"] },
   compute_wait: {
-    transports: [
-      "desktop-ax",
-      "cdp-browser",
-      "desktop-uia",
-      "desktop-atspi",
-      "visual",
-      "subprocess",
-    ],
+    transports: ["desktop-ax", "cdp-browser", "desktop-uia", "desktop-atspi"],
   },
   compute_observe: {
     transports: ["desktop-ax", "desktop-uia", "desktop-atspi", "cdp-browser"],

@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-atspi::invoke
+//! @does        Invoke, set, focus, or launch Linux desktop targets through native AT-SPI patterns and bounded fallbacks.
+//! @needs       exact AT-SPI window/ref resolution, native accessibility bridge, display helper commands
+//! @feeds       unicli-atspi mutation and launch handlers
+//! @breaks      Stale traversal paths or broadened window selection can mutate an unrelated desktop element.
+//! @invariants  Stable refs remain bound to one exact window/path; native patterns precede coordinate fallback; subprocess arguments never pass through a shell.
+//! @side-effects May focus windows, invoke controls, set values, click coordinates, or launch applications.
+//! @perf        Linear target traversal plus at most one bounded native/helper mutation per request.
+//! @concurrency Request-local resolution; mutations operate on shared desktop state.
+//! @test        cargo test -p unicli-atspi
+//! @stability   internal
+//! @since       0.400.2
+
 use std::process::Command;
 
 use unicli_shared::SidecarRequest;
@@ -630,6 +643,16 @@ async fn accessible_matches_window(
     accessible: &atspi::proxy::accessible::AccessibleProxy<'_>,
     window: &WindowRecord,
 ) -> bool {
+    if window.id.starts_with("atspi-") {
+        let Ok(object_ref) = atspi::ObjectRefOwned::try_from(accessible) else {
+            return false;
+        };
+        let Some(name) = object_ref.name_as_str() else {
+            return false;
+        };
+        return crate::tree::exact_atspi_window_id_from_parts(name, object_ref.path_as_str())
+            == window.id;
+    }
     let role = accessible
         .get_role()
         .await
@@ -753,7 +776,7 @@ fn activation_plan_for_window(window: &WindowRecord) -> Option<ActivationPlan> {
 }
 
 fn is_synthetic_atspi_window(window: &WindowRecord) -> bool {
-    window.id.starts_with("atspi-root-") || (window.desktop == "atspi" && window.host == "atspi")
+    window.id.starts_with("atspi-") || (window.desktop == "atspi" && window.host == "atspi")
 }
 
 fn window_stable_hint(window: &WindowRecord) -> String {
@@ -817,6 +840,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             "desktop-atspi:pid-1234:Window[1]",
@@ -843,15 +867,16 @@ mod tests {
     fn focus_response_reports_native_top_level_focus_via() {
         let response = focus_response_for_window(
             &WindowRecord {
-                id: "atspi-root-0".into(),
-                pid: u32::MAX,
+                id: "atspi-3a312e3432002f77696e646f772f37".into(),
+                pid: 4242,
                 title: "Preferences".into(),
                 desktop: "atspi".into(),
                 host: "atspi".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
-            "desktop-atspi:pid-4294967295:Window[0]",
+            "desktop-atspi:window-atspi-3a312e3432002f77696e646f772f37:Window[0]",
             serde_json::json!({
                 "focused": true,
                 "via": "atspi_component_proxy",
@@ -871,6 +896,7 @@ mod tests {
             desktop: "0".into(),
             host: "host".into(),
             bounds: None,
+            states: vec![],
             children: vec![],
         })
         .expect("wmctrl-backed window");
@@ -882,12 +908,13 @@ mod tests {
     #[test]
     fn activation_plan_skips_synthetic_atspi_windows() {
         let plan = activation_plan_for_window(&WindowRecord {
-            id: "atspi-root-0".into(),
-            pid: u32::MAX,
+            id: "atspi-3a312e3432002f77696e646f772f37".into(),
+            pid: 4242,
             title: "Preferences".into(),
             desktop: "atspi".into(),
             host: "atspi".into(),
             bounds: None,
+            states: vec![],
             children: vec![],
         });
 
@@ -923,6 +950,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             "desktop-atspi:pid-1234:Window[1]",
@@ -961,6 +989,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             &ElementRecord {
@@ -1077,6 +1106,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             &ElementRecord {
@@ -1109,6 +1139,7 @@ mod tests {
                 desktop: "0".into(),
                 host: "host".into(),
                 bounds: None,
+                states: vec![],
                 children: vec![],
             },
             &ElementRecord {

@@ -50,7 +50,7 @@ export interface ComputeJsonSchemaObject {
 }
 
 export const COMPUTE_REF_ACCEPTED_NAMESPACES = [
-  "@e* aliases allocated by the latest Uni-CLI compute snapshot, find, observe, or capture result",
+  "@e* short aliases allocated within one Uni-CLI snapshot scope; ambiguous live scopes require an exact target hint or stable ref",
   "desktop-ax:* stable refs from the Uni-CLI macOS AX transport",
   "desktop-uia:* stable refs from the Uni-CLI Windows UIA transport",
   "desktop-atspi:* stable refs from the Uni-CLI Linux AT-SPI transport",
@@ -71,7 +71,15 @@ export const COMPUTE_REF_DESCRIPTION = [
 const APP_ARG: ComputeCommandArg = {
   name: "app",
   type: "str",
-  description: 'App name, bundle id, or process name, e.g. "Slack"',
+  description:
+    'Target app identity; native providers accept a visible app/window name and providers with bundle/process metadata accept those exact identities, e.g. "Slack"',
+};
+
+const WINDOW_ID_ARG: ComputeCommandArg = {
+  name: "windowId",
+  type: "str",
+  description:
+    "Exact native window id reported by compute windows or a target-bound ref.",
 };
 
 const FOCUS_ARG: ComputeCommandArg = {
@@ -79,6 +87,13 @@ const FOCUS_ARG: ComputeCommandArg = {
   type: "bool",
   default: false,
   description: "Focus the target app before the action.",
+};
+
+const BACKGROUND_ARG: ComputeCommandArg = {
+  name: "background",
+  type: "bool",
+  default: false,
+  description: "Explicitly keep the target app in the background.",
 };
 
 const OVERLAY_ARG: ComputeCommandArg = {
@@ -158,6 +173,7 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
     readOnly: true,
     args: [
       APP_ARG,
+      WINDOW_ID_ARG,
       SNAPSHOT_FORMAT_ARG,
       {
         name: "interactiveOnly",
@@ -176,6 +192,7 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
     kind: "compute_capture",
     args: [
       APP_ARG,
+      WINDOW_ID_ARG,
       SNAPSHOT_FORMAT_ARG,
       {
         name: "include",
@@ -241,6 +258,7 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         description: "Match visible or current text value",
       },
       APP_ARG,
+      WINDOW_ID_ARG,
       {
         name: "first",
         type: "bool",
@@ -255,7 +273,7 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
     command: "click",
     mcpSuffix: "click",
     kind: "compute_click",
-    args: [REF_ARG, FOCUS_ARG, OVERLAY_ARG],
+    args: [REF_ARG, BACKGROUND_ARG, FOCUS_ARG, OVERLAY_ARG],
     description: "Click a Uni-CLI compute element by ref.",
   },
   {
@@ -356,6 +374,7 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         description: "Optional output path",
       },
       APP_ARG,
+      WINDOW_ID_ARG,
     ],
     description:
       "Capture a pixel screenshot. Prefer snapshot unless accessibility data is unavailable.",
@@ -372,13 +391,18 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         description: "CDP port",
       },
       {
+        name: "targetId",
+        type: "str",
+        description: "Exact CDP renderer target id",
+      },
+      {
         name: "confirmRelaunch",
         type: "bool",
         default: false,
         description: "Allow relaunching apps that may lose session state",
       },
     ],
-    description: "Attach to an Electron app or explicit CDP port.",
+    description: "Attach to an exact Electron/CDP renderer target.",
   },
   {
     command: "eval",
@@ -417,20 +441,22 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         description: "Text to wait for",
       },
       APP_ARG,
+      WINDOW_ID_ARG,
       {
         name: "state",
         type: "str",
-        choices: ["appear", "disappear", "focused"],
+        choices: ["appear", "disappear", "focused", "enabled", "checked"],
         description: "State condition to wait for",
       },
       {
         name: "timeoutMs",
         type: "int",
         default: 10_000,
-        description: "Timeout in milliseconds",
+        description: "Timeout in milliseconds (1-300000)",
       },
     ],
-    description: "Wait for a ref, text, or state condition.",
+    description:
+      "Wait for a ref, text, or state condition on one explicit app, live Uni-CLI ref, or attached CDP target.",
   },
   {
     command: "observe",

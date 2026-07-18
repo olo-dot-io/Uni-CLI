@@ -1,10 +1,10 @@
 {
-  "adapter_count_yaml": 994,
+  "adapter_count_yaml": 993,
   "adapter_count_ts": 244,
-  "adapter_count_total": 1238,
+  "adapter_count_total": 1237,
   "site_count": 324,
   "command_count": 1817,
-  "test_count": 9680,
+  "test_count": 9791,
   "pipeline_step_count": 105,
   "pipeline_registered_step_count": 50,
   "pipeline_transport_step_count": 55,

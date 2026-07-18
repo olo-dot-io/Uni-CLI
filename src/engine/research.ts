@@ -1,9 +1,16 @@
 /**
- * @owner   src/engine/research.ts
- * @does    Runs the adapter research loop for scoped YAML modifications.
- * @needs   local CLI tooling, adapter eval configuration, and file-system access.
- * @feeds   research command automation and adapter quality experiments.
- * @breaks  Missing local tooling or invalid scope config stops the research run.
+ * @owner       src::engine::research
+ * @does        Runs bounded adapter research experiments with scoped file and git acceptance controls.
+ * @needs       local CLI/git tooling, mixed-version child logging policy, adapter eval configuration, filesystem
+ * @feeds       research command automation and adapter quality experiments
+ * @breaks      Invalid scope/config, unavailable local tooling, failed evaluation, or git failures stop the experiment.
+ * @invariants  Only declared scope may change; verification children never duplicate parent-owned local usage evidence.
+ * @side-effects Reads/writes research artifacts, runs Uni-CLI/git subprocesses, and may commit or revert scoped changes.
+ * @perf        Bounded by configured experiment count and child evaluation timeout.
+ * @concurrency One research loop owns its working tree; concurrent writers are unsupported.
+ * @test        tests/unit/commands/research.test.ts
+ * @stability   experimental
+ * @since       2026-04-10
  */
 
 import { execFileSync, type ExecFileSyncOptions } from "node:child_process";
@@ -16,6 +23,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { localLoggingDisabledChildEnv } from "../runtime/child-process-env.js";
 
 /** Strict site name pattern — prevents shell injection in interpolated commands. */
 const SAFE_SITE_NAME = /^[a-zA-Z0-9_-]+$/;
@@ -174,7 +182,12 @@ function runVerify(config: ResearchConfig): {
     const output = execFileSync(
       "unicli",
       ["eval", "run", config.site, "--json"],
-      { encoding: "utf-8", timeout: 120_000, stdio: ["pipe", "pipe", "pipe"] },
+      {
+        encoding: "utf-8",
+        timeout: 120_000,
+        stdio: ["pipe", "pipe", "pipe"],
+        env: localLoggingDisabledChildEnv(),
+      },
     ) as string;
     return { output, metric: extractMetric(output, config.metric) };
   } catch (err) {
@@ -202,6 +215,7 @@ function runGuard(config: ResearchConfig): "pass" | "fail" | "skip" {
       encoding: "utf-8",
       timeout: 120_000,
       stdio: ["pipe", "pipe", "pipe"],
+      env: localLoggingDisabledChildEnv(),
     });
     return "pass";
   } catch {

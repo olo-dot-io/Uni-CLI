@@ -1,3 +1,16 @@
+//! @owner       crates::unicli-atspi::tree
+//! @does        Enumerate Linux accessibility windows, validate immutable targets, encode trees, resolve refs, and poll native conditions.
+//! @needs       AT-SPI bridge subprocess, shared request contract, ref table
+//! @feeds       unicli-atspi snapshot, action, wait, and screenshot handlers
+//! @breaks      Coercing malformed target fields or selecting a different window makes native refs unsafe to replay.
+//! @invariants  App/pid/window selectors are typed and conjunctive; an explicit target either resolves exactly or fails closed.
+//! @side-effects Reads desktop accessibility state and sleeps during bounded wait polling.
+//! @perf        Linear in enumerated windows and accessible descendants; wait polling is deadline-bounded.
+//! @concurrency Request-local traversal and ref state; no process-global target substitution.
+//! @test        cargo test -p unicli-atspi
+//! @stability   internal
+//! @since       0.400.2
+
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -53,6 +66,7 @@ pub fn handle_snapshot(state: &mut State, request: &SidecarRequest) -> HandlerRe
         return Err(backend_unavailable());
     }
     let windows = enumerate_top_level_windows()?;
+    validate_snapshot_target(&windows, &request.params)?;
     Ok(snapshot_response_from_windows(&windows, &request.params))
 }
 
@@ -111,6 +125,7 @@ pub(crate) struct WindowRecord {
     pub(crate) desktop: String,
     pub(crate) host: String,
     pub(crate) bounds: Option<WindowBounds>,
+    pub(crate) states: Vec<String>,
     pub(crate) children: Vec<ElementRecord>,
 }
 
@@ -151,6 +166,14 @@ struct LiveAtspiNode {
     children: Vec<LiveAtspiNode>,
 }
 
+#[cfg(any(target_os = "linux", test))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LiveAtspiWindowRoot {
+    id: String,
+    pid: u32,
+    node: LiveAtspiNode,
+}
+
 pub(crate) fn enumerate_top_level_windows() -> Result<Vec<WindowRecord>, AtspiError> {
     if !command_exists("wmctrl") {
         return enumerate_windows_from_atspi_only().ok_or_else(|| {
@@ -169,6 +192,7 @@ pub(crate) fn enumerate_top_level_windows() -> Result<Vec<WindowRecord>, AtspiEr
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut windows = parse_wmctrl_windows(&stdout);
+    mark_active_x11_window(&mut windows);
     if windows.is_empty() {
         if let Some(atspi_windows) = enumerate_windows_from_atspi_only() {
             return Ok(atspi_windows);
@@ -221,6 +245,7 @@ fn parse_wmctrl_window_line(line: &str) -> Option<WindowRecord> {
         desktop,
         host,
         bounds,
+        states: vec!["visible".into(), "enabled".into()],
         children: Vec::new(),
     })
 }
@@ -245,27 +270,28 @@ fn enumerate_windows_from_atspi_only() -> Option<Vec<WindowRecord>> {
 }
 
 #[cfg(any(target_os = "linux", test))]
-fn window_records_from_live_roots(roots: Vec<LiveAtspiNode>) -> Vec<WindowRecord> {
+fn window_records_from_live_roots(roots: Vec<LiveAtspiWindowRoot>) -> Vec<WindowRecord> {
     roots
         .into_iter()
-        .enumerate()
-        .filter_map(|(index, root)| {
-            if !is_live_window_role(&root.role) || root.name.is_empty() {
+        .filter_map(|root| {
+            if !is_live_window_role(&root.node.role) || root.node.name.is_empty() {
                 return None;
             }
             Some(WindowRecord {
-                id: format!("atspi-root-{index}"),
-                pid: u32::MAX.saturating_sub(index as u32),
-                title: root.name,
+                id: root.id,
+                pid: root.pid,
+                title: root.node.name,
                 desktop: "atspi".into(),
                 host: "atspi".into(),
-                bounds: root.bounds.map(|bounds| WindowBounds {
+                bounds: root.node.bounds.map(|bounds| WindowBounds {
                     x: bounds.x,
                     y: bounds.y,
                     width: bounds.width,
                     height: bounds.height,
                 }),
+                states: canonical_window_states(&root.node.states),
                 children: root
+                    .node
                     .children
                     .iter()
                     .map(element_record_from_live_node)
@@ -303,6 +329,7 @@ fn populate_window_descendants_from_live_roots(
                 height: bounds.height,
             });
         }
+        window.states = canonical_window_states(&root.states);
         window.children = root
             .children
             .iter()
@@ -368,6 +395,46 @@ fn normalize_atspi_label(value: &str) -> String {
 
     normalized.trim_matches('_').to_string()
 }
+
+#[cfg(any(target_os = "linux", test))]
+fn canonical_window_states(states: &[String]) -> Vec<String> {
+    let normalized: Vec<String> = states
+        .iter()
+        .map(|state| normalize_atspi_label(state))
+        .collect();
+    let mut result = vec!["visible".into(), "enabled".into()];
+    if normalized
+        .iter()
+        .any(|state| matches!(state.as_str(), "focused" | "active"))
+    {
+        result.push("focused".into());
+    }
+    result
+}
+
+#[cfg(target_os = "linux")]
+fn mark_active_x11_window(windows: &mut [WindowRecord]) {
+    let Some(active) = Command::new("xdotool")
+        .arg("getactivewindow")
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|output| output.trim().parse::<u64>().ok())
+    else {
+        return;
+    };
+    for window in windows {
+        if native_window_id_as_u64(&window.id) == Some(active)
+            && !window.states.iter().any(|state| state == "focused")
+        {
+            window.states.push("focused".into());
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn mark_active_x11_window(_windows: &mut [WindowRecord]) {}
 
 #[cfg(target_os = "linux")]
 fn populate_live_atspi_descendants_best_effort(windows: &mut [WindowRecord]) {
@@ -445,7 +512,8 @@ async fn collect_live_atspi_window_roots(
 }
 
 #[cfg(target_os = "linux")]
-async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiNode>, atspi::AtspiError> {
+async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiWindowRoot>, atspi::AtspiError>
+{
     use atspi::proxy::accessible::ObjectRefExt;
     use std::collections::VecDeque;
 
@@ -464,6 +532,7 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiNode>, ats
         .map(|object| (object, 0usize))
         .collect();
     let mut visited = 0usize;
+    let dbus = zbus::fdo::DBusProxy::new(conn).await.ok();
     let mut roots = Vec::new();
 
     while let Some((object_ref, depth)) = queue.pop_front() {
@@ -480,9 +549,29 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiNode>, ats
         let name = accessible.name().await.unwrap_or_default();
 
         if is_live_window_role(&role) {
+            let object_ref = match atspi::ObjectRefOwned::try_from(&accessible) {
+                Ok(object_ref) => object_ref,
+                Err(_) => continue,
+            };
+            let Some(name) = object_ref.name_as_str() else {
+                continue;
+            };
+            let id = exact_atspi_window_id_from_parts(name, object_ref.path_as_str());
+            let Some(bus_name) = object_ref.name().cloned() else {
+                continue;
+            };
+            let Some(dbus) = &dbus else {
+                continue;
+            };
+            let pid = match dbus.get_connection_unix_process_id(bus_name.into()).await {
+                Ok(pid) if pid > 0 => pid,
+                _ => continue,
+            };
             let mut budget = MAX_CHILD_NODES;
-            roots.push(
-                live_node_from_accessible(
+            roots.push(LiveAtspiWindowRoot {
+                id,
+                pid,
+                node: live_node_from_accessible(
                     conn,
                     accessible,
                     role,
@@ -491,7 +580,7 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiNode>, ats
                     &mut budget,
                 )
                 .await?,
-            );
+            });
             continue;
         }
 
@@ -504,6 +593,19 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiNode>, ats
     }
 
     Ok(roots)
+}
+
+#[cfg(any(target_os = "linux", test))]
+pub(crate) fn exact_atspi_window_id_from_parts(name: &str, path: &str) -> String {
+    use std::fmt::Write as _;
+
+    let raw = format!("{name}\0{path}");
+    let mut encoded = String::with_capacity(raw.len() * 2 + 6);
+    encoded.push_str("atspi-");
+    for byte in raw.as_bytes() {
+        write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    encoded
 }
 
 #[cfg(target_os = "linux")]
@@ -705,6 +807,7 @@ fn windows_response_from_windows(windows: &[WindowRecord], params: &Value) -> Va
         .map(|window| {
             serde_json::json!({
                 "id": window.id,
+                "windowId": window.id,
                 "name": window.title,
                 "title": window.title,
                 "pid": window.pid,
@@ -867,14 +970,19 @@ pub(crate) fn resolve_top_level_window_ref<'a>(
     stable: &str,
 ) -> Option<&'a WindowRecord> {
     let (scope, path) = stable.strip_prefix("desktop-atspi:")?.split_once(':')?;
-    let pid = scope.strip_prefix("pid-")?.parse::<u32>().ok()?;
+    let window_id = scope.strip_prefix("window-")?;
     let index = path
         .strip_prefix("Window[")?
         .strip_suffix(']')?
         .parse::<usize>()
         .ok()?;
+    if index != 0 {
+        return None;
+    }
 
-    windows.iter().filter(|window| window.pid == pid).nth(index)
+    windows
+        .iter()
+        .find(|window| window.id.eq_ignore_ascii_case(window_id))
 }
 
 fn assert_target_ref_node(
@@ -896,7 +1004,7 @@ fn assert_target_ref_node(
     let (window, element, path) = resolve_descendant_element_ref(windows, stable)?;
     if element_matches_find_params(element, params) && element_state_filter_matches(element, params)
     {
-        let scope = format!("pid-{}", window.pid);
+        let scope = window_scope(window);
         return Some((
             "native_descendant_tree",
             element_node(
@@ -918,17 +1026,16 @@ pub(crate) fn resolve_descendant_element_ref<'a>(
     stable: &str,
 ) -> Option<(&'a WindowRecord, &'a ElementRecord, String)> {
     let (scope, path) = stable.strip_prefix("desktop-atspi:")?.split_once(':')?;
-    let pid = scope.strip_prefix("pid-")?.parse::<u32>().ok()?;
+    let window_id = scope.strip_prefix("window-")?;
     let mut segments = path.split('/');
     let (window_role, window_index) = parse_indexed_path_segment(segments.next()?)?;
-    if window_role != "Window" {
+    if window_role != "Window" || window_index != 0 {
         return None;
     }
     let window = windows
         .iter()
-        .filter(|window| window.pid == pid)
-        .nth(window_index)?;
-    let mut resolved_path = format!("Window[{window_index}]");
+        .find(|window| window.id.eq_ignore_ascii_case(window_id))?;
+    let mut resolved_path = "Window[0]".to_string();
     let mut children = window.children.as_slice();
     let mut current = None;
 
@@ -962,8 +1069,8 @@ fn pid_local_window_index(windows: &[WindowRecord], target: &WindowRecord) -> us
 }
 
 fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Value {
-    let path = format!("Window[{index}]");
-    let scope = format!("pid-{}", window.pid);
+    let path = "Window[0]";
+    let scope = window_scope(window);
     let mut node = serde_json::json!({
         "role": "Window",
         "name": window.title,
@@ -971,7 +1078,8 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
         "scope": scope,
         "app": window.title,
         "pid": window.pid,
-        "states": ["visible"],
+        "windowId": window.id,
+        "states": window.states,
         "metadata": {
             "id": window.id,
             "desktop": window.desktop,
@@ -996,7 +1104,7 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
             &scope,
             &window.title,
             window.pid,
-            &path,
+            path,
             include_stable,
         ));
     }
@@ -1005,10 +1113,15 @@ fn window_node(window: &WindowRecord, index: usize, include_stable: bool) -> Val
 }
 
 fn window_stable(window: &WindowRecord, index: usize) -> String {
-    format!("desktop-atspi:pid-{}:Window[{index}]", window.pid)
+    let _ = index;
+    format!("desktop-atspi:{}:Window[0]", window_scope(window))
 }
 
-fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
+fn window_scope(window: &WindowRecord) -> String {
+    format!("window-{}", window.id.to_ascii_lowercase())
+}
+
+pub(crate) fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
     let pid_filter = params
         .get("pid")
         .and_then(Value::as_u64)
@@ -1017,11 +1130,85 @@ fn window_matches_params(window: &WindowRecord, params: &Value) -> bool {
         .get("app")
         .and_then(Value::as_str)
         .map(|app| app.to_ascii_lowercase());
-
     pid_filter.map_or(true, |pid| window.pid == pid)
+        && params
+            .get("windowId")
+            .map_or(true, |window_id| window_id_matches(&window.id, window_id))
         && app_filter
             .as_ref()
             .map_or(true, |app| window.title.to_ascii_lowercase().contains(app))
+}
+
+fn validate_snapshot_target(windows: &[WindowRecord], params: &Value) -> Result<(), AtspiError> {
+    validate_window_target_params(params)?;
+    let has_target = params.get("app").is_some()
+        || params.get("pid").is_some()
+        || params.get("windowId").is_some();
+    if has_target
+        && !windows
+            .iter()
+            .any(|window| window_matches_params(window, params))
+    {
+        return Err(AtspiError::target_not_found(snapshot_target_label(params)));
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_window_target_params(params: &Value) -> Result<(), AtspiError> {
+    if params.get("bundleId").is_some() || params.get("processName").is_some() {
+        return Err(AtspiError::invalid_input(
+            "Linux AT-SPI snapshots do not accept bundleId or processName; use app, pid, or windowId",
+        ));
+    }
+    if matches!(params.get("app"), Some(Value::String(app)) if app.trim().is_empty())
+        || matches!(params.get("app"), Some(value) if !value.is_string())
+    {
+        return Err(AtspiError::invalid_input("app must be a non-empty string"));
+    }
+    if matches!(params.get("pid"), Some(value) if !matches!(value.as_u64(), Some(pid) if pid > 0 && pid <= u32::MAX as u64))
+    {
+        return Err(AtspiError::invalid_input(
+            "pid must be a positive 32-bit integer",
+        ));
+    }
+    if let Some(window_id) = params.get("windowId") {
+        let is_valid = match window_id {
+            Value::String(window_id) => !window_id.trim().is_empty(),
+            Value::Number(window_id) => window_id.as_u64().is_some_and(|id| id > 0),
+            _ => false,
+        };
+        if !is_valid {
+            return Err(AtspiError::invalid_input(
+                "windowId must be a non-empty native id string or positive integer",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn window_id_matches(native_id: &str, requested: &Value) -> bool {
+    match requested {
+        Value::String(requested) => native_id.eq_ignore_ascii_case(requested),
+        Value::Number(requested) => requested
+            .as_u64()
+            .is_some_and(|requested| native_window_id_as_u64(native_id) == Some(requested)),
+        _ => false,
+    }
+}
+
+fn native_window_id_as_u64(native_id: &str) -> Option<u64> {
+    if let Some(hex) = native_id.strip_prefix("0x") {
+        u64::from_str_radix(hex, 16).ok()
+    } else {
+        native_id.parse::<u64>().ok()
+    }
+}
+
+fn snapshot_target_label(params: &Value) -> String {
+    ["app", "pid", "windowId"]
+        .iter()
+        .find_map(|key| params.get(*key).map(|value| format!("{key}={value}")))
+        .unwrap_or_else(|| "requested target".into())
 }
 
 fn window_matches_find_params(window: &WindowRecord, params: &Value) -> bool {
@@ -1294,15 +1481,16 @@ fn collect_descendant_matches(
     window_index: usize,
     params: &Value,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
     collect_element_matches(
         matches,
         &window.children,
         &scope,
         &window.title,
         window.pid,
-        &path,
+        path,
         params,
     );
 }
@@ -1313,9 +1501,10 @@ fn collect_descendant_observe_candidates(
     window_index: usize,
     goal: &str,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
-    collect_element_observe_candidates(candidates, &window.children, &scope, &path, goal);
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
+    collect_element_observe_candidates(candidates, &window.children, &scope, path, goal);
 }
 
 fn collect_element_observe_candidates(
@@ -1462,15 +1651,16 @@ fn collect_descendant_assertion_matches(
     window_index: usize,
     params: &Value,
 ) {
-    let scope = format!("pid-{}", window.pid);
-    let path = format!("Window[{window_index}]");
+    let _ = window_index;
+    let scope = window_scope(window);
+    let path = "Window[0]";
     collect_element_assertion_matches(
         matches,
         &window.children,
         &scope,
         &window.title,
         window.pid,
-        &path,
+        path,
         params,
     );
 }
@@ -1604,31 +1794,33 @@ mod tests {
                         "role": "Window",
                         "name": "Terminal",
                         "path": "Window[0]",
-                        "scope": "pid-1234",
+                        "scope": "window-0x03a00007",
                         "app": "Terminal",
                         "pid": 1234,
-                        "states": ["visible"],
+                        "windowId": "0x03a00007",
+                        "states": ["visible", "enabled"],
                         "metadata": {
                             "id": "0x03a00007",
                             "desktop": "0",
                             "host": "host",
                         },
-                        "stable": "desktop-atspi:pid-1234:Window[0]",
+                        "stable": "desktop-atspi:window-0x03a00007:Window[0]",
                     },
                     {
                         "role": "Window",
                         "name": "Notes",
                         "path": "Window[0]",
-                        "scope": "pid-77",
+                        "scope": "window-0x04b00001",
                         "app": "Notes",
                         "pid": 77,
-                        "states": ["visible"],
+                        "windowId": "0x04b00001",
+                        "states": ["visible", "enabled"],
                         "metadata": {
                             "id": "0x04b00001",
                             "desktop": "-1",
                             "host": "host",
                         },
-                        "stable": "desktop-atspi:pid-77:Window[0]",
+                        "stable": "desktop-atspi:window-0x04b00001:Window[0]",
                     },
                 ],
             }),
@@ -1651,26 +1843,57 @@ mod tests {
                         "role": "Window",
                         "name": "Terminal",
                         "path": "Window[0]",
-                        "scope": "pid-1234",
+                        "scope": "window-0x03a00007",
                         "app": "Terminal",
                         "pid": 1234,
+                        "windowId": "0x03a00007",
                         "bounds": {
                             "x": 10,
                             "y": 20,
                             "width": 640,
                             "height": 480,
                         },
-                        "states": ["visible"],
+                        "states": ["visible", "enabled"],
                         "metadata": {
                             "id": "0x03a00007",
                             "desktop": "0",
                             "host": "host",
                         },
-                        "stable": "desktop-atspi:pid-1234:Window[0]",
+                        "stable": "desktop-atspi:window-0x03a00007:Window[0]",
                     },
                 ],
             }),
         );
+    }
+
+    #[test]
+    fn snapshot_target_validation_rejects_missing_and_unsupported_targets() {
+        let windows = parse_wmctrl_windows("0x03a00007 0 1234 host Calculator\n");
+
+        let missing = validate_snapshot_target(&windows, &serde_json::json!({ "app": "Missing" }))
+            .expect_err("missing app must not become an empty desktop snapshot");
+        assert!(format!("{missing:?}").contains("desktop-atspi.target_not_found"));
+        validate_snapshot_target(&windows, &serde_json::json!({ "windowId": "0x03a00007" }))
+            .expect("matching window id");
+        validate_snapshot_target(&windows, &serde_json::json!({ "windowId": 0x03a00007 }))
+            .expect("matching numeric native window id");
+        for invalid in [
+            serde_json::json!({ "windowId": 0 }),
+            serde_json::json!({ "windowId": "" }),
+            serde_json::json!({ "pid": "1234" }),
+            serde_json::json!({ "pid": 0 }),
+            serde_json::json!({ "app": "" }),
+        ] {
+            let error = validate_snapshot_target(&windows, &invalid)
+                .expect_err("invalid target types must not broaden the snapshot");
+            assert!(format!("{error:?}").contains("desktop-atspi.invalid_input"));
+        }
+        let unsupported = validate_snapshot_target(
+            &windows,
+            &serde_json::json!({ "processName": "calculator" }),
+        )
+        .expect_err("unsupported target selector must be explicit");
+        assert!(format!("{unsupported:?}").contains("desktop-atspi.invalid_input"));
     }
 
     #[test]
@@ -1754,7 +1977,7 @@ mod tests {
                     "role": "push_button",
                     "name": "Eight",
                     "path": "Window[0]/push_button[0]",
-                    "scope": "pid-1234",
+                    "scope": "window-0x03a00007",
                     "app": "Calculator",
                     "pid": 1234,
                     "states": ["enabled", "sensitive"],
@@ -1764,18 +1987,18 @@ mod tests {
                         "width": 44,
                         "height": 36,
                     },
-                    "stable": "desktop-atspi:pid-1234:Window[0]/push_button[0]",
+                    "stable": "desktop-atspi:window-0x03a00007:Window[0]/push_button[0]",
                 },
                 {
                     "role": "text",
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/text[0]",
-                    "scope": "pid-1234",
+                    "scope": "window-0x03a00007",
                     "app": "Calculator",
                     "pid": 1234,
                     "states": ["focusable", "enabled"],
-                    "stable": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                    "stable": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                 },
             ]),
         );
@@ -1783,32 +2006,38 @@ mod tests {
 
     #[test]
     fn live_atspi_roots_can_create_windows_without_wmctrl_inventory() {
-        let windows = window_records_from_live_roots(vec![LiveAtspiNode {
-            role: "dialog".into(),
-            name: "Preferences".into(),
-            value: None,
-            bounds: Some(ElementBounds {
-                x: 30,
-                y: 40,
-                width: 500,
-                height: 360,
-            }),
-            states: vec!["showing".into(), "enabled".into()],
-            children: vec![LiveAtspiNode {
-                role: "check box".into(),
-                name: "Enable sync".into(),
+        let exact_id =
+            exact_atspi_window_id_from_parts(":1.42", "/org/a11y/atspi/accessible/window/7");
+        let windows = window_records_from_live_roots(vec![LiveAtspiWindowRoot {
+            id: exact_id.clone(),
+            pid: 4242,
+            node: LiveAtspiNode {
+                role: "dialog".into(),
+                name: "Preferences".into(),
                 value: None,
-                bounds: None,
-                states: vec!["checked".into()],
-                children: vec![],
-            }],
+                bounds: Some(ElementBounds {
+                    x: 30,
+                    y: 40,
+                    width: 500,
+                    height: 360,
+                }),
+                states: vec!["showing".into(), "enabled".into()],
+                children: vec![LiveAtspiNode {
+                    role: "check box".into(),
+                    name: "Enable sync".into(),
+                    value: None,
+                    bounds: None,
+                    states: vec!["checked".into()],
+                    children: vec![],
+                }],
+            },
         }]);
 
         assert_eq!(
             windows,
             vec![WindowRecord {
-                id: "atspi-root-0".into(),
-                pid: u32::MAX,
+                id: exact_id,
+                pid: 4242,
                 title: "Preferences".into(),
                 desktop: "atspi".into(),
                 host: "atspi".into(),
@@ -1818,6 +2047,7 @@ mod tests {
                     width: 500,
                     height: 360,
                 }),
+                states: vec!["visible".into(), "enabled".into()],
                 children: vec![ElementRecord {
                     role: "check_box".into(),
                     name: "Enable sync".into(),
@@ -1828,6 +2058,38 @@ mod tests {
                 }],
             }],
         );
+    }
+
+    #[test]
+    fn atspi_only_window_ids_do_not_depend_on_enumeration_order() {
+        let root = |name: &str, path: &str, title: &str, pid: u32| LiveAtspiWindowRoot {
+            id: exact_atspi_window_id_from_parts(name, path),
+            pid,
+            node: LiveAtspiNode {
+                role: "window".into(),
+                name: title.into(),
+                value: None,
+                bounds: None,
+                states: vec!["showing".into()],
+                children: vec![],
+            },
+        };
+        let first = root(":1.10", "/window/a", "A", 10);
+        let second = root(":1.20", "/window/b", "B", 20);
+
+        let forward = window_records_from_live_roots(vec![first.clone(), second.clone()]);
+        let reversed = window_records_from_live_roots(vec![second, first]);
+
+        let forward_ids: std::collections::BTreeMap<_, _> = forward
+            .into_iter()
+            .map(|window| (window.title, window.id))
+            .collect();
+        let reversed_ids: std::collections::BTreeMap<_, _> = reversed
+            .into_iter()
+            .map(|window| (window.title, window.id))
+            .collect();
+        assert_eq!(forward_ids, reversed_ids);
+        assert!(forward_ids.values().all(|id| id.starts_with("atspi-")));
     }
 
     #[test]
@@ -1850,17 +2112,18 @@ mod tests {
             serde_json::json!({
                 "role": "Window",
                 "name": "Terminal Settings",
-                "path": "Window[1]",
-                "scope": "pid-1234",
+                "path": "Window[0]",
+                "scope": "window-0x03a00008",
                 "app": "Terminal Settings",
                 "pid": 1234,
-                "states": ["visible"],
+                "windowId": "0x03a00008",
+                "states": ["visible", "enabled"],
                 "metadata": {
                     "id": "0x03a00008",
                     "desktop": "0",
                     "host": "host",
                 },
-                "stable": "desktop-atspi:pid-1234:Window[1]",
+                "stable": "desktop-atspi:window-0x03a00008:Window[0]",
             }),
         );
     }
@@ -1904,8 +2167,8 @@ mod tests {
                 "name": "Display",
                 "value": "8",
                 "path": "Window[0]/text[0]",
-                "scope": "pid-1234",
-                "stable": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                "scope": "window-0x03a00007",
+                "stable": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                 "app": "Calculator",
                 "pid": 1234,
                 "states": ["focusable", "enabled"],
@@ -1935,17 +2198,18 @@ mod tests {
                 "node": {
                     "role": "Window",
                     "name": "Terminal Settings",
-                    "path": "Window[1]",
-                    "scope": "pid-1234",
+                    "path": "Window[0]",
+                    "scope": "window-0x03a00008",
                     "app": "Terminal Settings",
                     "pid": 1234,
-                    "states": ["visible"],
+                    "windowId": "0x03a00008",
+                    "states": ["visible", "enabled"],
                     "metadata": {
                         "id": "0x03a00008",
                         "desktop": "0",
                         "host": "host",
                     },
-                    "stable": "desktop-atspi:pid-1234:Window[1]",
+                    "stable": "desktop-atspi:window-0x03a00008:Window[0]",
                 },
             }),
         );
@@ -1982,8 +2246,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/text[0]",
-                    "scope": "pid-1234",
-                    "stable": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                    "scope": "window-0x03a00007",
+                    "stable": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                     "app": "Calculator",
                     "pid": 1234,
                     "states": ["focusable", "enabled"],
@@ -2012,8 +2276,8 @@ mod tests {
                 "candidates": [
                     {
                         "action": "click",
-                        "ref": "desktop-atspi:pid-1234:Window[1]",
-                        "stable": "desktop-atspi:pid-1234:Window[1]",
+                        "ref": "desktop-atspi:window-0x03a00008:Window[0]",
+                        "stable": "desktop-atspi:window-0x03a00008:Window[0]",
                         "role": "Window",
                         "name": "Terminal Settings",
                         "confidence": 0.95,
@@ -2062,8 +2326,8 @@ mod tests {
                 "candidates": [
                     {
                         "action": "click",
-                        "ref": "desktop-atspi:pid-1234:Window[0]/push_button[1]",
-                        "stable": "desktop-atspi:pid-1234:Window[0]/push_button[1]",
+                        "ref": "desktop-atspi:window-0x03a00007:Window[0]/push_button[1]",
+                        "stable": "desktop-atspi:window-0x03a00007:Window[0]/push_button[1]",
                         "role": "push_button",
                         "name": "Eight",
                         "states": ["enabled"],
@@ -2098,7 +2362,7 @@ mod tests {
         assert_eq!(response["candidates"][0]["action"], "scroll");
         assert_eq!(
             response["candidates"][0]["stable"],
-            "desktop-atspi:pid-1234:Window[0]/scroll_pane[0]",
+            "desktop-atspi:window-0x03a00007:Window[0]/scroll_pane[0]",
         );
     }
 
@@ -2125,7 +2389,7 @@ mod tests {
         assert_eq!(response["candidates"][0]["action"], "set_value");
         assert_eq!(
             response["candidates"][0]["stable"],
-            "desktop-atspi:pid-1234:Window[0]/slider[0]",
+            "desktop-atspi:window-0x03a00007:Window[0]/slider[0]",
         );
     }
 
@@ -2196,17 +2460,18 @@ mod tests {
                 "node": {
                     "role": "Window",
                     "name": "Terminal Settings",
-                    "path": "Window[1]",
-                    "scope": "pid-1234",
+                    "path": "Window[0]",
+                    "scope": "window-0x03a00008",
                     "app": "Terminal Settings",
                     "pid": 1234,
-                    "states": ["visible"],
+                    "windowId": "0x03a00008",
+                    "states": ["visible", "enabled"],
                     "metadata": {
                         "id": "0x03a00008",
                         "desktop": "0",
                         "host": "host",
                     },
-                    "stable": "desktop-atspi:pid-1234:Window[1]",
+                    "stable": "desktop-atspi:window-0x03a00008:Window[0]",
                 },
             }),
         );
@@ -2248,8 +2513,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/text[0]",
-                    "scope": "pid-1234",
-                    "stable": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                    "scope": "window-0x03a00007",
+                    "stable": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                     "app": "Calculator",
                     "pid": 1234,
                     "states": ["focusable", "enabled"],
@@ -2273,7 +2538,7 @@ mod tests {
         let response = assert_response_from_windows(
             &windows,
             &serde_json::json!({
-                "ref": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                "ref": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                 "text": "8",
                 "state": "enabled",
             }),
@@ -2294,8 +2559,8 @@ mod tests {
                     "name": "Display",
                     "value": "8",
                     "path": "Window[0]/text[0]",
-                    "scope": "pid-1234",
-                    "stable": "desktop-atspi:pid-1234:Window[0]/text[0]",
+                    "scope": "window-0x03a00007",
+                    "stable": "desktop-atspi:window-0x03a00007:Window[0]/text[0]",
                     "app": "Calculator",
                     "pid": 1234,
                     "states": ["focusable", "enabled"],
@@ -2305,13 +2570,14 @@ mod tests {
     }
 
     #[test]
-    fn resolves_stable_top_level_window_refs_by_pid_and_pid_local_index() {
+    fn resolves_stable_top_level_window_refs_by_exact_native_id() {
         let windows = parse_wmctrl_windows(
             "0x03a00007  0 1234 host Terminal\n0x03a00008  0 1234 host Terminal Settings\n0x04b00001 -1 77 host Notes\n",
         );
 
-        let resolved = resolve_top_level_window_ref(&windows, "desktop-atspi:pid-1234:Window[1]")
-            .expect("stable window ref");
+        let resolved =
+            resolve_top_level_window_ref(&windows, "desktop-atspi:window-0x03a00008:Window[0]")
+                .expect("stable window ref");
 
         assert_eq!(resolved.id, "0x03a00008");
         assert_eq!(resolved.title, "Terminal Settings");

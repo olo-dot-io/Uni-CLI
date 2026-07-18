@@ -1,9 +1,9 @@
 //! @owner       src::engine::steps::fetch_text
-//! @does        HTTP request returning size-bounded validated textual content; rejects binary MIME/magic before downstream text conversion, with optional session-cookie capture and bounded endpoint rotation
+//! @does        HTTP request returning size-bounded validated textual content; rejects binary MIME/magic before downstream text conversion, preserves status-specific recovery, and supports optional session-cookie capture and bounded endpoint rotation
 //! @needs       ./fetch (FetchConfig), ../proxy, ../cookie-capture, ../ssrf, ../template, ../runtime-resource-guard
 //! @feeds       ./index (barrel), pipeline executor via registry "fetch_text"
-//! @breaks      PipelineError on HTTP/network failures or unsupported binary content
-//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; response bodies never exceed MAX_TEXT_RESOURCE_BYTES; non-text MIME and recognizable binary responses never become successful text; cookie capture is host-scoped; rotation is bounded
+//! @breaks      PipelineError on HTTP/network failures or unsupported binary content; wrong status guidance can make agents repair valid URLs instead of respecting auth, rate-limit, or upstream retry boundaries
+//! @invariants  every fetched URL passes SSRF validation and the canonical proxy boundary; response bodies never exceed MAX_TEXT_RESOURCE_BYTES; non-text MIME and recognizable binary responses never become successful text; 429 never reports URL staleness; cookie capture is host-scoped; rotation is bounded
 //! @side-effects network I/O
 //! @perf        one fetch per attempt; rotation adds at most rotate_urls.length fetches
 //! @concurrency stateless per call
@@ -187,6 +187,26 @@ function withParams(
   return url + (url.includes("?") ? "&" : "?") + params.toString();
 }
 
+function httpFailureSuggestion(response: Response, requestUrl: string): string {
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("retry-after")?.trim();
+    const window = retryAfter
+      ? `the upstream Retry-After window (${retryAfter})`
+      : "the upstream retry window";
+    return `Wait for ${window}, then retry the same request: ${requestUrl}`;
+  }
+  if (response.status === 401 || response.status === 403) {
+    return `Authenticate at the source's declared credential boundary, then retry: ${requestUrl}`;
+  }
+  if (response.status === 404 || response.status === 410) {
+    return `Check whether the canonical source URL moved or was removed: ${requestUrl}`;
+  }
+  if (response.status >= 500) {
+    return `The upstream service failed; retry after its recovery window: ${requestUrl}`;
+  }
+  return `Inspect the HTTP ${response.status} response and request contract for: ${requestUrl}`;
+}
+
 /** One request with the existing retry/backoff/error contract. */
 export async function fetchTextResource(
   requestUrl: string,
@@ -268,7 +288,7 @@ export async function fetchTextResource(
           errorType: "http_error",
           url: requestUrl,
           statusCode: resp.status,
-          suggestion: `Check if the URL is still valid: ${requestUrl}`,
+          suggestion: httpFailureSuggestion(resp, requestUrl),
           retryable,
           alternatives:
             resp.status === 401 || resp.status === 403

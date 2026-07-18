@@ -3,8 +3,8 @@
  * @does        Route Windows UI Automation snapshots and actions through one process-contained native sidecar.
  * @needs       sidecar lifecycle, UIA binary resolution, desktop snapshot normalization
  * @feeds       compute cascade and direct desktop-uia transport callers
- * @breaks      Omitting mutation delivery metadata can turn post-frame sidecar cancellation into a replayable ordinary failure; encoding snapshot failures as data makes a failed observation look successful.
- * @invariants  Compute contract mutability reaches the sidecar; post-frame mutation cancellation remains outcome-ambiguous; snapshot failures throw for cascade fallback; action failures become structured envelopes; close is idempotent.
+ * @breaks      Omitting mutation delivery metadata can turn post-frame sidecar cancellation into a replayable ordinary failure; encoding snapshot failures as data or broadening malformed targets makes a failed observation look successful.
+ * @invariants  Compute contract mutability and typed app/pid/window target params reach the same sidecar call as their encoding; explicit targets resolve exactly or fail closed; post-frame mutation cancellation remains outcome-ambiguous; snapshot failures throw for cascade fallback; action failures become structured envelopes; close is idempotent.
  * @side-effects Starts and terminates the UIA sidecar and can mutate the Windows desktop.
  * @perf        One serialized sidecar round trip per action or snapshot.
  * @concurrency The sidecar owns FIFO serialization and process containment for each active request.
@@ -23,6 +23,10 @@ import {
 } from "../sidecar.js";
 import type { SidecarClient } from "../sidecar.js";
 import { normalizeDesktopSidecarError } from "./desktop-sidecar-errors.js";
+import {
+  normalizeSidecarScreenshot,
+  prepareSidecarScreenshotRequest,
+} from "./desktop-sidecar-screenshot.js";
 import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import {
   snapshotFromSidecarRaw,
@@ -34,6 +38,7 @@ import type {
   Capability,
   Snapshot,
   SnapshotFormat,
+  SnapshotRequest,
   TransportAdapter,
   TransportContext,
   TransportKind,
@@ -101,19 +106,20 @@ export class DesktopUiaTransport implements TransportAdapter {
     });
   }
 
-  async snapshot(opts?: {
-    format?: SidecarSnapshotFormat;
-    signal?: AbortSignal;
-  }): Promise<Snapshot> {
+  async snapshot(opts?: SnapshotRequest): Promise<Snapshot> {
     opts?.signal?.throwIfAborted();
     if (this.platform !== "win32") return this.unavailableSnapshot();
-    const params = opts?.format ? { format: opts.format } : {};
+    const format = opts?.format as SidecarSnapshotFormat | undefined;
+    const params = {
+      ...opts?.params,
+      ...(format ? { format } : {}),
+    };
     const data = await this.requireSidecar().call("uia_snapshot", params, {
       signal: opts?.signal,
     });
     opts?.signal?.throwIfAborted();
     return snapshotFromSidecarRaw(data, {
-      format: opts?.format,
+      format,
       transport: this.kind,
       refs: this.refs,
     });
@@ -123,12 +129,23 @@ export class DesktopUiaTransport implements TransportAdapter {
     req.signal?.throwIfAborted();
     if (this.platform !== "win32") return this.unavailable(req.kind);
     try {
-      const data = await this.requireSidecar().call<T>(req.kind, req.params, {
-        signal: req.signal,
-        cancellationDelivery:
-          req.canMutate === false ? "contained" : "outcome-ambiguous",
-      });
-      return ok(data);
+      const screenshot =
+        req.kind === "uia_screenshot"
+          ? prepareSidecarScreenshotRequest(req.params)
+          : undefined;
+      const data = await this.requireSidecar().call<unknown>(
+        req.kind,
+        screenshot?.params ?? req.params,
+        {
+          signal: req.signal,
+          cancellationDelivery:
+            req.canMutate === false ? "contained" : "outcome-ambiguous",
+        },
+      );
+      const normalized = screenshot
+        ? await normalizeSidecarScreenshot(data, screenshot.path, req.signal)
+        : data;
+      return ok(normalized as T);
     } catch (error) {
       if (isOperationOutcomeAmbiguousError(error)) throw error;
       req.signal?.throwIfAborted();
