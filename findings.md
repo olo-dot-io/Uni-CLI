@@ -505,3 +505,10 @@ list JSON`, `AI agents`, `pagination`.
   tests (1 skipped), 23 targeted coverage behaviors at 100%, 994 adapter/schema
   checks, production audit with zero vulnerabilities, strict release metadata,
   public docs, and npm publish dry-run.
+- The first pre-tag main run then exposed a Windows-only defect in the new
+  lifecycle test rather than production code: the assertion inspected the raw
+  `spawn` boundary as if every platform launched Node directly, while Windows
+  correctly launches the same command through the native Job Object owner. The
+  assertion now unwraps either ownership shape and verifies the inner Node
+  command, compiled broker artifact, and absence of `tsx` without weakening the
+  process-containment path.

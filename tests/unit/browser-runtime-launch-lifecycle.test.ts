@@ -40,11 +40,12 @@ describe("browser broker launch lifecycle", () => {
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
     for (const call of spawnMock.mock.calls) {
-      expect(call[0]).toBe(process.execPath);
-      expect(call[1]).toEqual([
+      const command = ownedCommandFromSpawn(call);
+      expect(command.executable).toBe(process.execPath);
+      expect(command.arguments).toEqual([
         expect.stringMatching(/runtime-broker-main\.js$/),
       ]);
-      expect(JSON.stringify(call[1])).not.toContain("tsx");
+      expect(JSON.stringify(command)).not.toContain("tsx");
     }
     expect(kill).toHaveBeenCalledTimes(2);
   });
@@ -112,6 +113,24 @@ describe("browser broker launch lifecycle", () => {
     expect(kill).toHaveBeenCalledTimes(1);
   });
 });
+
+function ownedCommandFromSpawn(call: unknown[]): {
+  executable: unknown;
+  arguments: unknown[];
+} {
+  const [executable, rawArguments] = call;
+  if (!Array.isArray(rawArguments)) {
+    throw new TypeError("spawn arguments must be an array");
+  }
+  const ownerSeparator = rawArguments.indexOf("--");
+  if (ownerSeparator < 0) {
+    return { executable, arguments: rawArguments };
+  }
+  return {
+    executable: rawArguments[ownerSeparator + 1],
+    arguments: rawArguments.slice(ownerSeparator + 2),
+  };
+}
 
 function installNeverReadyChildren(): ReturnType<typeof vi.fn> {
   const children = new Map<number, ChildProcess>();
