@@ -2,8 +2,9 @@
 
 ## [0.400.1] — 2026-07-18 — Apollo · Young
 
-> Local release candidate. Public npm and GitHub publication are recorded only
-> after the annotated tag workflow and clean-install probes succeed.
+> Published from annotated tag `v0.400.1` at commit `5a1d0b78` through GitHub
+> Actions run `29636301437`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
 
 ### Added
 
@@ -72,6 +73,10 @@
   generic and 35 AI sources, registered `pubmed.search`, and completed a live
   one-result PubMed query through the installed package. Its broker auto-start
   used the compiled artifact without starting a browser provider or Chrome.
+- Main CI run `29635957077` passed after its Windows matrix proved the lifecycle
+  assertion against the native Job Object owner. The tagged release workflow
+  then repeated the complete gate, built both Windows binaries, and published
+  the package and GitHub Release without an npm fallback token.
 
 ## [0.400.0] — 2026-07-17 — Apollo · Young
 

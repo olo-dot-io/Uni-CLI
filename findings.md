@@ -512,3 +512,27 @@ list JSON`, `AI agents`, `pagination`.
   assertion now unwraps either ownership shape and verifies the inner Node
   command, compiled broker artifact, and absence of `tsx` without weakening the
   process-containment path.
+- Main CI run `29635957077` then passed every Linux, macOS, Windows, Node 22/24,
+  and Rust sidecar job from commit
+  `5a1d0b782ef0dfd1af0f977d98b43c7293ab4f45`. Annotated tag `v0.400.1`
+  resolves to that exact main commit.
+- Tag workflow `29636301437` repeated the complete release gate, built the x64
+  and arm64 Windows process owners, passed 37/37 strict publication checks, and
+  published through npm Trusted Publishers with no fallback token. npm records
+  a SLSA v1 provenance attestation for the tag and `npm audit signatures`
+  verified the installed package's registry signature and attestations.
+- The published artifact includes the two workflow-built executables and
+  therefore differs deliberately from the pre-workflow local pack: 4,067 files,
+  packed size 3,664,393 bytes, unpacked size 17,358,214 bytes, SHA-1
+  `32316309b474269874950c74d8f33c12f2347eeb`, and integrity
+  `sha512-8H6xxZ6ExeH0qoPAZNkn/95kWYEc4WnEQYLxtXDYFGsCi+vqxYTcdw7ijUW0u7IJ19321AMKvkKPSY+YVBHaBQ==`.
+  The GitHub Release assets are byte-identical to their npm tarball copies:
+  arm64 SHA-256
+  `cc0712b820dd4502eecfe8e68200e043df2b1594f8b2b5826db53c021cb9e2b3`
+  and x64 SHA-256
+  `7204ace486b3645f3e32e4a064d55210a6b6f47ea1b2d9a85c8b96931ed999b4`.
+- A fresh registry installation without development dependencies returned
+  version `0.400.1`, loaded `@xmldom/xmldom`, exposed all 41 generic and 35 AI
+  sources, completed a live one-result PubMed query, and spawned broker protocol
+  v5 from its compiled artifact with zero managed providers and no Chrome
+  connection. Its production audit found zero vulnerabilities.

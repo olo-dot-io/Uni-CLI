@@ -54,50 +54,56 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 
 ## Historical Release Audit
 
-The public git/tag history starts in 2026 with the `0.200.x` line. Release
-`0.400.0 — Apollo · Young` is published on npm and GitHub from the exact
-annotated tag recorded below.
+The public git/tag history starts in 2026 with the `0.200.x` line. The current
+release, `0.400.1 — Apollo · Young`, is published on npm and GitHub from the
+exact annotated tag recorded below.
 
 Release facts:
 
 - npm registry state after publication:
-  `@zenalexa/unicli@latest` is `0.400.0`;
-- annotated tag `v0.400.0` resolves to main commit
-  `3e4d555c9641cc2dfd541373c391970d9d0972da`;
-- GitHub Actions run `29568815086` published through npm Trusted Publishers
-  without a fallback token, and the installed package verifies SLSA provenance;
+  `@zenalexa/unicli@latest` is `0.400.1`;
+- annotated tag `v0.400.1` resolves to main commit
+  `5a1d0b782ef0dfd1af0f977d98b43c7293ab4f45`;
+- main CI run `29635957077` passed the Linux, macOS, Windows, Node 22/24, and
+  Rust-sidecar matrix; tag workflow `29636301437` then repeated the release gate
+  and published through npm Trusted Publishers without a fallback token;
+- npm records a SLSA v1 provenance attestation for the tagged workflow. The
+  published artifact has 4,067 files, SHA-1
+  `32316309b474269874950c74d8f33c12f2347eeb`, and integrity
+  `sha512-8H6xxZ6ExeH0qoPAZNkn/95kWYEc4WnEQYLxtXDYFGsCi+vqxYTcdw7ijUW0u7IJ19321AMKvkKPSY+YVBHaBQ==`;
 - the GitHub Release contains x64 and arm64 Windows process-owner executables
   that are byte-identical to the corresponding files in the npm tarball;
-- the shared Browser Runtime Broker owns provider lifetime, Agent sessions,
-  target leases, visibility, cancellation, and cleanup;
-- the generic computer-use profile exposes direct browser state, navigation,
-  trusted input, tabs, bounded content/history search, dialogs, downloads, and
-  explicit foreground presence;
-- Windows Native Messaging uses architecture-matched PE launchers in immutable,
-  side-by-side generations so reinstall and update do not replace an active
-  Chrome host;
-- the complete repository gate passed with 2,992 unit (4 skipped), 94
-  integration (16 platform-skipped), 6,467 adapter, 5 performance (1 skipped),
-  and 23 targeted coverage behaviors at 100%; GitHub Actions run `29567020303`
-  also passed the real Windows host integration and x64 Rust sidecar gates.
+- a fresh production-only registry install exposed 41 generic retrieval and 35
+  AI sources, executed a live PubMed query, and started broker protocol v5 from
+  the compiled artifact without starting a browser provider or Chrome;
+- the complete repository gate passed 3,131 unit tests (4 skipped), 94
+  integration tests (16 platform-skipped), 6,528 adapter tests, 5 performance
+  tests (1 skipped), and 23 targeted coverage behaviors at 100%; the production
+  audit found zero vulnerabilities and installed registry signatures and
+  attestations verified successfully.
 
-| Release line | Historical role                                                                                                 | Audit lesson for `0.400.0`                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                          | A release must expose a machine-readable surface, not just prose.                                  |
-| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.   | Review findings must be explicit and fixed before tag, especially security and release wiring.     |
-| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                  | Stable behavior contracts outrank marketing claims.                                                |
-| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix.   | Product framing can become too small as real control surfaces expand.                              |
-| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                      | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.               |
-| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                           | Vertical breadth matters only when records, provenance, and tests stay coherent.                   |
-| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                             | Desktop/computer control is a core substrate, not a sidecar demo.                                  |
-| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                       | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle. |
-| `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair. | Product claims need live health gates, not catalog counts alone.                                   |
-| `0.227.1`    | Portable release truth, credential privacy, exact repair, and cross-platform publication gates.                 | A release candidate must stop before publication when host-contaminated evidence fails.            |
-| `0.400.0`    | Shared browser/computer runtime plus direct generic Agent browser control, search, and foreground presence.     | Runtime reuse is safe only with explicit target ownership, bounded perception, and no-focus truth. |
+| Release line | Historical role                                                                                                 | Audit lesson                                                                                                       |
+| ------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                          | A release must expose a machine-readable surface, not just prose.                                                  |
+| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.   | Review findings must be explicit and fixed before tag, especially security and release wiring.                     |
+| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                  | Stable behavior contracts outrank marketing claims.                                                                |
+| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix.   | Product framing can become too small as real control surfaces expand.                                              |
+| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                      | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.                               |
+| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                           | Vertical breadth matters only when records, provenance, and tests stay coherent.                                   |
+| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                             | Desktop/computer control is a core substrate, not a sidecar demo.                                                  |
+| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                       | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle.                 |
+| `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair. | Product claims need live health gates, not catalog counts alone.                                                   |
+| `0.227.1`    | Portable release truth, credential privacy, exact repair, and cross-platform publication gates.                 | A release candidate must stop before publication when host-contaminated evidence fails.                            |
+| `0.400.0`    | Shared browser/computer runtime plus direct generic Agent browser control, search, and foreground presence.     | Runtime reuse is safe only with explicit target ownership, bounded perception, and no-focus truth.                 |
+| `0.400.1`    | Domain-neutral federated retrieval plus a role-aware AI infrastructure intelligence overlay.                    | Breadth stays maintainable only when source execution, evidence contracts, and domain attribution remain separate. |
 
 `0.400.0` is an epoch-scale minor release because it changes the runtime
 ownership and Agent-facing browser protocol surfaces while keeping the package
 name and command-envelope contract stable.
+
+`0.400.1` is a patch release because it extends that stable package surface with
+backward-compatible retrieval commands and closes production-package parity,
+cross-platform broker-launch verification, and publication-truth gaps.
 
 ## Changesets
 
@@ -166,8 +172,9 @@ after both public endpoints are verified should metadata move to `published`:
 npx tsx scripts/release.ts --codename "Apollo · Young" --status published
 ```
 
-For `0.400.0`, that transition followed registry, provenance, Release asset,
-installed CLI, search, and stopped-browser doctor probes.
+For `0.400.1`, that transition followed registry, provenance, Release asset,
+production-only installation, live PubMed, retrieval-source, and stopped-browser
+broker probes.
 
 ## Substantive Commits
 
