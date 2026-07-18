@@ -1,7 +1,7 @@
 {
   "name": "@zenalexa/openclaw-unicli",
   "version": "0.215.0",
-  "description": "Uni-CLI plugin for OpenClaw — 220 sites, 1283 commands via MCP",
+  "description": "OpenClaw plugin for the Uni-CLI Agent-Computer Interface runtime",
   "files": [
     "openclaw.plugin.json",
     "README.md"

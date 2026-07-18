@@ -1,6 +1,9 @@
 # 架构
 
-Uni-CLI 是 AI Agent 控制 computer 的通用平台。它的核心不是浏览器自动化、MCP、computer-use sandbox、自然语言 shell 或单站点 wrapper，而是一条可发现、可治理、可观察、可修复、可交付的 Agent-to-computer 控制闭环。
+Uni-CLI 是面向真实软件的开源 Agent-Computer Interface 运行时。它的核心不是
+浏览器自动化、MCP、computer-use sandbox、自然语言 shell 或单站点 wrapper，而是
+让 Agent 发现并选择 operation、治理已覆盖 effect、跨软件 substrate 行动、检查结果，
+并修复支持失败路径的可执行边界。
 
 ## 分层
 
@@ -28,30 +31,34 @@ evidence / delivery / repair
 | ------------------ | ------------------------------------------------------------------------- |
 | Intent / Search    | 用 BM25、alias 和 `do` 把自然语言任务映射到候选操作。                     |
 | Operation contract | 描述 args、输出、认证姿态、effect、risk、capability、source/repair path。 |
-| Control kernel     | 统一完成参数校验、权限判断、substrate 调用、证据记录和 envelope 返回。    |
+| Adapter kernel     | 统一完成 adapter 参数校验、权限判断、substrate 调用和 envelope 返回。     |
 | Action substrates  | 连接 HTTP、浏览器、桌面、本地命令、文件、协议和 Visual。                  |
-| Output / Evidence  | 把结果包装成 v2 `AgentEnvelope`，并保留可审查证据。                       |
+| Output / Evidence  | 把结果包装成 v2 `AgentEnvelope`；支持的 operation 可另存可审查证据。      |
 | Delivery / Repair  | 诊断失败，选择重试、换路、补认证、请求权限或进入有边界修复。              |
 
 ## 控制内核
 
-Uni-CLI 不是 scraper、协议外壳、visual-first 产品、浏览器库或 sandbox 产品，而是智能体控制网站、桌面应用、本地工具、文件和系统能力的控制平台。内核要保持小、可审计、可验证：
+Uni-CLI 不是 scraper、协议外壳、visual-first 产品、浏览器库或 sandbox 产品，而是 Agent 与网站、桌面应用、本地工具、文件和系统能力之间的 interface runtime。内核要保持小、可审计、可验证：
 
 - **操作合同**：manifest 是运行时合同，包含操作名、参数、能力需求、输出形状、鉴权、source path、repair path 和推断出的操作策略。
-- **调用内核**：统一完成参数校验、权限判断、adapter 执行、证据记录和 `AgentEnvelope` 返回。
-- **Substrate 总线**：HTTP、CDP、a11y、subprocess、service、protocol、Visual 都是同一操作合同下的行动选择。
+- **调用内核**：统一完成 adapter 参数校验、权限判断、执行和 `AgentEnvelope` 返回；固定 core command 保持各自 Commander handler。
+- **Substrate 总线**：HTTP、CDP、a11y、subprocess、service、protocol、Visual 是 operation 可声明的行动边界；当前不做全局自动仲裁。
 - **权限 profile**：命令默认开放；用户可以选择 `confirm` 或 `locked` 对高影响写操作加确认。
-- **交付和修复闭环**：失败必须落到一个 source path、一个 step 或边界、一个可复现验证命令。
+- **交付和修复闭环**：支持的失败路径应尽量落到 source path、step 或边界与可复现验证命令；不适用的字段保持缺失。
 
-MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该各自定义一套行为。生成型 TypeScript 命令、YAML adapter、core Commander 命令也必须和 `search`、`describe`、`--dry-run`、直接 CLI、MCP、ACP 保持相同 operation contract；这里的漂移是正确性问题，不是文档问题。
+当前 invariant 更窄：adapter execution semantics 留在 adapter contract 与 adapter
+kernel 中，不能散落到 adapter-facing wrapper。Native CLI 是完整 runtime surface；
+MCP profile 从同一 registry 投影 adapter command。固定 core command 有独立 Commander
+handler，不能因为 MCP discovery 列出它就假定可调用。ACP、HTTP、docs 与 skill 暴露
+各自记录过的子集；补齐 projection parity 是路线图工作，不是当前能力声明。
 
 ## 产品边界与内部生命周期
 
-产品边界是 Agent-to-computer 控制闭环，不是 adapter registry、YAML 格式、命令生命周期、MCP gateway 或某一种自动化后端。命令生命周期仍然重要，但它是内部作者和维护流程：创建、发现、调用、观察、修复、发布。公开表述必须把它放在 operation contract 和 control kernel 之下，避免重新退回到 catalog-first 或 wrapper-first 叙事。
+产品边界是 Agent-Computer Interface runtime，不是 adapter registry、YAML 格式、命令生命周期、MCP gateway 或某一种自动化后端。命令生命周期仍然重要，但它是内部作者和维护流程：创建、发现、调用、观察、修复、发布。公开表述必须把它放在 operation contract 和 kernel 之下，避免重新退回到 catalog-first 或 wrapper-first 叙事。
 
 ## 能力矩阵与工作流就绪度
 
-`unicli architecture audit -f json` 会从 live registry 产出两张表，让“车载助手”类比落到可检查数据，而不是变成愿景口号。
+`unicli architecture audit -f json` 会从 live registry 产出两张表，让 Agent-Computer Interface 的覆盖和缺口落到可检查数据，而不是变成愿景口号。
 
 `capability_matrix` 按真实控制 surface 分类：
 
@@ -81,13 +88,20 @@ MCP、ACP、HTTP API 和 agent 配置都是这个内核的兼容面，不应该�
 
 任何 workflow row 都不宣称 live 成功。每行带 `required_next_evidence`，下一步能力建设必须跑命令、捕获 envelope、验证执行后状态、记录 auth/policy 姿态，之后才能把 catalog 覆盖升级成行为声明。
 
-## 为什么 CLI-first
+## 为什么保留 native CLI
 
-智能体已经能运行 shell。CLI-first 的好处是：
+很多 Agent host 已经能运行 shell。Native CLI 的好处是：
 
-- 不需要为每个客户端复制一套协议适配。
+- 不需要常驻服务，也不为每个客户端复制业务语义。
 - 容易组合：pipe、redirect、jq、shell scripts 都能用。
 - 错误能用退出码快速路由。
+- `search -> describe -> invoke` 可以按需加载能力。
+
+CLI 不是协议结论。Host 需要 stateful session、remote boundary 或
+protocol-native discovery 时，MCP 更合适；Uni-CLI 的 default、deferred 和
+expanded MCP profile 当前投影 adapter operation。固定 core command 仍以 native
+CLI 为规范入口。
+
 - 输出可以同时服务人和机器。
 - 本地覆盖和修复不依赖远端服务。
 
@@ -148,32 +162,61 @@ Run recording 是显式启用的本地能力。`--record` 或
 
 ## 持续认知输入
 
-外部趋势不能替代代码、测试和 git 证据，但可以更新方向判断。2026-04-28 的公开定位校准显示，类似系统越来越强调可控 workflow、observability、policy、人类 review 和互操作性，而不是单纯强调 autonomy。
+外部趋势用于更新方向判断，代码、测试和 git 证据继续决定 Uni-CLI 自身的能力声明。截至 2026-07-18，公开标准和 benchmark 把边界进一步说清：[ARD](https://agenticresourcediscovery.org/spec/) 与 [MCP Registry](https://modelcontextprotocol.io/registry/about) 发布 capability 在哪里；[MCP](https://modelcontextprotocol.io/) 与 [WebMCP](https://developer.chrome.com/docs/ai/webmcp) 分别提供 tool/data 和 page-native execution surface；[OpenAI Tool Search](https://developers.openai.com/api/docs/guides/tools-tool-search) 与 [Anthropic MCP tool search](https://docs.anthropic.com/en/docs/claude-code/mcp) 文档化 deferred schema loading；[WeaveBench](https://arxiv.org/abs/2606.09426) 与 [OSWorld 2.0](https://arxiv.org/abs/2606.29537) 则评测 hybrid interface、长时状态和 trajectory evidence。
 
 这些趋势对 Uni-CLI 的启发是：
 
-- agent loop 正在向原生工具执行靠近，而不是只围绕协议包装。
-- 编辑器 agent 系统正在把并行 agent、subagent、worktree、异步执行变成核心产品方向。
-- browser / computer-use 自动化正在变得更语义化和可观察：状态、截图、布局证据和审计轨迹都更重要。
-- computer use 工具更适合作为兜底传输，不是首选路径。
-- 编辑器和桌面产品正在补持久上下文、历史记忆和异步协作。
+- capability discovery、transport、execution、agent collaboration 正在分层，而不是由一个协议包办。
+- 大型工具目录的默认路径正在变成 search-first / deferred loading。
+- browser / computer-use 自动化正在补 ownership、cancellation、post-state evidence 和 replayable trace。
+- hybrid task 需要 GUI、CLI、文件、browser 与 external tool 互相交接；单一 interface 不能覆盖所有工作。
+- operation-specific trajectory evidence 是 completion boundary。
 
 这些趋势反而强化了本地架构：命令优先、manifest 可信、adapter 可修复、权限显式、证据可记录、传输多元。
 
+## 类目候选与选择
+
+| 候选                                 | 说对了什么                                                | 为什么不作为主类目                                         |
+| ------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------- |
+| **Agent-Computer Interface runtime** | 命名 Agent command 与 computer feedback，并说明边界可执行 | **采用：**足够可解释，也能跨 substrate 演进                |
+| Agent capability runtime             | 强调 discovery 与 invocation                              | 已与 hosted tool router 高度重叠，也没明确 computer 边界   |
+| Agent I/O runtime                    | 强调 command 与 feedback                                  | 容易被理解成 event、stream 或通信 normalization            |
+| Agent interface layer                | 能容纳多种 protocol                                       | 太宽，无法区分 executable runtime 与 schema/SDK            |
+| Agent control plane                  | 强调 policy 与 coordination                               | 暗示 distributed authority，并与 MCP/infra operations 重叠 |
+| Universal CLI for everything         | 准确描述 package 入口                                     | 描述实现 surface，不是长期产品类目                         |
+
+最终类目沿用 [SWE-agent](https://arxiv.org/abs/2405.15793) 对
+Agent-Computer Interface 的定义，并从 coding environment 扩展到异构真实软件。
+“Runtime” 是关键限定：Uni-CLI 能执行；registry、skill、schema 或 docs site 单独都不能。
+
+## Storytelling 合同
+
+| 问题       | 由当前 runtime 支撑的回答                                                                                              |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 是什么     | 面向真实软件的开源 Agent-Computer Interface runtime                                                                    |
+| 做什么     | 排序已编目 operation，让 caller 选择，应用已覆盖 policy，调用已声明 substrate，并报告调用结果                          |
+| 怎么做     | 生成 catalog + operation contract + adapter kernel/固定 handler + v2 envelope + 可选 recording/delivery/repair context |
+| 做到怎样   | 把 claim 分为 cataloged、executable、evidence-backed；generated count、audit、test 与 live smoke 是 gate               |
+| 结果是什么 | Agent 不必预加载一个巨型工具清单，就能在同一产品模型下跨 web、browser、desktop、file、local tool 与 protocol           |
+
+记忆句是：**找到操作。跨过边界。让结果可检查。** 这是对 interface shape 的
+产品承诺，不代表每条 operation 今天都有自动 routing、post-state proof 或 protocol parity。
+
 ## 行业位置
 
-Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/文件/系统能力之上。它不是 IDE、不是聊天产品、不是模型托管层、不是浏览器库、不是 MCP wrapper、不是 computer-use sandbox、不是自然语言 shell、不是 scraper、不是协议壳，也不是单一 agent loop；它是这些产品都应该能调用的 computer-control 平台。
+Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/文件/系统能力之上。它不是 IDE、聊天产品、模型托管层、浏览器库、MCP wrapper、computer-use sandbox、自然语言 shell、scraper、协议壳或单一 agent loop；它是这些产品在需要使用真实软件时可以调用的 Agent-Computer Interface runtime。
 
 采用：
 
-- 原生 CLI 和 shell 作为第一 agent 接口。
+- 原生 CLI 和 shell 作为 native agent 接口。
 - Operation contract 承载可持久修复的网站、应用、本地工具、文件和协议操作。
 - YAML adapter 作为低成本作者格式，而不是产品身份。
 - API、CDP、a11y、subprocess、应用协议优先。
 - 只有能看见、能行动、能验证时才使用 Visual。
 - 操作需要审查时记录可 probe/replay/compare 的 run trace、带 tab/auth 姿态的
   browser session lease、render-aware evidence 和 watchdog 移动检查。
-- MCP、ACP、HTTP 作为由同一 operation contract 生成的兼容面。
+- MCP 投影 adapter operation；ACP、HTTP 暴露各自记录过的子集，逐步收敛到
+  operation contract，而不提前宣称 parity。
 
 不采用：
 
@@ -202,12 +245,14 @@ Engine 顺序执行 pipeline steps。每一步只做一件事：请求、选择�
 
 ## AgentEnvelope
 
-所有常规命令都返回 v2 `AgentEnvelope`：
+所有经过 formatter 渲染的常规命令都返回 v2 `AgentEnvelope`：
 
 - 成功：`ok: true`，`data` 有结果。
-- 失败：`ok: false`，`error` 有 code、message、adapter_path、step、suggestion。
+- 失败：`ok: false`，`error` 至少有 code 与 message；adapter_path、step、
+  suggestion、retryability 与 alternatives 在适用时出现。
 
-Markdown、JSON、YAML、CSV 和 compact 输出共享同一份底层合同。
+Markdown、JSON、YAML、CSV 和 compact 输出从同一个 envelope 渲染；具体 operation
+是否提供 artifact、recording 或 post-state evidence 是独立能力。
 
 ## 设计取舍
 

@@ -7,7 +7,9 @@
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 的首选入口是 shell。只要智能体能运行命令，就可以直接使用 `unicli`。需要协议服务的客户端，可以用同一份 operation contract 通过 MCP、ACP 或生成的平台配置接入；行为保持一致。
+Uni-CLI 的首选入口是 shell。Native CLI 是完整 command surface。需要 protocol
+server 的客户端可以用 MCP profile 调用 adapter operation；ACP 与生成的平台配置
+暴露各自记录过的子集。不能根据 catalog visibility 推断逐命令 parity。
 
 ## 选哪条路
 
@@ -83,7 +85,28 @@ npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
 | `unicli_list`    | 列出站点和命令。         |
 | `unicli_explore` | 写 adapter 前检查页面。  |
 
+按客户端上下文预算选择 catalog 暴露方式：
+
+```bash
+unicli mcp serve                    # 4 个 compact discovery/run meta-tool
+unicli mcp serve --profile deferred # 每个 adapter operation 一个轻量 stub
+unicli mcp serve --expanded         # 每个 adapter operation 一份完整 schema
+unicli mcp health -f json           # 实时 profile 与 catalog 数量
+```
+
+deferred 和 expanded 的规模随已加载 adapter catalog 变化，不要把固定 tool 数量复制进客户端配置。
+
+`unicli_list` 除 adapter operation 外也包含固定 core discovery entry；
+`unicli_run` 当前只 dispatch adapter operation。`unicli architecture audit` 一类
+固定 core command 应通过 native CLI 调用。
+
 `mcp serve` 和 `acp` 保持原始 stdio 协议行为。常规命令面返回 v2 `AgentEnvelope`。
+
+本地 computer control 使用专用 profile：
+
+```bash
+npx @zenalexa/unicli mcp serve --profile computer-use
+```
 
 stdio 配置示例：
 

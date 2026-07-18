@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.olo-dot-io/Uni-CLI",
-  "description": "Agent operations CLI exposing a static catalog of 324 adapter sites, 994 declarative YAML adapters, and 1817 registered adapter commands through one MCP server; fixed core and host-discovered commands are added at runtime. Structured errors name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.",
+  "description": "Open Agent-Computer Interface runtime for real software, with a static catalog of 324 adapter sites, 994 declarative YAML adapters, and 1817 registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.",
   "version": "0.400.1",
   "repository": {
     "url": "https://github.com/olo-dot-io/Uni-CLI",
@@ -29,14 +29,6 @@
           "value": "serve",
           "valueHint": "subcommand",
           "isRequired": true
-        }
-      ],
-      "environmentVariables": [
-        {
-          "name": "UNICLI_MCP_PROFILE",
-          "description": "Tool profile: default (4 meta-tools), expanded (one tool per command), or computer-use",
-          "isRequired": false,
-          "default": "default"
         }
       ]
     }

@@ -15,7 +15,7 @@
 
 const HELP = `Usage: unicli [options] [command]
 
-Agent execution substrate for web, apps, local tools, and system capabilities.
+Open Agent-Computer Interface runtime for real software.
 
 Discovery:
   search <intent...>            Find commands by bilingual intent

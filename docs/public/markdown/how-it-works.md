@@ -7,36 +7,59 @@
 - Section: Start
 - Parent: Start (/)
 
-Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, external CLIs, accessibility trees, screenshots, and app-specific wrappers into one governed operation layer. This page walks through the control loop: how intent becomes an operation contract, how Uni-CLI chooses an action substrate, how the v2 AgentEnvelope returns evidence, and how delivery/repair keeps the path alive when real software changes.
+Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, external CLIs, accessibility, and visual control. This page follows the current loop: how intent ranks cataloged operations, how an agent selects an operation with a declared substrate, how policy gates execution, how AgentEnvelope reports the call, and how repair keeps a path diagnosable when real software changes.
 
-## The computer-control contract
+## The Agent-Computer Interface contract
 
-Every Uni-CLI operation runs through the same product loop. Agents can stop at any phase and reason about the result.
+The six public verbs are a compact model of the current executable stages, not
+a claim that every transport has identical dispatch or evidence behavior.
 
-1. **Intent.** `unicli search "<intent>"` and `unicli do "<intent>"` map a task into candidate operations with args, auth posture, examples, and risk signals.
-2. **Select.** The operation contract chooses the smallest boundary that can act: API, browser, desktop accessibility, subprocess, protocol, visual fallback, or app wrapper.
-3. **Govern.** Permission profiles, deny rules, capability scope, and local policy gate risky effects before requests, writes, process spawns, or UI actions.
-4. **Act.** The shared control kernel invokes the selected substrate instead of letting CLI, MCP, ACP, or docs define behavior separately.
-5. **Observe.** AgentEnvelope v2 returns data, context, retryability, timing, and evidence hooks in the same shape on success and failure.
-6. **Diagnose.** Delivery assessment classifies failure as auth, policy, missing context, upstream drift, environment trouble, or adapter defect.
-7. **Repair or reroute.** The next experiment is bounded by source path, alternatives, evidence, and verification command.
-8. **Deliver.** Evidence gates decide whether the objective is satisfied, still active, blocked, or exhausted.
-9. **Expose.** The same operation can be reused from native CLI, JSON stream, MCP, ACP, HTTP, docs, skills, CI, and scripts.
+1. **Discover (`intent`).** `unicli search "<intent>"` and plan-only `unicli do
+"<intent>"` retrieve a small ranked set. Neither performs the external action.
+2. **Select (`select`).** The agent selects an operation whose contract declares
+   a strategy and substrate. Automatic arbitration across every alternative is
+   a roadmap capability, not current behavior.
+3. **Govern (`govern`).** Permission profiles, deny rules, capability scope, and
+   local policy expose or gate supported effects before invocation.
+4. **Act (`act`).** Adapter commands use the shared adapter kernel. Fixed core
+   commands retain their native CLI handlers.
+5. **Observe (`observe`, `diagnose`, `deliver`).** AgentEnvelope always
+   distinguishes success from error and carries timing metadata. Artifacts,
+   recordings, post-state checks, and trajectory evidence are operation-specific.
+6. **Repair (`repair-or-reroute`).** Structured error and delivery fields can
+   bound the next diagnosis, repair, or reroute when the operation supplies them.
 
-This contract holds across all action substrates. Adapter type is an implementation detail below the product boundary.
+`expose` is the ninth executable stage. Adapter operations are projected into
+native CLI and MCP default/deferred/expanded profiles. Native CLI is currently
+canonical for fixed core commands; full cross-protocol parity is roadmap work.
 
 ## Substrates, not identities
 
-Browser automation, computer-use sandboxes, natural-language local execution, MCP servers, and per-site wrappers are useful, but they are not Uni-CLI's category. They are concrete technical boundaries that Uni-CLI can use or expose.
+Browser automation, computer-use sandboxes, local execution, MCP servers,
+page-native tools, and per-app harnesses are useful, but they are not Uni-CLI's
+category. They are concrete technical boundaries that the Agent-Computer
+Interface can execute through or expose.
 
-| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                                 |
-| ----------------- | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, evidence, repair               |
-| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | selection, receipts, delivery, reroute                      |
-| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions, post-state evidence, platform diagnostics |
-| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability                  |
-| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | shared semantics instead of wrapper-specific behavior       |
-| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: can see, act, and verify                 |
+| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                              |
+| ----------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, structured results          |
+| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | declared strategies, recordings, diagnostics             |
+| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions and platform diagnostics                |
+| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability               |
+| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | adapter projection today; broader parity on the roadmap  |
+| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: only claim paths that can see and act |
+
+## Where it sits in the protocol stack
+
+The 2026 agent stack is specializing by boundary. [ARD](https://agenticresourcediscovery.org/spec/) and the [MCP Registry](https://modelcontextprotocol.io/registry/about) publish where capabilities exist. [MCP](https://modelcontextprotocol.io/) connects agents to tools and data. [WebMCP](https://developer.chrome.com/docs/ai/webmcp) lets an opted-in page publish live tools. [A2A](https://developers.googleblog.com/en/how-a2a-is-building-a-world-of-collaborative-agents/) connects collaborating agents. None of those layers must be replaced for Uni-CLI to work.
+
+Uni-CLI owns the local operation boundary after discovery: check an executable
+path, inspect the operation's declared substrate, apply available policy,
+invoke it, report the result, and retain repair context where supported. ARD,
+registry ingestion, and broader semantic substrate arbitration are architecture
+directions rather than shipped automatic behavior. As standards mature, they
+should enter as discovery inputs, substrates, or exposure formats—not trigger
+an architecture rewrite.
 
 ## Domain-aware discovery
 
@@ -126,7 +149,9 @@ The pipeline runs top to bottom with a shared context object. Each step reads `c
 
 ## The strategy cascade
 
-Authentication is the messiest part of touching the modern web. Every adapter declares one of five strategies, and Uni-CLI auto-probes the cheapest one that returns valid data.
+Authentication is the messiest part of touching the modern web. An operation
+can declare one of five strategies, but they are not one automatic five-way
+cascade.
 
 | Strategy    | Auth source                              | Typical cost                               |
 | ----------- | ---------------------------------------- | ------------------------------------------ |
@@ -136,7 +161,10 @@ Authentication is the messiest part of touching the modern web. Every adapter de
 | `intercept` | Live browser session                     | Navigate page, capture XHR/fetch responses |
 | `ui`        | Live browser session                     | Click, type, snapshot                      |
 
-The cascade order is `public → cookie → header → intercept → ui`. On the first run for a site, Uni-CLI tries each strategy until one returns parseable data, then caches the result. Subsequent calls skip the probe.
+Where a probe URL is available, the bounded HTTP probe tries `public → cookie →
+header` and caches the first valid result for the process. It never silently
+escalates into `intercept` or `ui`; those browser-backed strategies must be
+declared by the operation.
 
 Live browser/CDP acquisition remains in process memory. Only explicit
 `auth import` or `browser cookies` commands persist plaintext JSON under
@@ -144,8 +172,8 @@ Live browser/CDP acquisition remains in process memory. Only explicit
 
 ## The v2 AgentEnvelope
 
-Every registered adapter command returns a v2 AgentEnvelope — the same shape
-on success or failure. Agents parse one schema across the static adapter
+Every registered adapter command rendered by the CLI formatter returns a v2
+AgentEnvelope with success and failure arms. Agents parse one schema across the static adapter
 catalog of <span><!-- STATS:command_count -->1817<!-- /STATS --></span>
 commands; fixed core and host-discovered commands are listed separately at
 runtime.
@@ -153,26 +181,30 @@ runtime.
 ```json
 {
   "ok": true,
-  "version": "v2",
+  "schema_version": "2",
+  "command": "hackernews.top",
+  "meta": {
+    "duration_ms": 412,
+    "count": 5,
+    "surface": "web"
+  },
   "data": [
     /* the result */
   ],
-  "meta": {
-    "site": "reddit",
-    "command": "search",
-    "strategy": "public",
-    "duration_ms": 412,
-    "adapter_path": "/Users/me/.unicli/adapters/reddit/search.yaml"
-  },
-  "exit_code": 0
+  "error": null
 }
 ```
 
-On failure, `ok` becomes `false`, `data` becomes `null`, and `error` populates with structured fields. Exit codes follow `sysexits.h` (0=ok, 1=error, 2=usage, 66=empty, 69=unavailable, 75=temp, 77=auth, 78=config) so shell pipelines can route by failure class.
+On failure, `ok` becomes `false`, `data` becomes `null`, and `error` always has
+`code` plus `message`; other repair fields are conditional. The CLI maps
+structured failures to process exit classes beside the envelope so shell
+pipelines can route without adding an `exit_code` field to the JSON schema.
 
 ## The self-repair loop
 
-This is the design choice that makes the rest of the architecture worth building. When a site changes shape, the error envelope gives the agent a bounded fix:
+This is the design choice that makes the rest of the architecture worth
+building. When a site changes shape and the owned path is known, the error
+envelope can give the agent a bounded fix:
 
 ```json
 {
@@ -193,30 +225,52 @@ This is the design choice that makes the rest of the architecture worth building
 }
 ```
 
-The agent has everything it needs: the file to edit, the failing step, a one-line hypothesis, and at least one alternative path. After the YAML edit, `unicli repair twitter search` re-runs the original command as a bounded JSON oracle and requires its envelope and process exit to agree. The patch persists in `~/.unicli/adapters/`, so `npm update` cannot wipe it.
+This example includes the file to edit, failing step, hypothesis, and
+alternatives because that failure class can supply them; other failures omit
+fields that do not apply. After the YAML edit, `unicli repair twitter search`
+re-runs the original command as a bounded JSON oracle and requires its envelope
+and process exit to agree. The patch persists in `~/.unicli/adapters/`, so
+`npm update` cannot wipe it. The economic argument for YAML is inspectable,
+small source changes plus executable verification—not an unmeasured universal
+time-saving claim.
 
-A bug that would have cost 30 minutes of human debugging closes in 30 seconds of agent runtime. That two-orders-of-magnitude difference is the entire economic argument for adapters as YAML.
+## Why CLI is the native runtime surface
 
-## Why CLI is the first runtime surface
+CLI is the native full surface, not the product boundary. It is the direct
+contract for any host that can spawn a process. MCP exposes adapter operations
+through default, deferred, and expanded profiles. ACP, HTTP-compatible routes,
+and skills are integrations with their own supported subsets; they should not
+be read as command-by-command parity claims.
 
-CLI is the cheapest primary exposure surface for many agent runs; it is not the
-product boundary. Three forces make it the right first runtime surface.
+**On-demand context.** `search -> describe -> invoke` lets a subprocess host
+load only the selected operation. [docs/BENCHMARK.md](/BENCHMARK) measures
+representative Uni-CLI `--limit 5` list-style calls at a 364-423 token total
+budget (median 412). That is a Uni-CLI fixture, not a third-party protocol
+comparison. Default/deferred MCP profiles and modern host-side tool search can
+also load schemas on demand.
 
-**Token economics.** [docs/BENCHMARK.md](/BENCHMARK) measures `--limit 5` list-style adapters at a 364-423 token total call budget (median 412). An MCP server keeps its tool list resident in the agent's context window — typically 1,500-3,000 tokens per server — even when the agent does not invoke it. The CLI pays for what it uses; the MCP server pays to be available.
+**Inspectability.** A CLI preserves arguments, stdout, stderr, exit status,
+environment, and file artifacts at a familiar process boundary. Network,
+browser, and desktop effects remain stateful and non-deterministic; Uni-CLI
+does not relabel them as pure functions.
 
-**Determinism.** A CLI call is a pure function of arguments and time. Same arguments, same minute, same output. MCP roundtrips add a stateful server, a transport, and a protocol layer that can drift. For agent automation, fewer moving parts reduces failure modes.
-
-**Composability.** Shell pipelines are the lingua franca of automation. `unicli reddit hot r/programming -n 50 -f json | jq '.data[].title' | unicli huggingface summarize -` works the day Uni-CLI installs. Same composition with MCP requires a glue layer.
+**Composability.** Shell pipelines, files, CI, and existing local tools can use
+the CLI without a resident service. MCP is the stronger composition surface
+inside a host that already owns protocol sessions and deferred tool discovery.
 
 ## When MCP still wins
 
-CLI is not a universal replacement. MCP is the better surface for:
+CLI is not a universal replacement. MCP is often the better surface for:
 
 - **Stateful auth** — long-lived OAuth flows, refreshing tokens, session-bound resources.
 - **Real-time** — WebSocket-driven chat platforms, server-sent events, streaming completions.
-- **Single-platform deep integration** — a vendor-built MCP server for a vertical platform usually outperforms a third-party CLI adapter for that platform.
+- **Host-native discovery** — default meta-tool search or deferred tool loading inside an MCP-capable runtime.
+- **Remote execution boundaries** — a governed server that should not be represented as a local subprocess.
 
-Most production agent stacks need both. Uni-CLI ships an MCP gateway (`unicli mcp serve`) that wraps the same catalog, so a runtime that only speaks MCP gets the same execution surface without a second integration.
+Most production agent stacks need both. Uni-CLI ships `unicli mcp serve` with
+default, deferred, and expanded profiles over adapter operation contracts.
+Fixed core commands remain canonical on native CLI until the parity work in the
+roadmap lands.
 
 ## The operation catalog as a first-class artifact
 
@@ -241,14 +295,14 @@ $ unicli hackernews top -n 10 -f json \
 # 4. The agent edits the YAML and re-verifies with `unicli repair`
 ```
 
-That is the simplest exposure path. The same operation contract can also run
-through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
-shape covers the static catalog of
+That is the canonical full exposure path. Adapter operation contracts can also
+run through MCP profiles; ACP, HTTP, skills, and CI expose documented subsets.
+One command shape covers the static catalog of
 <span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites and
 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter
-commands; fixed core and host-discovered commands join that surface at runtime.
-One error envelope covers every failure. One self-repair path covers every
-adapter.
+commands; fixed core and host-discovered commands join the native CLI at
+runtime. Rendered calls share the v2 success/error envelope shape; optional
+evidence and repair fields depend on the operation and failure class.
 
 ## Further reading
 

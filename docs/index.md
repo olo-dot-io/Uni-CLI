@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: Universal computer-control platform for agents.
+description: The open Agent-Computer Interface runtime for real software.
 ---
 
 <HomePage />

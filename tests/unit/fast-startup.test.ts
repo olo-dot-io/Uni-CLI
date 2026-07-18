@@ -6,6 +6,7 @@ describe("root startup help", () => {
   it("keeps discovery actionable without enumerating the adapter inventory", () => {
     const help = rootHelp();
     expect(help).toContain("Usage: unicli");
+    expect(help).toContain("Open Agent-Computer Interface runtime");
     expect(help).toContain("search <intent...>");
     expect(help).toContain("list [--site <site>]");
     expect(help).toContain("unicli help <command>");

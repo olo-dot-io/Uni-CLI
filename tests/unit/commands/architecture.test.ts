@@ -50,7 +50,7 @@ describe("unicli architecture", () => {
   it("registers architecture audit as a discoverable core command", () => {
     const coreCommand = getCoreDiscoveryCommand("architecture", "audit");
 
-    expect(coreCommand?.description).toContain("computer-control");
+    expect(coreCommand?.description).toContain("Agent-Computer Interface");
     expect(coreCommand?.type).toBe("service");
     expect(coreCommand?.source_path).toBe("src/commands/architecture.ts");
   });

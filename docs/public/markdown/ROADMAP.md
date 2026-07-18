@@ -9,9 +9,9 @@
 
 > Current: v0.400.1 — Apollo · Young. Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
-This file tracks current engineering direction for the agent control plane for
-real software: a universal agent-to-computer control platform. Historical
-release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
+This file tracks engineering direction for the open Agent-Computer Interface
+runtime for real software. Historical release notes live in `CHANGELOG.md`;
+they do not belong in the roadmap.
 
 ## Shipped
 
@@ -29,11 +29,12 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
 
 ## Next Priorities
 
-1. **Computer-control root model**
+1. **Agent-Computer Interface root model**
    - Keep public docs, architecture tree, command descriptions, and agent
-     surfaces aligned around agent-to-computer control over real software.
-   - Treat browser automation, computer-use sandboxes, MCP, natural-language
-     local execution, and per-site wrappers as substrates below Uni-CLI, not as
+     surfaces aligned around discover, select, govern, act, observe, and repair
+     across real software.
+   - Treat browser automation, computer-use sandboxes, MCP, WebMCP, local
+     execution, and per-app harnesses as substrates below Uni-CLI, not as
      competing product identities.
    - Make `architecture tree` and `architecture audit` the executable check that
      catches regressions back into catalog/lifecycle-first framing.
@@ -54,6 +55,9 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
    - Let agents probe replayability before repeating a command, then compare the replay trace against the original.
    - Extend evidence coverage across transport classes without making opaque
      browser screenshots the only proof.
+   - For mutating operations, distinguish dispatch, settlement, observed
+     delta, and objective outcome instead of treating a successful call as
+     completed work.
    - Keep result envelopes, permission evaluations, and browser action evidence
      queryable enough for reviews and repair tasks.
 
@@ -67,10 +71,13 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
 5. **Substrate bus**
    - Make HTTP, CDP, accessibility, subprocess, service, and Visual dispatch share
      one invocation kernel and one evidence model.
-   - Keep ACP/MCP/HTTP as wrappers over the same operation contracts rather than separate
-     behavior definitions.
+   - Close adapter/core projection gaps so ACP/MCP/HTTP wrappers can converge on
+     operation contracts rather than separate behavior definitions.
    - Surface unavailable transports as structured errors with install/setup
      suggestions.
+   - Ingest ARD and MCP Registry metadata as discovery inputs, and WebMCP as a
+     page-native substrate, only when their versioned contracts pass local
+     conformance and executability checks.
 
 6. **Desktop and Visual stack**
    - Build repeatable control paths for WeChat, WeCom, DingTalk, Lark, Mail,
@@ -89,12 +96,14 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
      agents.
 
 8. **Continuous trend intake**
-   - Periodically review agent-loop, computer-use, editor-agent, and desktop
-     automation trends through a private research process.
+   - Periodically review capability discovery, agent protocols, computer-use,
+     hybrid-interface benchmarks, and desktop automation through a private
+     research process.
    - Convert durable insights into architecture or roadmap updates, not prompt
      lore.
-   - Keep source-specific attribution internal and keep public docs at the
-     capability level.
+   - Keep exhaustive research logs internal, while public architecture claims
+     cite their first-party specifications or primary research at the point of
+     use.
    - Keep code decisions grounded in local tests, diffs, and runtime evidence.
 
 9. **Adapter authoring loop**
@@ -114,13 +123,13 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
 
 12. **Docs as product surface**
     - README stays install-first and capability-first.
-    - Public docs should explain the computer-control loop, operation contracts,
-      action substrates, repair paths, and integration routes.
+    - Public docs should explain the Agent-Computer Interface loop, operation
+      contracts, software boundaries, evidence, repair paths, and integrations.
     - Keep the public entry path short, current, and directly useful.
 
 13. **Workflow evidence closure**
-    - Start from vehicle-assistant workflows: media, video search, browser tabs,
-      installed apps, productivity state, and open/navigate destinations.
+    - Start from hybrid workflows that cross retrieval, files, browser tabs,
+      installed apps, productivity state, and local or protocol tools.
     - Promote a workflow from cataloged to claimed only after command execution,
       post-state evidence, and auth/policy posture have been recorded.
     - Do not add commands for coverage optics; new commands need a runner,
@@ -133,7 +142,8 @@ release notes live in `CHANGELOG.md`; they do not belong in the roadmap.
 - No theory-first README and no catalog-first identity.
 - No new protocol shim unless it reduces latency, preserves session semantics, or unlocks a real client.
 - No positioning as only a browser library, MCP wrapper, computer-use sandbox,
-  natural-language shell, scraper, or per-site wrapper collection.
+  natural-language shell, scraper, per-site wrapper collection, agent model,
+  orchestrator, or distributed hosting platform.
 
 ## Verify
 

@@ -1,6 +1,6 @@
 # Uni-CLI
 
-Uni-CLI is the universal computer-control platform for AI agents to discover, run, prove, deliver, repair, and reroute work across websites, logged-in browsers, desktop apps, files, local tools, external CLIs, MCP servers, screenshots, accessibility trees, and agent backends.
+Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, select, govern, act through, observe, and repair operations across websites, logged-in browsers, desktop apps, files, local tools, external CLIs, MCP servers, accessibility, visual control, and agent backends.
 
 ## Operation Snapshot
 
@@ -9,14 +9,14 @@ Uni-CLI is the universal computer-control platform for AI agents to discover, ru
 - Runtime scope: fixed core and host-discovered commands are additional
 - Adapters: 1238 (994 YAML + 244 TypeScript)
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9659
+- Tests: 9660
 
 ## Agent Contract
 
 - Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.
 - Prefer `-f json` for scripts and `-f md` for agent-readable prose.
 - On failure, read the v2 error envelope, open the source path or `error.adapter_path`, patch the named step or boundary, then run `unicli repair <site> <command>`.
-- MCP and ACP are compatibility gateways; the native contract is an operation plus a structured AgentEnvelope.
+- Native CLI is the complete process surface. MCP default/deferred/expanded profiles project adapter operations; fixed-core and other integration parity remain roadmap work.
 
 ## Markdown Companions
 

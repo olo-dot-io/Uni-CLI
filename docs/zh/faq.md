@@ -1,6 +1,6 @@
 ---
 title: Uni-CLI 常见问题
-description: 关于 Uni-CLI 的高频问题汇总——它是什么、和浏览器自动化、MCP、computer-use sandbox、wrapper 有什么区别，以及证据和修复怎么跑。
+description: 关于 Uni-CLI Agent-Computer Interface 运行时、软件边界、证据、协议和修复闭环的高频问题。
 ---
 
 # 常见问题
@@ -9,23 +9,27 @@ description: 关于 Uni-CLI 的高频问题汇总——它是什么、和浏览�
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。静态 adapter 目录当前覆盖 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点与 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令；固定 core 与主机动态发现表面在运行时加入。
+Uni-CLI 是面向真实软件的开源 Agent-Computer Interface 运行时。它在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、accessibility 和 visual control 之间提供一个可搜索边界：按意图排序已编目 operation，通过选中 operation 已声明的 substrate 按当前策略运行，返回稳定的成功/错误 envelope，并让支持的失败路径可修复。静态 adapter 目录当前覆盖 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点；固定 core 与主机动态发现 surface 在运行时加入 native CLI。
+
+## 为什么叫 Agent-Computer Interface 运行时？
+
+Agent-Computer Interface 指 Agent 能发出的命令，以及 computer 返回的反馈；“运行时”则把可执行行为和 schema、skill、registry、文档层区分开。Uni-CLI 跨多种软件接口实现这条边界，但不接管模型、planner 或 Agent framework。这个术语来自 [SWE-agent 论文](https://arxiv.org/abs/2405.15793)；Uni-CLI 把它从 coding tool 扩展到异构真实软件。
 
 ## 和浏览器自动化库有什么区别？
 
-浏览器自动化只是一个行动 substrate。Uni-CLI 位于它之上，提供 operation contract、权限策略、证据回执、delivery assessment 和 repair/reroute 路径。无论是浏览器命令、桌面动作、subprocess bridge、MCP route 还是 App wrapper，都应该返回同一种 AgentEnvelope，并遵守同一条控制闭环。
+浏览器自动化只是一种执行 substrate。Uni-CLI 的 catalog 可以同时容纳 API、文件、本地 CLI、page-native、browser-semantic、desktop-accessibility 和 visual operation。每条 operation 声明自己的 strategy 与 substrate；当前由 Agent 在候选项中选择，而不是依赖 universal automatic arbitration。Adapter command 共享 adapter kernel 与 envelope 形状，evidence 和 repair 细节则取决于 operation。
 
 ## 和 computer-use sandbox 有什么区别？
 
-computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark hook 的环境。Uni-CLI 可以使用这类边界，但它的类目更大：通过最小可用 substrate 控制用户真实软件环境，从 typed API、browser CDP，到桌面无障碍、subprocess、文件、协议和 visual fallback。
+computer-use sandbox 提供隔离环境、屏幕、鼠标、键盘和常见的 benchmark hook。Uni-CLI 是 interface runtime，而不是 sandbox：它既能调用 sandbox 边界，也能调用本地边界，在同一任务中跨 GUI 与 structured interface，并返回统一操作回执。它不会把用户真实机器描述成 sandbox 级隔离环境。
 
 ## 为什么是 CLI 而不是 MCP 服务？
 
-[docs/BENCHMARK.md](/zh/BENCHMARK) 实测一次 `--limit 5` 列表型 Uni-CLI 调用的总预算落在 364-423 token (中位 412)；相同动作走 MCP 服务，工具清单常驻在 Agent 上下文里——每个服务通常 1500-3000 token，调用与否都占着。Uni-CLI 两条路径都提供，CLI 是便宜且确定性的主入口，MCP 包同一份目录给纯 MCP 运行时。
+CLI 是 Uni-CLI 原生、可检查的完整 command surface：不用常驻 server，就能与文件、pipe、exit code、CI 和本地工具组合。Host 需要 stateful session 或 protocol-native discovery 时，MCP 是一等 protocol/exposure substrate，而且现代 client 可以延迟加载 tool schema。Compact、deferred、expanded profile 投影 adapter operation；固定 core command 在逐命令 parity 完成前以 native CLI 为规范入口。
 
 ## 自修复 (self-repair) 是怎么跑的？
 
-操作失败时 Uni-CLI 会吐出结构化的错误 JSON，里面有 source path、失败 step 或边界、动作描述、是否可重试、替代路径和一句话建议。Agent 可以读那个路径下的 YAML 或代码，改选择器、认证头或边界逻辑，然后跑 `unicli repair <site> <command>` 或有界 delivery verification。用户本地修复会保存在 `~/.unicli/adapters/`，`npm update` 不会冲掉。
+归属于 adapter 的路径失败时，Uni-CLI 会吐出结构化错误 JSON，并可填充 source path、失败 step 或边界、retryability、替代路径和建议。Agent 可以读那个路径下的 YAML 或代码，改选择器、认证头或边界逻辑，然后跑 `unicli repair <site> <command>` 或有界 delivery verification。用户本地修复会保存在 `~/.unicli/adapters/`，`npm update` 不会冲掉；不适用于某类失败的字段保持缺失，不会被编造。
 
 ## 支持哪些 AI Agent 运行时？
 
@@ -33,7 +37,7 @@ computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark ho
 
 ## 一共有多少站点和命令？
 
-v0.400.1 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9659<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
+v0.400.1 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9660<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一个 Agent-Computer Interface 产品边界：发现、选择、治理、行动、观察和修复横跨 web、browser、desktop、本地工具、文件与协议的 operation。
 
 ## 能下载论文并读取本地 PDF 吗？
 
@@ -49,11 +53,15 @@ v0.400.1 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count 
 
 ## 需要登录的网站能跑吗？
 
-能。strategy 会按 `public` → `cookie` → `header` (cookie + CSRF) → `intercept` (浏览器 XHR 抓取) → `ui` (交互) 级联探测。`cookie`/`header` 命令优先读取用户显式持久化的文件；没有文件时只把 live browser/CDP Cookie 读入本次进程内存。只有 `auth import` 和 `browser cookies` 会显式落盘。
+能。Operation 会显式声明 `public`、`cookie`、`header`、`intercept` 或 `ui` 之一。
+存在 probe URL 时，有界 HTTP probe 只尝试 `public → cookie → header`，并在进程内
+缓存第一个有效结果；它不会自动升级到 browser-backed `intercept` 或 `ui`。
+`cookie`/`header` command 优先读取用户显式持久化的文件；没有文件时只把 live
+browser/CDP Cookie 读入本次进程内存。只有 `auth import` 和 `browser cookies` 会显式落盘。
 
 ## token 成本上比 MCP 好多少？
 
-[docs/BENCHMARK.md](/zh/BENCHMARK) 实测列表型 Uni-CLI 调用预算 364-423 token (中位 412)。MCP 服务必须把工具清单驻在上下文里，通常每个服务 1500-3000 token，工具调与不调都占着。Uni-CLI 用结构化错误回执让 Agent 避开把上下文越撑越大的重试 loop。
+[docs/BENCHMARK.md](/zh/BENCHMARK) 实测代表性 `--limit 5` 列表型 Uni-CLI 调用预算为 364-423 token（中位 412）；它没有 benchmark 第三方 MCP client。Expanded MCP 可能暴露很大的 catalog，而 Uni-CLI default/deferred profile 与现代 host-side tool search 可以按需加载 schema。应当实测目标 host 里的 CLI 或 MCP profile，而不是预设某个协议永远更省 token。
 
 ## 是免费开源的吗？
 

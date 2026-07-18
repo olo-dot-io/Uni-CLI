@@ -6,19 +6,19 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/index.md
 - 栏目: 上手
 
-## AI Agent 控制 computer 的通用平台
+## 面向真实软件的开源 Agent-Computer Interface 运行时
 
-Uni-CLI 把网站、登录态浏览器、桌面应用、本地工具、文件、MCP 服务、无障碍树、截图和系统能力收进一套可搜索、可治理、可观察、可修复的操作层。Agent 先按意图选择行动 substrate，再按策略执行，拿到证据回执；失败时还能诊断、修复或换路，直到结果交付。
+Uni-CLI 在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、MCP 服务、accessibility、visual control 和系统能力之间提供一个可搜索边界。它按意图排序已编目 operation，通过选中 operation 已声明的 substrate 按支持的策略运行，返回稳定的成功/错误 envelope，并让支持的失败路径可修复。
 
-## 控制面
+## 运行时合同
 
-- Intent search
-- Policy-gated execution
-- AgentEnvelope v2
+- Intent discovery
+- Declared substrates
+- Policy-aware execution
+- Structured envelopes
 - MCP + ACP
-- Desktop AX
-- Visual fallback
-- Adapter self-repair
+- Browser + Desktop
+- Repairable paths
 
 ## 第一条命令
 
@@ -32,25 +32,25 @@ unicli mcp serve --transport streamable --port 19826
 
 ## 定位
 
-Agent 执行需要的不是更长的常驻工具列表，也不是又一个网页 wrapper。它需要一只可以控制整台 computer 的通用手。operation search 负责发现操作，operation policy 负责权限和风险，control kernel 负责选择 substrate，v2 AgentEnvelope 负责稳定输出，run evidence 负责复盘，delivery/repair loop 负责把失败指向 source path、替代路径和验证命令。
+Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、浏览器 Agent 或 MCP 平台。CLI 是原生完整进程入口；MCP 投影 adapter operation；API、文件、CLI、browser、desktop、protocol 和 visual 是 operation 可声明的 substrate。精简闭环是发现、选择、治理、行动、观察、修复。
 
-- **理解意图。** BM25 双语搜索把自然语言意图收敛到具体站点、操作、参数、认证姿态和风险字段。
-- **选择 substrate。** HTTP、Cookie、浏览器 CDP、macOS AX、subprocess、service、protocol 和 visual fallback 走同一套 control kernel。
-- **返回证据。** Markdown 是 Agent 默认友好的输出，JSON、YAML、CSV 和 compact 负责程序接入。
-- **修复或换路。** 结构化错误带上 source path、step 或边界、retryable、suggestion 和 alternatives。
+- **发现。** BM25 双语搜索只取当前任务相关的操作、参数、认证姿态和风险字段。
+- **选择与治理。** Agent 选择已声明 strategy/substrate 的 operation；执行前可检查当前覆盖的 capability scope、effect、risk 和 approval。
+- **行动与观察。** Adapter kernel 调用选中的 operation；AgentEnvelope 区分成功与错误，支持的 operation 可附加 artifact、recording 或 post-state evidence。
+- **修复。** 结构化错误始终带 code/message，并在适用时提供 source path、失败边界、retryability、suggestion 或 alternatives。
 
 ## 常见任务
 
 - `unicli search` 和 `unicli do` 先查本地操作目录，操作选定后再读取参数、认证、风险和输出字段。
-- 页面、接口、App 或本地边界失效时，错误 envelope 指出 source path、失败 step 或边界。
-- Web API、浏览器、macOS、本地桌面应用、外部 CLI、文件、MCP、ACP、HTTP API 和 agent backend routes 共享同一套 operation contract 与回执。
+- 页面、接口、App 或本地边界失效时，owned failure 可在 error envelope 中指出 source path、失败 step 或边界。
+- Native CLI 是完整 command surface；MCP default/deferred/expanded profile 投影 adapter operation，固定 core 与其他 integration parity 仍在路线图中。
 
 ## 覆盖范围
 
 - 静态 adapter 站点：324
 - 已注册 adapter 操作：1817
 - Built-in action：105（50 registered + 55 transport-native）
-- 测试：9659
+- 测试：9660
 
 站点与操作数字来自静态 adapter catalog；固定 core 与主机动态发现命令在运行时单独加入。operation、adapter、built-in action、测试和 substrate 都由本地构建流程计数。
 

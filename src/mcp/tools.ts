@@ -7,9 +7,9 @@
  * @invariants  Read-only tools permit tasks while every statically mutating tool requires task augmentation.
  *
  * Three build modes:
- *   1. `buildDefaultTools()`  — 4 meta-tools (~200 tokens handshake)
- *   2. `buildExpandedTools()` — one tool per adapter command (~160K tokens)
- *   3. `buildDeferredTools()` — stubs for ToolSearch/deferred clients (~8K)
+ *   1. `buildDefaultTools()`  — 4 meta-tools
+ *   2. `buildExpandedTools()` — one full-schema tool per adapter command
+ *   3. `buildDeferredTools()` — one lightweight stub per adapter command
  *
  * Extracted from `server.ts` to keep that file's responsibility limited to
  * JSON-RPC transport wiring.
@@ -157,7 +157,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_list",
       description:
-        "List available commands. Filter by site, category, or adapter type.",
+        "List discoverable commands with source_kind, mcp_run_supported, and invocation metadata. Filter by site, category, or adapter type.",
       inputSchema: {
         type: "object",
         properties: {
@@ -179,7 +179,7 @@ export function buildDefaultTools(): McpTool[] {
       },
       _meta: {
         "anthropic/searchHint":
-          "Browse available Uni-CLI sites and commands. Filter by site name, category, or adapter type.",
+          "Browse Uni-CLI adapter and fixed-core commands, including whether unicli_run supports each command. Filter by site name, category, or adapter type.",
         "anthropic/alwaysLoad": true,
       },
       annotations: {
@@ -192,7 +192,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_search",
       description:
-        "Search the Uni-CLI operation catalog by intent and optional category. Bilingual (EN/ZH). Returns top matches with usage examples.",
+        "Search the Uni-CLI operation catalog by intent and optional category. Bilingual (EN/ZH). Returns usage plus source_kind and mcp_run_supported metadata.",
       inputSchema: {
         type: "object",
         properties: {
@@ -282,9 +282,9 @@ export function selectPrompts(profile: string): McpPrompt[] {
 /**
  * Enumerate every adapter command sorted by final tool name.
  *
- * MCP `tools/list` must be deterministic across processes so clients can
- * prompt-cache the tool list (required by the MCP 2026-07-28 spec revision);
- * registry Map insertion order depends on adapter load order, so we sort.
+ * MCP `tools/list` must be deterministic across processes so clients can cache
+ * it consistently; registry Map insertion order depends on adapter load order,
+ * so we sort.
  * Byte-wise comparison (not localeCompare) keeps the order locale-independent,
  * and sorting by the collision-normalized tool name also makes tool-name
  * collision shadowing deterministic.
@@ -366,8 +366,6 @@ export function buildExpandedTools(): McpTool[] {
  * minimal inputSchema). Clients like Claude Code's ToolSearch can discover
  * tools by searchHint and then call them — the handler resolves the full
  * command at call time via the expandedRegistry.
- *
- * Token cost: ~8K (vs ~160K for expanded). 95% reduction.
  */
 export function buildDeferredTools(): McpTool[] {
   const tools: McpTool[] = [];

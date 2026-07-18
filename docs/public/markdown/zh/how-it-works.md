@@ -7,36 +7,55 @@
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、外部 CLI、无障碍树、截图和 App wrapper 收进同一套可治理的操作层。这一页讲清楚控制闭环：意图怎样变成 operation contract，Uni-CLI 怎样选择行动 substrate，v2 AgentEnvelope 怎样返回证据，以及真实软件变化时 delivery/repair 怎样维持路径。
+Uni-CLI 是面向真实软件的开源 Agent-Computer Interface 运行时。它在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、外部 CLI、accessibility 和 visual control 之间提供一个可搜索边界。这一页讲清当前闭环：意图怎样排序已编目 operation，Agent 怎样选择已声明 substrate 的 operation，策略怎样在执行前生效，AgentEnvelope 怎样报告调用，以及真实软件变化时 repair 怎样让路径保持可诊断。
 
-## Computer-Control 契约
+## Agent-Computer Interface 契约
 
-每条 Uni-CLI 操作都走同一条产品闭环。Agent 可以在任何阶段停下来推理。
+公开的六个动词是当前可执行 stage 的精简模型，不代表每一种 transport 都有完全
+相同的 dispatch 或 evidence 行为。
 
-1. **意图**：`unicli search "<意图>"` 和 `unicli do "<意图>"` 把任务映射成候选操作、参数、认证姿态、样例和风险信号。
-2. **选择**：operation contract 选择能行动的最小边界：API、browser、desktop accessibility、subprocess、protocol、visual fallback 或 App wrapper。
-3. **治理**：permission profile、deny rule、capability scope、本地策略在请求、写入、启动进程或 UI 动作前拦住高风险影响。
-4. **行动**：共享 control kernel 调用选中的 substrate，而不是让 CLI、MCP、ACP 或文档各自定义行为。
-5. **观察**：AgentEnvelope v2 用同一种形状返回 data、context、retryability、耗时和证据 hook，成功失败都一样。
-6. **诊断**：delivery assessment 把失败归为认证、策略、缺少上下文、上游漂移、环境问题或 adapter 缺陷。
-7. **修复或换路**：下一次实验受 source path、alternatives、evidence 和 verification command 约束。
-8. **交付**：evidence gate 判断目标已满足、仍在进行、被阻断，还是已经耗尽。
-9. **暴露**：同一条操作可以复用到 native CLI、JSON stream、MCP、ACP、HTTP、docs、skills、CI 和脚本。
+1. **发现（`intent`）**：`unicli search "<意图>"` 和只产出计划的 `unicli do
+"<意图>"` 检索一小组排序结果；两者都不会执行外部动作。
+2. **选择（`select`）**：Agent 选择一条已声明 strategy 与 substrate 的
+   operation。在全部替代路径间自动仲裁属于路线图能力，并非当前行为。
+3. **治理（`govern`）**：permission profile、deny rule、capability scope 与本地
+   policy 在调用前暴露或拦截已覆盖的 effect。
+4. **行动（`act`）**：adapter command 使用共享 adapter kernel；固定 core
+   command 保持各自的 native CLI handler。
+5. **观察（`observe`、`diagnose`、`deliver`）**：AgentEnvelope 始终区分成功与
+   错误并携带 timing metadata；artifact、recording、post-state check 与 trajectory
+   evidence 都取决于具体 operation。
+6. **修复（`repair-or-reroute`）**：operation 提供相应上下文时，结构化错误和
+   delivery field 可以约束下一次 diagnosis、repair 或 reroute。
 
-这份契约横跨所有行动 substrate。adapter type 是产品边界之下的实现细节。
+`expose` 是第九个可执行 stage。Adapter operation 会投影到 native CLI 与 MCP
+default/deferred/expanded profile；固定 core command 当前以 native CLI 为规范入口，
+完整跨协议 parity 是路线图工作。
 
 ## Substrate 不是身份
 
-浏览器自动化、computer-use sandbox、自然语言本地执行、MCP 服务和单站点 wrapper 都有价值，但它们不是 Uni-CLI 的类目。它们是 Uni-CLI 可以使用或暴露的具体技术边界。
+浏览器自动化、computer-use sandbox、本地执行、MCP 服务、页面原生工具和单 App
+harness 都有价值，但它们不是 Uni-CLI 的类目。它们是 Agent-Computer Interface
+可以执行或暴露的具体技术边界。
 
-| Substrate       | 贡献什么                                           | Uni-CLI 在它上面保留什么                       |
-| --------------- | -------------------------------------------------- | ---------------------------------------------- |
-| Web/API         | typed fetch、cookie/header auth、download、extract | operation contract、policy、evidence、repair   |
-| Browser         | CDP 控制、DOM/accessibility ref、截图、网络捕获    | 选择、回执、交付、换路                         |
-| Desktop/OS      | installed app、无障碍树、截图、本地状态            | governed action、post-state evidence、平台诊断 |
-| 本地工具/文件   | subprocess、PDF、媒体工具、开发者 CLI              | typed args、output envelope、retryability      |
-| 协议            | MCP、ACP、Streamable HTTP、JSON stream             | 共享语义，不让 wrapper 各自定义行为            |
-| Visual fallback | 最后一公里屏幕交互                                 | 真实性闸门：能看见、能行动、能验证             |
+| Substrate       | 贡献什么                                           | Uni-CLI 在它上面保留什么                  |
+| --------------- | -------------------------------------------------- | ----------------------------------------- |
+| Web/API         | typed fetch、cookie/header auth、download、extract | operation contract、policy、结构化结果    |
+| Browser         | CDP 控制、DOM/accessibility ref、截图、网络捕获    | 已声明 strategy、recording、诊断          |
+| Desktop/OS      | installed app、无障碍树、截图、本地状态            | governed action 与平台诊断                |
+| 本地工具/文件   | subprocess、PDF、媒体工具、开发者 CLI              | typed args、output envelope、retryability |
+| 协议            | MCP、ACP、Streamable HTTP、JSON stream             | 当前投影 adapter；更广 parity 在路线图中  |
+| Visual fallback | 最后一公里屏幕交互                                 | 真实性闸门：只声明能看见、能行动的路径    |
+
+## 它在协议栈中的位置
+
+2026 年的 Agent 协议栈正在按边界分工。[ARD](https://agenticresourcediscovery.org/spec/) 与 [MCP Registry](https://modelcontextprotocol.io/registry/about) 发布能力在哪里；[MCP](https://modelcontextprotocol.io/) 连接 Agent 与工具/数据；[WebMCP](https://developer.chrome.com/docs/ai/webmcp) 让主动接入的页面发布 live tool；[A2A](https://developers.googleblog.com/en/how-a2a-is-building-a-world-of-collaborative-agents/) 连接协作 Agent。Uni-CLI 不需要替换其中任何一层。
+
+Uni-CLI 负责 discovery 之后的本地 operation 边界：检查可执行路径，读取 operation
+已声明的 substrate，应用当前策略，执行并报告结果，在支持时保留 repair context。
+ARD、registry ingestion 与更广的 semantic substrate arbitration 是架构方向，而不是
+已发布的自动行为。标准成熟后，应当作为 discovery input、execution substrate 或
+exposure format 进入 runtime，而不是引发架构重写。
 
 ## 领域感知发现
 
@@ -120,7 +139,8 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 
 ## 策略级联
 
-认证是接触现代 web 时最脏的部分。每个适配器声明五种策略之一，Uni-CLI 自动探测最便宜的能跑通的策略。
+认证是接触现代 web 时最脏的部分。Operation 可以声明五种 strategy 之一，但它们
+不是一条自动五路 cascade。
 
 | 策略        | 认证来源                         | 典型成本                      |
 | ----------- | -------------------------------- | ----------------------------- |
@@ -130,14 +150,17 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 | `intercept` | 浏览器在线会话                   | Navigate 页面，捕获 XHR/fetch |
 | `ui`        | 浏览器在线会话                   | 点击、输入、snapshot          |
 
-级联顺序是 `public → cookie → header → intercept → ui`。某站第一次跑时，Uni-CLI 逐个试，直到某个策略返回可解析数据，然后缓存结果。后面的调用跳过探测。
+存在 probe URL 时，有界 HTTP probe 尝试 `public → cookie → header`，并在进程内
+缓存第一个有效结果。它不会静默升级到 `intercept` 或 `ui`；browser-backed
+strategy 必须由 operation 明确声明。
 
 live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth import` 或
 `browser cookies` 才会在 `~/.unicli/cookies/` 写入 plaintext JSON。
 
 ## v2 AgentEnvelope
 
-每条已注册的 adapter 命令都返回 v2 AgentEnvelope——成功失败同一个形状。Agent
+每条经 CLI formatter 渲染的已注册 adapter command 都返回包含 success/failure arm
+的 v2 AgentEnvelope。Agent
 用一份 schema 解析静态 adapter catalog 中的
 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条命令；固定 core
 命令与主机动态发现命令会在运行时单独列出。
@@ -145,67 +168,78 @@ live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth
 ```json
 {
   "ok": true,
-  "version": "v2",
+  "schema_version": "2",
+  "command": "hackernews.top",
+  "meta": {
+    "duration_ms": 412,
+    "count": 5,
+    "surface": "web"
+  },
   "data": [
     /* 结果 */
   ],
-  "meta": {
-    "site": "reddit",
-    "command": "search",
-    "strategy": "public",
-    "duration_ms": 412,
-    "adapter_path": "/Users/me/.unicli/adapters/reddit/search.yaml"
-  },
-  "exit_code": 0
+  "error": null
 }
 ```
 
-失败时 `ok` 变 `false`、`data` 变 `null`、`error` 填上结构化字段。退出码遵循 `sysexits.h` (0=ok、1=error、2=usage、66=empty、69=unavailable、75=temp、77=auth、78=config)，shell pipeline 可以按失败类别路由。
+失败时 `ok` 变 `false`、`data` 变 `null`，`error` 一定有 `code` 和 `message`；
+其他 repair field 是条件字段。CLI 在 envelope 旁边把结构化失败映射为 process exit
+class，JSON schema 本身不包含 `exit_code` 字段。
 
 ## Self-repair 闭环
 
-这是让整套架构值得做的设计选择。当站点改版时，错误回执给 Agent 一条有界的修复路径：
+这是让整套架构值得做的设计选择。当站点改版且 owned path 已知时，错误回执可以给
+Agent 一条有界修复路径：
 
 ```json
 {
   "ok": false,
-  "version": "v2",
+  "schema_version": "2",
+  "command": "twitter.search",
+  "meta": { "duration_ms": 91, "surface": "web" },
   "data": null,
   "error": {
+    "code": "not_found",
+    "message": "HTTP 404 from the configured search endpoint",
     "adapter_path": "/Users/me/.unicli/adapters/twitter/search.yaml",
-    "step": "fetch",
-    "action": "request returned 404",
+    "step": 0,
     "suggestion": "endpoint may have moved; check x.com/i/api/graphql/* in DevTools Network tab",
     "retryable": false,
     "alternatives": ["unicli twitter timeline @user", "unicli twitter trending"]
-  },
-  "exit_code": 69
+  }
 }
 ```
 
-Agent 拿到的信息很完整：要改的文件、失败的 step、一句话假设、至少一条备选路径。改完 YAML，跑 `unicli repair twitter search`，由有界子进程重跑原始 JSON 命令，并要求 envelope 与 exit code 一致。补丁存在 `~/.unicli/adapters/`，`npm update` 冲不掉。
+这个例子包含要改的文件、失败 step、假设和 alternatives，是因为该失败类别能提供；
+其他失败会省略不适用字段。改完 YAML，跑 `unicli repair twitter search`，由有界
+子进程重跑原始 JSON command，并要求 envelope 与 exit code 一致。补丁存在
+`~/.unicli/adapters/`，`npm update` 冲不掉。YAML 的经济性来自小而可检查的 source
+change 与可执行 verification，不来自未经测量的通用时间倍率。
 
-人调试要 30 分钟的 bug，Agent 30 秒就闭环了。两个数量级的差距，就是把适配器写成 YAML 全部经济性论证的核心。
+## 为什么 CLI 是原生运行入口
 
-## 为什么 CLI 是第一运行入口
+CLI 是原生完整 surface，而不是产品边界。任何能 spawn process 的 host 都能直接
+调用。MCP 通过 default、deferred、expanded profile 暴露 adapter operation；ACP、
+HTTP-compatible route 与 skill 是各自拥有支持子集的 integration，不应解读成逐命令 parity。
 
-CLI 是很多 Agent 运行里成本最低的第一暴露面，但它不是产品边界。三股力量让它适合作为第一运行入口。
+**按需上下文**。`search -> describe -> invoke` 让 subprocess host 只加载选中的 operation。[docs/BENCHMARK.md](/zh/BENCHMARK) 实测代表性 `--limit 5` 列表型 Uni-CLI 调用总预算为 364-423 token（中位 412）。这是 Uni-CLI fixture，不是第三方协议对比；default/deferred MCP profile 和现代 host-side tool search 同样可以按需加载 schema。
 
-**Token 经济**。[docs/BENCHMARK.md](/zh/BENCHMARK) 实测 `--limit 5` 列表型适配器的总调用预算 364-423 token (中位 412)。MCP 服务把工具清单常驻在 Agent 上下文里，每个服务通常 1500-3000 token，调用与否都占着。CLI 按用量付费；MCP 服务为"可用"付费。
+**可检查**。CLI 在熟悉的 process 边界上保留参数、stdout、stderr、exit status、environment 和文件 artifact。Network、browser、desktop effect 仍然有状态、非确定；Uni-CLI 不把它们重命名为纯函数。
 
-**确定性**。一次 CLI 调用是参数和时间的纯函数。同样参数、同一分钟、同样输出。MCP roundtrip 多了一个有状态服务、一层传输、一层协议，会漂移。对 Agent 自动化来说，少一处变动就少一类故障。
-
-**可组合**。Shell pipeline 是自动化通用语。`unicli reddit hot r/programming -n 50 -f json | jq '.data[].title' | unicli huggingface summarize -` 装好 Uni-CLI 当天就能跑。同样的组合走 MCP 还得加一层胶水代码。
+**可组合**。Shell pipeline、文件、CI 和已有本地工具不用常驻 service 就能调用 CLI。已经拥有 protocol session 和 deferred tool discovery 的 host 里，MCP 反而是更强的组合 surface。
 
 ## MCP 仍然赢的场景
 
-CLI 不是万能替代。MCP 在这几类场景仍然更好：
+CLI 不是万能替代。MCP 在这几类场景通常更好：
 
 - **有状态认证** — 长会话 OAuth 流、刷 token、绑定 session 的资源。
 - **实时** — WebSocket 驱动的聊天平台、server-sent events、流式生成。
-- **垂直深度集成** — 厂商自己出的 MCP 服务，通常比第三方 CLI 适配器在那个垂直平台上更强。
+- **Host-native discovery** — MCP-capable runtime 内的 default meta-tool search 或 deferred tool loading。
+- **远程执行边界** — 不应该被伪装成本地 subprocess 的 governed server。
 
-生产级 Agent 栈通常两个都要。Uni-CLI 自带一个 MCP 网关 (`unicli mcp serve`) 包了同一份目录，纯 MCP 运行时不用做第二次集成就拿到同一套执行表面。
+生产级 Agent 栈通常两个都要。Uni-CLI 的 `unicli mcp serve` 用 default、deferred
+与 expanded profile 暴露 adapter operation contract；固定 core command 在路线图
+parity 工作完成前仍以 native CLI 为规范入口。
 
 ## 操作目录是一等公民
 
@@ -230,7 +264,12 @@ $ unicli hackernews top -n 10 -f json \
 # 4. Agent 改 YAML，跑 `unicli repair` 重新验证
 ```
 
-这是最简单的暴露路径。同一份 operation contract 也可以通过 MCP、ACP、HTTP、skills 或 CI 运行，语义不变。一种命令形状覆盖静态目录中的 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个 adapter 站点与 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册 adapter 命令；固定 core 与主机动态发现命令在运行时加入这一表面。一种错误回执覆盖每一次失败，一条 self-repair 路径覆盖每一个适配器。
+这是规范的完整暴露路径。Adapter operation contract 也能通过 MCP profile 运行；
+ACP、HTTP、skill 与 CI 暴露各自记录过的支持子集。一种命令形状覆盖静态目录中的
+<span><!-- STATS:site_count -->324<!-- /STATS --></span> 个 adapter 站点与
+<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册 adapter command；
+固定 core 与主机动态发现 command 在运行时加入 native CLI。渲染调用共享 v2 成功/错误
+envelope 形状；可选 evidence 与 repair field 取决于 operation 和失败类别。
 
 ## 延伸阅读
 

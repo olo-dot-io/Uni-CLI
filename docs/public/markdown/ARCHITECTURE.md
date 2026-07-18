@@ -6,10 +6,11 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Explanation
 
-Uni-CLI is the universal computer-control platform for agents. The stable
-product primitive is not a browser session, a sandbox, a protocol server, a
-visual cursor, or a generated tool list. It is an operation that lets an agent
-control real software through a governed, observable, repairable path.
+Uni-CLI is the open Agent-Computer Interface runtime for real software. The
+stable product primitive is not a browser session, sandbox, protocol server,
+visual cursor, or generated tool list. It is the executable boundary that lets
+an agent discover and select operations, govern supported effects, act across
+software substrates, inspect results, and repair supported failures.
 
 The current generated static adapter catalog is the source of truth for:
 **<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites**,
@@ -19,69 +20,64 @@ The current generated static adapter catalog is the source of truth for:
 (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 transport-native),
-and **<span><!-- STATS:test_count -->9659<!-- /STATS --></span> tests** in v0.400.1.
+and **<span><!-- STATS:test_count -->9660<!-- /STATS --></span> tests** in v0.400.1.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 
-## Computer-Control Thesis
+## Agent-Computer Interface Thesis
 
-Vehicle assistants work because the car exposes a bounded control layer above
-navigation, media, climate, and driving assistance. General computers have the
-same shape at larger scale. Browser state, desktop apps, local tools, files,
-operating-system services, accessibility trees, screenshots, protocol servers,
-and website-specific paths are the environment. Uni-CLI is the hand agents use
-to control that environment.
+Language-model agents are a different software user. They have a bounded
+context window, issue structured actions, and need concise feedback about state
+changes and failure. Human GUIs, raw developer APIs, and resident catalogs were
+not designed as one coherent interface for that user.
 
-Adjacent projects usually own one concrete technical function: browser
-automation, a computer-use sandbox, natural-language local execution, an MCP
-server, or a per-application wrapper. Uni-CLI treats those as substrates. The
-platform boundary is larger: agent intent enters once, the system selects a
-controllable boundary, policy gates the effect, real software is acted on,
-evidence returns, failure is diagnosed, and the path is repaired or rerouted
-until the result is delivered.
+Adjacent projects usually own one concrete function: lifting an app into a CLI,
+driving a browser, hosting a sandbox, running MCP servers, managing SaaS OAuth,
+or publishing capability metadata. Uni-CLI treats those as providers,
+substrates, or exposure formats. The owned boundary is the runtime between the
+agent and all of them.
 
-The computer-control loop is:
+The compact product story is **discover → select → govern → act → observe →
+repair**. It maps onto the nine stages emitted by `unicli architecture audit`:
 
-1. Accept human or agent intent without preloading a giant tool list.
-2. Select the smallest operation boundary that can act on the target software.
-3. Govern the operation through permission profile, risk, capability scope, and
-   local policy.
-4. Act through the selected substrate: API, browser, desktop, subprocess,
-   protocol, visual, or app-specific wrapper.
-5. Observe result data, context, retryability, timing, and evidence through one
-   envelope.
-6. Diagnose failure into auth, policy, missing context, upstream drift,
-   environment trouble, or adapter defect.
-7. Repair or reroute through a bounded verification command and alternatives.
-8. Deliver the objective state, then expose the same operation through CLI, MCP,
-   ACP, docs, skills, CI, and scripts.
+| Product concern | Executable stage(s)              | Current boundary                                                                                             |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Discover        | `intent`                         | `search` and plan-only `do` rank operations without performing the external action                           |
+| Select          | `select`                         | the caller selects an operation with a declared strategy/substrate; universal semantic arbitration is future |
+| Govern          | `govern`                         | permission profiles and policy evaluate the effects and capabilities currently covered                       |
+| Act             | `act`                            | adapter commands use the adapter kernel; fixed core commands keep native CLI handlers                        |
+| Observe         | `observe`, `diagnose`, `deliver` | every rendered call distinguishes success/error; evidence and delivery detail are operation-specific         |
+| Repair          | `repair-or-reroute`              | errors and delivery tools bound a next attempt only when the required context exists                         |
+| Project         | `expose`                         | native CLI is complete; MCP projects adapter operations; other integrations expose documented subsets        |
 
-That loop is the product. The command lifecycle, YAML format, MCP gateway,
-browser automation, computer-use actions, and self-repair tools are internal
-machinery or substrates below it.
+This runtime boundary is the product. The command lifecycle, YAML format, MCP
+gateway, browser automation, computer-use actions, and self-repair tools are
+machinery or substrates below it. The table is intentionally explicit about
+current gaps: positioning is not evidence that a future arbitration or parity
+feature has shipped.
 
 ## Priority Model
 
-These roots define product semantics and must stay shared by every runtime
-surface.
+These roots define the intended product semantics. The current-support column
+above and the roadmap determine which runtime surfaces implement each root now.
 
-| Priority | Layer                      | Contract                                                                                   |
-| -------- | -------------------------- | ------------------------------------------------------------------------------------------ |
-| P0       | Computer-control platform  | Intent, selection, governance, action, observation, diagnosis, repair/reroute, delivery    |
-| P0       | Operation contract         | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
-| P0       | Control kernel             | Validate, harden, authorize, invoke a substrate, observe, and envelope                     |
-| P0       | Action substrates          | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
-| P0       | Evidence and delivery loop | AgentEnvelope v2, run traces, post-state evidence, objective gates, trajectory, repair     |
-| P1       | Discovery                  | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
-| P1       | Governance                 | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
-| P1       | Authoring                  | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
-| P1       | Runtime exposure           | Native CLI, JSON stream, MCP, ACP, streamable HTTP, agent packs, skills export             |
-| P2       | Broad coverage             | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
-| P2       | Public docs UI             | Homepage, operation catalog, architecture, compute evidence demo                           |
+| Priority | Layer                    | Contract                                                                                   |
+| -------- | ------------------------ | ------------------------------------------------------------------------------------------ |
+| P0       | Agent-Computer Interface | Discovery, selection, governance, action, observation, repair, and exposure                |
+| P0       | Operation contract       | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
+| P0       | Adapter control kernel   | Validate, harden, authorize, invoke an adapter substrate, observe, and envelope            |
+| P0       | Action substrates        | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
+| P0       | Result and delivery loop | AgentEnvelope v2 plus optional run traces, post-state checks, objective gates, and repair  |
+| P1       | Discovery                | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
+| P1       | Governance               | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
+| P1       | Authoring                | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
+| P1       | Runtime exposure         | Native CLI; MCP adapter projection; documented ACP/HTTP/agent-pack/skills subsets          |
+| P2       | Broad coverage           | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
+| P2       | Public docs UI           | Homepage, operation catalog, architecture, compute evidence demo                           |
 
 ## Substrate Boundary
 
-Substrate plurality is a strength only while it remains below the platform
+Substrate plurality is a strength only while it remains below the runtime
 boundary.
 
 - Browser UI automation is one action substrate, not the architecture.
@@ -149,7 +145,7 @@ posture, and only then promote a capability claim.
 
 ```text
 Uni-CLI
-|-- Computer-control platform
+|-- Agent-Computer Interface runtime
 |   |-- Intent: src/discovery/search.ts, src/commands/do.ts
 |   |-- Select: src/core/command-contract.ts, src/registry.ts
 |   |-- Govern: src/engine/permission-runtime.ts
@@ -226,19 +222,23 @@ flowchart TD
   user["Human or agent intent"] --> discover["search / list / describe / do"]
   discover --> contract["OperationContract"]
   contract --> policy["permission and risk policy"]
-  policy --> kernel["control kernel"]
+  policy --> kernel["adapter kernel or fixed core handler"]
   kernel --> substrate["HTTP / CDP / accessibility / subprocess / visual / protocol"]
   substrate --> envelope["AgentEnvelope v2"]
-  envelope --> evidence["run evidence + post-state"]
-  evidence --> delivery["delivery assessment"]
+  envelope --> optional["optional recording / post-state / trajectory"]
+  optional --> delivery["optional delivery assessment"]
   delivery --> done["deliver"]
   delivery --> repair["repair or reroute"]
   repair --> contract
 ```
 
-The invariant is that CLI, MCP, ACP, HTTP, docs, and skills must not implement
-their own semantics. They resolve inputs, call the same control kernel, and
-render the same envelope.
+The invariant today is narrower: adapter execution semantics stay in adapter
+contracts and the adapter kernel, not in each adapter-facing wrapper. Native
+CLI is the full runtime surface; MCP profiles project adapter commands from the
+same registry. Fixed core commands have separate Commander handlers and are not
+yet callable merely because MCP discovery lists them. ACP, HTTP, docs, and
+skills expose documented subsets. Closing those projection gaps is roadmap
+work, not a current capability claim.
 
 ## Internal Command Lifecycle
 
@@ -290,7 +290,8 @@ full registry.
 
 ### 3. Invoke
 
-Invocation goes through the same kernel regardless of wrapper:
+Adapter invocation through native CLI and MCP uses the adapter registry and
+kernel:
 
 1. Resolve site and command from the registry.
 2. Resolve args from stdin JSON, `--args-file`, flags, positionals, and defaults.
@@ -301,7 +302,9 @@ Invocation goes through the same kernel regardless of wrapper:
 7. Normalize result into `AgentEnvelope v2`.
 8. Record usage and optional run trace.
 
-This path protects the product from drift between CLI, MCP, ACP, and docs.
+This path protects adapter-facing wrappers from duplicating adapter behavior.
+Fixed core commands use their own Commander handlers; other integrations expose
+documented subsets rather than claiming universal kernel parity.
 Direct browser/operate CLI commands, direct compute CLI commands, and
 computer-use MCP tools enter the same policy runtime before they acquire a
 broker target, transport, overlay, file, clipboard, or desktop side effect.
@@ -313,8 +316,9 @@ them in approval memory.
 
 Observation is what turns a tool call into evidence.
 
-- Every result has command context, duration, surface, data, error, retryability,
-  and next actions.
+- Every rendered result has `ok`, schema version, command, duration metadata,
+  data, and an error arm. Surface, retryability, next actions, artifacts, and
+  evidence are conditional.
 - An empty successful observation is still a successful observation: adapters
   that legitimately return `[]` keep `ok: true` and exit `0`. Absence becomes
   exit `66` only when the command emits an explicit `empty_result` error, such
@@ -357,11 +361,70 @@ indices. Written counts are secondary to generated artifacts. `unicli list`,
 `stats.json`, `registry.json`, and build outputs are more authoritative than
 hand-maintained tables.
 
+## Current Ecosystem Signal
+
+Primary sources dated through 2026-07-18 show a stack specializing by
+boundary. [ARD](https://agenticresourcediscovery.org/spec/) and the
+[MCP Registry](https://modelcontextprotocol.io/registry/about) publish where
+capabilities exist. [MCP](https://modelcontextprotocol.io/) and
+[WebMCP](https://developer.chrome.com/docs/ai/webmcp) expose tool/data and
+page-native execution surfaces. [OpenAI Tool Search](https://developers.openai.com/api/docs/guides/tools-tool-search)
+and [Anthropic MCP tool search](https://docs.anthropic.com/en/docs/claude-code/mcp)
+document deferred schema loading. [WeaveBench](https://arxiv.org/abs/2606.09426)
+and [OSWorld 2.0](https://arxiv.org/abs/2606.29537) evaluate hybrid interfaces,
+long-lived state, and trajectory evidence.
+
+The architecture consequences are concrete:
+
+- capability discovery, transport, execution, and agent collaboration remain
+  separate contracts;
+- large capability sets use search-first or deferred loading;
+- browser and computer-use boundaries need explicit ownership, cancellation,
+  post-state evidence, and replayable traces;
+- hybrid tasks hand work across GUI, CLI, files, browser, and external tools;
+- completion is judged by operation-specific outcome evidence rather than
+  dispatch alone.
+
+These sources update direction. Files, executable checks, and git evidence
+remain the authority for claims about Uni-CLI itself.
+
+## Category Candidates And Choice
+
+| Candidate                            | What it gets right                                                         | Why it is not the primary category                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Agent-Computer Interface runtime** | names agent commands plus computer feedback and says the boundary executes | **Chosen:** established enough to explain, broad enough to survive substrate change |
+| Agent capability runtime             | emphasizes discovery and invocation                                        | crowded by hosted tool routers and does not clearly name the computer boundary      |
+| Agent I/O runtime                    | emphasizes commands and feedback                                           | commonly reads as event, stream, or communication normalization                     |
+| Agent interface layer                | accommodates many protocols                                                | too broad to distinguish an executable runtime from schemas or SDKs                 |
+| Agent control plane                  | suggests policy and coordination                                           | implies distributed authority and collides with MCP/infra operations                |
+| Universal CLI for everything         | accurately names the package entry point                                   | describes an implementation surface, not the durable product category               |
+
+The selected category comes from the Agent-Computer Interface definition in
+[SWE-agent](https://arxiv.org/abs/2405.15793), extended here from a coding
+environment to heterogeneous real software. The qualifier “runtime” is
+load-bearing: Uni-CLI is executable, while a registry, skill, schema, or docs
+site alone is not.
+
+## Storytelling Contract
+
+| Question            | Answer grounded in the current runtime                                                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| What is it?         | The open Agent-Computer Interface runtime for real software                                                                                        |
+| What does it do?    | Ranks cataloged operations, lets the caller select one, applies supported policy, invokes its declared substrate, and reports the call             |
+| How does it work?   | Generated catalog + operation contracts + adapter kernel or fixed handler + v2 envelope + optional recording/delivery/repair context               |
+| How good is it?     | Claims are separated into cataloged, executable, and evidence-backed layers; generated counts, audits, tests, and live smokes are the gates        |
+| What is the result? | Agents can cross web, browser, desktop, file, local-tool, and protocol boundaries through one product model without preloading one giant tool list |
+
+The memorable line is: **Find the operation. Cross the boundary. Keep the
+outcome inspectable.** It is a product promise about interface shape, not a
+claim that every operation has automatic routing, post-state proof, or protocol
+parity today.
+
 ## Local Computer Use
 
 Local Computer Use is a P0 substrate because agents must operate installed
 software, not only web pages. It is essential, but it is still below the
-computer-control platform boundary.
+Agent-Computer Interface boundary.
 
 The preferred execution order is:
 
@@ -386,11 +449,11 @@ Current compute surface:
 ## Public Front-End
 
 The docs front-end is not a marketing landing page. It is an operator console
-and learning surface for the computer-control loop.
+and learning surface for the Agent-Computer Interface loop.
 
 First viewport priorities:
 
-1. State the product: universal computer-control platform for agents.
+1. State the product: open Agent-Computer Interface runtime for real software.
 2. Show the smallest real command path.
 3. Expose catalog scale without making command count the main claim.
 4. Send users to install, catalog, repair, and agent integration routes.
@@ -416,7 +479,7 @@ These are architecture cleanup targets, not immediate deletions without tests.
 | Regex-based TS adapter stub extraction       | Fragile metadata discovery             | Prefer explicit registration metadata or generated contracts |
 | Internal imports from `src/engine/invoke.ts` | Compatibility shim hides owner modules | New code imports kernel modules directly                     |
 | Hand-maintained counts in docs               | Drift from generated artifacts         | Use stats replacement scripts only                           |
-| Expanded MCP as default                      | Too much resident context              | Keep compact/deferred profile first                          |
+| Expanded MCP as default                      | Too much resident context              | Keep default/deferred profile first                          |
 | Visual-first control language                | Encourages brittle automation          | Require structured substrate before visual fallback          |
 | Adapter health theater                       | Passing load is not working behavior   | Health gates must run real owned runner/probe surfaces       |
 | Generated public docs edits                  | Source of truth is upstream docs files | Edit `docs/` sources, regenerate `docs/public/`              |
@@ -435,7 +498,7 @@ This preserves momentum but leaves architecture pressure unresolved. Breadth
 without a stricter operation model makes discovery, verification, and repair
 harder.
 
-### Option C: Rebuild Around The Computer-Control Platform
+### Option C: Rebuild Around The Agent-Computer Interface Runtime
 
 This keeps the existing broad catalog and runtime, but makes
 intent -> select -> govern -> act -> observe -> diagnose -> repair/reroute ->
@@ -447,14 +510,14 @@ team a safe path to remove drift without freezing feature work.
 
 ## Optimization Roadmap
 
-### Step 1: Freeze The Computer-Control Model
+### Step 1: Freeze The Agent-Computer Interface Model
 
 - Treat operation contracts as the metadata source for docs, MCP, ACP, agent
   packs, repair, and benchmarks.
 - Add parity tests whenever a wrapper gains behavior.
 - Keep default MCP compact and search-driven.
 - Keep `architecture tree` and `architecture audit` aligned with the
-  computer-control stages.
+  Agent-Computer Interface stages.
 
 ### Step 2: Mature Local Computer Control As A Substrate
 
@@ -472,7 +535,9 @@ team a safe path to remove drift without freezing feature work.
 
 ### Step 4: Collapse Drift Between Surfaces
 
-- CLI, MCP, ACP, HTTP, docs, and skills read the same contract projection.
+- Target CLI, MCP, ACP, HTTP, docs, and skills at one contract projection;
+  preserve the current native-CLI and MCP-adapter support boundary until parity
+  is executable.
 - Remove wrapper-only descriptions, safety hints, and schema copies.
 - Keep generated public docs and agent assets reproducible from source.
 
@@ -485,7 +550,7 @@ team a safe path to remove drift without freezing feature work.
 
 ### Step 6: Raise The Public Front-End Bar
 
-- Use the docs UI to teach the computer-control loop, not just list features.
+- Use the docs UI to teach the Agent-Computer Interface loop, not just list features.
 - Keep Local Computer Use visible as a first-class substrate.
 - Use real fixtures for demos and catalog data.
 - Verify docs build and at least one browser screenshot after visual changes.

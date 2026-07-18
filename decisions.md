@@ -113,3 +113,78 @@ Keep dependency truth in `package.json`, lock install identity in
 `release-truth-check`. Validate with a deliberately missing manifest entry and
 a clean production tarball install. Do not make the adapter loader silently
 accept missing imports or hard-code one PubMed exception.
+
+## 2026-07-18 — Agent-facing product category
+
+**DECISION**
+
+Position Uni-CLI as **the open Agent-Computer Interface runtime for real
+software**. Use “Find the operation. Cross the boundary. Keep the outcome
+inspectable.” as the compact product sentence. Keep `unicli` as the
+implementation and distribution surface rather than making “universal CLI” the
+category.
+
+**SCOPE**
+
+- Align the English and Chinese README, docs homepage, FAQ, architecture
+  explanation, agent-readable generated assets, package metadata, and public
+  copy rules around the same category.
+- Preserve the existing invocation contract and package name. This is a
+  positioning change, not a runtime rewrite or protocol fork.
+- Describe the compact loop as discover, select, govern, act, observe, and
+  repair. Map it explicitly to the existing nine executable stages: intent,
+  select, govern, act, observe, diagnose, repair-or-reroute, deliver, expose.
+- Separate current mechanisms from architecture direction: search/`do` rank
+  operations, the caller selects one with a declared substrate, AgentEnvelope
+  guarantees a stable success/error shape, and MCP projects adapter operations.
+  Automatic cross-substrate arbitration, universal operation evidence, and
+  fixed-core protocol parity are not shipped.
+
+**BEST PATH**
+
+Use the established Agent-Computer Interface term because it names the owned
+boundary between an agent and a computer, while the runtime qualifier states
+what Uni-CLI actually ships: ranked discovery, declared heterogeneous
+substrates, supported policy, stable structured results, optional
+operation-specific evidence, and repair context across web, browser, desktop,
+local, file, and protocol surfaces. Treat MCP, WebMCP, CLI, browser automation,
+accessibility, and visual control as complementary substrates or exposures
+below that boundary.
+
+**WHY THIS IS BEST**
+
+Recent protocol work is specializing rather than converging on one universal
+transport: MCP covers tool/data exchange, A2A covers agent collaboration, ARD
+covers capability discovery, and WebMCP exposes structured page tools. Recent
+provider implementations independently moved to deferred tool loading. Recent
+computer-use benchmarks show that long-horizon reliability depends on hybrid
+interfaces, runtime fit, action evidence, and trajectory-aware verification.
+Uni-CLI's existing code owns a substantial cross-interface operation boundary;
+“computer-control platform” obscures that boundary, while
+“capability runtime,” “agent I/O,” and “control plane” collide with hosted
+provider routers, stream normalization, and distributed infrastructure.
+
+**EVIDENCE**
+
+Repository command contracts, search, policy, AgentEnvelope, delivery, browser
+broker, compute, retrieval, MCP/ACP exposure, generated catalog, and repair
+checks; current first-party protocol/provider documentation; primary
+Agent-Computer Interface, large-tool planning, hybrid-interface, and
+long-horizon computer-use papers; representative upstream source, releases,
+issues, and security discussions recorded in the positioning research note.
+
+**UNSUPPORTED**
+
+Uni-CLI is not an agent model or planning framework, a distributed agent
+hosting platform, an enterprise MCP gateway, a hosted OAuth integration
+marketplace, an operating system, or a claim that all software paths are
+equally reliable. Discovery does not prove executability; `do` is plan-only;
+the runtime does not automatically select the strongest substrate; dispatch
+does not prove task completion; evidence is operation-specific; fixed core
+commands can be listed by MCP discovery without being callable by `unicli_run`;
+and visual fallback is not a universal default.
+
+**VETO**
+
+Revert the positioning commit; the runtime and package contracts remain
+unchanged.

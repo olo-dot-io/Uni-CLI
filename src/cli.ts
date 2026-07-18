@@ -93,9 +93,7 @@ export async function createCli(): Promise<Command> {
 
   program
     .name("unicli")
-    .description(
-      "Agent execution substrate for web, apps, local tools, and system capabilities",
-    )
+    .description("Open Agent-Computer Interface runtime for real software")
     .version(VERSION)
     .option(
       "-f, --format <format>",

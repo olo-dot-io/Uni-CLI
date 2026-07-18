@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: AI Agent 控制 computer 的通用平台。
+description: 面向真实软件的开源 Agent-Computer Interface 运行时。
 ---
 
 <HomePage />

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   COMMAND_LIFECYCLE_STEPS,
-  COMPUTER_CONTROL_STAGES,
+  AGENT_COMPUTER_INTERFACE_STAGES,
   auditArchitectureTree,
   buildArchitectureTree,
 } from "../../../src/core/architecture-tree.js";
@@ -64,8 +64,8 @@ const fixtureCoreCommands: CoreDiscoveryCommand[] = [
 ];
 
 describe("architecture tree", () => {
-  it("keeps the computer-control loop as the product spine", () => {
-    expect(COMPUTER_CONTROL_STAGES).toEqual([
+  it("keeps the Agent-Computer Interface stages as the product spine", () => {
+    expect(AGENT_COMPUTER_INTERFACE_STAGES).toEqual([
       "intent",
       "select",
       "govern",
@@ -89,7 +89,7 @@ describe("architecture tree", () => {
     ]);
   });
 
-  it("builds a tree around agent-to-computer control, not a catalog lifecycle", () => {
+  it("builds a tree around the Agent-Computer Interface, not a catalog lifecycle", () => {
     const tree = buildArchitectureTree({ adapters: fixtureAdapters });
 
     expect(tree.summary.total_commands).toBe(3);
@@ -126,7 +126,7 @@ describe("architecture tree", () => {
     ]);
   });
 
-  it("includes core Commander commands in the computer-control inventory", () => {
+  it("includes core Commander commands in the Agent-Computer Interface inventory", () => {
     const tree = buildArchitectureTree({
       adapters: fixtureAdapters,
       coreCommands: fixtureCoreCommands,
@@ -179,7 +179,7 @@ describe("architecture tree", () => {
     expect(audit.adapter_commands).toBe(3);
     expect(audit.core_commands).toBe(0);
     expect(audit.missing_source_paths).toEqual(["local-app.missingSource"]);
-    expect(audit.control_stages).toEqual(COMPUTER_CONTROL_STAGES);
+    expect(audit.control_stages).toEqual(AGENT_COMPUTER_INTERFACE_STAGES);
     expect(audit.non_product_identities).toContain("computer-use-sandbox-only");
     expect(audit.capability_matrix.map((entry) => entry.surface)).toEqual([
       "web",

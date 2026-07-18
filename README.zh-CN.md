@@ -9,15 +9,14 @@
 </p>
 
 <p align="center">
-  <strong>AI Agent 控制真实软件的通用 computer-control 平台。</strong>
+  <strong>面向真实软件的开源 Agent-Computer Interface 运行时。</strong>
 </p>
 
 <p align="center">
-  一次安装，按意图搜索，再通过最小可治理操作控制网站、浏览器、桌面 App、
-  本地工具、文件、操作系统和 Agent 协议。浏览器自动化、computer-use sandbox、
-  MCP 服务、本地代码执行、无障碍树、截图、App wrapper 和外部 CLI，
-  都是同一个闭环下面的行动 substrate：意图进入，按策略行动，证据返回，
-  失败后修复或换路，直到结果交付。
+  在 Agent 与网站、登录态浏览器、桌面 App、本地工具、文件、操作系统服务和
+  Agent 协议之间，提供一个可搜索的统一边界。Uni-CLI 按意图排序已编目 operation，
+  通过该 operation 声明的软件 substrate 按策略运行，用稳定的成功/错误 envelope
+  包装结果，并让失败可诊断、可修复。
 </p>
 
 <p align="center">
@@ -40,12 +39,12 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9659<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9660<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
-  <strong>一条 Agent-to-computer 控制闭环，多种 substrate，同一种回执。</strong><br>
-  按意图搜索，通过最合适的软件边界行动，观察结果，并让路径在 CLI、MCP、ACP、CI 和 skill 中保持可修复。
+  <strong>找到操作。跨过边界。让结果可检查。</strong><br>
+  发现 → 选择 → 治理 → 行动 → 观察 → 修复。
 </p>
 
 ## 30 秒安装并运行
@@ -58,53 +57,58 @@ unicli compute snapshot --app Calculator --format compact
 npx @zenalexa/unicli mcp serve
 ```
 
-| Agent 遇到的问题            | Uni-CLI 给的答案                                                                 |
-| --------------------------- | -------------------------------------------------------------------------------- |
-| "什么能控制这个？"          | `unicli search` 和 `unicli do` 把意图转成排序后的操作计划                        |
-| "应该走哪个软件边界？"      | Web、browser、desktop、subprocess、protocol、visual substrate 共享同一个 runtime |
-| "能不能安全地跑？"          | permission profile 暴露 `open`、`confirm`、`locked` 三种执行模式                 |
-| "刚才发生了什么？"          | 每次运行都返回带 data、context、retryability 和证据钩子的 AgentEnvelope          |
-| "这条路径失败了。"          | `unicli delivery` 把运行证据转成诊断、下一次实验、执行和修复边界                 |
-| "把它接给我的 Agent host。" | `unicli mcp serve`、ACP、native CLI、JSON stream 暴露同一份操作合同              |
+| Agent 需要知道...      | Uni-CLI 给的答案                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| 什么能完成这个任务？   | `unicli search` 与只产出计划的 `unicli do` 返回一小组排序结果；Agent 再显式调用其中一条                |
+| 哪个软件边界会行动？   | 每条 operation 声明自己的 strategy 与 substrate：API、文件、CLI、browser、desktop、protocol 或 visual  |
+| 这个动作会影响什么？   | Operation contract 提前暴露参数、认证、能力范围、effect、risk 和 approval posture                      |
+| 这次调用返回了什么？   | AgentEnvelope 始终区分成功与错误；支持的 operation 还会提供 artifact、recording 或 post-state evidence |
+| 路径漂移了，下一步呢？ | 结构化错误可以指出归属源码、失败 step、retryability、替代路径和下一条 repair command                   |
+| 我的 Agent 怎么调用？  | Native CLI 是完整规范入口；MCP 通过 default、deferred、expanded profile 投影 adapter operation         |
 
 ## 为什么需要它
 
-下一代软件用户不只是拿鼠标的人，也会是带着任务、上下文窗口、权限预算和证据需求的 Agent。车载助手能成立，是因为导航、媒体、空调、辅助驾驶都在一个有边界的控制层下面。通用 computer 也有同样结构，只是规模更大：浏览器状态、桌面 App、本地工具、文件、OS 服务、无障碍树、截图、协议服务、站点路径，都需要被编译成一个可控环境。
+模型只是 Agent 系统的一半。另一半是它感知状态、选择动作、跨越软件边界并理解
+反馈的接口。人类界面为眼睛、双手和记忆设计；裸 API 和巨型工具列表则为开发者或
+协议设计。面对上下文有限、必须完成任务的模型，两者都不是完整答案。
 
-Uni-CLI 就是这个控制面。它不是浏览器库、computer-use VM、自然语言 shell、MCP 服务，也不是一堆站点 wrapper；这些都是有价值的 substrate。Uni-CLI 位于它们之上，把 Agent 的意图变成可治理的软件动作，返回证据回执，并保留可修复、可换路的路径。
+Uni-CLI 负责的正是这条缺失边界：**Agent-Computer Interface（ACI）**。它不选
+模型，也不接管 Agent 的推理编排；它让真实软件可发现、可操作，再返回可检查的
+结构化结果。支持 evidence 的 operation 还可以记录 artifact、state delta 或 trajectory。
+浏览器自动化、App harness、MCP、WebMCP、
+accessibility、subprocess 和 visual control 都是接口下面可替换的 substrate。
 
-因此项目里这些能力不是并列身份，而是同一个平台的下层：
+## Agent-Computer Interface 闭环
 
-- operation contract：覆盖网站、App、OS 状态、本地工具、文件和协议的可复用动作；
-- substrate adapter：HTTP、browser CDP、desktop accessibility、subprocess、visual fallback、MCP、ACP、external CLI；
-- invocation kernel：校验参数、执行策略、选择 substrate、统一 envelope；
-- evidence / delivery loop：诊断失败、记录下一条假设、修复或换路，并判断目标是否已经交付。
+这六个动词是精简的产品叙事。可执行架构更明确：`unicli architecture audit`
+报告九个 runtime stage——`intent`、`select`、`govern`、`act`、`observe`、
+`diagnose`、`repair-or-reroute`、`deliver`、`expose`。
 
-## Computer-Control 闭环
+| 产品关注点 | 当前运行时事实                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------- |
+| 发现       | `search` 与只产出计划的 `do` 从意图排序候选 operation；两者都不会执行外部动作                                 |
+| 选择       | Agent 或 caller 选择一条已声明 strategy/substrate 的 operation；Uni-CLI 尚不会在所有替代 substrate 间自动仲裁 |
+| 治理       | `open`、`confirm`、`locked` profile 评估当前已覆盖的 operation effect 与 capability scope                     |
+| 行动       | adapter command 走共享 adapter kernel；固定 core command 保持各自的 native CLI handler                        |
+| 观察       | 每次渲染调用都有稳定成功/错误 envelope；operation-specific evidence 是可选能力，不能从 dispatch 自动推断      |
+| 修复       | operation 提供足够上下文时，结构化错误与 delivery 工具可以约束 diagnosis、reroute 或 verification attempt     |
 
-严肃的 Agent 操作基本都走同一条链路。
-
-| 步骤 | Uni-CLI 给 Agent 的东西                                                                      |
-| ---- | -------------------------------------------------------------------------------------------- |
-| 意图 | `unicli search` 和 `unicli do` 把任务映射成候选操作、参数、认证方式、样例和风险信号          |
-| 选择 | operation contract 选择能行动的最小边界：API、browser、desktop、subprocess、protocol、visual |
-| 治理 | `open`、`confirm`、`locked` profile 在请求、写入、启动进程前拦住高风险动作                   |
-| 行动 | 共享 kernel 调用选中的 substrate，不让 wrapper 各自定义行为                                  |
-| 观察 | AgentEnvelope v2 返回 data、context、retryability、耗时和证据 hook                           |
-| 诊断 | `unicli delivery assess` 把失败归为产品漂移、缺少上下文、策略阻断或上游/环境问题             |
-| 修复 | `unicli delivery trajectory` 和 `repair-candidate` 让下一次实验继续受证据约束                |
-| 交付 | evidence gate 判断目标已交付、仍在进行、被阻断，还是已经耗尽                                 |
-| 暴露 | 同一条操作可以给人、Agent、MCP client、ACP client、CI 和脚本调用                             |
+`diagnose` 与 `deliver` 让观察结果可行动；`expose` 把运行时投影给 Agent 入口。
+Adapter operation 同时用于 native CLI 和 MCP profile。固定 core command 当前以
+native CLI 为规范入口；逐命令 protocol parity 是明确的路线图工作。
 
 ## 和常见路径的区别
 
-| 如果从...开始           | 通常会得到...                     | Uni-CLI 把它放到哪个上位模型下面                                     |
-| ----------------------- | --------------------------------- | -------------------------------------------------------------------- |
-| 浏览器自动化            | 强大的网页控制                    | operation contract、登录态姿态、证据、交付和修复                     |
-| computer-use sandbox    | 屏幕、鼠标、键盘和 benchmark 环境 | 和本地 App、浏览器、CLI、协议共用的 Agent-to-computer 闭环           |
-| 自然语言本地执行        | 灵活的 shell 和代码能力           | typed 操作边界、策略、回执和可复用合同                               |
-| MCP server 集合         | 接 Agent 很方便，但常驻上下文很重 | search-first 的低 token 主路径，以及 host 需要时才启用的 MCP profile |
-| 单 App / 单站点 wrapper | 对一个 surface 的深访问           | 横跨 web、desktop、本地工具、文件和 Agent 协议的一套可治理 runtime   |
+| 如果从...开始                | 它最擅长...                              | Uni-CLI 负责的不同边界                                                 |
+| ---------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| App/site-to-CLI harness      | 为单个 surface 建立深度结构化接口        | 用同一目录和结构化失败模型发现并运行大量接口                           |
+| Browser agent 或 browser MCP | 在浏览器内感知、规划并行动               | 把 browser control 当作一种 substrate，而不变成模型或 planner          |
+| Hosted SaaS integration 平台 | 托管 OAuth、用户、trigger 和云端 toolkit | 开源、本地优先地接触用户真实的 browser、desktop、文件和本地工具        |
+| MCP registry / operations    | 编目、运行、代理或治理 MCP server        | 通过 MCP 暴露 adapter operation，同时用 native command 覆盖非 MCP 软件 |
+| ARD 一类 discovery standard  | 发布能力在哪里                           | 检查本地可执行路径、调用、报告结果，并修复漂移                         |
+
+Uni-CLI 不是 Agent framework、model runtime、托管 integration marketplace、企业级
+MCP gateway 或操作系统。它是这些系统在 Agent 需要使用真实软件时可以调用的接口运行时。
 
 <!-- IF YOU ARE AN AI AGENT: Start here.
 Install: npm install -g @zenalexa/unicli
@@ -140,7 +144,8 @@ Uni-CLI 在边界上刻意保持朴素：进程、文件、JSON、Markdown 和�
 - 输出足够稳定，可以 pipe 给 `jq`、存为证据，或者继续喂给下一步工具；
 - auth failure、empty result、timeout、blocked action 是不同 exit state；
 - repair instruction 指向我们拥有的文件，而不是让 Agent 猜 upstream 哪儿变了；
-- 生成文档、`llms.txt`、AGENTS.md、MCP profile 和 skills 描述的是同一份操作合同。
+- 生成文档、`llms.txt`、AGENTS.md 和 skills 描述当前目录；MCP profile 投影
+  adapter operation，固定 core parity 仍是路线图工作。
 
 ## 能力地图
 

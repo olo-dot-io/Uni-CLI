@@ -9,7 +9,7 @@
 
 > Current: v0.400.1 — Apollo · Young. 静态 adapter 目录：<!-- STATS:site_count -->324<!-- /STATS --> 个站点、<!-- STATS:command_count -->1817<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
-路线图按“Agent 控制真实软件的控制平台”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
+路线图按“面向真实软件的 Agent-Computer Interface 运行时”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 
 ## 已发布
 
@@ -26,24 +26,27 @@
 
 ## 当前重点
 
-- 保持公开文档、architecture tree、命令描述和 Agent 入口都围绕 Agent-to-computer control over real software，而不是回退到 catalog/lifecycle-first。
-- 把浏览器自动化、computer-use sandbox、MCP、自然语言本地执行、单站点 wrapper 明确放到 substrate 层。
+- 保持公开文档、architecture tree、命令描述和 Agent 入口都围绕 discover、select、govern、act、observe、repair，而不是回退到 catalog/lifecycle-first。
+- 把浏览器自动化、computer-use sandbox、MCP、WebMCP、本地执行和单 App harness 明确放到 substrate 层。
 - 用 `architecture audit` 的 `capability_matrix` 和 `workflow_readiness` 区分 catalog 覆盖和仍需 live evidence 的行为能力。
 - 让 adapter 命令和 core Commander 命令投影成同一份 operation contract。
 - 继续强化 run/event kernel，保持执行证据 append-only、本地化、可审查，并能比较 replay 和原始 trace。
+- 让 mutating operation 区分 dispatch、settlement、observed delta 和 objective outcome，不把 call success 当任务完成。
 - 扩大 operation policy 的 effect/risk/capability/resource scope 覆盖；需要反复批准时用
   `--yes --remember-approval`，不把原始参数写入记忆。
 - 提升桌面应用控制能力，尤其是微信、企业微信、钉钉、飞书、Mail、Notes、Office 和常见 Electron 应用。
 - 让 Office、浏览器、外部 CLI 和本地工具的控制体验更稳定。
+- 让 ARD/MCP Registry 先作为 discovery input、WebMCP 先作为 page-native
+  substrate；只有版本合同通过本地 conformance 与 executability 检查后才接入。
 - 打磨 agent-readable 文档和 Markdown companion。
 - 强化自修复、schema lint 和 adapter health gate。
-- 把外部 agent-loop、computer-use、编辑器 agent、桌面自动化的新认知沉淀为内部来源图谱、公开能力路线图和本地实现计划，而不是只留在提示词里。
+- 把 capability discovery、Agent protocol、computer-use、hybrid-interface benchmark 和桌面自动化的新认知沉淀为内部完整研究记录、公开能力路线图和本地实现计划；公开架构论断在使用处引用一手规范或原始研究，而不是只留在提示词里。
 
 ## 近期方向
 
 | 方向                      | 目标                                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Computer-control model    | `architecture tree/audit`、README、docs、Agent 入口都保持同一套上位模型。                            |
+| ACI runtime model         | `architecture tree/audit`、README、docs、Agent 入口都保持同一套上位模型。                            |
 | Operation-contract parity | 生成型 TypeScript 命令、core 命令、`describe`、`--dry-run`、MCP、ACP 参数一致。                      |
 | Control kernel            | 扩大证据覆盖，但保持默认不记录隐私状态。                                                             |
 | Operation policy          | 默认 open；继续补 effect/risk/capability/resource scope，并支持 scope 级审批记忆。                   |
@@ -59,7 +62,7 @@
 
 ## 近期交付顺序
 
-1. 锁住 computer-control root model：architecture tree/audit、README、How-it-works、FAQ、Roadmap 不能回退成工具目录叙事。
+1. 锁住 Agent-Computer Interface root model：architecture tree/audit、README、How-it-works、FAQ、Roadmap 不能回退成工具目录叙事。
 2. 补齐 operation-contract parity：adapter 命令和 core Commander 命令共享合同投影。
 3. 强化 control kernel：结果 envelope、权限评估、browser action evidence 都要可审查。
 4. 扩大 operation policy 覆盖：默认开放，`confirm` / `locked` 可选，`describe` 和 `--dry-run` 持续暴露风险。
@@ -75,7 +78,7 @@
 - 不把没有真实动作桥的 Visual 当成可用能力。
 - 不让外部趋势替代当前工作树、测试和 git 历史。
 - 不默认替用户收紧全部命令；默认开放，收紧交给 profile。
-- 不把 Uni-CLI 定位成浏览器库、MCP wrapper、computer-use sandbox、自然语言 shell、scraper 或单站点 wrapper 集合。
+- 不把 Uni-CLI 定位成浏览器库、MCP wrapper、computer-use sandbox、自然语言 shell、scraper、单站点 wrapper 集合、Agent model、orchestrator 或 distributed hosting platform。
 
 ## 判断标准
 

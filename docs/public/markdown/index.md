@@ -6,19 +6,19 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## Universal computer-control platform for agents
+## The open Agent-Computer Interface runtime for real software
 
-Uni-CLI turns websites, logged-in browsers, desktop apps, local tools, files, MCP servers, accessibility trees, screenshots, and system capabilities into searchable, governed, observable, repairable operations. Agents use one path to select an action substrate by intent, inspect risk, execute with policy, return evidence, and repair or reroute the failed source path.
+Uni-CLI provides one searchable boundary between agents and websites, logged-in browsers, desktop apps, local tools, files, MCP servers, accessibility, visual control, and system capabilities. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under supported policy, returns a stable success/error envelope, and keeps supported failure paths repairable.
 
-## Control Surface
+## Runtime Contract
 
-- Intent search
-- Policy-gated execution
-- AgentEnvelope v2
+- Intent discovery
+- Declared substrates
+- Policy-aware execution
+- Structured envelopes
 - MCP + ACP
-- Desktop AX
-- Visual fallback
-- Adapter self-repair
+- Browser + Desktop
+- Repairable paths
 
 ## First Command
 
@@ -32,25 +32,25 @@ unicli mcp serve --transport streamable --port 19826
 
 ## Positioning
 
-Agent execution does not need a longer resident tool list or another website wrapper. It needs a universal hand for controlling the whole computer. Operation search handles discovery. Operation policy exposes permissions and risk. The control kernel chooses the substrate. The v2 AgentEnvelope stabilizes output. Run evidence supports review. The delivery/repair loop points failures to source paths, alternatives, and verification commands.
+Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, browser agent, or MCP platform. CLI is the native full process entry point; MCP projects adapter operations; APIs, files, CLIs, browsers, desktops, protocols, and visual control are declared substrates. The compact loop is discover, select, govern, act, observe, and repair.
 
-- **Intent.** Bilingual BM25 search turns a natural-language task into a site, operation, arguments, auth posture, and risk fields.
-- **Substrate.** HTTP, cookies, browser CDP, macOS AX, subprocess, service, protocol, and visual fallback share one control kernel.
-- **Evidence.** Markdown is the agent-friendly default; JSON, YAML, CSV, and compact formats serve programs.
-- **Repair or reroute.** Structured errors include source path, step or boundary, retryability, suggestion, and alternatives.
+- **Discover.** Bilingual BM25 search retrieves only the operations, arguments, auth posture, and risk fields relevant to the task.
+- **Select and govern.** The agent selects an operation with a declared strategy/substrate; currently covered capability scope, effect, risk, and approval remain inspectable before execution.
+- **Act and observe.** The adapter kernel invokes the selected operation; AgentEnvelope distinguishes success from error, and supporting operations can add artifacts, recordings, or post-state evidence.
+- **Repair.** Structured errors always include code/message and add source path, failed boundary, retryability, suggestion, or alternatives when applicable.
 
 ## Common Tasks
 
 - `unicli search` and `unicli do` read the local operation catalog first, then execution can inspect operation, args, auth, risk, and output fields.
-- When a page, API, app, or local boundary changes, the error envelope names the source path and failing step or boundary.
-- Web APIs, browser automation, macOS, desktop apps, external CLIs, files, MCP, ACP, HTTP API, and agent backend routes share the same operation contract and receipt.
+- When a page, API, app, or local boundary changes, an owned failure can name the source path and failing step or boundary in its error envelope.
+- Native CLI is the complete command surface; MCP default/deferred/expanded profiles project adapter operations, while fixed-core and other integration parity remain roadmap work.
 
 ## Coverage
 
 - Static adapter sites: 324
 - Registered adapter operations: 1817
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9659
+- Tests: 9660
 
 Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 

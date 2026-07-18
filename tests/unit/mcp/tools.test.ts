@@ -186,7 +186,12 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
             site: string;
             category: string;
             type: string;
-            commands: Array<{ name: string }>;
+            commands: Array<{
+              name: string;
+              source_kind: "adapter" | "core";
+              mcp_run_supported: boolean;
+              invocation: string;
+            }>;
           }>;
         };
       };
@@ -198,11 +203,67 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
         category: "desktop",
         type: "desktop",
         commands: expect.arrayContaining([
-          expect.objectContaining({ name: "capture" }),
-          expect.objectContaining({ name: "snapshot" }),
+          expect.objectContaining({
+            name: "capture",
+            source_kind: "core",
+            mcp_run_supported: false,
+            invocation: "unicli compute capture",
+          }),
+          expect.objectContaining({
+            name: "snapshot",
+            source_kind: "core",
+            mcp_run_supported: false,
+            invocation: "unicli compute snapshot",
+          }),
         ]),
       }),
     ]);
+  });
+
+  it("unicli_run returns an explicit native-CLI route for fixed core commands", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const created = await handler({
+      jsonrpc: "2.0",
+      id: 304,
+      method: "tools/call",
+      params: {
+        name: "unicli_run",
+        arguments: { site: "architecture", command: "audit" },
+        task: { ttl: 60_000 },
+      },
+    });
+    const taskId = (
+      created?.result as { task?: { taskId?: string } } | undefined
+    )?.task?.taskId;
+    expect(taskId).toEqual(expect.any(String));
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 305,
+      method: "tasks/result",
+      params: { taskId },
+    });
+
+    const payload = response?.result as {
+      isError?: boolean;
+      structuredContent?: {
+        data?: {
+          code?: string;
+          source_kind?: string;
+          mcp_run_supported?: boolean;
+          invocation?: string;
+        };
+      };
+    };
+    expect(payload.isError).toBe(true);
+    expect(payload.structuredContent?.data).toEqual(
+      expect.objectContaining({
+        code: "unsupported_surface",
+        source_kind: "core",
+        mcp_run_supported: false,
+        invocation: "unicli architecture audit",
+      }),
+    );
   });
 
   it("unicli_search hard-filters results by category", async () => {

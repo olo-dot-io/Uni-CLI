@@ -9,9 +9,13 @@
 
 Definitions for the terms used across Uni-CLI documentation, source, and YAML adapters. Each entry is a standalone explanation so AI assistants can quote it directly when answering questions about the project.
 
+## Agent-Computer Interface (ACI)
+
+The commands an agent can issue to a computer and the feedback the computer returns. Uni-CLI implements this interface as a runtime across heterogeneous real software: discover and select an operation, govern supported effects, act through its declared substrate, observe a structured result, and repair supported failures. The term describes the product boundary; it does not mean one wire protocol, one visual interface, one agent framework, or automatic substrate arbitration.
+
 ## Action substrate
 
-A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific wrapper. Substrates are below the computer-control platform boundary.
+A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific harness. Substrates are below the Agent-Computer Interface runtime boundary.
 
 ## Adapter
 
@@ -23,7 +27,7 @@ The integration surface an adapter targets. Five types: `web-api` for HTTP APIs,
 
 ## AgentEnvelope (v2)
 
-The structured response shape returned by every Uni-CLI operation. Contains `ok`, `version`, `data`, `meta`, optional `error`, and `exit_code`. On success `data` carries the result. On failure `data` is null and `error` populates with source path, `step`, `action`, `suggestion`, `retryable`, and `alternatives`.
+The structured response shape produced by Uni-CLI's formatter. It contains `ok`, `schema_version`, `command`, `meta`, `data`, and `error`, with optional `content` and `next_actions`. On success `data` carries the result and `error` is null. On failure `data` is null and `error` always has `code` and `message`; source path, step, suggestion, retryability, alternatives, and outcome ambiguity appear only when applicable.
 
 ## AGENTS.md
 
@@ -71,11 +75,11 @@ The phase where an agent maps natural-language intent to concrete operations. Pe
 
 ## Error envelope
 
-The `error` field on a v2 AgentEnvelope when `ok` is false. Carries source path or `adapter_path`, `step` or failing boundary, `action` (one-line description), `suggestion` (a hypothesis the agent can test), `retryable` (whether retry would help), and `alternatives` (other operations that might satisfy the intent).
+The `error` field on a v2 AgentEnvelope when `ok` is false. It always carries `code` and `message`. Depending on the failure it can also carry `adapter_path`, `step`, `suggestion`, `retryable`, `alternatives`, `outcome_ambiguous`, `target_unusable`, or a remedy. Optional fields are never universal completion evidence.
 
 ## Exit code
 
-A `sysexits.h`-compatible numeric status returned by every Uni-CLI invocation. 0 is success. 1 is generic error. 2 is usage error. 66 is empty result. 69 is service unavailable. 75 is temporary failure. 77 is auth error. 78 is config error. Shell pipelines can route on these classes.
+The process status used by CLI commands. 0 is success. Structured command failures map to sysexits-style classes such as 66 for empty result, 69 for service unavailable, 75 for temporary failure, 77 for auth, and 78 for configuration; Commander usage failures use their own nonzero status. The exit status is a process boundary, not a field required inside AgentEnvelope.
 
 ## Header strategy
 
@@ -91,11 +95,11 @@ A standardized agent-readable index file at the site root (`/llms.txt` and `/llm
 
 ## MCP (Model Context Protocol)
 
-The Anthropic-led protocol for letting AI assistants invoke tools through a stateful server. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) that exposes the same operation contracts for runtimes that only speak MCP.
+An [open standard](https://modelcontextprotocol.io/) for connecting AI applications to tools and data through stateful servers. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) with default, deferred, and expanded profiles over adapter operations. Fixed core commands remain canonical on native CLI until protocol parity lands.
 
 ## Operation contract
 
-The stable product primitive in Uni-CLI. An operation contract describes identity, args, output shape, auth posture, action substrate, effect, risk, capability, source path, and repair path. CLI, MCP, ACP, docs, skills, and generated configs should all project the same contract instead of defining behavior separately.
+The stable product primitive in Uni-CLI. An operation contract describes identity, args, output shape, auth posture, action substrate, effect, risk, capability, source path, and repair path. Adapter CLI and MCP projections currently share adapter contracts. Fixed-core and other integration parity is a design invariant and roadmap goal, not a claim that every surface can dispatch every cataloged command today.
 
 ## Pipeline
 
@@ -103,15 +107,15 @@ The ordered list of actions an adapter runs to produce its result. The executabl
 
 ## Pipeline step
 
-One unit of work in an adapter's pipeline. Examples: `fetch`, `select`, `map`, `filter`, `navigate`, `click`, `intercept`, `if`, `each`, `assert`. Pure transform actions are deterministic; external actions preserve a stable contract and explicit evidence around network, browser, desktop, or subprocess state.
+One unit of work in an adapter's pipeline. Examples: `fetch`, `select`, `map`, `filter`, `navigate`, `click`, `intercept`, `if`, `each`, `assert`. Pure transform actions are deterministic; external actions preserve structured result/error handling and can emit operation-specific evidence around network, browser, desktop, or subprocess state.
 
 ## Public strategy
 
-The cheapest auth strategy. Direct fetch with no credentials. Used by sites with public APIs (RSS feeds, search endpoints, public stats). Always tried first by the strategy cascade.
+The cheapest auth strategy. Direct fetch with no credentials. Used by sites with public APIs (RSS feeds, search endpoints, public stats). It is tried first only when a command uses the bounded HTTP authentication probe.
 
 ## Repair
 
-The stage where a failed operation becomes a bounded source change or reroute. After an error envelope names a failing source path and step or boundary, the agent edits the YAML/code or chooses an alternative, then runs `unicli repair <site> <command>` or a delivery verification to prove the fix. User-local patches persist in `~/.unicli/adapters/`.
+The stage where a failed operation can become a bounded source change or reroute. When an error envelope names a failing source path and step or boundary, the agent edits the YAML/code or chooses an alternative, then runs `unicli repair <site> <command>` or a delivery verification. User-local adapter patches persist in `~/.unicli/adapters/`.
 
 ## Self-repair
 
@@ -131,11 +135,11 @@ A DOM accessibility tree generated by the `snapshot` pipeline step in browser ad
 
 ## Strategy
 
-The auth path an adapter declares. Five strategies in cascade order: `public`, `cookie`, `header`, `intercept`, `ui`. Auto-probed on first run; cached afterward.
+The auth or interaction path an adapter declares: `public`, `cookie`, `header`, `intercept`, or `ui`. These five values are not one automatic five-way cascade. Only `public`, `cookie`, and `header` participate in the bounded HTTP probe; `intercept` and `ui` are explicit browser-backed strategies.
 
 ## Strategy cascade
 
-The auto-probe sequence Uni-CLI runs on first call to a site. Tries each strategy from cheapest to most expensive (`public` to `ui`) until one returns parseable data. The selected strategy is then cached so subsequent calls skip the probe.
+The bounded HTTP probe used where a probe URL is available. It tries `public`, then `cookie`, then `header`, and caches the first valid result for the process. It never silently escalates into `intercept` or `ui`; those browser-backed strategies must be declared by the operation.
 
 ## Tap
 
@@ -147,7 +151,7 @@ The most expensive auth strategy. Drives a real browser session interactively â€
 
 ## v2 envelope version
 
-The current AgentEnvelope schema. v1 was a flat `{ ok, data, error }` shape; v2 added structured `error` fields, `meta`, `version`, and `exit_code` for shell-friendly routing. All adapters as of v0.213 emit v2.
+The current AgentEnvelope schema. It uses `schema_version: "2"`, a discriminated `ok` success/error union, `command`, `meta`, `data`, `error`, and optional content/next-action blocks. Shell exit status is mapped beside the envelope at the process boundary; it is not a required envelope field.
 
 ## Web-api adapter
 

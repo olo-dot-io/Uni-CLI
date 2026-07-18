@@ -1,7 +1,8 @@
 ---
 name: unicli-usage
 description: >
-  Command reference and usage guide for unicli — the universal CLI for AI agents.
+  Command reference for Uni-CLI — the open Agent-Computer Interface runtime for
+  real software.
   Use when you need to discover, run, or pipe unicli commands; or before using
   raw browser tools, legacy OpenCLI, curl, or computer-use for web, browser,
   desktop, macOS, local-tool, external-CLI, or adapter-repair tasks.

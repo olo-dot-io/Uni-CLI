@@ -4,6 +4,13 @@
  * @needs   stats.json, docs/release-info.json, docs/.vitepress/site-map.js
  * @feeds   docs build, docs public site
  * @breaks  Stale catalog or release metadata leaks into generated docs.
+ * @invariants Metadata, JSON-LD, navigation, and locale descriptions use generated release and catalog truth.
+ * @side-effects Reads generated JSON metadata during VitePress configuration evaluation.
+ * @perf O(n) in configured navigation and FAQ entries during build startup.
+ * @concurrency Single module evaluation; exported configuration is immutable after construction.
+ * @test tests/unit/docs-i18n.test.ts, tests/unit/docs-current-catalog.test.ts
+ * @stability stable
+ * @since 2026-04-05
  */
 
 import { defineConfig } from "vitepress";
@@ -39,7 +46,7 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "AI Agent 控制 computer 的通用平台。";
+const zhDescription = "面向真实软件的开源 Agent-Computer Interface 运行时。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -198,23 +205,23 @@ function escapeMustacheInFence(md: any) {
 const homeFaqs: { q: string; a: string }[] = [
   {
     q: "What is Uni-CLI?",
-    a: `Uni-CLI is the universal computer-control platform for agents. It turns websites, browser sessions, desktop apps, local CLIs, files, MCP servers, screenshots, accessibility trees, and system capabilities into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, and repairs or reroutes across ${siteStats.site_count} sites and tools.`,
+    a: `Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across ${siteStats.site_count} websites and tools, browser sessions, desktop apps, local CLIs, files, MCP servers, accessibility, and visual control. It ranks executable operations by intent, runs the selected operation through its declared substrate under supported policy, returns a stable success/error envelope, and keeps supported failure paths repairable.`,
   },
   {
     q: "How is Uni-CLI different from a browser automation library?",
-    a: "Browser automation is one action substrate. Uni-CLI sits above it with operation contracts, permission policy, evidence receipts, delivery assessment, and repair/reroute paths shared by browser, desktop, subprocess, protocol, and visual operations.",
+    a: "Browser automation is one execution substrate. The catalog can contain API, file, local CLI, page-native, browser-semantic, desktop-accessibility, and visual operations. Each operation declares its own strategy and substrate; the agent currently selects among candidates. Adapter commands share the adapter kernel and envelope shape, while evidence and repair detail are operation-specific.",
   },
   {
     q: "How is Uni-CLI different from a computer-use sandbox?",
-    a: "A computer-use sandbox gives an agent screen, mouse, keyboard, and often benchmark hooks. Uni-CLI can use that boundary, but its category is broader: it controls the user's real software environment through the smallest available substrate.",
+    a: "A computer-use sandbox provides an isolated environment, screen, mouse, keyboard, and often benchmark hooks. Uni-CLI is the interface runtime rather than the sandbox: it can call sandboxed or local boundaries, cross GUI and structured interfaces, and return one operation receipt without claiming local execution is sandbox-isolated.",
   },
   {
     q: "Why a CLI instead of an MCP server?",
-    a: "Measured Uni-CLI list-style calls land at 364-423 tokens total (median 412) per docs/BENCHMARK.md. An MCP server keeps its tool list resident — usually 1,500-3,000 tokens per server — even when idle. Uni-CLI publishes both surfaces; the CLI is the cheap, deterministic primary, and MCP wraps it for runtimes that only speak MCP.",
+    a: "CLI is Uni-CLI's native, inspectable, full command surface: it composes with files, pipes, exit codes, CI, and local tools without a resident server. MCP is a first-class protocol/exposure substrate when a host needs stateful sessions or protocol-native discovery, and current clients can defer tool schemas. Compact, deferred, and expanded profiles project adapter operations; fixed core commands remain canonical on native CLI until command-level parity lands.",
   },
   {
     q: "How does self-repair work in Uni-CLI?",
-    a: "When an operation fails, Uni-CLI emits structured error JSON with source path, failing step or boundary, retryability, alternatives, and a suggestion. An agent patches the YAML or code at that path, then verifies with unicli repair or a bounded delivery check.",
+    a: "When an owned adapter path fails, Uni-CLI emits structured error JSON and can include source path, failing step or boundary, retryability, alternatives, and a suggestion. An agent can patch the YAML or code at that path, then verify with unicli repair or a bounded delivery check. Fields that do not apply remain absent.",
   },
   {
     q: "Which AI agent platforms work with Uni-CLI?",
@@ -222,7 +229,7 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "How many sites and commands does Uni-CLI ship?",
-    a: `${releaseLabel} ships a generated operation catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.`,
+    a: `${releaseLabel} ships a generated operation catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.`,
   },
   {
     q: "Can I add a new site to Uni-CLI without writing TypeScript?",
@@ -230,11 +237,11 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "Does Uni-CLI handle authenticated sites?",
-    a: "Yes. Strategies cascade across public, cookie, header (cookie+CSRF), intercept (browser XHR capture), and ui (interactive). Cookies live in ~/.unicli/cookies/ and Uni-CLI auto-probes the cheapest strategy that returns valid data.",
+    a: "Yes. Operations explicitly declare public, cookie, header, intercept, or ui. Where a probe URL exists, the bounded HTTP probe tries only public, cookie, then header; it does not auto-escalate into browser-backed intercept or ui. Live browser/CDP cookies remain in process memory; only explicit auth import or browser cookies commands persist them under ~/.unicli/cookies/.",
   },
   {
     q: "How does Uni-CLI compare to MCP for token cost?",
-    a: "docs/BENCHMARK.md measures real Uni-CLI call budgets at 364-423 tokens (median 412) for --limit 5 list-style adapters. An MCP server keeps its tool list resident — usually 1,500-3,000 tokens per server — even when idle. Uni-CLI emits structured error envelopes so agents avoid retry loops that further inflate context.",
+    a: "docs/BENCHMARK.md measures representative Uni-CLI list-style calls at 364-423 tokens (median 412); it does not benchmark third-party MCP clients. Expanded MCP can load a large catalog, while deferred profiles and modern tool search load schemas on demand. Uni-CLI supports native CLI plus compact, deferred, and expanded MCP so teams can measure the surface their host actually uses.",
   },
   {
     q: "Is Uni-CLI free and open source?",
@@ -248,7 +255,7 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description: `Universal computer-control platform for agents. Turns ${siteStats.site_count} websites, logged-in browsers, desktop apps, MCP servers, local tools, files, screenshots, accessibility trees, and system capabilities into governed, observable, repairable operations.`,
+  description: `Open Agent-Computer Interface runtime for real software. Gives agents one searchable, governed, evidence-returning, repairable boundary across ${siteStats.site_count} websites and tools, browsers, desktops, files, local CLIs, and protocols.`,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
   softwareVersion: releaseInfo.version,
@@ -400,7 +407,7 @@ const howToLdJson = {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "Universal computer-control platform for agents.",
+  description: "The open Agent-Computer Interface runtime for real software.",
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -506,7 +513,7 @@ export default defineConfig({
       {
         property: "og:description",
         content:
-          "A universal computer-control platform for agents across sites, apps, local tools, files, MCP, and external CLIs.",
+          "The open Agent-Computer Interface runtime across sites, apps, browsers, local tools, files, and agent protocols.",
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],

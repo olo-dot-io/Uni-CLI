@@ -1,9 +1,16 @@
 /**
  * @owner   src/discovery/core-catalog.ts
  * @does    Catalog core Uni-CLI commands that are implemented by Commander modules instead of adapter manifests.
- * @needs   none
- * @feeds   src/discovery/search.ts, src/fast-path/handlers/discovery.ts, src/mcp/handler.ts, src/cli.ts
- * @breaks  Missing core rows make built-in capabilities executable but undiscoverable through search/list/MCP.
+ * @needs   src/types.ts, src/compute/contracts.ts
+ * @feeds   src/discovery/search.ts, src/fast-path/handlers/discovery.ts, src/mcp/handler.ts, src/commands/{architecture,describe,schema}.ts, src/core/{architecture-tree,command-contract}.ts, src/cli.ts
+ * @breaks  Throws during module initialization when a listed compute command has no owned contract; missing rows make built-in capabilities undiscoverable.
+ * @invariants Each core command has one site/command identity and list APIs return deterministic lexical order with an owned source path when available.
+ * @side-effects none
+ * @perf List operations are O(n log n); point lookup and category lookup are O(n) over a bounded static catalog.
+ * @concurrency Pure reads over immutable module data; list and lookup APIs return new top-level row objects.
+ * @test tests/unit/command-contract.test.ts, tests/unit/commands/architecture.test.ts
+ * @stability stable
+ * @since 2026-05-25
  */
 
 import type { TargetSurface } from "../types.js";
@@ -703,7 +710,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "service",
     description:
-      "Emit Uni-CLI's callable computer-control architecture tree for agents, including operation contracts, control kernel, action substrates, evidence delivery, runtime exposure, internal authoring cycle, and verification roots.",
+      "Emit Uni-CLI's callable Agent-Computer Interface architecture tree, including operation contracts, control kernel, action substrates, evidence delivery, runtime exposure, internal authoring cycle, and verification roots.",
   },
   {
     site: "architecture",
@@ -711,7 +718,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "service",
     description:
-      "Audit Uni-CLI computer-control readiness before restructuring, including command counts, local computer-use coverage, control stages, missing source paths, substrate identity boundaries, and full rewrite readiness.",
+      "Audit Uni-CLI Agent-Computer Interface readiness, including command counts, local computer-use coverage, control stages, missing source paths, substrate identity boundaries, and full rewrite readiness.",
   },
   {
     site: "compute",

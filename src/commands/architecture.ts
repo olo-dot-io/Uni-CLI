@@ -1,6 +1,6 @@
 /**
  * @owner src/commands/architecture.ts
- * @does Exposes the callable computer-control architecture tree and audit to agents.
+ * @does Exposes the callable Agent-Computer Interface architecture tree and audit to agents.
  * @needs commander, src/core/architecture-tree, src/registry, src/output/formatter, src/output/envelope
  * @feeds src/cli.ts, tests/unit/commands/architecture.test.ts
  * @breaks Propagates architecture-tree construction errors when command metadata is malformed.
@@ -52,7 +52,7 @@ export function registerArchitectureCommand(
   const readCoreCommands = options.getCoreCommands ?? listCoreDiscoveryCommands;
   const architecture = program
     .command("architecture")
-    .description("Inspect Uni-CLI's computer-control architecture and audit");
+    .description("Inspect Uni-CLI's Agent-Computer Interface architecture");
 
   architecture
     .command("tree")
@@ -73,9 +73,7 @@ export function registerArchitectureCommand(
 
   architecture
     .command("audit")
-    .description(
-      "Audit computer-control architecture readiness before restructuring",
-    )
+    .description("Audit Agent-Computer Interface architecture readiness")
     .action(() => {
       const startedAt = Date.now();
       const audit = auditArchitectureTree({

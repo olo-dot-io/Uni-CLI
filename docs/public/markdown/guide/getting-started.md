@@ -13,8 +13,9 @@ visual evidence into governed operations agents can search, run, record, and
 repair.
 
 An operation is a stable contract for controlling real software. It keeps
-arguments, auth posture, action substrate, output shape, permission profile,
-evidence, and error handling in one place. When an external page, app, API, or
+arguments, auth posture, declared action substrate, output shape, permission
+profile, and error handling in one place. Supporting operations can also emit
+recordings or post-state evidence. When an external page, app, API, or
 local boundary changes, the failure points back to a repairable source path and
 step.
 
@@ -38,24 +39,28 @@ machine-oriented consumer needs JSON.
 
 ## Understand The Flow
 
-The common path follows the computer-control loop:
+The compact Agent-Computer Interface story maps onto the executable runtime as
+follows:
 
-1. **Intent**: `unicli search` finds candidate operations from natural language
+1. **Discover**: `unicli search` finds candidate operations from natural language
    without touching the external surface.
-2. **Select**: the operation contract chooses the smallest substrate that can
-   act: API, browser, desktop, subprocess, protocol, or visual fallback.
-3. **Govern and act**: `unicli SITE COMMAND` runs the selected operation with
+2. **Select**: the agent chooses an operation whose contract declares the
+   strategy and substrate. The runtime does not yet arbitrate every API, file,
+   CLI, browser, desktop, protocol, and visual alternative automatically.
+3. **Govern and execute**: `unicli SITE COMMAND` runs the selected operation with
    inspectable arguments, auth boundaries, and permission policy.
-4. **Observe**: every result returns a v2 `AgentEnvelope` with data, context,
-   retryability, timing, and evidence.
+4. **Observe**: every rendered result returns a v2 `AgentEnvelope` that
+   distinguishes success from error and includes timing metadata. Artifacts,
+   recordings, and post-state evidence appear only when the operation emits them.
 5. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
    traces under `~/.unicli/runs` for review and debugging.
-6. **Repair or reroute**: structured failures include the source path, failing
+6. **Repair**: structured failures include the source path, failing
    step or boundary, suggestion, retryability, and alternatives.
 
 Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and Visual are action substrates. The stable layer is the operation
-contract, control kernel, evidence envelope, and delivery/repair loop.
+ACP, and Visual are action or exposure substrates. Native CLI is the canonical
+full command surface. MCP default/deferred/expanded profiles project adapter
+operations; fixed-core command parity remains roadmap work.
 
 ## Find A Command
 

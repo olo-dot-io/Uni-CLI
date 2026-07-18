@@ -1,7 +1,7 @@
 {
   "id": "unicli",
   "name": "Uni-CLI",
-  "description": "Universal CLI for AI agents — 220 sites, 1283 commands. Control websites, desktop apps, and local tools through MCP or v2 CLI envelopes.",
+  "description": "Open Agent-Computer Interface runtime for real software. Discover and run adapter operations through MCP, or use the full native CLI surface with v2 envelopes.",
   "version": "0.215.0",
   "openclaw": {
     "install": {

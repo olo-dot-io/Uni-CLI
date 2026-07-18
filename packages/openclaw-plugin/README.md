@@ -1,6 +1,8 @@
 # @zenalexa/openclaw-unicli
 
-OpenClaw Bundle MCP plugin that exposes Uni-CLI as an MCP server — 220 sites, 1283 commands.
+OpenClaw Bundle MCP plugin for Uni-CLI, the open Agent-Computer Interface
+runtime for real software. The live adapter inventory is reported by
+`unicli mcp health -f json` rather than frozen into this package.
 
 ## How It Works
 
@@ -24,12 +26,12 @@ Or copy `openclaw.plugin.json` manually to `~/.openclaw/plugins/unicli/openclaw.
 
 ## Tools
 
-| Tool             | Description                                               |
-| ---------------- | --------------------------------------------------------- |
-| `unicli_run`     | Execute any Uni-CLI command (site + command + args)       |
-| `unicli_list`    | List available sites and commands, filter by site or type |
-| `unicli_search`  | Search commands by intent, including bilingual EN/ZH      |
-| `unicli_explore` | Auto-discover API endpoints for any URL                   |
+| Tool             | Description                                            |
+| ---------------- | ------------------------------------------------------ |
+| `unicli_run`     | Execute an adapter operation (site + command + args)   |
+| `unicli_list`    | List commands with invocation and MCP-support metadata |
+| `unicli_search`  | Search commands by intent, including bilingual EN/ZH   |
+| `unicli_explore` | Auto-discover API endpoints for any URL                |
 
 ### unicli_run
 

@@ -1,7 +1,8 @@
 ---
 name: unicli
 description: >
-  Comprehensive guide to using Uni-CLI — the universal CLI for AI agents.
+  Comprehensive guide to Uni-CLI — the open Agent-Computer Interface runtime
+  for real software.
   Trigger when the user needs to fetch data from websites (Twitter, Bilibili,
   HackerNews, GitHub, Reddit, Bloomberg, Zhihu, WeChat, and hundreds more);
   interact with news, finance, social, academic, shopping, or video platforms;
@@ -379,8 +380,9 @@ query the same site twice in one turn.
 
 1. Default output is `md` (Markdown). Use `-f json` for programmatic parsing.
 2. Always set `--limit` — default varies per command (5–50); unset = potentially 100+.
-3. MCP server (`unicli mcp serve`) wraps all commands as tools; 4 default tools,
-   `--expanded` adds all 3,319 (costs tokens: use only in MCP-only environments).
+3. MCP server (`unicli mcp serve`) starts with 4 discovery/run meta-tools.
+   `--profile deferred` or `--expanded` projects the loaded adapter catalog;
+   use `unicli mcp health -f json` for current counts instead of copying them.
 4. Adapter user overlay: fixes go to `~/.unicli/adapters/<site>/<cmd>.yaml`
    and survive `npm update`.
 5. `unicli doctor` checks runtime health (Node version, Chrome, auth files,
@@ -403,6 +405,7 @@ query the same site twice in one turn.
 
 ```bash
 unicli mcp serve                    # 4 tools: run, list, search, explore
-unicli mcp serve --expanded         # all 3,319 commands as individual tools
-unicli mcp serve --profile browser  # browser + CDP tools only
+unicli mcp serve --profile deferred # lightweight stub per adapter operation
+unicli mcp serve --expanded         # full-schema tool per adapter operation
+unicli mcp serve --profile computer-use # dedicated desktop + browser controls
 ```

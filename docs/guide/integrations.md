@@ -1,8 +1,9 @@
 # Integrations
 
-Uni-CLI is designed to be called directly from a shell. Agent clients that need
-a protocol server can use the same operation contracts over MCP, ACP, or
-generated platform configuration while keeping behavior identical.
+Uni-CLI is designed to be called directly from a shell. Native CLI is the full
+command surface. Agent clients that need a protocol server can use MCP profiles
+for adapter operations; ACP and generated platform configurations expose their
+documented subsets. Do not infer command-by-command parity from catalog visibility.
 
 ## Choose A Path
 
@@ -79,6 +80,22 @@ Default MCP tools:
 | `unicli_run`     | Run a selected site command.                |
 | `unicli_list`    | List sites and commands.                    |
 | `unicli_explore` | Inspect a page before authoring an adapter. |
+
+Choose catalog exposure deliberately:
+
+```bash
+unicli mcp serve                    # 4 compact discovery/run meta-tools
+unicli mcp serve --profile deferred # lightweight stub per adapter operation
+unicli mcp serve --expanded         # full schema per adapter operation
+unicli mcp health -f json           # live profile and catalog counts
+```
+
+Deferred and expanded sizes follow the loaded adapter catalog; do not copy a
+fixed tool count into client configuration.
+
+`unicli_list` includes fixed-core discovery entries as well as adapter
+operations. `unicli_run` currently dispatches adapter operations only; invoke a
+fixed core command such as `unicli architecture audit` through native CLI.
 
 `mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
 return the v2 `AgentEnvelope`.

@@ -2,7 +2,7 @@
  * @owner       src::mcp::profiles::computer-use
  * @does        Project compute contracts plus direct browser control into cancellable, permission-enforced MCP computer-use tools and visual evidence.
  * @needs       compute authorization/capture/action modules, transport bus, direct browser-control profile, MCP tool contracts
- * @feeds       compact and computer-use MCP profiles
+ * @feeds       computer-use MCP profile
  * @breaks      Tool handlers must never create overlays, transports, files, clipboard writes, desktop actions, or browser targets before authorization.
  * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects; browser preparation, snapshot refs, target ownership, and foreground presence remain explicit.
  * @side-effects Controls local apps and browsers and may persist explicitly requested capture references.

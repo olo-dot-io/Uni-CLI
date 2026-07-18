@@ -18,7 +18,8 @@ triggers:
 
 # Uni-CLI Agent Skill
 
-Universal CLI for AI agents. Run `unicli list` for the live inventory.
+Open Agent-Computer Interface runtime for real software. Run `unicli list` for
+the live inventory.
 
 ## Install
 
@@ -76,7 +77,9 @@ mcp_servers:
       include: [unicli_run, unicli_list, unicli_search, unicli_explore]
 ```
 
-Or run the expanded server to expose all 3,319 commands as individual tools:
+Or run the expanded server to expose each loaded adapter operation as an
+individual full-schema tool. Use `unicli mcp health -f json` for the current
+catalog-dependent count:
 
 ```yaml
 mcp_servers:

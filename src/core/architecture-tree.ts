@@ -1,10 +1,10 @@
 /**
  * @owner src/core/architecture-tree.ts
- * @does Builds the callable Uni-CLI computer-control architecture tree and audit from adapter and core command contracts.
+ * @does Builds the callable Uni-CLI Agent-Computer Interface architecture tree and audit from adapter and core command contracts.
  * @needs src/core/command-contract, src/discovery/core-catalog, src/types
  * @feeds src/commands/architecture.ts, tests/unit/core/architecture-tree.test.ts
  * @breaks Propagates command-contract construction errors when adapter metadata is malformed.
- * @invariants Computer-control order is stable: intent, select, govern, act, observe, diagnose, repair-or-reroute, deliver, expose.
+ * @invariants Agent-Computer Interface order is stable: intent, select, govern, act, observe, diagnose, repair-or-reroute, deliver, expose; architecture-tree.v1 keeps the serialized computer-control-platform node id for compatibility.
  * @side-effects none
  * @perf O(commands) over loaded adapter and core command registries; allocates one inventory entry per command.
  * @concurrency Pure and reentrant; no shared mutable state.
@@ -40,7 +40,7 @@ export const COMMAND_LIFECYCLE_STEPS = [
   "publish",
 ] as const;
 
-export const COMPUTER_CONTROL_STAGES = [
+export const AGENT_COMPUTER_INTERFACE_STAGES = [
   "intent",
   "select",
   "govern",
@@ -53,7 +53,8 @@ export const COMPUTER_CONTROL_STAGES = [
 ] as const;
 
 export type CommandLifecycleStep = (typeof COMMAND_LIFECYCLE_STEPS)[number];
-export type ComputerControlStage = (typeof COMPUTER_CONTROL_STAGES)[number];
+export type AgentComputerInterfaceStage =
+  (typeof AGENT_COMPUTER_INTERFACE_STAGES)[number];
 export type ArchitecturePriority = "P0" | "P1" | "P2";
 export type ArchitectureNodeKind =
   | "root"
@@ -103,7 +104,7 @@ export interface ArchitectureTreeSummary {
 
 export interface ArchitectureTree {
   schema_version: "architecture-tree.v1";
-  control_stages: readonly ComputerControlStage[];
+  control_stages: readonly AgentComputerInterfaceStage[];
   lifecycle_steps: readonly CommandLifecycleStep[];
   summary: ArchitectureTreeSummary;
   root: ArchitectureTreeNode;
@@ -119,7 +120,7 @@ export interface ArchitectureTreeAudit {
   adapter_commands: number;
   core_commands: number;
   local_computer_use_commands: number;
-  control_stages: readonly ComputerControlStage[];
+  control_stages: readonly AgentComputerInterfaceStage[];
   lifecycle_steps: readonly CommandLifecycleStep[];
   capability_matrix: ArchitectureCapabilityMatrixEntry[];
   workflow_readiness: ArchitectureWorkflowReadiness[];
@@ -262,27 +263,29 @@ function node(
   return { ...input, children: input.children ?? [] };
 }
 
-const CONTROL_STAGE_DESCRIPTIONS: Record<ComputerControlStage, string> = {
-  intent: "Accept human or agent intent without preloading a giant tool list.",
-  select:
-    "Choose the smallest operation boundary that can act on the target software.",
-  govern:
-    "Evaluate permission profile, risk, capability scope, and local policy before action.",
-  act: "Invoke the selected software substrate through the shared kernel.",
-  observe:
-    "Return data, context, retryability, timing, and evidence through one envelope.",
-  diagnose:
-    "Classify failure as auth, policy, missing context, upstream drift, environment trouble, or adapter defect.",
-  "repair-or-reroute":
-    "Bound the next experiment by source path, evidence, alternatives, and verification command.",
-  deliver:
-    "Decide whether the objective is satisfied, still active, blocked, or exhausted.",
-  expose:
-    "Expose the same operation through CLI, MCP, ACP, HTTP, docs, skills, and scripts.",
-};
+const CONTROL_STAGE_DESCRIPTIONS: Record<AgentComputerInterfaceStage, string> =
+  {
+    intent:
+      "Accept human or agent intent without preloading a giant tool list.",
+    select:
+      "Let the caller select a cataloged operation with a declared strategy and substrate; universal alternative arbitration is not yet implemented.",
+    govern:
+      "Evaluate the permission profile, risk, capability scope, and local policy covered by the selected operation.",
+    act: "Invoke adapter commands through the adapter kernel or fixed core commands through their native handlers.",
+    observe:
+      "Render a stable success/error envelope with timing; add retryability, artifacts, recordings, or post-state evidence only when available.",
+    diagnose:
+      "Classify auth, policy, context, upstream, environment, or adapter failures when the owning path supplies enough context.",
+    "repair-or-reroute":
+      "Bound a next experiment with source path, alternatives, evidence, or a verification command when those fields are available.",
+    deliver:
+      "When the delivery subsystem is used, assess whether its objective is satisfied, active, blocked, or exhausted.",
+    expose:
+      "Expose the complete native CLI, MCP adapter projections, and documented ACP, HTTP, docs, skills, and script subsets.",
+  };
 
 function controlStageNodes(): ArchitectureTreeNode[] {
-  return COMPUTER_CONTROL_STAGES.map((stage) =>
+  return AGENT_COMPUTER_INTERFACE_STAGES.map((stage) =>
     node({
       id: `control-${stage}`,
       label: stage,
@@ -312,16 +315,16 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
     kind: "root",
     priority: "P0",
     description:
-      "Universal computer-control platform for agents: intent, governed action, evidence, delivery, and repair across software substrates.",
+      "Open Agent-Computer Interface runtime for real software: discover, select, govern, act, observe, diagnose, repair or reroute, deliver, and expose operations across software substrates.",
     command_count: summary.total_commands,
     children: [
       node({
         id: "computer-control-platform",
-        label: "Computer-control platform",
+        label: "Agent-Computer Interface runtime",
         kind: "group",
         priority: "P0",
         description:
-          "Top-level product loop: an agent controls a computer through governed, observable, repairable operations.",
+          "Top-level executable stages: intent, select, govern, act, observe, diagnose, repair or reroute, deliver, and expose.",
         command_count: summary.total_commands,
         children: controlStageNodes(),
       }),
@@ -340,7 +343,7 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
         kind: "runtime",
         priority: "P0",
         description:
-          "Validate, harden, authorize, invoke a substrate, observe, and envelope without wrapper-specific semantics.",
+          "Validate, harden, authorize, invoke, observe, and envelope adapter commands; fixed core commands retain native handlers.",
         command_count: summary.total_commands,
       }),
       node({
@@ -409,7 +412,7 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
         kind: "runtime",
         priority: "P0",
         description:
-          "AgentEnvelope, run traces, post-state evidence, objective gates, trajectory, reroute, and bounded repair.",
+          "AgentEnvelope plus operation-specific run traces, post-state checks, objective gates, trajectory, reroute, and bounded repair where supported.",
         command_count: summary.total_commands,
       }),
       node({
@@ -418,7 +421,7 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
         kind: "surface",
         priority: "P1",
         description:
-          "CLI, MCP, ACP, HTTP, docs, llms.txt, AGENTS.md, generated configs, and skills expose the same operation contracts.",
+          "Native CLI is complete; MCP projects adapter operations; ACP, HTTP, docs, llms.txt, configs, and skills expose documented subsets.",
         command_count: summary.total_commands,
       }),
       node({
@@ -505,7 +508,7 @@ export function buildArchitectureTree(
 
   return {
     schema_version: "architecture-tree.v1",
-    control_stages: COMPUTER_CONTROL_STAGES,
+    control_stages: AGENT_COMPUTER_INTERFACE_STAGES,
     lifecycle_steps: COMMAND_LIFECYCLE_STEPS,
     summary,
     root: buildRootNode(summary),
@@ -530,7 +533,7 @@ export function auditArchitectureTree(
     adapter_commands: tree.summary.adapter_commands,
     core_commands: tree.summary.core_commands,
     local_computer_use_commands: tree.summary.local_computer_use_commands,
-    control_stages: COMPUTER_CONTROL_STAGES,
+    control_stages: AGENT_COMPUTER_INTERFACE_STAGES,
     lifecycle_steps: COMMAND_LIFECYCLE_STEPS,
     capability_matrix: tree.capability_matrix,
     workflow_readiness: tree.workflow_readiness,

@@ -1,3 +1,17 @@
+<!--
+@owner docs/.vitepress/theme/components/HomePage.vue
+@does Render the bilingual product story, first command, capability loop, and documentation entry points.
+@needs docs/release-info.json, docs/site-index.json, stats.json, VitePress locale/base data, browser Clipboard API
+@feeds English and Chinese documentation homepages
+@breaks Stale product claims or generated counts misrepresent the public Agent-Computer Interface surface.
+@invariants English and Chinese copy describe the same category, runtime loop, and honesty boundary.
+@side-effects Copies the first-command block on explicit user action and updates local reactive state.
+@perf O(1) over static copy and generated scalar counts per render.
+@concurrency Browser-main-thread Vue reactivity; clipboard completion may resolve asynchronously.
+@test none; npm run docs:build verifies the compiled public surface
+@stability stable
+@since 2026-04-28
+-->
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useData, withBase } from "vitepress";
@@ -24,66 +38,65 @@ unicli mcp serve --transport streamable --port 19826`,
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "AI Agent 控制 computer 的通用平台",
-        lead: "浏览器、MCP、sandbox、桌面和本地工具，都是同一只手的不同手指。",
-        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、文件、MCP 服务、无障碍树、截图和系统能力收进一套可搜索、可治理、可观察、可修复的操作层。Agent 先按意图选择行动 substrate，再按策略执行，拿到证据回执；失败时继续诊断、修复或换路，直到结果交付。`,
+        label: "面向真实软件的开源 Agent-Computer Interface 运行时",
+        lead: "找到操作。跨过边界。让结果可检查。",
+        body: `Uni-CLI 在 Agent 与 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、文件、MCP 服务及系统能力之间提供一个可搜索边界。它按意图排序可执行 operation，通过选中 operation 已声明的 substrate 按策略运行，返回稳定的成功/错误 envelope，并让失败可诊断、可修复。`,
         primary: "30 秒跑起来",
         secondary: "看操作目录",
-        badgesTitle: "控制面",
+        badgesTitle: "运行时合同",
         badges: [
-          "Intent search",
-          "Policy gated",
-          "AgentEnvelope v2",
+          "Intent discovery",
+          "Declared substrates",
+          "Policy-aware",
+          "Structured envelopes",
           "MCP + ACP",
-          "Desktop AX",
-          "Visual fallback",
-          "Self-repair",
+          "Browser + Desktop",
+          "Repairable paths",
         ],
         commandTitle: "第一条命令",
         copy: "复制",
         copied: "已复制",
-        thesisTitle:
-          "不是 wrapper，不是工具列表，是 Agent 控制 computer 的手。",
+        thesisTitle: "一个 Agent 接口，下面接住真实软件的每一种有效边界。",
         thesis:
-          "普通人打开 App 找按钮，Agent 需要更稳定的手：先理解意图，再选择 API、browser、desktop、subprocess、protocol 或 visual 这类 substrate，带权限和参数行动，最后拿到结构化回执。Uni-CLI 把这条链路沉到平台里，让同一份操作可以跨 CLI、MCP、ACP、skills 和本地 runtime 反复调用、复盘、修复和交付。",
+          "模型只负责推理还不够。Agent 还需要一套为有限上下文设计的 interface：知道什么能行动、每条 operation 会走哪种 substrate、动作会影响什么、调用返回了什么，以及失败后怎样继续。Uni-CLI 不接管模型和编排；它把 API、文件、CLI、browser、desktop、protocol 和 visual 组织成一个可发现、可治理、可观察、可修复的运行时。",
         principles: [
           {
-            name: "理解意图",
-            text: "BM25 双语搜索把一句任务话收敛到操作、参数、认证姿态、风险和样例。",
+            name: "发现",
+            text: "BM25 双语搜索只取当前任务相关的操作、参数、认证姿态、风险和样例。",
           },
           {
-            name: "选择 substrate",
-            text: "Web API、Cookie 会话、浏览器 CDP、macOS AX、外部 CLI、protocol 和 visual fallback 走同一套控制内核。",
+            name: "选择与治理",
+            text: "Agent 选择已声明 strategy/substrate 的 operation；执行前可检查 capability scope、effect、risk 和 approval。",
           },
           {
-            name: "返回证据",
-            text: "默认给 Agent 友好的 Markdown，也能输出 JSON、YAML、CSV 和 compact，并保留 run evidence。",
+            name: "行动与观察",
+            text: "Adapter kernel 调用选中的 operation；AgentEnvelope 区分成功与错误，支持的 operation 再附加 artifact、recording 或 post-state evidence。",
           },
           {
-            name: "修复或换路",
-            text: "错误会带 source path、失败 step 或边界、retryable、suggestion 和 alternatives，方便本地 override 或 delivery reroute 后验证。",
+            name: "修复",
+            text: "错误指出 source path、失败边界、retryable、suggestion 和 alternatives，再验证本地修复或换路。",
           },
         ],
         questionsTitle: "为什么需要它",
         questions: [
           {
-            q: "它到底给 Agent 增加了什么？",
-            a: "一只通用的 computer-control 手。网页、桌面应用、本机命令、文件和协议服务都进入同一个操作合同，而不是每次临场猜 API、selector 和输出格式。",
+            q: "Uni-CLI 到底是什么类目？",
+            a: "Agent-Computer Interface 运行时：Agent 与真实软件之间的可执行边界。CLI 是原生完整进程入口，MCP 投影 adapter operation；browser、desktop 和 visual 是行动 substrate。",
           },
           {
             q: "为什么不是直接让 Agent 操作网页？",
-            a: "直接操作适合最后一公里。Uni-CLI 先把可复用路径整理成命令，必要时再落到浏览器、桌面 AX 或 visual fallback。",
+            a: "浏览器只是一个边界。Catalog 同时容纳 API、文件、CLI、页面语义、CDP、桌面 AX 和 visual operation；当前由 Agent 选择 operation，而不是由 runtime 自动仲裁所有路径。",
           },
           {
-            q: "页面改版或本地应用不配合怎么办？",
-            a: "错误 envelope 会给出 adapter 文件、失败 step 和建议。Agent 可以改本地 override，再跑 repair 验证；本地应用走平台 transport 和视觉 fallback。",
+            q: "“结果可检查”具体是什么意思？",
+            a: "所有渲染调用都用稳定 envelope 区分成功与错误；读取、文件写入、browser 变更和 desktop action 只有在对应 operation 明确支持时才附加来源、post-state、artifact 或 recording。Dispatch 不能自动证明目标完成。",
           },
           {
             q: "和 MCP 是什么关系？",
-            a: "MCP 是 exposure/protocol substrate 之一。Uni-CLI 的核心是 operation contract、control kernel、输出回执、权限策略和 delivery/repair loop。",
+            a: "MCP 是 discovery/exposure substrate 之一。Compact、deferred 与 expanded profile 投影 adapter operation；固定 core command 当前以 native CLI 为规范入口，逐命令 parity 在路线图中。",
           },
         ],
-        workflowTitle: "一条任务怎样控制 computer",
+        workflowTitle: "一条意图怎样变成可检查的结果",
         coverageTitle: "当前能力",
         coverageText:
           "这些数字来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。",
@@ -139,66 +152,66 @@ const copy = computed(() =>
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "Universal computer-control platform for agents",
-        lead: "Browsers, MCP, sandboxes, desktops, and local tools are fingers of one hand.",
-        body: `Uni-CLI turns ${siteIndex.total_sites} websites and tools, logged-in browsers, desktop apps, local commands, files, MCP servers, accessibility trees, screenshots, and system capabilities into searchable, governed, observable, repairable operations. Agents select an action substrate by intent, execute with policy, receive evidence, then diagnose, repair, or reroute until the result is delivered.`,
+        label: "The open Agent-Computer Interface runtime for real software",
+        lead: "Find the operation. Cross the boundary. Keep the outcome inspectable.",
+        body: `Uni-CLI provides one searchable boundary between agents and ${siteIndex.total_sites} websites and tools, logged-in browsers, desktop apps, local commands, files, MCP servers, and system capabilities. It ranks executable operations by intent, runs the selected operation through its declared substrate under policy, returns a stable success/error envelope, and keeps failure diagnosable and repairable.`,
         primary: "Start in 30 seconds",
         secondary: "Browse operations",
-        badgesTitle: "Control surface",
+        badgesTitle: "Runtime contract",
         badges: [
-          "Intent search",
-          "Policy gated",
-          "AgentEnvelope v2",
+          "Intent discovery",
+          "Declared substrates",
+          "Policy-aware",
+          "Structured envelopes",
           "MCP + ACP",
-          "Desktop AX",
-          "Visual fallback",
-          "Self-repair",
+          "Browser + Desktop",
+          "Repairable paths",
         ],
         commandTitle: "First command",
         copy: "Copy",
         copied: "Copied",
         thesisTitle:
-          "Not a wrapper. Not a tool list. The hand agents use to control computers.",
+          "One agent interface. Every useful software boundary underneath.",
         thesis:
-          "People open apps and look for buttons. Agents need a steadier hand: understand intent, choose an API, browser, desktop, subprocess, protocol, or visual substrate, act with permissions and arguments, and receive a structured receipt. Uni-CLI turns that chain into a platform across CLI, MCP, ACP, skills, and local runtimes.",
+          "A model that can reason still needs an interface designed for bounded context: what can act, which substrate an operation declares, what the action can affect, what the call returned, and how to continue after failure. Uni-CLI does not replace the model or orchestrator. It organizes APIs, files, CLIs, browsers, desktops, protocols, and visual control into one discoverable, governed, observable, repairable runtime.",
         principles: [
           {
-            name: "Intent",
-            text: "Bilingual BM25 search maps a task to operations, arguments, auth posture, risk, and examples.",
+            name: "Discover",
+            text: "Bilingual BM25 search retrieves only the operations, arguments, auth posture, risk, and examples relevant to the task.",
           },
           {
-            name: "Substrate",
-            text: "Web APIs, cookie sessions, browser CDP, macOS AX, external CLIs, protocols, and visual fallback share one control kernel.",
+            name: "Select and govern",
+            text: "The agent selects an operation with a declared strategy and substrate; capability scope, effect, risk, and approval remain inspectable before execution.",
           },
           {
-            name: "Evidence",
-            text: "Markdown is the agent-friendly default, with JSON, YAML, CSV, compact output, and run evidence for review.",
+            name: "Act and observe",
+            text: "The adapter kernel invokes the selected operation; AgentEnvelope distinguishes success from error, and supporting operations add artifacts, recordings, or post-state evidence.",
           },
           {
-            name: "Repair or reroute",
-            text: "Errors carry source path, failed step or boundary, retryability, suggestions, and alternatives for local override or delivery reroute verification.",
+            name: "Repair",
+            text: "Errors name the source path, failed boundary, retryability, suggestion, and alternatives, then verify a local repair or reroute.",
           },
         ],
         questionsTitle: "Why it matters",
         questions: [
           {
-            q: "What does this add for an agent?",
-            a: "A universal computer-control hand. Sites, desktop apps, local commands, files, and protocol servers become governed operation contracts instead of one-off API guesses, selector guesses, and output guesses.",
+            q: "What category is Uni-CLI?",
+            a: "An Agent-Computer Interface runtime: the executable boundary between an agent and real software. CLI is the native full process entry point; MCP projects adapter operations, while browser, desktop, and visual control are action substrates.",
           },
           {
             q: "Why not just drive the browser directly?",
-            a: "Direct operation is the last mile. Uni-CLI compiles reusable paths into commands first, then falls back to browser, desktop AX, or visual input when the semantic path is not enough.",
+            a: "The browser is one boundary. The catalog can hold API, file, CLI, page-semantic, CDP, desktop-accessibility, and visual operations. Today the agent selects the operation; the runtime does not arbitrate every alternative automatically.",
           },
           {
-            q: "What happens when a site or app changes?",
-            a: "The error envelope gives the adapter file, failed step, and suggestion. Agents can patch a local override and verify with repair; local apps route through platform transports and visual fallback.",
+            q: "What does an inspectable outcome mean?",
+            a: "Every rendered call distinguishes success from error in a stable envelope. Reads, file writes, browser mutations, and desktop actions add provenance, post-state, artifacts, or recordings only when that operation supports them. Dispatch cannot prove objective completion.",
           },
           {
             q: "How does MCP fit?",
-            a: "MCP is one exposure/protocol substrate. The core pieces are operation contracts, the control kernel, output receipts, permission policy, and the delivery/repair loop.",
+            a: "MCP is one discovery and exposure substrate. Compact, deferred, and expanded profiles project adapter operations. Fixed core commands are currently canonical on native CLI; command-level parity is roadmap work.",
           },
         ],
-        workflowTitle: "How a task controls a computer",
+        workflowTitle: "How intent becomes an inspectable result",
         coverageTitle: "Current surface",
         coverageText:
           "These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.",

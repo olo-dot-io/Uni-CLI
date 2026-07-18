@@ -7,9 +7,11 @@
 > run `unicli auth setup <site>` once and retry. Adapter is broken?
 > Read `unicli repair <site> <command>`.
 
-Universal CLI for websites, desktop apps, and local tools. YAML adapters are
-self-repairing — agents can fix them by editing one file. See
-`docs/BENCHMARK.md` for measured per-call token costs.
+Open Agent-Computer Interface runtime for real software. Rank operations by
+intent, explicitly select one with a declared substrate, inspect its structured
+result, and repair supported drift paths. Operation-specific evidence is
+optional. YAML adapters stay agent-readable and locally repairable. See
+`docs/BENCHMARK.md` for measured Uni-CLI call costs.
 
 ## Agent Routing Rule
 
@@ -149,6 +151,7 @@ allowlist entry without a one-line `// REASON:` justification in
 ```
 
 Equivalent: `npx -y @zenalexa/unicli mcp serve`. Default profile exposes 4
-meta-tools (~200 tokens); `--expanded` exposes one tool per command (3,319
-tools, ~160K tokens). The registry manifest is shipped at `server.json` for
-the official MCP registry.
+meta-tools; `--expanded` exposes those tools plus one tool per
+runtime adapter command. Check the exact deferred/expanded count with
+`unicli mcp health -f json`. The registry manifest is shipped at `server.json`
+for the official MCP registry.

@@ -11,23 +11,27 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes. Its static adapter catalog covers <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join at runtime.
+Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, accessibility, and visual control. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under available policy, returns a stable success/error envelope, and keeps supported failure paths repairable. Its static adapter catalog covers <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join the native CLI at runtime.
+
+## Why call it an Agent-Computer Interface runtime?
+
+An Agent-Computer Interface is the commands an agent can issue and the feedback the computer returns. “Runtime” distinguishes executable behavior from a schema, skill, registry, or documentation layer. Uni-CLI implements that boundary across multiple software interfaces without becoming the model, planner, or agent framework. The term is established in the [SWE-agent paper](https://arxiv.org/abs/2405.15793); Uni-CLI extends the boundary from coding tools to heterogeneous real software.
 
 ## How is Uni-CLI different from a browser automation library?
 
-Browser automation is one action substrate. Uni-CLI sits above it with operation contracts, permission policy, evidence receipts, delivery assessment, and repair/reroute paths. A browser command, desktop action, subprocess bridge, MCP route, or app wrapper should all return the same AgentEnvelope and follow the same control loop.
+Browser automation is one execution substrate. Uni-CLI's catalog can contain API, file, local CLI, page-native, browser-semantic, desktop-accessibility, and visual operations. Each operation declares its own strategy and substrate; the agent currently selects among candidates rather than relying on universal automatic arbitration. Adapter commands share the adapter kernel and envelope shape, while evidence and repair details remain operation-specific.
 
 ## How is Uni-CLI different from a computer-use sandbox?
 
-A computer-use sandbox gives an agent an environment with screen, mouse, keyboard, and often benchmark hooks. Uni-CLI can use that kind of boundary, but its category is broader: it controls the user's real software environment through the smallest available substrate, from typed APIs and browser CDP to desktop accessibility, subprocesses, files, protocols, and visual fallback.
+A computer-use sandbox provides an isolated environment, screen, mouse, keyboard, and often benchmark hooks. Uni-CLI is the interface runtime rather than the sandbox: it can call sandboxed or local boundaries, cross GUI and structured interfaces in one task, and return a shared operation receipt. It does not claim that a user's live machine is isolated like a sandbox.
 
 ## Why a CLI instead of an MCP server?
 
-A measured Uni-CLI list-style call lands at a 364-423 token total budget (median 412) per [docs/BENCHMARK.md](/BENCHMARK), while an equivalent MCP server keeps its tool list resident — typically 1,500-3,000 tokens per server, even when idle. Uni-CLI publishes both surfaces; the CLI is the cheap, deterministic primary, and MCP wraps it for runtimes that only speak MCP.
+CLI is Uni-CLI's native, inspectable, full command surface: it composes with files, pipes, exit codes, CI, and local tools without a resident server. MCP is a first-class protocol/exposure substrate when a host needs stateful sessions or protocol-native discovery, and current clients can defer tool schemas. Compact, deferred, and expanded profiles project adapter operations. Fixed core commands remain canonical on native CLI until command-level parity lands.
 
 ## How does self-repair work in Uni-CLI?
 
-When an operation fails, Uni-CLI emits a structured error JSON containing the source path, failing step or boundary, action, retryability, alternatives, and a one-line suggestion. An agent can edit the YAML or code at that path, run `unicli repair <site> <command>` or a bounded delivery verification, and keep the patch in `~/.unicli/adapters/` when the repair is user-local.
+When an owned adapter path fails, Uni-CLI emits structured error JSON and can populate the source path, failing step or boundary, retryability, alternatives, and a suggestion. An agent can edit the YAML or code at that path, run `unicli repair <site> <command>` or a bounded delivery verification, and keep the patch in `~/.unicli/adapters/` when the repair is user-local. Fields that do not apply to the failure remain absent rather than being fabricated.
 
 ## Which AI agent runtimes work with Uni-CLI?
 
@@ -35,7 +39,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.400.1 ships a generated static adapter catalog with <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9659<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.400.1 ships a generated static adapter catalog with <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9660<!-- /STATS --></span> tests. The headline is not the count; it is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -51,11 +55,11 @@ Yes. The preferred contribution format is a short YAML adapter that names the si
 
 ## Does Uni-CLI handle authenticated sites?
 
-Yes. Strategies cascade across `public`, `cookie`, `header` (cookie + CSRF), `intercept` (browser XHR capture), and `ui` (interactive). Cookie/header commands use an explicitly persisted file when present or read a live local browser/CDP source into process memory without writing it. `auth import` and `browser cookies` are the explicit persistence commands.
+Yes. An operation explicitly declares one of `public`, `cookie`, `header`, `intercept`, or `ui`. Where a probe URL is available, the bounded HTTP probe tries only `public → cookie → header` and caches the first valid result in process; it does not auto-escalate into browser-backed `intercept` or `ui`. Cookie/header commands use an explicitly persisted file when present or read a live local browser/CDP source into process memory without writing it. `auth import` and `browser cookies` are the explicit persistence commands.
 
 ## How does Uni-CLI compare to MCP for token cost?
 
-[docs/BENCHMARK.md](/BENCHMARK) measures real Uni-CLI call budgets at 364-423 tokens (median 412) for `--limit 5` list-style adapters. An MCP server has to keep its tool list in resident context — usually 1,500-3,000 tokens per server — before any tool is invoked. Uni-CLI emits structured error envelopes so agents avoid retry loops that further inflate context.
+[docs/BENCHMARK.md](/BENCHMARK) measures representative Uni-CLI `--limit 5` list-style calls at 364-423 tokens (median 412); it does not benchmark third-party MCP clients. Expanded MCP can expose a large catalog, while Uni-CLI's default/deferred profiles and modern host-side tool search load schemas on demand. Measure the actual CLI or MCP profile in the target host rather than assuming one protocol always costs less.
 
 ## Is Uni-CLI free and open source?
 

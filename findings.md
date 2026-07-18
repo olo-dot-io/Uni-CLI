@@ -536,3 +536,198 @@ list JSON`, `AI agents`, `pagination`.
   sources, completed a live one-result PubMed query, and spawned broker protocol
   v5 from its compiled artifact with zero managed providers and no Chrome
   connection. Its production audit found zero vulnerabilities.
+
+## Agent-Computer Interface positioning — 2026-07-18
+
+- The current repository is materially broader than a “CLI for anything”: its
+  owned boundary includes intent search, operation contracts, capability/effect
+  policy, web/browser/desktop/file/subprocess/protocol execution, browser
+  ownership and cancellation, structured success/error evidence, delivery,
+  repair, MCP/ACP/HTTP-compatible exposure, generic retrieval, and AI-specific
+  primary-source intelligence. The generated truth at `0.400.1` is 324 static
+  adapter sites, 1,817 registered commands, 1,238 adapters, 105 built-in
+  actions, and 9,659 tests.
+- [current/recent, first-party technical, specification-reproducible] Current
+  protocol work is specializing rather than converging on one transport.
+  Google's March protocol guide separates MCP, A2A, UCP, AP2, A2UI, and AG-UI;
+  the June ARD draft adds cross-artifact discovery but delegates execution to
+  native protocols; MCP's March roadmap still lists discovery, transport,
+  tasks, audit, gateways, and configuration gaps; WebMCP provides page-native
+  tools only inside an active opted-in browsing context. This makes a
+  cross-interface runtime a stronger long-term category than an MCP, browser,
+  or CLI-only identity.
+- [current, first-party technical, interface-reproducible] OpenAI Tool Search
+  and Anthropic MCP tool search independently moved toward
+  deferred schema loading. Playwright MCP's maintainer directed a context-size
+  report to the CLI surface. This corroborates Uni-CLI's existing
+  `search -> describe -> invoke` path, but disproves the previous blanket public
+  claim that MCP necessarily keeps 1,500–3,000 tokens resident. Public copy now
+  treats the 364–423-token benchmark as a Uni-CLI fixture, not a third-party
+  protocol comparison.
+- [current/recent, primary benchmark self-report, partially reproducible]
+  Primary full-text research establishes a durable academic niche.
+  SWE-agent defines the Agent-Computer Interface as agent commands plus computer
+  feedback and reports a 10.7-point ablation gain over a shell-only baseline on
+  its studied subset. CLI-Anything extends agent-native structured interfaces
+  to professional applications. PlanBench-XL tests 327 tasks over 1,665 tools
+  under retrieval-limited visibility. WeaveBench requires GUI plus CLI/code and
+  reports a best 41.2% pass rate, at most 3.5% for either single interface, and
+  material inflation from outcome-only judging. OSWorld 2.0 reports 20.6%
+  completion on 108 long-horizon workflows under its primary 500-step metric.
+  Together they point to interface design, dynamic discovery, hybrid execution,
+  and trajectory evidence as the open boundary around stronger models.
+- Representative ecosystem source distinguishes adjacent categories: OpenCLI
+  and CLI-Anything lift sites/apps into structured commands; Browser Use and
+  Playwright MCP own browser agents/tools; Composio owns hosted SaaS auth and
+  toolkits; ToolHive owns MCP server isolation, gateways, and operations; ARD
+  and MCP Registry own discovery metadata. Uni-CLI's truthful non-overlapping
+  claim is an open, local-first Agent-Computer Interface runtime that discovers
+  and ranks operations, lets callers select declared software substrates,
+  governs supported effects, returns structured results, and repairs supported
+  MCP and non-MCP paths without owning the model loop. Automatic substrate
+  arbitration and universal evidence remain direction, not current truth.
+- [current, maintainer/community reports] Upstream issue vocabulary reinforces
+  the runtime quality bar: Playwright MCP
+  threads cover oversized observations, concurrent browser-context ownership,
+  proxy/session semantics, and network auth; Browser Use threads request action
+  deltas, audit trails, and crash recovery; Composio reproduced a case where a
+  capability could execute but disappeared from mixed-session search; ARD and
+  WebMCP discussions still work through lifecycle, federation, provenance, and
+  threat boundaries. The positioning is credible only while Uni-CLI keeps these
+  properties executable and regression-tested.
+- Candidate collision research rejected “Agent Capability Runtime” because the
+  phrase is already used by hosted provider routers, “Agent I/O Runtime” because
+  it is used for event normalization and communication, “Agent Interface Layer”
+  because it is broad and increasingly crowded, and “control plane” because it
+  implies distributed authority and overlaps MCP infrastructure. “The open
+  Agent-Computer Interface runtime for real software” uses an established term,
+  names the owned boundary, and remains valid as protocols change.
+- [current, local wire probe] The old MCP profile estimates (`~200`, `~8K`,
+  `~160K` tokens) were not supported by the current catalog. A real stdio
+  `initialize` + `tools/list` probe against `src/mcp/server.ts` returned 4 tools
+  and 2,975 JSON characters for default, 1,838 tools and 925,945 characters for
+  deferred, and 1,838 tools and 1,911,751 characters for expanded. Server
+  stderr and `unicli mcp health -f json` both reported 324 sites and 1,834
+  adapter commands. Public/source comments now avoid token estimates until an
+  MCP-specific reproducible benchmark exists; the native CLI fixture benchmark
+  must not be extrapolated to MCP profiles.
+- Reference source heads inspected locally were MCP `26897cc322f3`, ARD
+  `5fa2f5aef790`, WebMCP `8aecdb862eec`, Playwright MCP `55679f5f3d4b`,
+  Playwright core `eb874fac750e`, Browser Use `950eb03617e6`, Composio
+  `c34401e35504`, and ToolHive `52ecebcca4eb`. Search vocabulary
+  included discovery, federation, trust, lifecycle, context, tool search,
+  session, ownership, evidence, replay, auth, crash, and repair. The durable
+  primary-source, thread, release, advisory, and prevention ledger is recorded
+  below in this file. An OpenCLI shallow clone failed once when the GitHub
+  connection closed during ref listing; source and release evidence were read
+  through GitHub API/raw endpoints instead, with no repeated clone loop.
+- [current, locally reproducible] A live `0.400.1`
+  `ai pulse --profile agents --window month` returned 40
+  timestamped results in 14.3 seconds while preserving Brave and Semantic
+  Scholar rate-limit failures and a Dev.to failure. The run also exposed noisy
+  arXiv relevance for broad profile queries, so it supports provenance and
+  partial-failure claims but not a public “best current intelligence” claim.
+- [current, MCP dogfood] `unicli_list` advertised fixed core operations such as
+  `architecture audit`, but `unicli_run` resolved adapter operations only and
+  therefore returned a generic unknown-command failure for the advertised
+  operation. The owning-boundary repair does not pretend protocol parity:
+  list/search results now label `source_kind`, `mcp_run_supported`, and the
+  correct invocation; attempts to run a fixed core operation through
+  `unicli_run` return `unsupported_surface` with its native CLI route. A
+  task-augmented MCP regression locks the discovery-to-invocation contract.
+
+### Positioning source and ecosystem ledger
+
+- Primary protocol/provider sources: [Google's protocol guide](https://developers.googleblog.com/en/developers-guide-to-ai-agent-protocols/),
+  [ARD announcement](https://developers.googleblog.com/en/announcing-the-agentic-resource-discovery-specification/),
+  [ARD specification](https://agenticresourcediscovery.org/spec/),
+  [MCP roadmap](https://modelcontextprotocol.io/development/roadmap),
+  [MCP Registry boundary](https://modelcontextprotocol.io/registry/about),
+  [Chrome WebMCP](https://developer.chrome.com/docs/ai/webmcp),
+  [OpenAI Tool Search](https://developers.openai.com/api/docs/guides/tools-tool-search),
+  [OpenAI MCP/connectors](https://developers.openai.com/api/docs/guides/tools-connectors-mcp),
+  and [Anthropic MCP tool search](https://docs.anthropic.com/en/docs/claude-code/mcp).
+- Primary full texts read: [SWE-agent](https://arxiv.org/abs/2405.15793),
+  [CLI-Anything](https://arxiv.org/abs/2606.03854),
+  [PlanBench-XL](https://arxiv.org/abs/2606.22388),
+  [WeaveBench](https://arxiv.org/abs/2606.09426),
+  [OSWorld 2.0](https://arxiv.org/abs/2606.29537), and
+  [C-World](https://arxiv.org/abs/2601.06328).
+- Owning source boundaries read at the pinned heads included MCP roadmap and
+  registry documents; `ard/spec/ard.md` plus its JSON Schema/OpenAPI/CDDL;
+  WebMCP `index.bs` and its security questionnaire; Playwright core
+  `packages/playwright-core/src/tools/mcp/program.ts`; Browser Use session,
+  watchdog, and event paths; Composio `tool_router_session.py`; and ToolHive
+  runner, transport, registry, and auth boundaries.
+- High-signal issues and review threads:
+  [Playwright MCP #1274](https://github.com/microsoft/playwright-mcp/issues/1274),
+  [#1631](https://github.com/microsoft/playwright-mcp/issues/1631),
+  [#1646](https://github.com/microsoft/playwright-mcp/issues/1646),
+  [#1684](https://github.com/microsoft/playwright-mcp/issues/1684),
+  [Browser Use #5137](https://github.com/browser-use/browser-use/issues/5137),
+  [#4860](https://github.com/browser-use/browser-use/issues/4860),
+  [#5067](https://github.com/browser-use/browser-use/issues/5067), its still-open
+  [recovery PR #5087](https://github.com/browser-use/browser-use/pull/5087),
+  [Composio #3776](https://github.com/ComposioHQ/composio/issues/3776),
+  [ARD #63](https://github.com/ards-project/ard-spec/issues/63),
+  [ARD #45](https://github.com/ards-project/ard-spec/issues/45), and
+  [WebMCP #154](https://github.com/webmachinelearning/webmcp/issues/154).
+- Discussions inspected included
+  [MCP host guidance #1243](https://github.com/modelcontextprotocol/modelcontextprotocol/discussions/1243),
+  [ToolHive workload lifecycle #1160](https://github.com/stacklok/toolhive/discussions/1160),
+  and [Composio self-hosting #1037](https://github.com/ComposioHQ/composio/discussions/1037).
+  ARD, WebMCP, and Playwright MCP have discussions disabled; their issue and
+  review threads are the maintained community surface.
+- Release searches observed Playwright MCP `v0.0.78` (2026-07-09), Browser Use
+  `0.13.6` (2026-07-17), current Composio package releases (2026-07-16), and
+  ToolHive `v0.40.0` (2026-07-17). ARD and WebMCP had no GitHub releases.
+  Advisory searches found no current advisories for MCP, ARD, WebMCP,
+  Playwright MCP, or Composio. Browser Use's older
+  [domain-allowlist bypass](https://github.com/browser-use/browser-use/security/advisories/GHSA-x39x-9qw5-ghrf)
+  and ToolHive's current
+  [host-side auth-discovery SSRF](https://github.com/stacklok/toolhive/security/advisories/GHSA-pr64-jmmf-jp54)
+  show why policy must be enforced at the actual navigation/fetch boundary;
+  metadata provenance or container isolation alone is insufficient.
+- Local prevention mapping: compact/deferred discovery bounds schema context;
+  the browser broker owns sessions and cancellation explicitly; permission and
+  resource-scope checks guard native execution boundaries; AgentEnvelope and
+  run evidence distinguish failure classes and post-state; repair stays tied to
+  an owned source path and verification command. Federation lifecycle,
+  arbitrary protocol trust, and objective completion without
+  operation-specific evidence remain explicit unsupported states.
+
+### Synthetic consumer rehearsal (not real user evidence)
+
+Five simulated consumers read the public source against falsifiable questions:
+
+| Persona                 | Required answer from the public surface                                                                                                            | Observed result                  |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Coding-agent operator   | Name the category, install it, search by intent, and recite the six-step loop from the first 120 README lines.                                     | Passed.                          |
+| AI-infra researcher     | Find executable paper download/read paths while recognizing research as one capability inside a general runtime.                                   | Passed.                          |
+| Agent-platform engineer | Distinguish app-to-CLI harnesses, browser agents, hosted integrations, MCP operations, and discovery standards; explain current CLI/MCP tradeoffs. | Passed after one clarity repair. |
+| Local power user        | Find logged-in browser, desktop, and local paths; understand auth persistence and the live-machine/sandbox boundary.                               | Passed.                          |
+| Open-source contributor | Find the owned repair source, verification command, YAML authoring boundary, and dispatch-versus-completion rule.                                  | Passed.                          |
+
+The first 18-assertion rehearsal found that the FAQ called MCP first-class but
+did not explicitly repeat its protocol/exposure-substrate role. English,
+Chinese, and JSON-LD FAQ copy now state that boundary. A second failure was an
+overly literal Chinese assertion: the README already said “命令成功 dispatch，
+不等于任务已经完成”; the check was corrected without changing valid copy. The
+re-run passed all 18 assertions. The rehearsal does not establish real market
+demand, comprehension rates, protocol conformance, live endpoint health, or
+task completion; those remain measurement and dogfood work.
+
+The final post-audit rehearsal again passed 18/18 assertions after the MCP
+profile names, skills, OpenClaw repository copy, glossary attribution, and
+cataloged-versus-executable wording were corrected. The nested
+`@zenalexa/openclaw-unicli` package has its own `0.215.0` version and no root
+changeset/release wiring; this change repairs its repository copy only. A
+separate package release is required before registry consumers receive it and
+is outside this positioning task.
+
+The independent audit's final P2 found that `npm run stats` emitted
+`AGENTS.md` before the formatting step used by `npm run build`, so the two
+official generation paths disagreed only on marker whitespace. The root fix
+adds canonical AGENTS formatting to the stats chain. A real
+`npm run stats && npm run docs:prepare` run left the complete binary diff
+unchanged; the final re-review reported zero unresolved P0, P1, or P2 findings.

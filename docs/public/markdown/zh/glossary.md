@@ -9,9 +9,13 @@
 
 Uni-CLI 文档、源码、YAML 适配器里用到的术语标准定义。每条都做成独立段落，方便 AI 助手在回答项目相关问题时直接引用。
 
+## Agent-Computer Interface (ACI)
+
+Agent 能向 computer 发出的命令，以及 computer 返回的反馈。Uni-CLI 把这条 interface 实现成横跨异构真实软件的 runtime：发现并选择 operation，治理已覆盖 effect，通过 operation 已声明的 substrate 行动，观察结构化结果，并修复支持的失败。这个术语描述产品边界，不代表某一种 wire protocol、visual interface、Agent framework 或自动 substrate 仲裁。
+
 ## Action substrate (行动 substrate)
 
-Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser CDP、desktop accessibility、subprocess、文件操作、协议服务、visual fallback 或 App-specific wrapper。substrate 位于 computer-control 平台边界之下。
+Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser CDP、desktop accessibility、subprocess、文件操作、协议服务、visual fallback 或 App-specific harness。substrate 位于 Agent-Computer Interface runtime 边界之下。
 
 ## Adapter (适配器)
 
@@ -23,7 +27,7 @@ Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser 
 
 ## AgentEnvelope (v2)
 
-Uni-CLI 每条操作返回的结构化回执。包含 `ok`、`version`、`data`、`meta`、可选 `error`、`exit_code`。成功时 `data` 装结果。失败时 `data` 为 null，`error` 填上 source path、`step`、`action`、`suggestion`、`retryable`、`alternatives`。
+Uni-CLI formatter 产出的结构化回执。包含 `ok`、`schema_version`、`command`、`meta`、`data`、`error`，以及可选的 `content` 与 `next_actions`。成功时 `data` 装结果且 `error` 为 null；失败时 `data` 为 null，`error` 一定有 `code` 与 `message`，source path、step、suggestion、retryability、alternatives 和 outcome ambiguity 仅在适用时出现。
 
 ## AGENTS.md
 
@@ -71,11 +75,11 @@ Agent 把自然语言意图映射到具体操作的阶段。由 `unicli search "
 
 ## Error envelope (错误回执)
 
-`ok` 为 false 时 v2 AgentEnvelope 上的 `error` 字段。带 source path 或 `adapter_path`、`step` 或失败边界、`action` (一句话描述)、`suggestion` (一条 Agent 可以验证的假设)、`retryable` (重试有没有用)、`alternatives` (能满足意图的其他操作)。
+`ok` 为 false 时 v2 AgentEnvelope 上的 `error` 字段。一定带 `code` 与 `message`；根据失败类型，还可以带 `adapter_path`、`step`、`suggestion`、`retryable`、`alternatives`、`outcome_ambiguous`、`target_unusable` 或 remedy。可选字段不是通用 completion evidence。
 
 ## Exit code (退出码)
 
-每次 Uni-CLI 调用返回的 sysexits.h 兼容数值状态。0 成功；1 通用错误；2 用法错误；66 结果为空；69 服务不可用；75 临时失败；77 认证错误；78 配置错误。Shell pipeline 可以按类别路由。
+CLI command 使用的 process status。0 代表成功；结构化 command failure 会映射到 sysexits-style 类别，例如 66 empty result、69 service unavailable、75 temporary failure、77 auth、78 config；Commander usage failure 使用自身非零状态。Exit status 属于 process boundary，不是 AgentEnvelope 必填字段。
 
 ## Header strategy
 
@@ -91,11 +95,11 @@ Agent 把自然语言意图映射到具体操作的阶段。由 `unicli search "
 
 ## MCP (Model Context Protocol)
 
-Anthropic 牵头的协议，让 AI 助手通过有状态服务调用工具。Uni-CLI 自带可选 MCP 网关 (`unicli mcp serve`)，把同一份 operation contract 暴露给只会说 MCP 的运行时。
+一个把 AI 应用与工具、数据通过有状态服务连接起来的[开放标准](https://modelcontextprotocol.io/)。Uni-CLI 自带可选 MCP 网关 (`unicli mcp serve`)，用 default、deferred、expanded profile 暴露 adapter operation。固定 core command 在 protocol parity 完成前仍以 native CLI 为规范入口。
 
 ## Operation contract (操作合同)
 
-Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输出形状、认证姿态、行动 substrate、effect、risk、capability、source path 和 repair path。CLI、MCP、ACP、docs、skills 和生成配置都应该投影同一份合同，而不是各自定义行为。
+Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输出形状、认证姿态、行动 substrate、effect、risk、capability、source path 和 repair path。Adapter CLI 与 MCP projection 当前共享 adapter contract；固定 core 和其他 integration parity 是设计 invariant 与路线图目标，不代表今天每个 surface 都能 dispatch 每条 cataloged command。
 
 ## Pipeline
 
@@ -108,11 +112,11 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 
 ## Pipeline step (Pipeline 步骤)
 
-适配器 pipeline 里的一个工作单元。例：`fetch`、`select`、`map`、`filter`、`navigate`、`click`、`intercept`、`if`、`each`、`assert`。纯变换 action 可以是确定性的；外部 action 对 network、browser、desktop、subprocess 状态提供稳定合同和显式证据。
+适配器 pipeline 里的一个工作单元。例：`fetch`、`select`、`map`、`filter`、`navigate`、`click`、`intercept`、`if`、`each`、`assert`。纯变换 action 可以是确定性的；外部 action 保持结构化 result/error handling，并可发出与 operation 相符的 network、browser、desktop 或 subprocess evidence。
 
 ## Public strategy
 
-最便宜的认证策略。无凭据直接 fetch。用于公开 API 的站点 (RSS、搜索端点、公共统计)。策略级联永远先试它。
+最便宜的认证策略。无凭据直接 fetch。用于公开 API 的站点 (RSS、搜索端点、公共统计)。只有 command 使用有界 HTTP auth probe 时，它才一定先被尝试。
 
 ## Repair (修复)
 
@@ -136,11 +140,11 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 
 ## Strategy (策略)
 
-适配器声明的认证路径。级联顺序的五种：`public`、`cookie`、`header`、`intercept`、`ui`。第一次跑时自动探测，之后缓存。
+Adapter 声明的认证或交互路径：`public`、`cookie`、`header`、`intercept`、`ui`。这五个值不是一条自动五路 cascade。只有 `public`、`cookie`、`header` 进入有界 HTTP probe；`intercept` 与 `ui` 是显式 browser-backed strategy。
 
 ## Strategy cascade (策略级联)
 
-第一次调用某站点时 Uni-CLI 跑的自动探测序列。从最便宜到最贵 (`public` 到 `ui`) 逐个试，直到某个策略返回可解析数据。选中的策略缓存下来，后续调用跳过探测。
+存在 probe URL 时使用的有界 HTTP 探测。依次尝试 `public`、`cookie`、`header`，并在进程内缓存第一个有效结果。它不会静默升级到 `intercept` 或 `ui`；browser-backed strategy 必须由 operation 明确声明。
 
 ## Tap
 
@@ -152,7 +156,7 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 
 ## v2 envelope version (v2 envelope 版本)
 
-当前的 AgentEnvelope schema。v1 是扁平的 `{ ok, data, error }`；v2 加了结构化 `error` 字段、`meta`、`version`、`exit_code`，shell 友好。v0.213 起所有适配器都吐 v2。
+当前 AgentEnvelope schema。它使用 `schema_version: "2"`、`ok` 判别式 success/error union、`command`、`meta`、`data`、`error` 与可选 content/next-action block。Shell exit status 在 process boundary 与 envelope 并行映射，不是 envelope 必填字段。
 
 ## Web-api adapter
 

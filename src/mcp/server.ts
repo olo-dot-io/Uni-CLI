@@ -23,9 +23,9 @@
  *   - `./streamable-http/`  — Streamable HTTP transport (MCP spec 2025-11-25)
  *
  * Three modes:
- *   - default   (~200 tokens)  — 4 meta-tools only
- *   - deferred  (~8K tokens)   — stubs for ToolSearch-aware clients
- *   - expanded  (~160K tokens) — one tool per adapter command
+ *   - default   — 4 meta-tools only
+ *   - deferred  — one lightweight stub per loaded adapter command
+ *   - expanded  — one full-schema tool per loaded adapter command
  *
  * Three transports:
  *   - stdio (default) — newline-delimited JSON over stdin/stdout

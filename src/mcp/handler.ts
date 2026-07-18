@@ -1,10 +1,10 @@
 /**
  * @owner       src/mcp/handler.ts
- * @does        Dispatch MCP JSON-RPC methods, standard durable Tasks, and each tool call inside its transport-derived browser invocation scope.
+ * @does        Dispatch MCP JSON-RPC methods and durable Tasks, expose callable-surface metadata for adapter versus fixed-core discovery entries, and run each tool call inside its transport-derived browser invocation scope.
  * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation, browser invocation context/scope/runtime probe, generate permission, constants
  * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
- * @breaks      Invalid methods/arguments return JSON-RPC errors; tool and browser-finalization failures propagate to the owning transport.
- * @invariants  Every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them; transport close settles tasks before ending every no-longer-referenced Agent browser session without starting an absent broker, and retains cleanup ownership until every available broker acknowledgement succeeds.
+ * @breaks      Invalid methods/arguments return JSON-RPC errors; fixed-core unicli_run attempts return an explicit native-CLI route; tool and browser-finalization failures propagate to the owning transport.
+ * @invariants  Discovery marks whether unicli_run supports each command; every tools/call receives one Agent session/turn identity before any browser-capable command runs; mutating tools require task augmentation; tasks are scoped to the transport session that created them; transport close settles tasks before ending every no-longer-referenced Agent browser session without starting an absent broker, and retains cleanup ownership until every available broker acknowledgement succeeds.
  * @side-effects Executes registered tools, adapters, elicitation resolution, browser turn finalizers, and transport-owned browser-session cleanup.
  * @perf        Tool lookup is linear in the selected MCP profile; browser scope setup is O(1).
  * @concurrency Async-local browser scopes isolate overlapping tool calls across MCP sessions and turns; transport cleanup is serialized so closeSession/closeAll cannot double-release one broker session.
@@ -16,7 +16,10 @@
 import { randomUUID } from "node:crypto";
 
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
-import { listCoreDiscoveryCommands } from "../discovery/core-catalog.js";
+import {
+  getCoreDiscoveryCommand,
+  listCoreDiscoveryCommands,
+} from "../discovery/core-catalog.js";
 import {
   annotateIfLarge,
   runResolvedCommand,
@@ -94,7 +97,11 @@ export function createMcpBrowserPolicy(
 
 function handleListAdapters(params: Record<string, unknown>): McpToolResult {
   let commands = [
-    ...listCommands(),
+    ...listCommands().map((command) => ({
+      ...command,
+      source_kind: "adapter" as const,
+      mcp_run_supported: true,
+    })),
     ...listCoreDiscoveryCommands().map((command) => ({
       site: command.site,
       command: command.command,
@@ -103,6 +110,8 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
       type: command.type,
       auth: false,
       quarantined: false,
+      source_kind: "core" as const,
+      mcp_run_supported: false,
     })),
   ];
 
@@ -124,7 +133,13 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
     {
       category: string;
       type: string;
-      commands: Array<{ name: string; description: string }>;
+      commands: Array<{
+        name: string;
+        description: string;
+        source_kind: "adapter" | "core";
+        mcp_run_supported: boolean;
+        invocation: string;
+      }>;
     }
   >();
 
@@ -139,7 +154,16 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
       };
       siteMap.set(cmd.site, entry);
     }
-    entry.commands.push({ name: cmd.command, description: cmd.description });
+    entry.commands.push({
+      name: cmd.command,
+      description: cmd.description,
+      source_kind: cmd.source_kind,
+      mcp_run_supported: cmd.mcp_run_supported,
+      invocation:
+        cmd.source_kind === "adapter"
+          ? `unicli_run(site=${JSON.stringify(cmd.site)}, command=${JSON.stringify(cmd.command)})`
+          : `unicli ${cmd.site} ${cmd.command}`,
+    });
   }
 
   const result = Array.from(siteMap.entries())
@@ -182,6 +206,23 @@ async function handleRunCommand(
 
   const resolved = resolveCommand(site, command);
   if (!resolved) {
+    const coreCommand = getCoreDiscoveryCommand(site, command);
+    if (coreCommand) {
+      const invocation = `unicli ${site} ${command}`;
+      const errorData = {
+        code: "unsupported_surface",
+        error: `Fixed core command is not dispatched by unicli_run: ${site} ${command}`,
+        source_kind: "core",
+        mcp_run_supported: false,
+        invocation,
+        suggestion: `Run the fixed core command through native CLI: ${invocation}`,
+      };
+      return {
+        content: [{ type: "text", text: JSON.stringify(errorData, null, 2) }],
+        structuredContent: { type: "json", data: errorData },
+        isError: true,
+      };
+    }
     const adapters = getAllAdapters();
     const matchingSites = adapters
       .filter((a) => a.name.includes(site))
@@ -372,15 +413,22 @@ async function dispatchSearch(
     query: searchQuery,
     category: searchCategory,
     count: results.length,
-    results: results.map((r) => ({
-      command: `unicli ${r.site} ${r.command}`,
-      site: r.site,
-      name: r.command,
-      description: r.description,
-      score: r.score,
-      category: r.category,
-      usage: r.usage,
-    })),
+    results: results.map((r) => {
+      const isCore =
+        resolveCommand(r.site, r.command) === undefined &&
+        getCoreDiscoveryCommand(r.site, r.command) !== undefined;
+      return {
+        command: `unicli ${r.site} ${r.command}`,
+        site: r.site,
+        name: r.command,
+        description: r.description,
+        score: r.score,
+        category: r.category,
+        usage: r.usage,
+        source_kind: isCore ? "core" : "adapter",
+        mcp_run_supported: !isCore,
+      };
+    }),
   };
   return {
     jsonrpc: "2.0",
