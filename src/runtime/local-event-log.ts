@@ -37,7 +37,7 @@ import {
   type ServiceSourceState,
 } from "./source-identity.js";
 import {
-  RecoverableFileLockError,
+  findRecoverableFileLockError,
   withRecoverableFileStoreLock,
 } from "./recoverable-file-lock.js";
 
@@ -940,8 +940,13 @@ function asLocalEventLogError(
   prefix: string,
 ): LocalEventLogError {
   if (error instanceof LocalEventLogError) return error;
-  if (error instanceof RecoverableFileLockError) {
-    return new LocalEventLogError(error.code, error.message, error.path);
+  const lockError = findRecoverableFileLockError(error);
+  if (lockError) {
+    return new LocalEventLogError(
+      lockError.code,
+      lockError.message,
+      lockError.path,
+    );
   }
   const message = error instanceof Error ? error.message : String(error);
   return new LocalEventLogError("io_error", prefix + ": " + message, path);

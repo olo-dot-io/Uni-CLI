@@ -1,12 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   existsSync,
+  linkSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire, syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -20,7 +24,16 @@ import {
   RefStoreStateError,
   saveRefStore,
 } from "../../src/transport/refs.js";
-import { withRecoverableFileStoreLock } from "../../src/runtime/recoverable-file-lock.js";
+import {
+  findRecoverableFileLockError,
+  RecoverableFileLockError,
+  withRecoverableFileStoreLock,
+} from "../../src/runtime/recoverable-file-lock.js";
+
+const require = createRequire(import.meta.url);
+const mutableFs = require("node:fs") as typeof import("node:fs");
+const realLinkSync = linkSync;
+const realUnlinkSync = unlinkSync;
 
 describe("RefAllocator", () => {
   it("allocates monotonic aliases and preserves stable-token identity", () => {
@@ -325,6 +338,56 @@ describe("RefStore", () => {
     }
   }, 10_000);
 
+  it("surfaces unverifiable stale-lock ownership as a non-retryable lock failure", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-lock-io-"));
+    const file = join(dir, "refs.json");
+    try {
+      loadRefStore(file);
+      const recordDirectory = `${file}.d`;
+      const deadPid = 2_147_483_647;
+      const candidateName = `.write.lock.candidate.${String(deadPid)}.fixture`;
+      const owner = `${JSON.stringify({
+        pid: deadPid,
+        candidate_name: candidateName,
+        acquired_at: "2026-07-18T00:00:00.000Z",
+      })}\n`;
+      writeFileSync(join(recordDirectory, candidateName), owner);
+      writeFileSync(join(recordDirectory, ".write.lock"), owner);
+
+      expect(() => loadRefStore(file)).toThrow(
+        expect.objectContaining({
+          name: "RefStoreAccessError",
+          accessCode: "lock_io",
+          minimum_capability: "compute.refs.lock_io",
+          exit_code: 74,
+          retryable: false,
+          suggestion: expect.stringContaining("inspect ownership"),
+        }),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("finds recoverable lock errors through aggregate and cause chains", () => {
+    const lockError = new RecoverableFileLockError(
+      "io_error",
+      "lock ownership changed",
+      "/tmp/refs/.write.lock",
+    );
+    const aggregate = new AggregateError([
+      new Error("operation failed"),
+      new Error("release failed", { cause: lockError }),
+    ]);
+    const outer = new Error("outer", { cause: aggregate });
+
+    expect(findRecoverableFileLockError(outer)).toBe(lockError);
+    expect(findRecoverableFileLockError("not an error")).toBeUndefined();
+    const cyclic = new Error("cycle");
+    cyclic.cause = cyclic;
+    expect(findRecoverableFileLockError(cyclic)).toBeUndefined();
+  });
+
   it("never republishes an untouched bucket loaded before another writer update", () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-refs-dirty-targets-"));
     const file = join(dir, "refs.json");
@@ -399,6 +462,173 @@ describe("RefStore", () => {
     }
   });
 
+  it("treats an already-persisted store as a no-op", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-clean-save-"));
+    const file = join(dir, "refs.json");
+    try {
+      const store = exactNativeStore(404, "Saved", 1234);
+      saveRefStore(store, file);
+      const records = readdirSync(`${file}.d`);
+
+      saveRefStore(store, file);
+
+      expect(readdirSync(`${file}.d`)).toEqual(records);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("deduplicates an identical immutable target publication", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-deduplicate-"));
+    const file = join(dir, "refs.json");
+    const order = vi.spyOn(process.hrtime, "bigint").mockReturnValue(123n);
+    try {
+      saveRefStore(exactNativeStore(405, "Same", 1234), file);
+      saveRefStore(exactNativeStore(405, "Same", 1234), file);
+
+      expect(
+        readdirSync(`${file}.d`).filter((name) => name.endsWith(".json")),
+      ).toHaveLength(1);
+    } finally {
+      order.mockRestore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the newest target record when an older writer publishes later", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-late-old-writer-"));
+    const file = join(dir, "refs.json");
+    try {
+      saveRefStore(exactNativeStore(406, "New", 2000), file);
+      saveRefStore(exactNativeStore(406, "Old", 1000), file);
+
+      expect(loadRefStore(file).list()).toMatchObject([{ name: "New" }]);
+      expect(
+        readdirSync(`${file}.d`).filter((name) => name.endsWith(".json")),
+      ).toHaveLength(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("orders malformed legacy record names before valid target records", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-record-order-"));
+    const file = join(dir, "refs.json");
+    try {
+      saveRefStore(exactNativeStore(407, "First", 1000), file);
+      const recordDirectory = `${file}.d`;
+      const [recordName] = readdirSync(recordDirectory).filter((name) =>
+        name.endsWith(".json"),
+      );
+      expect(recordName).toBeDefined();
+      const key = recordName!.split(".")[0]!;
+      writeFileSync(
+        join(recordDirectory, `${key}.invalid.json`),
+        readFileSync(join(recordDirectory, recordName!), "utf8"),
+      );
+
+      saveRefStore(exactNativeStore(407, "Latest", 2000), file);
+
+      expect(loadRefStore(file).list()).toMatchObject([{ name: "Latest" }]);
+      expect(
+        readdirSync(recordDirectory).filter((name) => name.endsWith(".json")),
+      ).toHaveLength(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("removes staging data when immutable publication fails", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-publish-failure-"));
+    const file = join(dir, "refs.json");
+    const failure = errno("EIO", "simulated hard-link failure");
+    // REASON: node:fs hard-link publication is the external boundary; the real ref serializer, cleanup, and error propagation remain under test.
+    const link = vi
+      .spyOn(mutableFs, "linkSync")
+      .mockImplementation((source, target) => {
+        if (String(target).endsWith(".json")) throw failure;
+        return realLinkSync(source, target);
+      });
+    syncBuiltinESMExports();
+    try {
+      expect(() =>
+        saveRefStore(exactNativeStore(409, "Fail", 1234), file),
+      ).toThrowError(failure);
+      expect(
+        readdirSync(`${file}.d`).filter((name) => name.endsWith(".tmp")),
+      ).toEqual([]);
+    } finally {
+      link.mockRestore();
+      syncBuiltinESMExports();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("retains both publication and staging-cleanup failures", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-cleanup-failure-"));
+    const file = join(dir, "refs.json");
+    const publicationFailure = errno("EIO", "simulated publication failure");
+    const cleanupFailure = errno("EACCES", "simulated cleanup failure");
+    // REASON: node:fs is the external failure boundary; the test preserves real serializer and aggregate-error behavior.
+    const link = vi
+      .spyOn(mutableFs, "linkSync")
+      .mockImplementation((source, target) => {
+        if (String(target).endsWith(".json")) throw publicationFailure;
+        return realLinkSync(source, target);
+      });
+    const unlink = vi
+      .spyOn(mutableFs, "unlinkSync")
+      .mockImplementation((path) => {
+        if (String(path).endsWith(".tmp")) throw cleanupFailure;
+        return realUnlinkSync(path);
+      });
+    syncBuiltinESMExports();
+    try {
+      let observed: unknown;
+      try {
+        saveRefStore(exactNativeStore(410, "Fail cleanup", 1234), file);
+      } catch (error) {
+        observed = error;
+      }
+      expect(observed).toBeInstanceOf(AggregateError);
+      expect(observed).toMatchObject({
+        errors: [publicationFailure, cleanupFailure],
+      });
+    } finally {
+      unlink.mockRestore();
+      link.mockRestore();
+      syncBuiltinESMExports();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("surfaces a non-racing record-prune failure", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-prune-failure-"));
+    const file = join(dir, "refs.json");
+    const failure = errno("EACCES", "simulated prune failure");
+    try {
+      saveRefStore(exactNativeStore(411, "Old", 1000), file);
+      // REASON: unlink is the external filesystem boundary; record selection and publication remain real.
+      const unlink = vi
+        .spyOn(mutableFs, "unlinkSync")
+        .mockImplementation((path) => {
+          if (String(path).endsWith(".json")) throw failure;
+          return realUnlinkSync(path);
+        });
+      syncBuiltinESMExports();
+      try {
+        expect(() =>
+          saveRefStore(exactNativeStore(411, "New", 2000), file),
+        ).toThrowError(failure);
+      } finally {
+        unlink.mockRestore();
+        syncBuiltinESMExports();
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("persists exact string-valued UIA window identity", () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-refs-"));
     const file = join(dir, "refs.json");
@@ -422,6 +652,87 @@ describe("RefStore", () => {
         app: "Notepad",
         pid: 42,
         windowId: "0x2",
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("prefers sharded records and lexical record order when timestamps tie", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-source-order-"));
+    const file = join(dir, "refs.json");
+    const recordDirectory = `${file}.d`;
+    const bucket = (name: string) => ({
+      transport: "desktop-ax",
+      scope: "window-408",
+      createdAt: 1234,
+      refs: [
+        {
+          alias: "@e1",
+          stable: `desktop-ax:window-408:AXWindow[0]/AXButton[${name}]`,
+          role: "AXButton",
+          name,
+          app: "Fixture",
+          windowId: 408,
+        },
+      ],
+    });
+    const payload = (name: string) =>
+      `${JSON.stringify({ schema_version: 1, buckets: [bucket(name)] })}\n`;
+    try {
+      writeFileSync(
+        file,
+        `${JSON.stringify({ schema_version: 1, buckets: [bucket("legacy")] })}\n`,
+      );
+      loadRefStore(file);
+      writeFileSync(join(recordDirectory, "a.json"), payload("record-a"));
+      writeFileSync(join(recordDirectory, "b.json"), payload("record-b"));
+
+      expect(loadRefStore(file).list()).toMatchObject([{ name: "record-b" }]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("persists generic visual refs and exact secure CDP renderer identity", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-other-transports-"));
+    try {
+      const visualFile = join(dir, "visual.json");
+      const visualAllocator = new RefAllocator();
+      visualAllocator.alloc({
+        stable: "visual:screen-0:button-1",
+        role: "button",
+        name: "Continue",
+      });
+      const visual = new RefStore();
+      visual.put(visualAllocator.freeze("visual", "screen-0"));
+      saveRefStore(visual, visualFile);
+      expect(loadRefStore(visualFile).list()).toMatchObject([
+        { name: "Continue" },
+      ]);
+
+      const cdpFile = join(dir, "cdp.json");
+      const cdpEndpoint = {
+        port: 9222,
+        webSocketDebuggerUrl:
+          "wss://127.0.0.1:9222/devtools/page/renderer-secure",
+        targetId: "renderer-secure",
+      };
+      const cdpAllocator = new RefAllocator();
+      const cdpRef = cdpAllocator.alloc({
+        stable: "cdp-browser:renderer-secure:#submit",
+        role: "button",
+        cdpEndpoint,
+      });
+      const cdpBucket = cdpAllocator.freeze("cdp-browser", "renderer-secure");
+      const cdp = new RefStore();
+      cdp.put(cdpBucket);
+      saveRefStore(cdp, cdpFile);
+
+      expect(loadRefStore(cdpFile).list()).toMatchObject([{ cdpEndpoint }]);
+      expect(describeElementRef(cdpRef, cdpBucket)).toMatchObject({
+        cdpEndpoint,
+        identity: { cdpEndpoint },
       });
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -563,6 +874,7 @@ describe("RefStore", () => {
       states: ["enabled"],
       app: "Calculator",
       pid: 42,
+      windowId: 4242,
     });
     const bucket = {
       ...alloc.freeze("desktop-ax", "calc"),
@@ -589,12 +901,14 @@ describe("RefStore", () => {
       states: ["enabled"],
       app: "Calculator",
       pid: 42,
+      windowId: 4242,
       identity: {
         provider: "unicli.compute",
         transport: "desktop-ax",
         scope: "calc",
         app: "Calculator",
         pid: 42,
+        windowId: 4242,
         screenIndex: 1,
       },
     });
@@ -668,4 +982,122 @@ describe("RefStore", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("rejects malformed optional ref identity fields and CDP endpoints", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-refs-invalid-fields-"));
+    const validRef = {
+      alias: "@e1",
+      stable: "cdp-browser:renderer:#submit",
+      role: "button",
+    };
+    const invalidRefs: Array<Record<string, unknown>> = [
+      { ...validRef, name: 1 },
+      { ...validRef, value: 1 },
+      { ...validRef, app: 1 },
+      { ...validRef, pid: "42" },
+      { ...validRef, pid: 1.5 },
+      { ...validRef, pid: 0 },
+      { ...validRef, windowId: {} },
+      { ...validRef, windowId: " " },
+      { ...validRef, screenIndex: -1 },
+      { ...validRef, screenIndex: 0.5 },
+      { ...validRef, states: "enabled" },
+      { ...validRef, states: [1] },
+      { ...validRef, bounds: "box" },
+      { ...validRef, bounds: { x: null, y: 0, w: 1, h: 1 } },
+      { ...validRef, cdpEndpoint: "renderer" },
+      { ...validRef, cdpEndpoint: { port: 0 } },
+      { ...validRef, cdpEndpoint: { port: 70_000 } },
+      {
+        ...validRef,
+        cdpEndpoint: { port: 9222, webSocketDebuggerUrl: 42 },
+      },
+      {
+        ...validRef,
+        cdpEndpoint: { port: 9222, webSocketDebuggerUrl: "not a URL" },
+      },
+      {
+        ...validRef,
+        cdpEndpoint: {
+          port: 9222,
+          webSocketDebuggerUrl: "http://127.0.0.1:9222/devtools/page/x",
+        },
+      },
+      { ...validRef, cdpEndpoint: { port: 9222, targetId: 42 } },
+      { ...validRef, cdpEndpoint: { port: 9222, targetId: " " } },
+    ];
+    try {
+      invalidRefs.forEach((ref, index) => {
+        const file = join(dir, `invalid-ref-${String(index)}.json`);
+        writeSerializedRefs(file, { refs: [ref] });
+        expect(() => loadRefStore(file)).toThrow(RefStoreStateError);
+      });
+
+      for (const [index, bucket] of [
+        null,
+        { transport: "desktop-ax", scope: "window-1", createdAt: -1, refs: [] },
+        {
+          transport: "desktop-ax",
+          scope: "window-1",
+          createdAt: 1.5,
+          refs: [],
+        },
+      ].entries()) {
+        const file = join(dir, `invalid-bucket-${String(index)}.json`);
+        writeFileSync(
+          file,
+          JSON.stringify({ schema_version: 1, buckets: [bucket] }),
+        );
+        expect(() => loadRefStore(file)).toThrow(RefStoreStateError);
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
+
+function exactNativeStore(
+  windowId: number,
+  name: string,
+  createdAt: number,
+): RefStore {
+  const allocator = new RefAllocator();
+  allocator.alloc({
+    stable: `desktop-ax:window-${String(windowId)}:AXWindow[0]/AXButton[0]`,
+    role: "AXButton",
+    name,
+    app: "Fixture",
+    pid: 42,
+    windowId,
+  });
+  const store = new RefStore();
+  store.put({
+    ...allocator.freeze("desktop-ax", `window-${String(windowId)}`),
+    createdAt,
+  });
+  return store;
+}
+
+function writeSerializedRefs(
+  file: string,
+  bucket: { refs: Array<Record<string, unknown>> },
+): void {
+  writeFileSync(
+    file,
+    JSON.stringify({
+      schema_version: 1,
+      buckets: [
+        {
+          transport: "cdp-browser",
+          scope: "renderer",
+          createdAt: 1234,
+          refs: bucket.refs,
+        },
+      ],
+    }),
+  );
+}
+
+function errno(code: string, message: string): NodeJS.ErrnoException {
+  return Object.assign(new Error(message), { code });
+}

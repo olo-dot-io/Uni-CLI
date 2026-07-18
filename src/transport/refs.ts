@@ -26,7 +26,7 @@ import {
 import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import {
-  RecoverableFileLockError,
+  findRecoverableFileLockError,
   withRecoverableFileStoreLock,
 } from "../runtime/recoverable-file-lock.js";
 import type { CdpEndpoint } from "./cdp-endpoint.js";
@@ -261,10 +261,10 @@ export class RefStore {
     bucket: RefBucket;
     generation: number;
   }> {
-    return Array.from(this.dirtyKeys).flatMap((key) => {
-      const current = this.latest.get(key);
-      return current ? [{ key, ...current }] : [];
-    });
+    return Array.from(this.dirtyKeys, (key) => ({
+      key,
+      ...this.latest.get(key)!,
+    }));
   }
 
   markPersisted(key: string, generation: number): void {
@@ -355,21 +355,6 @@ function withRefStoreLock<T>(
   }
 }
 
-function findRecoverableFileLockError(
-  error: unknown,
-): RecoverableFileLockError | undefined {
-  if (error instanceof RecoverableFileLockError) return error;
-  if (error instanceof AggregateError) {
-    for (const nested of error.errors) {
-      const found = findRecoverableFileLockError(nested);
-      if (found) return found;
-    }
-  }
-  return error instanceof Error
-    ? findRecoverableFileLockError(error.cause)
-    : undefined;
-}
-
 function serializedBucket(bucket: RefBucket): SerializedRefBucket {
   return {
     transport: bucket.transport,
@@ -428,8 +413,7 @@ function pruneOlderBucketRecords(
   const records = readdirSync(recordDirectory)
     .filter((name) => name.startsWith(`${key}.`) && name.endsWith(".json"))
     .sort(compareBucketRecordNames);
-  const newest = records.at(-1);
-  if (!newest) return;
+  const newest = records.at(-1)!;
   for (const name of records) {
     if (name !== newest && name !== candidateName) {
       unlinkRefRecordIfPresent(join(recordDirectory, name));
@@ -524,7 +508,6 @@ function readSerializedRefStore(file: string): SerializedRefStore | undefined {
     throw new TypeError("ref state does not match schema version 1");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    if (error instanceof RefStoreStateError) throw error;
     throw new RefStoreStateError(file, error);
   }
 }

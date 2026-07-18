@@ -88,9 +88,10 @@ describe("compute performance budget", () => {
     const bus = createTransportBus();
     const transport = new BudgetTransport();
     bus.register(transport);
+    seedBudgetRefs(bus, 1000);
 
     const started = performance.now();
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 1; i <= 1000; i++) {
       const result = await tryCascade(
         bus,
         { kind: "compute_click", params: { ref: `@e${i}` } },
@@ -141,10 +142,26 @@ async function measureCascade(
 ): Promise<{ p50: number; p95: number; p99: number }> {
   const bus = createTransportBus();
   bus.register(new BudgetTransport());
+  seedBudgetRefs(bus, 1);
   return measureAsync(30, async () => {
     const result = await tryCascade(bus, { kind, params }, "darwin");
     expect(result.ok).toBe(true);
   });
+}
+
+function seedBudgetRefs(bus: TransportBus, count: number): void {
+  const alloc = new RefAllocator();
+  for (let i = 1; i <= count; i++) {
+    alloc.alloc({
+      stable: `desktop-ax:window-42:AXWindow[0]/AXButton[${i}]`,
+      role: "AXButton",
+      name: `Button ${i}`,
+      app: "Calculator",
+      pid: 42,
+      windowId: 42,
+    });
+  }
+  bus.refs.put(alloc.freeze("desktop-ax", "window-42"));
 }
 
 async function measureAsync(

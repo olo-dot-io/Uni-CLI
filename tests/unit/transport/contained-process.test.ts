@@ -70,29 +70,21 @@ describe("runContainedProcess", () => {
     );
   });
 
-  it("marks a timed-out external delivery as outcome-ambiguous", async () => {
-    const root = await mkdtemp(join(tmpdir(), "unicli-process-timeout-"));
-    const marker = join(root, "committed.txt");
-    const script = [
-      `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "committed")`,
-      "setTimeout(() => {}, 10000)",
-    ].join(";");
-
-    try {
-      const execution = runContainedProcess(process.execPath, ["-e", script], {
+  it("marks a timed-out dispatched delivery as outcome-ambiguous", async () => {
+    const execution = runContainedProcess(
+      process.execPath,
+      ["-e", "setTimeout(() => {}, 10000)"],
+      {
         timeoutMs: 100,
         cancellationDelivery: "outcome-ambiguous",
-      });
+      },
+    );
 
-      await expect(execution).rejects.toMatchObject({
-        name: "OperationOutcomeAmbiguousError",
-        outcome_ambiguous: true,
-        cancellationReason: expect.objectContaining({ name: "TimeoutError" }),
-      });
-      await expect(readFile(marker, "utf8")).resolves.toBe("committed");
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
+    await expect(execution).rejects.toMatchObject({
+      name: "OperationOutcomeAmbiguousError",
+      outcome_ambiguous: true,
+      cancellationReason: expect.objectContaining({ name: "TimeoutError" }),
+    });
   });
 
   it.runIf(process.platform !== "win32")(

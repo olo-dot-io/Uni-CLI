@@ -761,7 +761,7 @@ describe("Streamable HTTP transport", () => {
       ),
     );
     expect(legacy.error).toMatchObject({
-      code: -32_601,
+      code: -32_602,
       message: expect.stringContaining("requires task augmentation"),
     });
     const oldStatus = parse(

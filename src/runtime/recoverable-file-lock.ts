@@ -1,6 +1,6 @@
 /**
  * @owner       src::runtime::recoverable-file-lock
- * @does        Serialize one filesystem-backed store across processes and reclaim only locks whose immutable owner link proves a dead process.
+ * @does        Serialize one filesystem-backed store across processes, reclaim only proven-dead owners, and recover typed lock failures through nested error chains.
  * @needs       Node crypto, filesystem, path, process liveness, and synchronous atomics
  * @feeds       local event and compute-ref persistence boundaries
  * @breaks      Partial owner publication, ABA during stale recovery, or suppressed release failures can lose evidence or deadlock later processes.
@@ -68,6 +68,22 @@ export class RecoverableFileLockError extends Error {
     super(message);
     this.name = "RecoverableFileLockError";
   }
+}
+
+export function findRecoverableFileLockError(
+  value: unknown,
+  visited = new Set<object>(),
+): RecoverableFileLockError | undefined {
+  if (!(value instanceof Error) || visited.has(value)) return undefined;
+  visited.add(value);
+  if (value instanceof RecoverableFileLockError) return value;
+  if (value instanceof AggregateError) {
+    for (const nested of value.errors) {
+      const found = findRecoverableFileLockError(nested, visited);
+      if (found) return found;
+    }
+  }
+  return findRecoverableFileLockError(value.cause, visited);
 }
 
 export function withRecoverableFileStoreLock<T>(

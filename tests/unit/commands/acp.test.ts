@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ExitCode } from "../../../src/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..", "..");
@@ -144,7 +145,7 @@ describe("unicli acp — CLI subprocess integration", () => {
   it(
     "rejects unknown acp flags instead of entering stdio serve mode",
     () => {
-      const invocation = cliArgs(["acp", "--bad-flag"]);
+      const invocation = cliArgs(["--format", "json", "acp", "--bad-flag"]);
       const result = spawnSync(invocation.command, invocation.args, {
         cwd: ROOT,
         encoding: "utf8",
@@ -153,8 +154,18 @@ describe("unicli acp — CLI subprocess integration", () => {
         timeout: ACP_CLI_SPAWN_TIMEOUT_MS,
       });
 
-      expect(result.status).toBe(1);
-      expect(result.stderr).toContain("unknown option '--bad-flag'");
+      expect(result.status).toBe(ExitCode.USAGE_ERROR);
+      expect(JSON.parse(result.stderr)).toMatchObject({
+        ok: false,
+        command: "core.unknown",
+        error: {
+          code: "invalid_input",
+          message: "unknown CLI option",
+          exit_code: ExitCode.USAGE_ERROR,
+          retryable: false,
+        },
+      });
+      expect(result.stderr).not.toContain("--bad-flag");
     },
     ACP_CLI_SPAWN_TIMEOUT_MS,
   );

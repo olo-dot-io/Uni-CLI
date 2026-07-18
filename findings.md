@@ -766,3 +766,9 @@ unchanged; the final re-review reported zero unresolved P0, P1, or P2 findings.
   raw unknown token. Parser control flow now maps to a stable `invalid_input`
   envelope and matching local event without retaining argv. Exact GitHub thread
   URL shapes are validated before the external `gh` process is invoked.
+- The release gate exposed two stale test contracts and one missing coverage
+  contract: a 100ms child-start assumption, performance fixtures using
+  source-less short refs, and unexercised ref publication failures. The tests
+  now assert dispatched-outcome ambiguity, seed exact window-bound refs, and
+  cover real/modeled filesystem failure boundaries without weakening the 100%
+  ref/snapshot coverage threshold. Final `npm run verify` passed end to end.

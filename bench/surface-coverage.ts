@@ -231,7 +231,7 @@ export const DEFAULT_SURFACE_SIGNALS: SignalCase[] = [
       },
       {
         file: "src/engine/harden.ts",
-        includes: "structured",
+        includes: "InputHardeningError",
         label: "engine hardening path",
       },
     ],
