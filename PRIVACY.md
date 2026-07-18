@@ -62,6 +62,26 @@ receipts, downloads, screenshots, adapter overlays, approvals, or caches under
 `~/.unicli/` or a user-selected output path. Each command's dry run, help, or
 documentation describes its output boundary.
 
+Completed CLI invocations and adapter tool calls write bounded diagnostic
+events to UTC-day JSONL files under `~/.unicli/logs/events/`. These events use
+an allowlist of scalar operational metadata: Uni-CLI version and source
+revision when available, command identity, transport, target surface, timing,
+exit/outcome, result size, and typed error/provider fields. They do not record
+command arguments, URLs, queries, content, cookies, credentials, raw output, or
+raw error messages. Directories use mode `0700` and files use mode `0600` on
+POSIX systems. The default retention window is 30 days; set
+`UNICLI_LOG_RETENTION_DAYS` to an integer from 1 to 3650 to change it, or
+`UNICLI_LOG_ROOT` to move the directory. Set `UNICLI_NO_LOG=1` to disable new
+events. The legacy `UNICLI_NO_LEDGER=1` switch remains an equivalent opt-out.
+`unicli usage report` reads these events together with the older
+`~/.unicli/usage.jsonl`; it reports corrupt rows instead of silently ignoring
+them.
+
+Delete default diagnostic history by removing `~/.unicli/logs/events/` and the
+legacy `~/.unicli/usage.jsonl`. Opt-in run traces under `~/.unicli/runs/` are a
+different artifact: they can contain replay arguments and remain disabled
+unless `--record` or `UNICLI_RECORD_RUN=1` is set.
+
 ## Plugins and configured providers
 
 Third-party plugins, adapters, MCP servers, visual backends, and model providers

@@ -1,5 +1,16 @@
 /**
- * Dynamic adapter command registration and execution dispatch.
+ * @owner       src::commands::dispatch
+ * @does        Registers adapter CLI commands, resolves shell/file/stdin arguments, invokes the shared kernel, and applies CLI-only projection/exit semantics.
+ * @needs       adapter registry, argument resolver, permission runtime, invocation kernel, output projection and formatter
+ * @feeds       full Commander CLI adapter surface
+ * @breaks      Bypassing the shared kernel or emitting raw failures breaks CLI/MCP/ACP parity and local invocation evidence.
+ * @invariants  Kernel owns adapter execution; this module owns only CLI parsing, quarantine/dry-run gates, rendering, projection, and final exit.
+ * @side-effects Registers commands, may refresh browser cookies, writes stdout/stderr, and terminates adapter CLI processes.
+ * @perf        Registers once per loaded adapter command; each invocation performs one kernel call plus optional auth retry.
+ * @concurrency One Commander action per CLI process; shared browser/kernel components own their own concurrency.
+ * @test        tests/unit/commands/dispatch.test.ts and tests/unit/cli/*
+ * @stability   stable
+ * @since       2026-04-04
  *
  * v0.213.3 R2: dispatch.ts is now a thin wrapper that parses Commander
  * state into a `ResolvedArgs` bag and hands it to the invocation kernel
@@ -14,7 +25,7 @@
  *   - Rendering the InvocationResult via format() and exiting with the
  *     kernel-supplied exit code
  *   - Emitting harden warnings from InvocationResult.warnings to stderr
- *   - Usage-ledger recording
+ *   - Rendering CLI-specific projection and terminal exit semantics
  */
 
 import { Command, Option } from "commander";
@@ -38,7 +49,6 @@ import {
   renderPluck0,
   ProjectionError,
 } from "../output/projection.js";
-import { recordUsage } from "../runtime/usage-ledger.js";
 import { ExitCode } from "../types.js";
 import { refreshCookiesFromBrowser } from "../engine/cookies.js";
 import {
@@ -175,15 +185,6 @@ export function registerAdapterDispatch(program: Command): void {
               | undefined,
           );
           process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
-          recordUsage({
-            site: adapter.name,
-            cmd: cmdName,
-            strategy: strategy ?? "unknown",
-            tokens: 0,
-            ms: Date.now() - startedAt,
-            bytes: 0,
-            exit: ExitCode.CONFIG_ERROR,
-          });
           process.exit(ExitCode.CONFIG_ERROR);
         }
 
@@ -382,15 +383,6 @@ export function registerAdapterDispatch(program: Command): void {
           process.stderr.write(
             format([], cmd.columns, fmt, result.envelope) + "\n",
           );
-          recordUsage({
-            site: adapter.name,
-            cmd: cmdName,
-            strategy: strategy ?? "unknown",
-            tokens: 0,
-            ms: result.durationMs,
-            bytes: 0,
-            exit: result.exitCode,
-          });
           process.exit(result.exitCode);
         }
 
@@ -409,15 +401,6 @@ export function registerAdapterDispatch(program: Command): void {
         } catch (err) {
           if (err instanceof ProjectionError) {
             process.stderr.write(`[projection] ${err.message}\n`);
-            recordUsage({
-              site: adapter.name,
-              cmd: cmdName,
-              strategy: strategy ?? "unknown",
-              tokens: 0,
-              ms: result.durationMs,
-              bytes: 0,
-              exit: ExitCode.USAGE_ERROR,
-            });
             process.exit(ExitCode.USAGE_ERROR);
           }
           throw err;
@@ -453,15 +436,6 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         console.log(rendered);
-        recordUsage({
-          site: adapter.name,
-          cmd: cmdName,
-          strategy: strategy ?? "unknown",
-          tokens: 0,
-          ms: result.durationMs,
-          bytes: Buffer.byteLength(rendered, "utf-8"),
-          exit: finalExit,
-        });
         process.exit(finalExit);
       });
     }

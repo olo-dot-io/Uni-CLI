@@ -1,30 +1,37 @@
 /**
- * Usage report command — read ~/.unicli/usage.jsonl and summarize.
- *
- *   unicli usage report                  # all-time top by call count
- *   unicli usage report --since 7d       # last 7 days only
- *   unicli usage report --slow           # only commands with p95 > 5000ms
- *   unicli usage report --failing        # only commands with > 10% error rate
- *   unicli usage report --json           # machine-readable
- *
- * Why this exists:
- *   The ledger captures every call, but agents and humans need a way to
- *   ask "what's slow" / "what's broken" without writing a custom script.
- *   This command is the canonical reader.
+ * @owner       src::commands::usage
+ * @does        Validates and renders operational statistics from legacy usage rows plus the bounded local event log.
+ * @needs       usage projection, local event store, structured output/error writers
+ * @feeds       `unicli usage report`
+ * @breaks      Silent source corruption or permissive filters makes the report claim evidence it did not read.
+ * @invariants  Invalid input exits 2; corrupt/unreadable local evidence exits 78; command metadata identifies the system surface.
+ * @side-effects Reads local JSONL sources and writes one success or error envelope.
+ * @perf        Linear in retained records plus percentile sorting.
+ * @concurrency Read-only over append-only files.
+ * @test        tests/unit/commands/usage.test.ts and tests/unit/usage-ledger.test.ts
+ * @stability   stable CLI with additive source/transport fields
+ * @since       2026-04-08
  */
 
 import type { Command } from "commander";
 import {
-  loadUsage,
-  filterSince,
-  parseSinceArg,
   aggregate,
-  type UsageAggregate,
   DEFAULT_LEDGER_PATH,
+  filterSince,
+  InvalidUsageArgumentError,
+  loadUsageSources,
+  parseSinceArg,
+  parseUsageLimit,
+  UsageLedgerError,
+  type UsageAggregate,
 } from "../runtime/usage-ledger.js";
-import { format, detectFormat } from "../output/formatter.js";
-import type { AgentContext } from "../output/envelope.js";
-import type { OutputFormat } from "../types.js";
+import {
+  createLocalEventStore,
+  LocalEventLogError,
+} from "../runtime/local-event-log.js";
+import { detectFormat, format } from "../output/formatter.js";
+import { printErrorEnvelope } from "../output/error-writer.js";
+import { ExitCode, type OutputFormat } from "../types.js";
 
 interface ReportOptions {
   since?: string;
@@ -33,6 +40,7 @@ interface ReportOptions {
   limit?: string;
   json?: boolean;
   ledger?: string;
+  logDir?: string;
 }
 
 const SLOW_P95_THRESHOLD_MS = 5000;
@@ -41,89 +49,138 @@ const FAILING_RATE_THRESHOLD = 0.1;
 export function registerUsageCommands(program: Command): void {
   const usage = program
     .command("usage")
-    .description("Report on adapter call usage from the cost ledger");
+    .description("Report on local command latency, failures, and output size");
 
   usage
     .command("report")
-    .description("Aggregate ledger entries (median/p95 ms, error rate, bytes)")
+    .description("Aggregate legacy usage and bounded diagnostic event logs")
     .option("--since <window>", "Limit to recent window (e.g. 24h, 7d, 30m)")
     .option("--slow", "Only commands with p95 > 5000ms")
     .option("--failing", "Only commands with error rate > 10%")
-    .option("--limit <n>", "Top N rows", "20")
-    .option("--ledger <path>", "Override ledger path", DEFAULT_LEDGER_PATH)
+    .option("--limit <n>", "Top N rows (1-10000)", "20")
+    .option(
+      "--ledger <path>",
+      "Override legacy usage.jsonl path",
+      DEFAULT_LEDGER_PATH,
+    )
+    .option("--log-dir <path>", "Override schema-v1 local event directory")
     .option("--json", "Output as JSON")
     .action((opts: ReportOptions) => {
-      const usageStarted = Date.now();
-      const fmt: OutputFormat = opts.json
-        ? ("json" as OutputFormat)
-        : detectFormat(undefined);
+      const startedAt = Date.now();
+      const fmt = reportFormat(program, opts);
+      try {
+        const windowMs = parseSinceArg(opts.since);
+        const limit = parseUsageLimit(opts.limit);
+        const sources = loadUsageSources({
+          ledgerPath: opts.ledger ?? DEFAULT_LEDGER_PATH,
+          eventStore: createLocalEventStore({ rootDir: opts.logDir }),
+        });
+        const filtered = filterSince(sources.records, windowMs);
+        let rows = aggregate(filtered);
+        if (opts.slow) {
+          rows = rows.filter((row) => row.p95Ms > SLOW_P95_THRESHOLD_MS);
+        }
+        if (opts.failing) {
+          rows = rows.filter((row) => row.errorRate > FAILING_RATE_THRESHOLD);
+        }
+        rows = rows.slice(0, limit);
 
-      const records = loadUsage(opts.ledger ?? DEFAULT_LEDGER_PATH);
-
-      if (records.length === 0) {
-        const ctx: AgentContext = {
-          command: "core.usage",
-          duration_ms: Date.now() - usageStarted,
-          surface: "web",
-        };
         console.log(
           format(
-            { records: 0, window: opts.since ?? "all", rows: [] },
-            undefined,
+            {
+              records: filtered.length,
+              window: opts.since ?? "all",
+              sources: {
+                legacy: sources.legacy_records,
+                events: sources.event_records,
+              },
+              rows: rows.map(tableRow),
+            },
+            ["site", "cmd", "transport", "n", "median", "p95", "err", "bytes"],
             fmt,
-            ctx,
+            {
+              command: "core.usage",
+              duration_ms: Date.now() - startedAt,
+              surface: "system",
+            },
           ),
         );
-        return;
+      } catch (error) {
+        printUsageError(error, fmt, startedAt);
       }
-
-      const windowMs = parseSinceArg(opts.since);
-      const filtered = filterSince(records, windowMs);
-      let rows = aggregate(filtered);
-
-      if (opts.slow) {
-        rows = rows.filter((r) => r.p95Ms > SLOW_P95_THRESHOLD_MS);
-      }
-      if (opts.failing) {
-        rows = rows.filter((r) => r.errorRate > FAILING_RATE_THRESHOLD);
-      }
-
-      const limit = parseInt(opts.limit ?? "20", 10) || 20;
-      rows = rows.slice(0, limit);
-
-      const tableRows = rows.map((r: UsageAggregate) => ({
-        site: r.site,
-        cmd: r.cmd,
-        n: r.count,
-        median: `${Math.round(r.medianMs)}ms`,
-        p95: `${Math.round(r.p95Ms)}ms`,
-        err: `${(r.errorRate * 100).toFixed(0)}%`,
-        bytes: humanBytes(r.totalBytes),
-      }));
-
-      const ctx: AgentContext = {
-        command: "core.usage",
-        duration_ms: Date.now() - usageStarted,
-        surface: "web",
-      };
-      console.log(
-        format(
-          {
-            records: filtered.length,
-            window: opts.since ?? "all",
-            rows: tableRows,
-          },
-          ["site", "cmd", "n", "median", "p95", "err", "bytes"],
-          fmt,
-          ctx,
-        ),
-      );
     });
 }
 
-function humanBytes(n: number): string {
-  if (n < 1024) return `${n}B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)}MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)}GB`;
+function reportFormat(program: Command, options: ReportOptions): OutputFormat {
+  return detectFormat(
+    options.json ? "json" : (program.opts().format as OutputFormat | undefined),
+  );
+}
+
+function printUsageError(
+  error: unknown,
+  fmt: OutputFormat,
+  startedAt: number,
+): void {
+  const invalidInput = error instanceof InvalidUsageArgumentError;
+  const corrupt =
+    (error instanceof UsageLedgerError ||
+      error instanceof LocalEventLogError) &&
+    error.code === "malformed_jsonl";
+  const knownStoreError =
+    error instanceof UsageLedgerError || error instanceof LocalEventLogError;
+  const message = error instanceof Error ? error.message : String(error);
+  const exitCode = invalidInput ? ExitCode.USAGE_ERROR : ExitCode.CONFIG_ERROR;
+  const code = invalidInput
+    ? "invalid_input"
+    : corrupt
+      ? "local_log_corrupt"
+      : knownStoreError
+        ? "local_log_unavailable"
+        : "internal_error";
+  const suggestion = invalidInput
+    ? error.argument === "since"
+      ? "use `--since 24h`, `--since 7d`, `--since 30m`, or omit the filter"
+      : "use an integer `--limit` from 1 to 10000"
+    : corrupt
+      ? "inspect the reported file and line; preserve it for diagnosis before removing the corrupt row"
+      : "verify owner read/write permissions for ~/.unicli/logs and ~/.unicli/usage.jsonl";
+
+  printErrorEnvelope({
+    fmt,
+    exitCode,
+    ctx: {
+      command: "core.usage",
+      duration_ms: Date.now() - startedAt,
+      surface: "system",
+      error: {
+        code,
+        message,
+        suggestion,
+        retryable: false,
+      },
+    },
+  });
+}
+
+function tableRow(row: UsageAggregate): Record<string, unknown> {
+  return {
+    site: row.site,
+    cmd: row.cmd,
+    transport: row.transport,
+    n: row.count,
+    median: `${Math.round(row.medianMs)}ms`,
+    p95: `${Math.round(row.p95Ms)}ms`,
+    err: `${(row.errorRate * 100).toFixed(0)}%`,
+    bytes: humanBytes(row.totalBytes),
+  };
+}
+
+function humanBytes(bytes: number): string {
+  if (bytes < 1024) return `${String(bytes)}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)}GB`;
 }

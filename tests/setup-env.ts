@@ -7,6 +7,7 @@ const childProcess =
   require("node:child_process") as typeof import("node:child_process");
 
 process.env.UNICLI_ALLOW_LOCAL = process.env.UNICLI_ALLOW_LOCAL ?? "1";
+process.env.UNICLI_NO_LOG = process.env.UNICLI_NO_LOG ?? "1";
 
 for (const key of Object.keys(process.env)) {
   if (/^(npm|pnpm)_config_/i.test(key)) delete process.env[key];

@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9660<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9680<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -557,6 +557,11 @@ Docs:
   executables at their resolved boundary.
 - Run recording is opt-in. Use `--record` or `UNICLI_RECORD_RUN=1` when you need
   append-only evidence under `~/.unicli/runs`.
+- Privacy-safe invocation diagnostics are recorded by default as 30-day,
+  owner-only UTC JSONL files under `~/.unicli/logs/events`; arguments, content,
+  URLs, credentials, and raw errors are excluded. Inspect aggregates with
+  `unicli usage report -f json`, configure retention with
+  `UNICLI_LOG_RETENTION_DAYS`, or disable new events with `UNICLI_NO_LOG=1`.
 - Visual fallback routes require a configured real backend. Declared-but-unavailable providers fail closed with structured errors.
 - User adapters and repairs live in `~/.unicli/adapters/`; committed adapters remain the package baseline.
 - If a site blocks automation or changes a private API, Uni-CLI returns a clear failure envelope.

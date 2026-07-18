@@ -33,6 +33,11 @@ import {
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
 import { registerAdapter } from "../../../src/registry.js";
+import {
+  _resetLocalEventLogForTests,
+  createLocalEventStore,
+  readLocalEvents,
+} from "../../../src/runtime/local-event-log.js";
 
 function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
   return {
@@ -271,6 +276,88 @@ describe("execute (end-to-end)", () => {
     expect(firstCmd).toContain("hello");
     expect(firstCmd).not.toContain("${site}");
     expect(firstCmd).not.toContain("${cmd}");
+  });
+
+  it("records success and failure across kernel transports without arguments", async () => {
+    const originalNoLog = process.env.UNICLI_NO_LOG;
+    const originalLogRoot = process.env.UNICLI_LOG_ROOT;
+    const temp = mkdtempSync(join(tmpdir(), "unicli-kernel-local-log-"));
+    process.env.UNICLI_LOG_ROOT = join(temp, "events");
+    delete process.env.UNICLI_NO_LOG;
+    _resetLocalEventLogForTests();
+    try {
+      const success = buildInvocation("mcp", "inv-site", "hello", {
+        args: { target: "must-not-persist" },
+        source: "mcp",
+      })!;
+      const failure = buildInvocation("acp", "inv-site", "fail", {
+        args: { url: "must-not-persist" },
+        source: "acp",
+      })!;
+
+      expect((await execute(success)).exitCode).toBe(0);
+      expect((await execute(failure)).exitCode).toBe(2);
+
+      const events = readLocalEvents(createLocalEventStore());
+      expect(events).toHaveLength(2);
+      expect(events[0]).toMatchObject({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: success.trace_id,
+        trace_id: success.trace_id,
+        transport: "mcp",
+        command: "inv-site.hello",
+        target_surface: "web",
+        outcome: "success",
+        exit_code: 0,
+      });
+      expect(events[1]).toMatchObject({
+        transport: "acp",
+        command: "inv-site.fail",
+        outcome: "error",
+        error_type: "invalid_input",
+        retryable: false,
+        exit_code: 2,
+      });
+      expect(JSON.stringify(events)).not.toContain("must-not-persist");
+    } finally {
+      if (originalNoLog === undefined) delete process.env.UNICLI_NO_LOG;
+      else process.env.UNICLI_NO_LOG = originalNoLog;
+      if (originalLogRoot === undefined) delete process.env.UNICLI_LOG_ROOT;
+      else process.env.UNICLI_LOG_ROOT = originalLogRoot;
+      rmSync(temp, { recursive: true, force: true });
+      _resetLocalEventLogForTests();
+    }
+  });
+
+  it("surfaces local log write failures without replacing a settled result", async () => {
+    const originalNoLog = process.env.UNICLI_NO_LOG;
+    const originalLogRoot = process.env.UNICLI_LOG_ROOT;
+    const temp = mkdtempSync(join(tmpdir(), "unicli-kernel-log-failure-"));
+    const blockedRoot = join(temp, "not-a-directory");
+    writeFileSync(blockedRoot, "blocked");
+    process.env.UNICLI_LOG_ROOT = blockedRoot;
+    delete process.env.UNICLI_NO_LOG;
+    try {
+      const inv = buildInvocation("cli", "inv-site", "hello", {
+        args: { target: "world" },
+        source: "shell",
+      })!;
+      const result = await execute(inv);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.results).toEqual([
+        { greeting: "hi world", limit: undefined },
+      ]);
+      expect(result.warnings).toContainEqual(
+        expect.stringContaining("[local-log] failed to append local event"),
+      );
+    } finally {
+      if (originalNoLog === undefined) delete process.env.UNICLI_NO_LOG;
+      else process.env.UNICLI_NO_LOG = originalNoLog;
+      if (originalLogRoot === undefined) delete process.env.UNICLI_LOG_ROOT;
+      else process.env.UNICLI_LOG_ROOT = originalLogRoot;
+      rmSync(temp, { recursive: true, force: true });
+    }
   });
 
   it("treats an empty successful observation as exit 0", async () => {

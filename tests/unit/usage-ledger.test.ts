@@ -1,122 +1,186 @@
 /**
- * Cost ledger — append, load, filter, aggregate. Uses a temp ledger path so
- * tests don't pollute the user's real ~/.unicli/usage.jsonl.
+ * @owner   tests::unit::usage-ledger
+ * @does    Proves strict legacy parsing, event projection, argument validation, filtering, and aggregation.
+ * @needs   real temporary JSONL files and local event store
+ * @feeds   `unicli usage report` regression coverage
+ * @breaks  Silent corruption or widened invalid filters produces false operational conclusions.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  recordUsage,
-  loadUsage,
-  filterSince,
-  parseSinceArg,
   aggregate,
+  filterSince,
+  InvalidUsageArgumentError,
+  loadUsage,
+  loadUsageSources,
+  parseSinceArg,
+  parseUsageLimit,
+  UsageLedgerError,
+  type UsageRecord,
 } from "../../src/runtime/usage-ledger.js";
+import {
+  _resetLocalEventLogForTests,
+  appendLocalEvent,
+  createLocalEvent,
+  createLocalEventStore,
+} from "../../src/runtime/local-event-log.js";
 
-describe("usage-ledger", () => {
-  let dir: string;
-  let ledger: string;
+function record(overrides: Partial<UsageRecord> = {}): UsageRecord {
+  return {
+    ts: "2026-07-18T12:00:00.000Z",
+    site: "github",
+    cmd: "search",
+    strategy: "public",
+    transport: "cli",
+    tokens: 0,
+    ms: 100,
+    bytes: 1000,
+    exit: 0,
+    ...overrides,
+  };
+}
+
+describe("usage sources", () => {
+  let tempDir: string;
+  let ledgerPath: string;
+  let eventRoot: string;
+  const initialNoLog = process.env.UNICLI_NO_LOG;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "unicli-ledger-"));
-    ledger = join(dir, "usage.jsonl");
+    tempDir = mkdtempSync(join(tmpdir(), "unicli-usage-"));
+    ledgerPath = join(tempDir, "usage.jsonl");
+    eventRoot = join(tempDir, "events");
+    delete process.env.UNICLI_NO_LOG;
+    delete process.env.UNICLI_NO_LEDGER;
+    _resetLocalEventLogForTests();
   });
 
   afterEach(() => {
-    rmSync(dir, { recursive: true, force: true });
+    if (initialNoLog === undefined) delete process.env.UNICLI_NO_LOG;
+    else process.env.UNICLI_NO_LOG = initialNoLog;
+    delete process.env.UNICLI_NO_LEDGER;
+    _resetLocalEventLogForTests();
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("creates the ledger directory and writes JSONL", () => {
-    recordUsage(
-      {
-        site: "hackernews",
-        cmd: "top",
-        strategy: "public",
-        tokens: 0,
-        ms: 487,
-        bytes: 12450,
-        exit: 0,
-      },
-      ledger,
+  it("loads valid legacy rows and defaults their transport to CLI", () => {
+    const legacy = { ...record() } as Record<string, unknown>;
+    delete legacy.transport;
+    writeFileSync(ledgerPath, `${JSON.stringify(legacy)}\n`);
+
+    expect(loadUsage(ledgerPath)).toEqual([record()]);
+  });
+
+  it("surfaces malformed JSON and schema drift with exact lines", () => {
+    writeFileSync(ledgerPath, `${JSON.stringify(record())}\nnot-json\n`);
+    expect(() => loadUsage(ledgerPath)).toThrowError(
+      expect.objectContaining<Partial<UsageLedgerError>>({
+        code: "malformed_jsonl",
+        line: 2,
+      }),
     );
-    expect(existsSync(ledger)).toBe(true);
-    const records = loadUsage(ledger);
-    expect(records).toHaveLength(1);
-    expect(records[0].site).toBe("hackernews");
-    expect(records[0].cmd).toBe("top");
-    expect(records[0].ms).toBe(487);
-    expect(records[0].ts).toMatch(/T/);
+
+    writeFileSync(ledgerPath, `${JSON.stringify({ site: "github" })}\n`);
+    expect(() => loadUsage(ledgerPath)).toThrowError(
+      expect.objectContaining<Partial<UsageLedgerError>>({
+        code: "malformed_jsonl",
+        line: 1,
+      }),
+    );
   });
 
-  it("appends multiple records", () => {
-    for (let i = 0; i < 5; i++) {
-      recordUsage(
-        {
-          site: "x",
-          cmd: "y",
+  it("combines legacy rows with tool events across transports", () => {
+    writeFileSync(ledgerPath, `${JSON.stringify(record())}\n`);
+    const eventStore = createLocalEventStore({ rootDir: eventRoot });
+    expect(
+      appendLocalEvent(
+        createLocalEvent({
+          event_name: "unicli.tool.call.completed",
+          timestamp: "2026-07-18T12:01:00.000Z",
+          invocation_id: "01KTEST0000000000000000000",
+          transport: "mcp",
+          command: "huggingface.search",
+          site: "huggingface",
+          cmd: "search",
           strategy: "public",
-          tokens: 0,
-          ms: 100 + i,
-          bytes: 0,
-          exit: 0,
-        },
-        ledger,
-      );
-    }
-    expect(loadUsage(ledger)).toHaveLength(5);
-  });
+          outcome: "error",
+          exit_code: 75,
+          duration_ms: 250,
+          result_count: 0,
+          result_bytes: 0,
+          error_type: "rate_limited",
+          retryable: true,
+        }),
+        eventStore,
+      ).ok,
+    ).toBe(true);
 
-  it("respects UNICLI_NO_LEDGER opt-out", () => {
-    process.env.UNICLI_NO_LEDGER = "1";
-    try {
-      recordUsage(
-        {
-          site: "x",
-          cmd: "y",
-          strategy: "public",
-          tokens: 0,
-          ms: 1,
-          bytes: 0,
-          exit: 0,
-        },
-        ledger,
-      );
-      expect(existsSync(ledger)).toBe(false);
-    } finally {
-      delete process.env.UNICLI_NO_LEDGER;
-    }
-  });
-
-  it("loadUsage returns [] when ledger does not exist", () => {
-    expect(loadUsage(ledger)).toEqual([]);
-  });
-
-  it("loadUsage skips malformed lines", () => {
-    // Write a record then a junk line
-    recordUsage(
-      {
-        site: "x",
-        cmd: "y",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
+    const sources = loadUsageSources({ ledgerPath, eventStore });
+    expect(sources).toMatchObject({
+      legacy_records: 1,
+      event_records: 1,
+    });
+    expect(sources.records).toEqual([
+      record(),
+      record({
+        ts: "2026-07-18T12:01:00.000Z",
+        site: "huggingface",
+        transport: "mcp",
+        ms: 250,
         bytes: 0,
-        exit: 0,
-      },
-      ledger,
+        exit: 75,
+      }),
+    ]);
+  });
+
+  it("uses terminal CLI invocation events and excludes duplicate CLI tool events", () => {
+    const eventStore = createLocalEventStore({ rootDir: eventRoot });
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.cli.invocation.completed",
+        invocation_id: "cli-1",
+        transport: "cli",
+        command: "github.search",
+        outcome: "success",
+        exit_code: 0,
+        duration_ms: 10,
+      }),
+      eventStore,
     );
-    const { appendFileSync } = require("node:fs") as typeof import("node:fs");
-    appendFileSync(ledger, "this is not json\n");
-    appendFileSync(ledger, '{"missing":"site"}\n');
-    const records = loadUsage(ledger);
-    expect(records).toHaveLength(1);
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: "tool-1",
+        trace_id: "tool-1",
+        transport: "cli",
+        command: "github.search",
+        site: "github",
+        cmd: "search",
+        strategy: "public",
+        outcome: "success",
+        exit_code: 0,
+        duration_ms: 8,
+      }),
+      eventStore,
+    );
+
+    const sources = loadUsageSources({ ledgerPath, eventStore });
+    expect(sources.event_records).toBe(1);
+    expect(sources.records[0]).toMatchObject({
+      site: "github",
+      cmd: "search",
+      transport: "cli",
+      ms: 10,
+    });
   });
 });
 
-describe("filterSince + parseSinceArg", () => {
-  it("parses 7d, 24h, 30m, 60s", () => {
+describe("usage argument parsing", () => {
+  it("parses supported positive windows", () => {
+    expect(parseSinceArg(undefined)).toBe(0);
     expect(parseSinceArg("7d")).toBe(7 * 86_400_000);
     expect(parseSinceArg("24h")).toBe(24 * 3_600_000);
     expect(parseSinceArg("30m")).toBe(30 * 60_000);
@@ -124,119 +188,81 @@ describe("filterSince + parseSinceArg", () => {
     expect(parseSinceArg("60")).toBe(60_000);
   });
 
-  it("returns 0 for invalid input", () => {
-    expect(parseSinceArg(undefined)).toBe(0);
-    expect(parseSinceArg("")).toBe(0);
-    expect(parseSinceArg("7days")).toBe(0);
-  });
+  it.each(["", "0", "7days", "-1h", "1.5h"])(
+    "rejects invalid --since value %j",
+    (value) => {
+      expect(() => parseSinceArg(value)).toThrowError(
+        expect.objectContaining<Partial<InvalidUsageArgumentError>>({
+          argument: "since",
+        }),
+      );
+    },
+  );
 
-  it("filters records strictly within the window", () => {
-    const now = Date.parse("2026-04-08T12:00:00Z");
-    const records = [
-      {
-        ts: "2026-04-01T12:00:00Z", // 7 days ago — boundary
-        site: "a",
-        cmd: "b",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
-        bytes: 0,
-        exit: 0,
-      },
-      {
-        ts: "2026-04-08T11:59:00Z", // 1 minute ago
-        site: "a",
-        cmd: "b",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
-        bytes: 0,
-        exit: 0,
-      },
-      {
-        ts: "2026-03-25T12:00:00Z", // 14 days ago
-        site: "a",
-        cmd: "b",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
-        bytes: 0,
-        exit: 0,
-      },
-    ];
-    const last7Days = filterSince(records, parseSinceArg("7d"), now);
-    // Boundary record (exactly 7d) is kept (>=), 14d-old is dropped
-    expect(last7Days).toHaveLength(2);
+  it("accepts bounded integer limits and rejects fallback-prone inputs", () => {
+    expect(parseUsageLimit(undefined)).toBe(20);
+    expect(parseUsageLimit("1")).toBe(1);
+    expect(parseUsageLimit("10000")).toBe(10_000);
+    for (const value of ["0", "-1", "1.5", "20junk", "10001", ""]) {
+      expect(() => parseUsageLimit(value)).toThrowError(
+        expect.objectContaining<Partial<InvalidUsageArgumentError>>({
+          argument: "limit",
+        }),
+      );
+    }
   });
 });
 
-describe("aggregate", () => {
-  it("computes median, p95, error rate per site/cmd", () => {
-    const ts = "2026-04-08T12:00:00Z";
+describe("usage filtering and aggregation", () => {
+  it("keeps records on the inclusive trailing-window boundary", () => {
+    const now = Date.parse("2026-07-18T12:00:00Z");
     const records = [
-      ...Array.from({ length: 10 }, (_, i) => ({
-        ts,
-        site: "x",
-        cmd: "y",
-        strategy: "public",
-        tokens: 0,
-        ms: i * 100,
-        bytes: 1000,
-        exit: i < 9 ? 0 : 1, // 1 failure out of 10
-      })),
+      record({ ts: "2026-07-11T12:00:00Z" }),
+      record({ ts: "2026-07-18T11:59:00Z" }),
+      record({ ts: "2026-07-01T12:00:00Z" }),
+    ];
+    expect(filterSince(records, parseSinceArg("7d"), now)).toHaveLength(2);
+  });
+
+  it("groups by transport and computes median, p95, errors, and bytes", () => {
+    const records = [
+      ...Array.from({ length: 10 }, (_, index) =>
+        record({
+          ms: index * 100,
+          exit: index < 9 ? 0 : 1,
+        }),
+      ),
+      record({ transport: "mcp", exit: 66, bytes: 5 }),
     ];
     const rows = aggregate(records);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].count).toBe(10);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      transport: "cli",
+      count: 10,
+      totalBytes: 10_000,
+    });
     expect(rows[0].errorRate).toBeCloseTo(0.1, 2);
     expect(rows[0].medianMs).toBeCloseTo(450, 0);
     expect(rows[0].p95Ms).toBeGreaterThan(800);
-    expect(rows[0].totalBytes).toBe(10_000);
+    expect(rows[1]).toMatchObject({
+      transport: "mcp",
+      count: 1,
+      errorRate: 0,
+      totalBytes: 5,
+    });
   });
 
-  it("does not count exit 66 (empty result) as error", () => {
-    const records = [
-      {
-        ts: "2026-04-08T12:00:00Z",
-        site: "x",
-        cmd: "y",
-        strategy: "public",
-        tokens: 0,
-        ms: 100,
-        bytes: 0,
-        exit: 66,
-      },
-    ];
-    expect(aggregate(records)[0].errorRate).toBe(0);
-  });
-
-  it("returns rows sorted by count desc", () => {
-    const ts = "2026-04-08T12:00:00Z";
-    const records = [
-      ...Array.from({ length: 5 }, () => ({
-        ts,
-        site: "a",
-        cmd: "1",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
-        bytes: 0,
-        exit: 0,
-      })),
-      ...Array.from({ length: 10 }, () => ({
-        ts,
-        site: "b",
-        cmd: "2",
-        strategy: "public",
-        tokens: 0,
-        ms: 1,
-        bytes: 0,
-        exit: 0,
-      })),
-    ];
-    const rows = aggregate(records);
-    expect(rows[0].cmd).toBe("2");
-    expect(rows[0].count).toBe(10);
-    expect(rows[1].count).toBe(5);
+  it("sorts equal-count rows deterministically", () => {
+    const rows = aggregate([
+      record({ site: "z", cmd: "b" }),
+      record({ site: "a", cmd: "c" }),
+      record({ site: "a", cmd: "b" }),
+    ]);
+    expect(rows.map((row) => `${row.site}.${row.cmd}`)).toEqual([
+      "a.b",
+      "a.c",
+      "z.b",
+    ]);
   });
 });

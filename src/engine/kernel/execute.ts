@@ -1,10 +1,16 @@
 /**
- * @owner Uni-CLI Kernel
- * @does Builds invocations and runs the shared kernel stage chain.
- * @needs Registry resolution, compiled command cache, and explicit kernel stages.
- * @feeds CLI/MCP/ACP transport renderers through InvocationResult.
- * @breaks Surface parity when wrappers rebuild validation, authorization, execution, diagnostics, or envelopes.
- * @invariants Cancellation is checked before dispatch; authorized effect determines whether an unsettled post-dispatch cancellation is exact or outcome-ambiguous.
+ * @owner       src::engine::kernel::execute
+ * @does        Builds invocations, runs the shared stage chain, and emits privacy-safe terminal tool-call diagnostics.
+ * @needs       registry resolution, compiled command cache, explicit kernel stages, local event log
+ * @feeds       CLI/MCP/ACP/bench/hub transport renderers through InvocationResult and local usage projection
+ * @breaks      Surface parity when wrappers rebuild validation, authorization, execution, diagnostics, envelopes, or tool-call observation.
+ * @invariants  Cancellation is checked before dispatch; authorized effect determines outcome ambiguity; log failure warns but never replaces a settled operation result.
+ * @side-effects Executes adapter operations and appends one allowlisted local event unless explicitly disabled.
+ * @perf        One bounded local append after each completed invocation.
+ * @concurrency Invocation trace IDs isolate calls; the event store owns concurrent append semantics.
+ * @test        tests/unit/engine/invoke.test.ts and tests/unit/kernel-stage-parity.test.ts
+ * @stability   stable
+ * @since       2026-04-17
  */
 
 import { resolveCommand } from "../../registry.js";
@@ -23,6 +29,14 @@ import {
 import { KernelLookupError } from "./errors.js";
 import type { Invocation, InvocationResult } from "./types.js";
 import { newULID } from "./ulid.js";
+import {
+  appendLocalEvent,
+  createLocalEvent,
+  isLocalLoggingEnabled,
+  localEventWarning,
+} from "../../runtime/local-event-log.js";
+import type { KernelCommandContext } from "./stages.js";
+import { observeCliTrace } from "../../runtime/cli-invocation-log.js";
 
 export { KernelLookupError };
 
@@ -68,7 +82,62 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   const startedAt = Date.now();
   const warnings: string[] = [];
   const ctx = resolveKernelCommandContext(inv);
+  if (inv.surface === "cli") observeCliTrace(inv.trace_id);
 
+  const result = await executeResolved(inv, ctx, startedAt, warnings);
+  if (!isLocalLoggingEnabled()) return result;
+  const resultBytes = serializedResultBytes(result.results);
+  const warning = localEventWarning(
+    appendLocalEvent(
+      createLocalEvent({
+        event_name: "unicli.tool.call.completed",
+        invocation_id: inv.trace_id,
+        trace_id: inv.trace_id,
+        transport: inv.surface,
+        command: ctx.key,
+        site: inv.adapter.name,
+        cmd: inv.cmdName,
+        strategy: ctx.strategy ?? "unknown",
+        target_surface: ctx.targetSurface,
+        adapter_path: ctx.adapterPath,
+        outcome:
+          result.error !== undefined
+            ? "error"
+            : result.results.length === 0
+              ? "empty"
+              : "success",
+        exit_code: result.exitCode,
+        duration_ms: result.durationMs,
+        result_count: result.results.length,
+        ...(resultBytes !== undefined ? { result_bytes: resultBytes } : {}),
+        ...(result.error
+          ? {
+              error_type: result.error.code,
+              retryable: result.error.retryable ?? false,
+              ...(result.error.step !== undefined
+                ? { error_step: result.error.step }
+                : {}),
+              ...(result.error.outcome_ambiguous
+                ? { outcome_ambiguous: true }
+                : {}),
+              ...(result.error.target_unusable
+                ? { target_unusable: true }
+                : {}),
+            }
+          : {}),
+      }),
+    ),
+  );
+  if (warning) result.warnings.push(warning);
+  return result;
+}
+
+async function executeResolved(
+  inv: Invocation,
+  ctx: KernelCommandContext,
+  startedAt: number,
+  warnings: string[],
+): Promise<InvocationResult> {
   if (inv.signal?.aborted) {
     return executionErrorResult(
       inv,
@@ -118,5 +187,13 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
     return successKernelResult(inv, ctx, startedAt, warnings, results);
   } catch (err) {
     return executionErrorResult(inv, ctx, startedAt, warnings, err).result;
+  }
+}
+
+function serializedResultBytes(results: unknown[]): number | undefined {
+  try {
+    return Buffer.byteLength(JSON.stringify(results), "utf-8");
+  } catch {
+    return undefined;
   }
 }

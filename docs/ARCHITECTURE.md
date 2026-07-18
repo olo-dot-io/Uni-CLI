@@ -14,7 +14,7 @@ The current generated static adapter catalog is the source of truth for:
 (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 transport-native),
-and **<span><!-- STATS:test_count -->9660<!-- /STATS --></span> tests** in v0.400.1.
+and **<span><!-- STATS:test_count -->9680<!-- /STATS --></span> tests** in v0.400.1.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 

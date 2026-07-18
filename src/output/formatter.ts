@@ -1,5 +1,16 @@
 /**
- * Output formatter — renders command results in agent-friendly formats.
+ * @owner       src::output::formatter
+ * @does        Renders stable agent envelopes as JSON, YAML, Markdown, CSV, or compact text and reports rendered byte counts to the active CLI invocation.
+ * @needs       output envelope builders, Markdown renderer, CLI invocation observer
+ * @feeds       every CLI/core/fast-path structured output surface
+ * @breaks      Format drift or missing context corrupts agent parsing and terminal local-diagnostic attribution.
+ * @invariants  Agent formats preserve envelope v2; legacy flat formats receive the same explicit command context; formatter never captures payload content in logs.
+ * @side-effects Emits deprecation warnings and updates in-process CLI diagnostic metadata; returns rendered text to callers.
+ * @perf        Linear in serialized payload size.
+ * @concurrency CLI observation is process-scoped; rendering itself has no shared mutable output state.
+ * @test        tests/unit/output/formatter.test.ts and tests/unit/cli-invocation-log.test.ts
+ * @stability   stable
+ * @since       2026-04-04
  *
  * Supported formats (6): json, yaml, csv, md, compact, table (deprecated)
  *
@@ -23,6 +34,7 @@ import type { OutputFormat } from "../types.js";
 import type { AgentContext, AgentEnvelope } from "./envelope.js";
 import { makeEnvelope, makeError } from "./envelope.js";
 import { renderMd } from "./md.js";
+import { observeCliOutput } from "../runtime/cli-invocation-log.js";
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -39,8 +51,17 @@ export function format(
   fmt: OutputFormat,
   ctx: AgentContext,
 ): string {
-  if (fmt === "csv") return toCsv(toArray(data), columns);
-  if (fmt === "compact") return toCompact(toArray(data), columns);
+  let rendered: string;
+  if (fmt === "csv") {
+    rendered = toCsv(toArray(data), columns);
+    observeCliOutput(ctx, Buffer.byteLength(rendered, "utf-8"));
+    return rendered;
+  }
+  if (fmt === "compact") {
+    rendered = toCompact(toArray(data), columns);
+    observeCliOutput(ctx, Buffer.byteLength(rendered, "utf-8"));
+    return rendered;
+  }
 
   if (fmt === "table") {
     process.stderr.write(
@@ -53,11 +74,12 @@ export function format(
     ? makeError(ctx, ctx.error)
     : makeEnvelope(ctx, data ?? []);
 
-  if (fmt === "md") return renderMd(envelope);
-  if (fmt === "json") return JSON.stringify(envelope, null, 2);
-  if (fmt === "yaml") return renderYamlEnvelope(envelope);
-  // Unknown format — JSON envelope as safe default
-  return JSON.stringify(envelope, null, 2);
+  if (fmt === "md") rendered = renderMd(envelope);
+  else if (fmt === "json") rendered = JSON.stringify(envelope, null, 2);
+  else if (fmt === "yaml") rendered = renderYamlEnvelope(envelope);
+  else rendered = JSON.stringify(envelope, null, 2);
+  observeCliOutput(ctx, Buffer.byteLength(rendered, "utf-8"));
+  return rendered;
 }
 
 /**

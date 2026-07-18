@@ -35,6 +35,9 @@ if (versionFastPath) {
   const { serveAcp } = await import("./commands/acp.js");
   await serveAcp({ debug: args.includes("--debug") });
 } else {
+  const { beginCliInvocationLogging } =
+    await import("./runtime/cli-invocation-log.js");
+  beginCliInvocationLogging();
   const { tryRunFastPath } = await import("./fast-path.js");
   if (!tryRunFastPath(process.argv)) {
     const { createCli } = await import("./cli.js");
