@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.400.0",
+  "version": "0.400.1",
   "description": "Universal computer-control platform for agents: intent, policy, action substrates, evidence, delivery, and repair.",
   "packageManager": "npm@11.14.0",
   "type": "module",
@@ -244,6 +244,7 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
+    "@xmldom/xmldom": "^0.9.10",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "chalk": "^5.6.2",

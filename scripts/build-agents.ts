@@ -447,8 +447,9 @@ function main(): void {
   const countsRegex = /<!-- BEGIN COUNTS -->\n[\s\S]*?<!-- END COUNTS -->/;
   if (countsRegex.test(updated)) {
     const countsLine =
-      `> <!-- STATS:site_count -->${siteCount}<!-- /STATS --> sites, ` +
-      `<!-- STATS:command_count -->${cmdCount}<!-- /STATS --> commands, ` +
+      `> Static adapter catalog: <!-- STATS:site_count -->${siteCount}<!-- /STATS --> sites, ` +
+      `<!-- STATS:command_count -->${cmdCount}<!-- /STATS --> registered commands; ` +
+      `fixed core and host-discovered commands join at runtime. ` +
       `<!-- STATS:pipeline_step_count -->${pipelineSteps}<!-- /STATS --> built-in actions ` +
       `(` +
       `<!-- STATS:pipeline_registered_step_count -->${registeredSteps}<!-- /STATS --> registered + ` +

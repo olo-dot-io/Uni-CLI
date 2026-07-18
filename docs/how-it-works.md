@@ -142,9 +142,11 @@ Live browser/CDP acquisition remains in process memory. Only explicit
 
 ## The v2 AgentEnvelope
 
-Every command returns a v2 AgentEnvelope — the same shape on success or failure.
-Agents parse one schema across
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> commands.
+Every registered adapter command returns a v2 AgentEnvelope — the same shape
+on success or failure. Agents parse one schema across the static adapter
+catalog of <span><!-- STATS:command_count -->1817<!-- /STATS --></span>
+commands; fixed core and host-discovered commands are listed separately at
+runtime.
 
 ```json
 {
@@ -239,10 +241,12 @@ $ unicli hackernews top -n 10 -f json \
 
 That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
-shape across
-<span><!-- STATS:site_count -->324<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> commands. One error
-envelope across every failure. One self-repair path across every adapter.
+shape covers the static catalog of
+<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites and
+<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter
+commands; fixed core and host-discovered commands join that surface at runtime.
+One error envelope covers every failure. One self-repair path covers every
+adapter.
 
 ## Further reading
 

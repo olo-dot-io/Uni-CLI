@@ -4,11 +4,12 @@ Uni-CLI is the universal computer-control platform for AI agents to discover, ru
 
 ## Operation Snapshot
 
-- Sites: 320
-- Commands: 1798
-- Adapters: 1225 (984 YAML + 241 TypeScript)
+- Static adapter sites: 324
+- Registered adapter commands: 1817
+- Runtime scope: fixed core and host-discovered commands are additional
+- Adapters: 1238 (994 YAML + 244 TypeScript)
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9459
+- Tests: 9659
 
 ## Agent Contract
 

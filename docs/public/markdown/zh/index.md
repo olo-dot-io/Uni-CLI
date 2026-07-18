@@ -47,12 +47,12 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 覆盖范围
 
-- 站点和工具：320
-- 操作：1798
+- 静态 adapter 站点：324
+- 已注册 adapter 操作：1817
 - Built-in action：105（50 registered + 55 transport-native）
-- 测试：9459
+- 测试：9659
 
-能力规模来自当前仓库生成物：operation、adapter、built-in action、测试和 substrate 都在本地构建流程里计数。
+站点与操作数字来自静态 adapter catalog；固定 core 与主机动态发现命令在运行时单独加入。operation、adapter、built-in action、测试和 substrate 都由本地构建流程计数。
 
 ## 入口
 
@@ -63,7 +63,7 @@ Agent 执行需要的不是更长的常驻工具列表，也不是又一个网�
 
 ## 当前版本
 
-当前 latest：v0.400.0 · Apollo · Young。
+本地版本：v0.400.1 · Apollo · Young。
 
 ## Agent 索引
 

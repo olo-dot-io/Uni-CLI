@@ -47,12 +47,12 @@ Agent execution does not need a longer resident tool list or another website wra
 
 ## Coverage
 
-- Sites and tools: 320
-- Operations: 1798
+- Static adapter sites: 324
+- Registered adapter operations: 1817
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9459
+- Tests: 9659
 
-These numbers come from the current generated repo artifacts: operations, adapters, built-in actions, tests, and substrates are counted by the build.
+Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
 ## Entrypoints
 
@@ -63,7 +63,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Latest: v0.400.0 · Apollo · Young.
+Local release: v0.400.1 · Apollo · Young.
 
 ## Agent Index
 

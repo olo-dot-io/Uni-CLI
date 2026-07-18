@@ -302,7 +302,7 @@ export function buildServerDescription(stats: Record<string, unknown>): string {
   const sites = requiredCount(stats, "site_count");
   const yamlAdapters = requiredCount(stats, "adapter_count_yaml");
   const commands = requiredCount(stats, "command_count");
-  return `Agent operations CLI exposing ${String(sites)} sites and tools, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} commands through one MCP server. Structured errors name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
+  return `Agent operations CLI exposing a static catalog of ${String(sites)} adapter sites, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} registered adapter commands through one MCP server; fixed core and host-discovered commands are added at runtime. Structured errors name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
 }
 
 function syncServerDescription(stats: Record<string, unknown>): boolean {

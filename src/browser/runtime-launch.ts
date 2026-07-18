@@ -1,14 +1,14 @@
 /**
  * @owner       src/browser/runtime-launch.ts
  * @does        Probe or start the single Browser Runtime Broker service without starting a browser provider.
- * @needs       node:child_process types, node:crypto, node:fs, node:module, node:path, node:url, src/browser/runtime-protocol.ts, runtime-transport.ts, src/transport/process-owner.ts
+ * @needs       node:child_process types, node:crypto, node:fs, node:path, node:url, the compiled runtime-broker-main.js artifact, src/browser/runtime-protocol.ts, runtime-transport.ts, src/transport/process-owner.ts
  * @feeds       src/browser/bridge.ts, native-host-main.ts, browser lifecycle CLI and MCP calls
- * @breaks      BrowserRuntimeLaunchError when the broker cannot become ready inside the caller budget or its abandoned child cannot be contained; invalid/auth/protocol endpoints fail closed.
- * @invariants  Auto-start occurs only after an unavailable probe; one real in-flight child attempt is shared per runtime root while each caller retains an independent startup budget and operation timeout; readiness belongs to a candidate only when the broker status PID matches its command PID; a candidate exit is not a global failure because it can mean another process won the kernel lock; observing another winner contains the local candidate before returning; a short waiter cannot retire a launch used by a longer waiter; the last unsuccessful waiter removes and terminates the exact owned process tree before another spawn; provider processes remain lazy.
+ * @breaks      BrowserRuntimeLaunchError when the compiled broker artifact is absent, the broker cannot become ready inside the caller budget, or its abandoned child cannot be contained; invalid/auth/protocol endpoints fail closed.
+ * @invariants  Auto-start executes a compiled broker artifact from the installed dist tree or repository build output, never a development-only transpiler; one real in-flight child attempt is shared per runtime root while each caller retains an independent startup budget and operation timeout; readiness belongs to a candidate only when the broker status PID matches its command PID; a candidate exit is not a global failure because it can mean another process won the kernel lock; observing another winner contains the local candidate before returning; a short waiter cannot retire a launch used by a longer waiter; the last unsuccessful waiter removes and terminates the exact owned process tree before another spawn; provider processes remain lazy.
  * @side-effects May spawn and terminate one owned broker process tree and create its owner-only runtime endpoint files.
  * @perf        Existing brokers require one status IPC; cold start polls locally at 50 ms intervals.
  * @concurrency In-process callers share one promise; cross-process races are resolved by the broker's exclusive lock and converge on one endpoint.
- * @test        tests/integration/browser-runtime-autostart.test.ts, tests/integration/browser-native-host.test.ts
+ * @test        tests/unit/browser-runtime-launch-lifecycle.test.ts, tests/integration/browser-runtime-autostart.test.ts, tests/integration/browser-native-host.test.ts
  * @stability   experimental
  * @since       2026-07-15
  */
@@ -16,10 +16,9 @@
 import type { ChildProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import type { BrowserBrokerStatus } from "./runtime-protocol.js";
 import {
@@ -69,7 +68,6 @@ interface BrokerLaunchAttempt {
 
 const launchAttempts = new Map<string, BrokerLaunchAttempt>();
 const launchRetirements = new Map<string, Promise<void>>();
-const require = createRequire(import.meta.url);
 
 export async function probeBrowserRuntimeBroker(
   options: BrowserRuntimeLaunchOptions = {},
@@ -276,12 +274,24 @@ async function reconcileBrokerLaunch(
 
 function spawnBroker(runtimeRoot?: string): OwnedProcessLaunch {
   const moduleDirectory = dirname(fileURLToPath(import.meta.url));
-  const compiledPath = join(moduleDirectory, "runtime-broker-main.js");
-  const sourcePath = join(moduleDirectory, "runtime-broker-main.ts");
-  const args = existsSync(compiledPath)
-    ? [compiledPath]
-    : ["--import", pathToFileURL(require.resolve("tsx")).href, sourcePath];
-  return spawnOwnedProcess(process.execPath, args, {
+  const installedBrokerPath = join(moduleDirectory, "runtime-broker-main.js");
+  const repositoryBrokerPath = join(
+    moduleDirectory,
+    "..",
+    "..",
+    "dist",
+    "browser",
+    "runtime-broker-main.js",
+  );
+  const brokerPath = [installedBrokerPath, repositoryBrokerPath].find(
+    existsSync,
+  );
+  if (!brokerPath) {
+    throw new BrowserRuntimeLaunchError(
+      `Browser broker build artifact is missing at ${repositoryBrokerPath}. Run \`npm run build\` before source-mode browser commands.`,
+    );
+  }
+  return spawnOwnedProcess(process.execPath, [brokerPath], {
     stdio: "ignore",
     reportPath: join(
       tmpdir(),

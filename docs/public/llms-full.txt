@@ -4,9 +4,10 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Sites: 320
-- Commands: 1798
-- Adapters: 1225
+- Static adapter sites: 324
+- Registered adapter commands: 1817
+- Runtime scope: fixed core and host-discovered commands are additional
+- Adapters: 1238
 - Built-in actions: 105 (50 registered + 55 transport-native)
 
 ---
@@ -65,12 +66,12 @@ Agent execution does not need a longer resident tool list or another website wra
 
 ## Coverage
 
-- Sites and tools: 320
-- Operations: 1798
+- Static adapter sites: 324
+- Registered adapter operations: 1817
 - Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9459
+- Tests: 9659
 
-These numbers come from the current generated repo artifacts: operations, adapters, built-in actions, tests, and substrates are counted by the build.
+Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
 ## Entrypoints
 
@@ -81,7 +82,7 @@ These numbers come from the current generated repo artifacts: operations, adapte
 
 ## Current Version
 
-Latest: v0.400.0 · Apollo · Young.
+Local release: v0.400.1 · Apollo · Young.
 
 ## Agent Index
 
@@ -437,6 +438,34 @@ The catalog search layer is not a plain site-name lookup. It combines bilingual 
 
 The same rule keeps broad searches honest. Domain boosts only apply when the query uses explicit ACG, paper, wiki, tag, game, anime, manga, or visual-novel vocabulary; generic queries still rank the normal web, developer, finance, or app commands by their own evidence.
 
+### AI primary-source intelligence
+
+`unicli ai` applies the same operation contract to AI research and engineering
+signals. `ai profiles` describes what foundation-model, training, inference,
+world-model, embodied-AI, hardware, agent, evaluation, and research roles watch
+daily. `ai landscape` projects the maintained laboratory, vendor, runtime,
+model-hub, venue, benchmark, robotics, and community directory. `ai search`
+uses that role to select live native adapters and relevant first-party domains;
+`ai pulse` executes the role's bounded queries and fuses timestamp-verifiable
+results. ModelScope, OpenCSG, Bluesky posts, OpenReview, OpenAlex, Crossref, ACL
+Anthology, YouTube, and the existing GitHub/Hugging Face/web/community adapters
+share one normalized provenance contract.
+
+These commands fetch upstream state when invoked; they do not imply a
+background crawler or invent freshness. Authenticated X, Reddit, Linux.do,
+Zhihu, and Bilibili sources are visible in `ai sources` and require explicit
+selection (or `ai pulse --include-auth`). A community platform URL remains
+community evidence even when the platform itself is listed in the landscape;
+only a matched maintainer-owned domain or exact GitHub repository is labeled
+first-party.
+
+```bash
+unicli ai profiles -f json
+unicli ai landscape --profile world-models -f json
+unicli ai pulse --profile inference --window week -f json
+unicli ai search "KV cache scheduler" --profile inference --sort latest -f json
+```
+
 ## Internal authoring format: YAML adapters
 
 YAML adapters are the default way to author reusable operation contracts. They are not the platform identity; they are the cheap, inspectable format that lets agents read, patch, and verify many substrate paths. Here's a complete adapter for a public RSS feed:
@@ -509,9 +538,11 @@ Live browser/CDP acquisition remains in process memory. Only explicit
 
 ## The v2 AgentEnvelope
 
-Every command returns a v2 AgentEnvelope — the same shape on success or failure.
-Agents parse one schema across
-<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands.
+Every registered adapter command returns a v2 AgentEnvelope — the same shape
+on success or failure. Agents parse one schema across the static adapter
+catalog of <span><!-- STATS:command_count -->1817<!-- /STATS --></span>
+commands; fixed core and host-discovered commands are listed separately at
+runtime.
 
 ```json
 {
@@ -606,10 +637,12 @@ $ unicli hackernews top -n 10 -f json \
 
 That is the simplest exposure path. The same operation contract can also run
 through MCP, ACP, HTTP, skills, or CI without changing semantics. One command
-shape across
-<span><!-- STATS:site_count -->320<!-- /STATS --></span> sites and
-<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands. One error
-envelope across every failure. One self-repair path across every adapter.
+shape covers the static catalog of
+<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites and
+<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter
+commands; fixed core and host-discovered commands join that surface at runtime.
+One error envelope covers every failure. One self-repair path covers every
+adapter.
 
 ## Further reading
 
@@ -1224,7 +1257,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites and tools.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes. Its static adapter catalog covers <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join at runtime.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -1248,7 +1281,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.400.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native), and <span><!-- STATS:test_count -->9459<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.400.1 ships a generated static adapter catalog with <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9659<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -2066,7 +2099,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
+This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -2077,6 +2110,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
 | acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
+| ai | web-api | 6 | no | unicli ai search<br>unicli ai pulse<br>unicli ai read |
 | aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
 | anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -2098,7 +2132,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | biorxiv | web-api | 5 | no | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
 | blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 12 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 13 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -2168,7 +2202,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
-| gh | bridge | 6 | no | unicli gh issue<br>unicli gh pr<br>unicli gh release |
+| gh | bridge | 11 | yes | unicli gh discussions<br>unicli gh issue-thread<br>unicli gh issue |
 | gimp | desktop | 12 | no | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
 | gitee | web-api | 4 | no | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
 | github-trending | web-api | 3 | no | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
@@ -2184,7 +2218,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | grok | web-api | 8 | yes | unicli grok ask<br>unicli grok read<br>unicli grok history |
 | hackernews | web-api | 11 | no | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
 | hermes | desktop | 3 | no | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
-| hf | web-api | 5 | no | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
+| hf | web-api | 6 | no | unicli hf datasets<br>unicli hf models<br>unicli hf spaces |
 | homebrew | web-api | 5 | no | unicli homebrew info<br>unicli homebrew search<br>unicli homebrew formula |
 | huggingface-papers | web-api | 2 | no | unicli huggingface-papers daily<br>unicli huggingface-papers search |
 | hupu | web-api | 7 | yes | unicli hupu detail<br>unicli hupu hot<br>unicli hupu like |
@@ -2239,6 +2273,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | meituan | web-api | 1 | yes | unicli meituan search |
 | mermaid | desktop | 1 | no | unicli mermaid render |
 | minimax | web-api | 3 | yes | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
+| modelscope | web-api | 2 | no | unicli modelscope datasets<br>unicli modelscope models |
 | moegirl | web-api | 3 | no | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | no | unicli motion-studio component-get |
 | mubu | web-api | 6 | yes | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
@@ -2264,6 +2299,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | ones | web-api | 11 | yes | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
 | openalex | web-api | 3 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | opencode | bridge | 1 | no | unicli opencode version |
+| opencsg | web-api | 2 | no | unicli opencsg datasets<br>unicli opencsg models |
 | openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openharness | desktop | 2 | no | unicli openharness memory-read<br>unicli openharness skills-list |
 | openreview | web-api | 7 | no | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
@@ -2296,6 +2332,7 @@ This catalog is generated from the adapter manifest: 320 sites, 1798 commands.
 | renderdoc | desktop | 2 | no | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | yes | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
 | rest-countries | web-api | 2 | no | unicli rest-countries country<br>unicli rest-countries region |
+| retrieval | web-api | 2 | no | unicli retrieval search<br>unicli retrieval sources |
 | reuters | web-api | 5 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
@@ -2517,6 +2554,28 @@ The most common ones:
 | `exec`         | subprocess                        | Run a subprocess with stdin/env/timeout.               |
 | `snapshot`     | cdp-browser + desktop-ax + visual | DOM/AX tree snapshot with `ref` numbers.               |
 | `visual_click` | visual                            | Coordinate-level click via Visual backend.             |
+
+#### HTML extraction response states
+
+`extract` uses the same `from`/`fields` contract for fetched HTML and CDP
+DOMs. When zero matched records is ambiguous, declare the response states
+instead of treating every selector miss as `[]`:
+
+```yaml
+- extract:
+    from: "div.result:not(.result--no-result)"
+    fields:
+      title: { selector: "h2" }
+    challenge_selector: "#challenge-form"
+    challenge_suggestion: "Retry through another registered public source."
+    empty_selector: ".result--no-result"
+    required: true
+```
+
+`challenge_selector` emits `challenge_required`; `empty_selector` identifies a
+legitimate empty response; and `required: true` turns every other zero match
+into `selector_miss`. Omit these fields only when an unqualified empty array is
+the upstream command's complete and unambiguous contract.
 
 Each step has a typed schema; unknown fields are rejected at load time.
 
@@ -4388,15 +4447,17 @@ product primitive is not a browser session, a sandbox, a protocol server, a
 visual cursor, or a generated tool list. It is an operation that lets an agent
 control real software through a governed, observable, repairable path.
 
-The current generated operation catalog is the source of truth:
-**<span><!-- STATS:site_count -->320<!-- /STATS --></span> sites**,
-**<span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands**,
-**<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters**,
+The current generated static adapter catalog is the source of truth for:
+**<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites**,
+**<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter commands**,
+**<span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions**
 (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 transport-native),
-and **<span><!-- STATS:test_count -->9459<!-- /STATS --></span> tests** in v0.400.0.
+and **<span><!-- STATS:test_count -->9659<!-- /STATS --></span> tests** in v0.400.1.
+Fixed core and host-discovered commands are separate runtime surfaces and are
+not included in the static site or command totals.
 
 ## Computer-Control Thesis
 
@@ -5064,7 +5125,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.400.0 — Apollo · Young. <!-- STATS:site_count -->320<!-- /STATS --> sites, <!-- STATS:command_count -->1798<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v0.400.1 — Apollo · Young. Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks current engineering direction for the agent control plane for
 real software: a universal agent-to-computer control platform. Historical

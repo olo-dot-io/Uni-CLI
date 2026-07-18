@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 323 sites, 1813 commands.
+This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -117,7 +117,7 @@ This catalog is generated from the adapter manifest: 323 sites, 1813 commands.
 | freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
-| gh | bridge | 9 | yes | unicli gh discussions<br>unicli gh issue<br>unicli gh pr |
+| gh | bridge | 11 | yes | unicli gh discussions<br>unicli gh issue-thread<br>unicli gh issue |
 | gimp | desktop | 12 | no | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
 | gitee | web-api | 4 | no | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
 | github-trending | web-api | 3 | no | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
@@ -247,6 +247,7 @@ This catalog is generated from the adapter manifest: 323 sites, 1813 commands.
 | renderdoc | desktop | 2 | no | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | yes | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
 | rest-countries | web-api | 2 | no | unicli rest-countries country<br>unicli rest-countries region |
+| retrieval | web-api | 2 | no | unicli retrieval search<br>unicli retrieval sources |
 | reuters | web-api | 5 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |

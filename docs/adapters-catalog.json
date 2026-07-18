@@ -1,8 +1,8 @@
 {
-  "source": "unicli@0.400.0",
-  "generated": "2026-07-17T13:59:47.721Z",
-  "total_sites": 323,
-  "total_commands": 1813,
+  "source": "unicli@0.400.1",
+  "generated": "2026-07-18T05:53:32.515Z",
+  "total_sites": 324,
+  "total_commands": 1817,
   "adapters": [
     {
       "site": "12306",
@@ -1188,7 +1188,7 @@
               "type": "str",
               "required": false,
               "positional": false,
-              "description": "nvidia, amd, huawei-ascend, intel-ai, aws-neuron, google-tpu, cerebras, groq, tenstorrent, sambanova, apple-mlx, qualcomm-ai"
+              "description": "nvidia, amd, huawei-ascend, alibaba-thead, kunlunxin, cambricon, intel-ai, aws-neuron, google-tpu, cerebras, groq, tenstorrent, sambanova, apple-mlx, qualcomm-ai"
             },
             {
               "name": "domains",
@@ -1319,6 +1319,27 @@
               "required": false,
               "positional": false,
               "description": "Maximum structured links (1-100)"
+            },
+            {
+              "name": "reader",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Explicit HTML reader; third-party readers receive the source URL"
+            },
+            {
+              "name": "first_page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "First PDF page to extract (1-100)"
+            },
+            {
+              "name": "last_page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Last PDF page to extract (1-100)"
             }
           ]
         },
@@ -15395,6 +15416,34 @@
           ]
         },
         {
+          "name": "issue-thread",
+          "description": "Read one GitHub issue with its complete structured comment thread",
+          "when_to_use": "Read one GitHub issue with its complete structured comment thread",
+          "command": "unicli gh issue-thread",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "number",
+            "title",
+            "state",
+            "author",
+            "createdAt",
+            "updatedAt",
+            "url",
+            "comments"
+          ],
+          "args": [
+            {
+              "name": "ref",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "GitHub issue URL or OWNER/REPO#NUMBER reference"
+            }
+          ]
+        },
+        {
           "name": "issue",
           "description": "List GitHub issues for a repository",
           "when_to_use": "List GitHub issues for a repository",
@@ -15424,6 +15473,35 @@
               "required": false,
               "positional": false,
               "description": "Maximum number of issues to return"
+            }
+          ]
+        },
+        {
+          "name": "pr-thread",
+          "description": "Read one GitHub pull request with comments, reviews, files, commits, checks, and merge state",
+          "when_to_use": "Read one GitHub pull request with comments, reviews, files, commits, checks, and merge state",
+          "command": "unicli gh pr-thread",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "number",
+            "title",
+            "state",
+            "author",
+            "reviewDecision",
+            "mergeable",
+            "createdAt",
+            "updatedAt",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "ref",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "GitHub pull-request URL or OWNER/REPO#NUMBER reference"
             }
           ]
         },
@@ -32636,6 +32714,107 @@
       ]
     },
     {
+      "site": "retrieval",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Federate current records across registered retrieval providers without a domain-specific router; 通用跨行业实时检索来源，覆盖 AI、安全、数据库、医疗、气候、标准及未来行业的一手资料",
+          "when_to_use": "When you need to search retrieval for a specific query.",
+          "command": "unicli retrieval search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "title",
+            "result_kind",
+            "source_class",
+            "source_adapter",
+            "updated_at",
+            "url",
+            "summary"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Research query in any domain"
+            },
+            {
+              "name": "sources",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated exact refs, sites, kinds, or source classes; use all explicitly for every registered source"
+            },
+            {
+              "name": "kind",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Extensible result kind such as docs, paper, or dataset"
+            },
+            {
+              "name": "source_class",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional acquisition/provenance class"
+            },
+            {
+              "name": "repository",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional source role value such as GitHub OWNER/REPO"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional YYYY-MM-DD source filter where supported"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Fuse by source relevance or sort by verifiable timestamp"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum normalized candidates (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "sources",
+          "description": "List registered retrieval providers and their semantic argument mappings",
+          "when_to_use": "List registered retrieval providers and their semantic argument mappings",
+          "command": "unicli retrieval sources",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "source",
+            "result_kind",
+            "source_class",
+            "argument_roles",
+            "capabilities"
+          ],
+          "args": []
+        }
+      ]
+    },
+    {
       "site": "reuters",
       "type": "web-api",
       "domain": "www.reuters.com",
@@ -39716,7 +39895,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "snippet", "wordcount"],
+          "columns": ["title", "snippet", "wordcount", "url"],
           "args": [
             {
               "name": "query",

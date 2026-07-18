@@ -41,7 +41,7 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 <!-- BEGIN COUNTS -->
 
-> <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> commands, <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -133,7 +133,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-0.400.0 — Apollo · Young
+0.400.1 — Apollo · Young
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

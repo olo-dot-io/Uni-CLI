@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->320<!-- /STATS --> surfaces · <!-- STATS:test_count -->9459<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9659<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -257,7 +257,7 @@ The wall below is generated from active manifest sites with real logo support. B
 <div align="center">
 <p><strong>social</strong><br>
   <a data-site="band" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="band: 4 commands"><img alt="band" src="https://img.shields.io/static/v1?label=band&message=4+cmds&color=2563eb&style=flat-square&logo=bandlab&logoColor=white"></a>
-  <a data-site="bluesky" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bluesky: 12 commands"><img alt="bluesky" src="https://img.shields.io/static/v1?label=bluesky&message=12+cmds&color=2563eb&style=flat-square&logo=bluesky&logoColor=white"></a>
+  <a data-site="bluesky" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bluesky: 13 commands"><img alt="bluesky" src="https://img.shields.io/static/v1?label=bluesky&message=13+cmds&color=2563eb&style=flat-square&logo=bluesky&logoColor=white"></a>
   <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
   <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
   <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square&logo=douban&logoColor=white"></a>
@@ -313,7 +313,7 @@ The wall below is generated from active manifest sites with real logo support. B
   <a data-site="cursor" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cursor: 18 commands"><img alt="cursor" src="https://img.shields.io/static/v1?label=cursor&message=18+cmds&color=4f46e5&style=flat-square&logo=cursor&logoColor=white"></a>
   <a data-site="docker-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-desktop: 7 commands"><img alt="docker-desktop" src="https://img.shields.io/static/v1?label=docker-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
   <a data-site="docker-hub" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-hub: 3 commands"><img alt="docker-hub" src="https://img.shields.io/static/v1?label=docker-hub&message=3+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
-  <a data-site="gh" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gh: 6 commands"><img alt="gh" src="https://img.shields.io/static/v1?label=gh&message=6+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
+  <a data-site="gh" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gh: 11 commands"><img alt="gh" src="https://img.shields.io/static/v1?label=gh&message=11+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
   <a data-site="github-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-desktop: 7 commands"><img alt="github-desktop" src="https://img.shields.io/static/v1?label=github-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
   <a data-site="github-trending" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-trending: 1 command"><img alt="github-trending" src="https://img.shields.io/static/v1?label=github-trending&message=1+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
   <a data-site="gitkraken" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitkraken: 7 commands"><img alt="gitkraken" src="https://img.shields.io/static/v1?label=gitkraken&message=7+cmds&color=4f46e5&style=flat-square&logo=gitkraken&logoColor=white"></a>
@@ -339,7 +339,7 @@ The wall below is generated from active manifest sites with real logo support. B
   <a data-site="claude" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="claude: 14 commands"><img alt="claude" src="https://img.shields.io/static/v1?label=claude&message=14+cmds&color=7c3aed&style=flat-square&logo=anthropic&logoColor=white"></a>
   <a data-site="deepseek" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="deepseek: 9 commands"><img alt="deepseek" src="https://img.shields.io/static/v1?label=deepseek&message=9+cmds&color=7c3aed&style=flat-square&logo=deepseek&logoColor=white"></a>
   <a data-site="gemini" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gemini: 5 commands"><img alt="gemini" src="https://img.shields.io/static/v1?label=gemini&message=5+cmds&color=7c3aed&style=flat-square&logo=googlegemini&logoColor=white"></a>
-  <a data-site="hf" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hf: 5 commands"><img alt="hf" src="https://img.shields.io/static/v1?label=hf&message=5+cmds&color=7c3aed&style=flat-square&logo=huggingface&logoColor=white"></a>
+  <a data-site="hf" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hf: 6 commands"><img alt="hf" src="https://img.shields.io/static/v1?label=hf&message=6+cmds&color=7c3aed&style=flat-square&logo=huggingface&logoColor=white"></a>
   <a data-site="lm-studio" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lm-studio: 7 commands"><img alt="lm-studio" src="https://img.shields.io/static/v1?label=lm-studio&message=7+cmds&color=7c3aed&style=flat-square&logo=lmstudio&logoColor=white"></a>
   <a data-site="openrouter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="openrouter: 2 commands"><img alt="openrouter" src="https://img.shields.io/static/v1?label=openrouter&message=2+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
   <a data-site="qwen" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="qwen: 8 commands"><img alt="qwen" src="https://img.shields.io/static/v1?label=qwen&message=8+cmds&color=7c3aed&style=flat-square&logo=alibabacloud&logoColor=white"></a>
@@ -576,5 +576,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.400.0 — Apollo · Young</sub>
+  <sub>v0.400.1 — Apollo · Young</sub>
 </p>

@@ -454,3 +454,54 @@ list JSON`, `AI agents`, `pagination`.
   accepts HTML/plain text, JSON/XML families, YAML, TOML, NDJSON, JSON-seq,
   CSV, Markdown and SQL, while rejecting non-text MIME and recognizable
   PDF/ZIP/GZIP/7z/RAR/WASM/OLE/ELF signatures.
+
+## 2026-07-18 v0.400.1 tarball parity closure
+
+- A clean tarball install disproved repository/package parity: the built tree
+  listed 41 generic retrieval sources, while the installed package listed 40
+  and omitted `pubmed.search`. Local development had loaded
+  `@xmldom/xmldom` only because VitePress tooling brought it in through
+  `speech-rule-engine`; the production manifest did not declare the parser
+  imported by PubMed and bioRxiv.
+- `@xmldom/xmldom@^0.9.10` is now a direct production dependency. Its existing
+  lock entry is production-marked while the intentionally retained npm 10
+  DocSearch peer closure remains unchanged. Stale root optional dependency
+  declarations for the unpublished Windows process-owner packages were removed;
+  the binaries remain release-built and bundled artifacts, not npm dependencies.
+- `release-truth-check` now parses non-test `src/**/*.ts(x)` with a TypeScript
+  program, distinguishes type-only imports/exports, and resolves static import,
+  dynamic import, CommonJS/import-equals, `require.resolve`, createRequire
+  aliases, and destructured resolvers by symbol. Lexically shadowed functions
+  are excluded; a fixed-point pass covers late aliases and assignment, while
+  mutable loader reassignment fails explicitly. It rejects undeclared literal
+  package loads or direct dependencies marked dev-only in the lock. A negative
+  experiment that removed the XML dependency failed with the exact PubMed and
+  bioRxiv import paths before the manifest was restored.
+- Independent pre-tag review found that the first checker draft missed
+  `require.resolve("tsx")` in the browser broker's source-mode fallback. The
+  scanner now models resolver and createRequire aliases, while broker launch
+  executes only a compiled installed/repository artifact and reports the exact
+  build command when source mode has no current artifact. This removes the
+  development transpiler from the production runtime path instead of
+  allowlisting it.
+- The same review found three release-truth precision defects: the root lock
+  still carried stale optional dependency declarations absent from the
+  manifest; the first scanner revision tracked identifier text across an
+  entire file instead of lexical symbols; and documentation presented the
+  static 1,817-command adapter catalog as the complete dynamic CLI surface. The
+  truth gate now compares all three root dependency maps and package identity
+  exactly, recognizes destructured resolvers without misclassifying an inner
+  shadow, and scopes generated English/Chinese and MCP registry counts to the
+  static adapter catalog.
+- The repaired clean package returned version `0.400.1`, discovered 41 generic
+  and 35 AI sources, registered `pubmed.search`, and completed a live one-row
+  PubMed query. Its compiled browser broker also spawned protocol v5 with zero
+  providers and no Chrome side effect. The final local tarball had 4,065 files,
+  packed size 3,368,015 bytes, unpacked size 16,802,694 bytes, SHA-1
+  `955bad17977b6de74da29f3ea226ea8afff02f09`, and integrity
+  `sha512-QdpeYKrmMY3rUOMN67TES94yumFyYz8XJzI7xJBIc1b/RvWH70abzyiPfYadpal15sVjGS7gO8W6oHpSo/9Slw==`.
+- A fresh complete release gate then passed 3,131 unit tests (4 skipped), 94
+  integration tests (16 platform-skipped), 6,528 adapter tests, 5 performance
+  tests (1 skipped), 23 targeted coverage behaviors at 100%, 994 adapter/schema
+  checks, production audit with zero vulnerabilities, strict release metadata,
+  public docs, and npm publish dry-run.

@@ -9,7 +9,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes across <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites and tools.
+Uni-CLI is the universal computer-control platform for agents. It turns websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, screenshots, accessibility trees, and app-specific wrappers into governed operations. One path accepts intent, selects an action substrate, executes with policy, returns evidence, diagnoses failure, and repairs or reroutes. Its static adapter catalog covers <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join at runtime.
 
 ## How is Uni-CLI different from a browser automation library?
 
@@ -33,7 +33,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.400.0 ships a generated operation catalog with <span><!-- STATS:site_count -->320<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1798<!-- /STATS --></span> commands, <span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> adapters, <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native), and <span><!-- STATS:test_count -->9459<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
+v0.400.1 ships a generated static adapter catalog with <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9659<!-- /STATS --></span> tests. The headline is not the count; it is the shared control contract: intent, policy, action substrate, evidence, delivery, repair, and the same AgentEnvelope across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 

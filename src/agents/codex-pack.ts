@@ -1,9 +1,9 @@
 /**
  * @owner Uni-CLI Agents
- * @does Builds the compact Codex install pack from CommandContract metadata.
+ * @does Builds the compact Codex install pack from CommandContract metadata with explicitly static adapter-catalog counts.
  * @needs Adapter registry snapshots and command-contract projection.
  * @feeds `unicli agents generate --for codex`, docs, and F4 release gates.
- * @breaks Codex onboarding when it enumerates the catalog or exposes expanded MCP by default.
+ * @breaks Codex onboarding when it enumerates the catalog, presents static counts as the dynamic runtime surface, or exposes expanded MCP by default.
  */
 
 import { buildCommandContract } from "../core/command-contract.js";
@@ -189,8 +189,9 @@ export function formatCodexPack(pack: CodexPack): string {
     "## Contract",
     "",
     `- Source: CommandContract (${pack.contract_summary.schema_version})`,
-    `- Sites: ${pack.counts.sites}`,
-    `- Commands: ${pack.counts.commands}`,
+    `- Static adapter sites: ${pack.counts.sites}`,
+    `- Registered adapter commands: ${pack.counts.commands}`,
+    "- Runtime scope: fixed core and host-discovered commands are additional",
     `- Read-only: ${pack.contract_summary.read_only}`,
     `- Write/destructive: ${pack.contract_summary.write_or_destructive}`,
     `- Auth required: ${pack.contract_summary.auth_required}`,

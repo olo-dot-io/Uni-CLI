@@ -11,7 +11,7 @@
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。当前覆盖 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令。
+Uni-CLI 是 AI Agent 控制 computer 的通用平台。它把网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、截图、无障碍树和 App wrapper 收进可治理的操作层；一条路径接受意图、选择行动 substrate、按策略执行、返回证据、诊断失败，并修复或换路。静态 adapter 目录当前覆盖 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点与 <span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令；固定 core 与主机动态发现表面在运行时加入。
 
 ## 和浏览器自动化库有什么区别？
 
@@ -35,7 +35,7 @@ computer-use sandbox 给 Agent 一个带屏幕、鼠标、键盘和 benchmark ho
 
 ## 一共有多少站点和命令？
 
-v0.400.0 生成操作目录包含 <span><!-- STATS:site_count -->320<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1798<!-- /STATS --></span> 条命令、<span><!-- STATS:adapter_count_total -->1225<!-- /STATS --></span> 个适配器、<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）、<span><!-- STATS:test_count -->9459<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
+v0.400.1 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9659<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一套共享控制合同：意图、策略、行动 substrate、证据、交付、修复，以及跨 web、browser、desktop、本地工具、文件和协议的同一种 AgentEnvelope。
 
 ## 能下载论文并读取本地 PDF 吗？
 

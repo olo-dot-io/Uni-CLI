@@ -5,7 +5,7 @@ description: >
   failed `unicli <site> <command>` envelope, a quarantined adapter, or an
   explicit adapter-repair request. Classifies non-source failures, edits only
   the reported adapter path, and uses the original command as a bounded oracle.
-version: 0.400.0
+version: 0.400.1
 category: maintenance
 depends-on:
   - unicli

@@ -1,24 +1,24 @@
 {
-  "version": "0.400.0",
+  "version": "0.400.1",
   "codename": "Apollo · Young",
-  "date": "2026-07-17",
-  "status": "published",
+  "date": "2026-07-18",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04000--2026-07-17--apollo--young",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04001--2026-07-18--apollo--young",
   "highlights": {
     "root": [
-      "Uni-CLI 0.400.0 delivers one shared, background-first Browser Runtime Broker for managed, existing-Chrome, and remote providers with explicit Agent session and target ownership.",
-      "The generic computer-use profile exposes 16 direct browser tools alongside 16 computer controls for state, screenshots, navigation, trusted refs, input, tabs, dialogs, downloads, search, and foreground presence.",
-      "Bounded open-tab and history search runs without debugger attachment, focus changes, navigation, target claims, or persistent page-content indexing; sensitive and Agent-owned visual content stays excluded.",
-      "Published from annotated tag v0.400.0 through GitHub Actions run 29568815086 using npm Trusted Publishers with verified SLSA provenance and matching x64/arm64 Windows Release assets."
+      "Uni-CLI 0.400.1 adds a domain-neutral federated retrieval kernel with 41 registered read-only evidence sources, normalized provenance, exact recovery actions, and structured partial failures.",
+      "The AI overlay exposes search, pulse, read, sources, landscape, and profiles across 35 executable sources, 102 maintained primary targets, and 10 practitioner roles covering models, systems, hardware, world models, embodied AI, agents, safety, and research.",
+      "EvidenceDocument v1 provides canonical URLs, structured headings and links, true truncation metadata, retrieval timestamps, and returned-content hashes for HTML, text, structured data, PDF text, and GitHub threads.",
+      "Bounded concurrency, strict freshness semantics, explicit authentication, redirect/cache validation, binary and challenge rejection, and end-to-end cancellation keep live retrieval honest without coupling domain logic to transports."
     ],
     "zh": [
-      "Uni-CLI 0.400.0 交付一个共享、后台优先的 Browser Runtime Broker，统一托管 managed、现有 Chrome 与 remote provider，并显式隔离 Agent session 与 target ownership。",
-      "通用 computer-use profile 现提供 16 个直接浏览器工具与 16 个电脑控制工具，覆盖 state、screenshot、navigation、可信 ref、input、tab、dialog、download、search 与前台 presence。",
-      "有界的打开标签页与历史搜索不会附加 debugger、改变焦点、导航、认领 target 或持久索引页面内容；敏感内容和 Agent 自有视觉元素不会进入感知结果。",
-      "已从 annotated tag v0.400.0 通过 GitHub Actions run 29568815086 发布；npm Trusted Publishers 的 SLSA provenance 已验证，GitHub Release 的 x64/arm64 Windows 资产与 npm 包逐字节一致。"
+      "Uni-CLI 0.400.1 新增领域无关的联邦检索内核：统一发现 41 个只读证据源，保留规范化来源、精确恢复动作与结构化局部失败。",
+      "AI overlay 提供 search、pulse、read、sources、landscape、profiles，覆盖 35 个可执行来源、102 个维护的一手目标与 10 类从业者角色，包括模型、系统、硬件、世界模型、具身智能、Agent、安全和研究。",
+      "EvidenceDocument v1 为 HTML、文本、结构化数据、PDF 文本与 GitHub thread 统一提供 canonical URL、标题层级、链接、真实截断信息、获取时间和返回内容哈希。",
+      "有界并发、严格时效语义、显式认证、redirect/cache 校验、二进制与 challenge 拒绝以及端到端取消，使实时检索保持真实，同时避免领域逻辑与 transport 耦合。"
     ]
   }
 }

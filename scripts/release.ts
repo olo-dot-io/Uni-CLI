@@ -205,16 +205,14 @@ const rules: Rule[] = [
   },
   {
     file: "docs/faq.md",
-    pattern:
-      /^v[\d.]+ (?:covers|ships a generated (?:operation )?catalog with)(?=\s+<span><!--\s*STATS:site_count\s*-->)/m,
-    replacement: `v${version} ships a generated operation catalog with`,
+    pattern: /^v[\d.]+(?=[^\n]*<!--\s*STATS:site_count\s*-->)/m,
+    replacement: `v${version}`,
     description: "docs/faq.md package version pin",
   },
   {
     file: "docs/zh/faq.md",
-    pattern:
-      /^v[\d.]+ (?:覆盖|生成(?:操作)?目录包含)(?=\s+<span><!--\s*STATS:site_count\s*-->)/m,
-    replacement: `v${version} 生成操作目录包含`,
+    pattern: /^v[\d.]+(?=[^\n]*<!--\s*STATS:site_count\s*-->)/m,
+    replacement: `v${version}`,
     description: "docs/zh/faq.md package version pin",
   },
   {

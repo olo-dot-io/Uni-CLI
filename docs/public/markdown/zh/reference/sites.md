@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：323 个站点，1813 条命令。
+这个目录来自适配器 manifest：324 个站点，1817 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -114,7 +114,7 @@
 | freepatentsonline-web | web-api | 2 | 否 | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | 是 | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | 是 | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
-| gh | bridge | 9 | 是 | unicli gh discussions<br>unicli gh issue<br>unicli gh pr |
+| gh | bridge | 11 | 是 | unicli gh discussions<br>unicli gh issue-thread<br>unicli gh issue |
 | gimp | desktop | 12 | 否 | unicli gimp adjust<br>unicli gimp batch<br>unicli gimp convert |
 | gitee | web-api | 4 | 否 | unicli gitee repos<br>unicli gitee search<br>unicli gitee trending |
 | github-trending | web-api | 3 | 否 | unicli github-trending daily<br>unicli github-trending developers<br>unicli github-trending weekly |
@@ -244,6 +244,7 @@
 | renderdoc | desktop | 2 | 否 | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | 是 | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
 | rest-countries | web-api | 2 | 否 | unicli rest-countries country<br>unicli rest-countries region |
+| retrieval | web-api | 2 | 否 | unicli retrieval search<br>unicli retrieval sources |
 | reuters | web-api | 5 | 否 | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rfc | web-api | 1 | 否 | unicli rfc rfc |
 | rubygems | web-api | 3 | 否 | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |

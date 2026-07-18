@@ -4,17 +4,25 @@ import type { ChildProcess } from "node:child_process";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const spawnMock = vi.hoisted(() => vi.fn());
+const existsSyncMock = vi.hoisted(() => vi.fn(() => true));
 
 // REASON: process creation is the external boundary; the real launch-attempt state machine and process-tree retirement code remain under test.
 vi.mock("node:child_process", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:child_process")>()),
   spawn: spawnMock,
 }));
+// REASON: build artifact discovery is the filesystem boundary; path selection and unsupported-state behavior remain under test.
+vi.mock("node:fs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:fs")>()),
+  existsSync: existsSyncMock,
+}));
 
 describe("browser broker launch lifecycle", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     spawnMock.mockReset();
+    existsSyncMock.mockReset();
+    existsSyncMock.mockReturnValue(true);
   });
 
   it("retires a live never-ready child before a later caller spawns again", async () => {
@@ -31,7 +39,29 @@ describe("browser broker launch lifecycle", () => {
     ).rejects.toMatchObject({ code: "browser_broker_start_failed" });
 
     expect(spawnMock).toHaveBeenCalledTimes(2);
+    for (const call of spawnMock.mock.calls) {
+      expect(call[0]).toBe(process.execPath);
+      expect(call[1]).toEqual([
+        expect.stringMatching(/runtime-broker-main\.js$/),
+      ]);
+      expect(JSON.stringify(call[1])).not.toContain("tsx");
+    }
     expect(kill).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the exact source-mode recovery when no compiled broker exists", async () => {
+    existsSyncMock.mockReturnValue(false);
+    const { ensureBrowserRuntimeBroker } =
+      await import("../../src/browser/runtime-launch.js");
+    const runtimeRoot = `/tmp/unicli-launch-missing-build-${String(process.pid)}-${String(Date.now())}`;
+
+    await expect(
+      ensureBrowserRuntimeBroker({ runtimeRoot, startupTimeoutMs: 1 }),
+    ).rejects.toMatchObject({
+      code: "browser_broker_start_failed",
+      message: expect.stringContaining("Run `npm run build`"),
+    });
+    expect(spawnMock).not.toHaveBeenCalled();
   });
 
   it("does not let a short-budget waiter retire a launch shared by a longer waiter", async () => {

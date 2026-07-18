@@ -1,5 +1,78 @@
 # Changelog
 
+## [0.400.1] — 2026-07-18 — Apollo · Young
+
+> Local release candidate. Public npm and GitHub publication are recorded only
+> after the annotated tag workflow and clean-install probes succeed.
+
+### Added
+
+- Domain-neutral `retrieval search|sources` discovers 41 registered, read-only
+  evidence sources from declarative adapter metadata, executes bounded
+  federated queries, and returns normalized candidates with source identity,
+  raw provider records, exact retry commands, and structured partial failures.
+- `ai search|pulse|read|sources|landscape|profiles` adds a role-aware overlay
+  with 35 executable source rows, 102 maintained first-party targets, and 10
+  practitioner profiles spanning foundation-model work, training, inference,
+  world models, embodied AI, hardware, agents, evaluation/safety, and research.
+- `evidence-document.v1` gives HTML, text, JSON/XML, PDF text, and GitHub threads
+  one provenance-bearing document contract with canonical URLs, headings,
+  links, true truncation metadata, retrieval time, and a hash of returned
+  content. ModelScope, OpenCSG, Bluesky, Hugging Face community, and structured
+  GitHub issue/PR/discussion surfaces now participate through owned adapters.
+
+### Changed
+
+- Generic source discovery, execution, fusion, and reading now live below AI
+  as a reusable retrieval kernel. AI-specific vendor identity, official-domain
+  attribution, role vocabulary, and pulse selection remain a data overlay, so
+  future technical, medical, standards, security, or other domains do not need
+  to duplicate transport logic.
+- Search and reading use bounded concurrency, per-source deadlines, explicit
+  timestamp provenance, strict `--since` semantics, opt-in authenticated
+  sources, and transport-identical CLI/MCP contracts instead of silent
+  fallbacks or fabricated freshness.
+
+### Fixed
+
+- Redirect validation, cache identity, download cleanup, cancellation, and
+  authentication propagation now remain correct across HTTP, TypeScript
+  adapters, PDF extraction, and child processes. Binary payloads and challenge
+  pages fail closed rather than becoming successful Markdown.
+- Exact NVIDIA, AMD, Ascend, T-Head, Kunlunxin, and Cambricon queries preserve
+  catalog-owned repositories and avoid unrelated hardware-domain fallback;
+  hosted artifacts remain distinct from their hosting platform, while GitHub
+  issue and pull-request reads retain comments and review state.
+- Clean production installs now declare the XML DOM parser used by PubMed and
+  bioRxiv instead of inheriting it from documentation tooling. The release
+  truth gate rejects undeclared literal package loads across import/export,
+  dynamic import, require, require.resolve, and createRequire aliases, plus
+  lockfile entries that would be installed as development-only dependencies.
+  It also requires exact package identity and dependency-map parity between the
+  publication manifest and root lock entry.
+- Browser broker auto-start now always executes the compiled broker artifact
+  from the installed package or repository build. Source-mode commands fail
+  with an exact `npm run build` recovery when that artifact is absent instead
+  of depending on the development-only `tsx` transpiler at runtime.
+
+### Verification
+
+- The complete local release gate passed 3,131 unit tests (4 skipped), 94
+  integration tests (16 platform-skipped), 6,528 adapter tests, 5 performance
+  tests (1 skipped), and 23 targeted coverage behaviors at 100%.
+- All 994 YAML adapters passed adapter and schema-v2 lint; conformance reported
+  952 passed, 0 failed, and 42 explicitly quarantined. Stats, release truth,
+  exports, public-boundary, formatting, type, lint, build, and strict release
+  metadata checks also passed.
+- Three bounded Agent consumer rehearsals exercised 37 NVLink/NVSwitch,
+  domestic-accelerator, and deep-algorithm tasks. The implementation repaired
+  every resulting P1 boundary finding; the final independent rereview reported
+  no remaining P0/P1 finding for this retrieval scope.
+- A clean tarball installation returned version `0.400.1`, discovered all 41
+  generic and 35 AI sources, registered `pubmed.search`, and completed a live
+  one-result PubMed query through the installed package. Its broker auto-start
+  used the compiled artifact without starting a browser provider or Chrome.
+
 ## [0.400.0] — 2026-07-17 — Apollo · Young
 
 > Published from annotated tag `v0.400.0` at commit `3e4d555c` through GitHub

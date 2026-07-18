@@ -1,7 +1,7 @@
 {
-  "generated": "2026-07-17T13:59:47.721Z",
-  "total_sites": 323,
-  "total_commands": 1813,
+  "generated": "2026-07-18T05:53:32.515Z",
+  "total_sites": 324,
+  "total_commands": 1817,
   "sites": [
     {
       "site": "12306",
@@ -3873,7 +3873,7 @@
       "type": "bridge",
       "auth": true,
       "strategy": "public",
-      "command_count": 9,
+      "command_count": 11,
       "commands": [
         {
           "name": "discussions",
@@ -3881,9 +3881,19 @@
           "command": "unicli gh discussions"
         },
         {
+          "name": "issue-thread",
+          "description": "Read one GitHub issue with its complete structured comment thread",
+          "command": "unicli gh issue-thread"
+        },
+        {
           "name": "issue",
           "description": "List GitHub issues for a repository",
           "command": "unicli gh issue"
+        },
+        {
+          "name": "pr-thread",
+          "description": "Read one GitHub pull request with comments, reviews, files, commits, checks, and merge state",
+          "command": "unicli gh pr-thread"
         },
         {
           "name": "pr",
@@ -8364,6 +8374,25 @@
           "name": "region",
           "description": "List countries in a REST Countries region",
           "command": "unicli rest-countries region"
+        }
+      ]
+    },
+    {
+      "site": "retrieval",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Federate current records across registered retrieval providers without a domain-specific router",
+          "command": "unicli retrieval search"
+        },
+        {
+          "name": "sources",
+          "description": "List registered retrieval providers and their semantic argument mappings",
+          "command": "unicli retrieval sources"
         }
       ]
     },

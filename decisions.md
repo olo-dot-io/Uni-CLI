@@ -77,3 +77,39 @@ boundaries. Add only missing structured GitHub thread commands, two missing
 domestic vendor identities, and semantic discovery vocabulary. Do not add one
 scraper per product or silently send protected pages through third-party
 readers.
+
+## 2026-07-18 — Release package dependency closure
+
+**DECISION**
+
+Treat a clean packed installation as a distinct release boundary rather than
+assuming a green repository build proves npm behavior. Every external runtime
+package loaded through a literal non-test `src/` module specifier must be
+declared in production dependencies and represented by a non-dev lock entry.
+The release truth gate enforces this contract from TypeScript syntax instead
+of maintaining another handwritten dependency list.
+
+**SCOPE**
+
+- Promote the existing XML DOM parser used by PubMed and bioRxiv from an
+  accidental documentation-tool transitive to a direct runtime dependency.
+- Parse import/export, import-equals, dynamic import, CommonJS require,
+  require.resolve, and createRequire-alias syntax through TypeScript symbols,
+  including late aliases, assignment, and destructured resolvers while
+  excluding lexical shadows, type-only declarations, Node built-ins, relative
+  modules, and package self-imports. Mutable loader-to-unrelated-value
+  reassignment fails as an explicit unsupported state.
+- Launch the browser broker only from a compiled installed or repository build
+  artifact. A missing source-mode build is an explicit unsupported state with
+  an exact recovery command, not a reason to ship the development transpiler.
+- Preserve the npm 10 optional peer closure and the workflow-built Windows
+  process-owner artifacts, while rejecting stale root dependency maps; do not
+  regenerate the lock with npm 11 pruning.
+
+**BEST PATH**
+
+Keep dependency truth in `package.json`, lock install identity in
+`package-lock.json`, and executable enforcement in the existing
+`release-truth-check`. Validate with a deliberately missing manifest entry and
+a clean production tarball install. Do not make the adapter loader silently
+accept missing imports or hard-code one PubMed exception.
