@@ -15,12 +15,12 @@ software substrates, inspect results, and repair supported failures.
 The current generated static adapter catalog is the source of truth for:
 **<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites**,
 **<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter commands**,
-**<span><!-- STATS:adapter_count_total -->1238<!-- /STATS --></span> adapters**,
+**<span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> adapters**,
 **<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions**
 (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 transport-native),
-and **<span><!-- STATS:test_count -->9660<!-- /STATS --></span> tests** in v0.400.1.
+and **<span><!-- STATS:test_count -->9816<!-- /STATS --></span> tests** in v0.400.2.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 

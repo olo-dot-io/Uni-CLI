@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9791<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9816<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -580,5 +580,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v0.400.1 — Apollo · Young</sub>
+  <sub>v0.400.2 — Apollo · Duke</sub>
 </p>

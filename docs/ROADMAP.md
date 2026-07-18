@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v0.400.1 — Apollo · Young. Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v0.400.2 — Apollo · Duke. Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks engineering direction for the open Agent-Computer Interface
 runtime for real software. Historical release notes live in `CHANGELOG.md`;

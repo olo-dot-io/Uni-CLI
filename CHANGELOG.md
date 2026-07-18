@@ -1,5 +1,76 @@
 # Changelog
 
+## [0.400.2] — 2026-07-18 — Apollo · Duke
+
+### Patch Changes
+
+- 481b643: Position Uni-CLI as the open Agent-Computer Interface runtime for real software.
+  Align English, Chinese, agent-readable, package, and executable architecture
+  surfaces around the current discover-select-govern-act-observe-repair model,
+  while documenting that automatic substrate arbitration, universal evidence,
+  and fixed-core protocol parity remain roadmap work.
+
+  Make MCP discovery honest about that boundary: list/search results now identify
+  adapter versus fixed-core sources and whether `unicli_run` supports them;
+  fixed-core run attempts return `unsupported_surface` with the native CLI route.
+
+- 3cfccd1: Replace the relevance-blind arXiv YAML path with one cancellable TypeScript
+  search boundary that compiles natural multi-term and disjunctive queries into
+  explicit arXiv syntax, over-fetches bounded candidates, filters for meaningful
+  query overlap before limiting, and preserves caller-authored field syntax.
+
+  Apply the same domain-neutral relevance analysis to AI source fusion, keep
+  origin publishers distinct from authors, artifact hosts, venues, and community
+  platforms, and retain concrete first-party recovery when indexes are empty.
+  GitHub issue and pull-request thread adapters now require the exact URL form
+  accepted by the underlying `gh` CLI, while HTTP failures preserve status-specific
+  authentication, rate-limit, missing-source, and upstream recovery guidance.
+
+- f391bf0: Replace the CLI-only usage counter with a bounded, owner-only local event log
+  covering CLI, MCP, ACP, bench, and hub adapter calls. Diagnostic events now
+  carry version plus stabilized clean/dirty source identity, trace, transport,
+  surface, parent/child operation role, outcome, latency, result size, and typed
+  failure metadata while excluding arguments, content, URLs, credentials, raw
+  errors, and adapter filesystem paths. Complete lock owners are durably
+  published, dead owners and abandoned candidates are reclaimed by exact inode,
+  dual operation/release failures remain visible, and bounded readers reject
+  symlinks, identity changes, and oversized files before loading bytes.
+
+  Make `unicli usage report` combine legacy and current evidence, distinguish
+  transports, reject invalid windows and limits, and surface corrupt or
+  unreadable JSONL through structured error envelopes instead of silently
+  dropping records. CLI and MCP request boundaries sanitize unknown user tokens,
+  correlate direct kernel work without double counting, and preserve allowlisted
+  tool error types.
+
+  Normalize Commander parser failures through the same structured envelope and
+  local-event boundary: unknown options and missing values now use stable
+  `invalid_input` diagnostics without echoing raw user tokens.
+
+- 3cfccd1: Bind compute operations to their original app, CDP endpoint, or ref transport
+  instead of falling through to an unrelated browser or screen. Forward target
+  arguments through CDP, UIA, and AT-SPI snapshots, keep incompatible persisted
+  CDP sessions from replacing explicit apps, bind macOS/Windows/Linux native refs
+  to exact window IDs and traversal paths, publish empty target tombstones so old
+  refs cannot revive, and reject unresolved or legacy refs.
+
+  Make `compute wait` poll fresh target snapshots for ref, text, and
+  appear/disappear/focused/enabled/checked state conditions. Unmet conditions now time out, ambiguous unscoped waits return
+  `invalid_input`, and duration-only Visual/Subprocess waits can no longer report
+  false condition success.
+
+  Serialize compute-ref shard readers with publishers so retention cannot remove
+  an enumerated record mid-read, and report live lock contention as a typed,
+  retryable temporary failure. Combined snapshot-and-screenshot capture now derives
+  one exact window identity from ref provenance, binds every replay step to it,
+  and fails closed if the window cannot be proved or changes mid-capture.
+
+  Reject partially parsed numeric CLI options, publish format-sensitive screenshot
+  files through extension-preserving atomic staging, and surface transport cleanup
+  failures instead of printing a false successful result. Align CLI, MCP contract,
+  help, and operator docs for window targeting, click background mode, observe
+  app/top-k, assert visibility, and exact CDP target IDs.
+
 ## [0.400.1] — 2026-07-18 — Apollo · Young
 
 > Published from annotated tag `v0.400.1` at commit `5a1d0b78` through GitHub

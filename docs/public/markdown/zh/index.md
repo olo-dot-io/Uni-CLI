@@ -50,7 +50,7 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 - 静态 adapter 站点：324
 - 已注册 adapter 操作：1817
 - Built-in action：105（50 registered + 55 transport-native）
-- 测试：9660
+- 测试：9816
 
 站点与操作数字来自静态 adapter catalog；固定 core 与主机动态发现命令在运行时单独加入。operation、adapter、built-in action、测试和 substrate 都由本地构建流程计数。
 
@@ -63,7 +63,7 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 
 ## 当前版本
 
-当前 latest：v0.400.1 · Apollo · Young。
+本地版本：v0.400.2 · Apollo · Duke。
 
 ## Agent 索引
 

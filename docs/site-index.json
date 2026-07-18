@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-18T05:53:32.515Z",
+  "generated": "2026-07-18T19:11:06.905Z",
   "total_sites": 324,
   "total_commands": 1817,
   "sites": [
@@ -537,14 +537,14 @@
           "command": "unicli arxiv paper"
         },
         {
-          "name": "search",
-          "description": "Search arXiv papers",
-          "command": "unicli arxiv search"
-        },
-        {
           "name": "trending",
           "description": "Recent arXiv papers by category (newest submissions)",
           "command": "unicli arxiv trending"
+        },
+        {
+          "name": "search",
+          "description": "Search arXiv papers with precise natural or fielded queries",
+          "command": "unicli arxiv search"
         },
         {
           "name": "author",

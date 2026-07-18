@@ -29,7 +29,7 @@
 | antigravity | web-api | 16 | 否 | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
 | apple-notes | desktop | 3 | 否 | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | 否 | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
-| arxiv | web-api | 7 | 否 | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv search |
+| arxiv | web-api | 7 | 否 | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv trending |
 | audacity | desktop | 8 | 否 | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
 | autoagent | bridge | 1 | 否 | unicli autoagent eval-run |
 | aws | bridge | 1 | 否 | unicli aws s3-ls |

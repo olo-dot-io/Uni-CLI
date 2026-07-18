@@ -37,7 +37,7 @@ CLI 是 Uni-CLI 原生、可检查的完整 command surface：不用常驻 serve
 
 ## 一共有多少站点和命令？
 
-v0.400.1 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9791<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一个 Agent-Computer Interface 产品边界：发现、选择、治理、行动、观察和修复横跨 web、browser、desktop、本地工具、文件与协议的 operation。
+v0.400.2 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9816<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一个 Agent-Computer Interface 产品边界：发现、选择、治理、行动、观察和修复横跨 web、browser、desktop、本地工具、文件与协议的 operation。
 
 ## 能下载论文并读取本地 PDF 吗？
 

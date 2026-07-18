@@ -32,7 +32,7 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | antigravity | web-api | 16 | no | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
 | apple-notes | desktop | 3 | no | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | no | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
-| arxiv | web-api | 7 | no | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv search |
+| arxiv | web-api | 7 | no | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv trending |
 | audacity | desktop | 8 | no | unicli audacity convert<br>unicli audacity effects<br>unicli audacity info |
 | autoagent | bridge | 1 | no | unicli autoagent eval-run |
 | aws | bridge | 1 | no | unicli aws s3-ls |

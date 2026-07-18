@@ -1,24 +1,24 @@
 {
-  "version": "0.400.1",
-  "codename": "Apollo · Young",
+  "version": "0.400.2",
+  "codename": "Apollo · Duke",
   "date": "2026-07-18",
-  "status": "published",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04001--2026-07-18--apollo--young",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.2",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04002--2026-07-18--apollo--duke",
   "highlights": {
     "root": [
-      "Uni-CLI 0.400.1 adds a domain-neutral federated retrieval kernel with 41 registered read-only evidence sources, normalized provenance, exact recovery actions, and structured partial failures.",
-      "The AI overlay exposes search, pulse, read, sources, landscape, and profiles across 35 executable sources, 102 maintained primary targets, and 10 practitioner roles covering models, systems, hardware, world models, embodied AI, agents, safety, and research.",
-      "EvidenceDocument v1 provides canonical URLs, structured headings and links, true truncation metadata, retrieval timestamps, and returned-content hashes for HTML, text, structured data, PDF text, and GitHub threads.",
-      "Bounded concurrency, strict freshness semantics, explicit authentication, redirect/cache validation, binary and challenge rejection, and end-to-end cancellation keep live retrieval honest without coupling domain logic to transports."
+      "Uni-CLI 0.400.2 defines the open Agent-Computer Interface runtime for discovering, selecting, governing, acting through, observing, and repairing operations across real software, while making fixed-core MCP routing limits explicit.",
+      "Deep retrieval now compiles natural arXiv queries into explicit syntax, filters bounded candidates for meaningful relevance, preserves publisher provenance, validates exact GitHub issue and pull-request URLs, and returns status-specific recovery guidance.",
+      "A bounded privacy-safe local event log now correlates CLI, MCP, ACP, bench, and hub operations with source identity and typed outcomes; recoverable locks, strict readers, and sanitized Commander errors keep diagnostics reliable without retaining raw user input.",
+      "Compute actions, waits, refs, sessions, and combined captures now bind to one exact app, renderer, transport, and native window identity; fresh-condition polling, target tombstones, atomic artifacts, and closed-failure capture prevent cross-target drift and false success."
     ],
     "zh": [
-      "Uni-CLI 0.400.1 新增领域无关的联邦检索内核：统一发现 41 个只读证据源，保留规范化来源、精确恢复动作与结构化局部失败。",
-      "AI overlay 提供 search、pulse、read、sources、landscape、profiles，覆盖 35 个可执行来源、102 个维护的一手目标与 10 类从业者角色，包括模型、系统、硬件、世界模型、具身智能、Agent、安全和研究。",
-      "EvidenceDocument v1 为 HTML、文本、结构化数据、PDF 文本与 GitHub thread 统一提供 canonical URL、标题层级、链接、真实截断信息、获取时间和返回内容哈希。",
-      "有界并发、严格时效语义、显式认证、redirect/cache 校验、二进制与 challenge 拒绝以及端到端取消，使实时检索保持真实，同时避免领域逻辑与 transport 耦合。"
+      "Uni-CLI 0.400.2 将项目明确为开放的 Agent-Computer Interface runtime：统一发现、选择、治理、执行、观察和修复真实软件操作，并如实暴露 fixed-core MCP 路由边界。",
+      "深度检索现在会把自然语言 arXiv 查询编译为显式语法，对有界候选执行实质相关性过滤，保留 publisher 来源，校验精确 GitHub issue/PR URL，并返回按状态区分的恢复动作。",
+      "新的有界隐私安全本地事件日志统一关联 CLI、MCP、ACP、bench 与 hub 操作，记录 source identity 和类型化结果；可恢复锁、严格读取器与脱敏 Commander 错误确保诊断可靠且不保留原始用户输入。",
+      "Compute action、wait、ref、session 与组合 capture 现在绑定同一 app、renderer、transport 和精确原生窗口；fresh 条件轮询、target tombstone、原子 artifact 与失败关闭 capture 消除跨目标漂移和假成功。"
     ]
   }
 }

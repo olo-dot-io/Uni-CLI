@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.400.1 — Apollo · Young. 静态 adapter 目录：<!-- STATS:site_count -->324<!-- /STATS --> 个站点、<!-- STATS:command_count -->1817<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
+> Current: v0.400.2 — Apollo · Duke. 静态 adapter 目录：<!-- STATS:site_count -->324<!-- /STATS --> 个站点、<!-- STATS:command_count -->1817<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
 路线图按“面向真实软件的 Agent-Computer Interface 运行时”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 
