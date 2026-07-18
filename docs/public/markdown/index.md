@@ -63,7 +63,7 @@ Site and operation totals describe the static adapter catalog; fixed core and ho
 
 ## Current Version
 
-Local release: v0.400.2 · Apollo · Duke.
+Latest: v0.400.2 · Apollo · Duke.
 
 ## Agent Index
 

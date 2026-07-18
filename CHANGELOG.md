@@ -2,6 +2,10 @@
 
 ## [0.400.2] — 2026-07-18 — Apollo · Duke
 
+> Published from annotated tag `v0.400.2` at commit `785c3ef6` through GitHub
+> Actions run `29658936515`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+
 ### Patch Changes
 
 - 481b643: Position Uni-CLI as the open Agent-Computer Interface runtime for real software.

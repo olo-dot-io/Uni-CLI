@@ -63,7 +63,7 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 
 ## 当前版本
 
-本地版本：v0.400.2 · Apollo · Duke。
+当前 latest：v0.400.2 · Apollo · Duke。
 
 ## Agent 索引
 

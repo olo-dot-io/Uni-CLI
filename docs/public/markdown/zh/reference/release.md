@@ -47,28 +47,25 @@ npm run release:check
 ## 历史发布审计
 
 当前公开 git/tag 历史从 2026 年的 `0.200.x` 线开始。当前版本
-`0.400.1 — Apollo · Young` 已经从下述精确的 annotated tag 发布到 npm 与
+`0.400.2 — Apollo · Duke` 已经从下述精确的 annotated tag 发布到 npm 与
 GitHub。
 
 交付事实：
 
-- 发布后，npm registry 上 `@zenalexa/unicli@latest` 是 `0.400.1`；
-- annotated tag `v0.400.1` 指向 main commit
-  `5a1d0b782ef0dfd1af0f977d98b43c7293ab4f45`；
-- main CI run `29635957077` 通过 Linux、macOS、Windows、Node 22/24 与 Rust
-  sidecar matrix；tag workflow `29636301437` 随后重跑完整 release gate，并通过
-  npm Trusted Publishers 发布，没有使用 fallback token；
-- npm 已记录 tagged workflow 的 SLSA v1 provenance；发布包包含 4,067 个文件，
-  SHA-1 是 `32316309b474269874950c74d8f33c12f2347eeb`，integrity 是
-  `sha512-8H6xxZ6ExeH0qoPAZNkn/95kWYEc4WnEQYLxtXDYFGsCi+vqxYTcdw7ijUW0u7IJ19321AMKvkKPSY+YVBHaBQ==`；
+- 发布后，npm registry 上 `@zenalexa/unicli@latest` 是 `0.400.2`；
+- annotated tag `v0.400.2` 指向 main commit
+  `785c3ef65c915a88ecd4d63f63d22f0c5f89f09b`；
+- tag workflow `29658936515` 重建两个 Windows sidecar，重跑完整 release gate，
+  并通过 npm Trusted Publishers 发布，没有使用 fallback token；
+- npm 已记录 tagged workflow 的 SLSA v1 provenance；发布包包含 4,110 个文件，
+  SHA-1 是 `8f96798991e883acf98d350fc54a1ba2da8c00fc`，integrity 是
+  `sha512-u0gM4CRwm18eaprAYdzZTX7qpVrQJJdfG5oRCG3Lo0wv8H+2w8g6LBPgtb3YRWvUZqAqpclyZBlvDM/oHqixdQ==`；
 - GitHub Release 中的 x64 与 arm64 Windows process-owner 可执行文件，与 npm
   tarball 内对应文件逐字节一致；
-- 全新 production-only registry 安装暴露 41 个通用 retrieval source 与 35 个 AI
-  source，完成一次实时 PubMed 查询，并从 compiled artifact 启动 broker protocol
-  v5，未启动 browser provider 或 Chrome；
-- 完整仓库门禁通过 3,131 个 unit（4 个跳过）、94 个 integration（16 个平台跳过）、
-  6,528 个 adapter、5 个 performance（1 个跳过）和 23 个 100% 定向 coverage
-  行为；production audit 是零漏洞，安装包的 registry signature 与 attestation 也已验证。
+- 两个本机 global prefix 的全新 registry 安装均可执行并报告 `0.400.2`；
+- 完整仓库门禁通过 3,293 个 unit（4 个跳过）、94 个 integration（16 个平台跳过）、
+  6,523 个 adapter、5 个 performance（1 个跳过）和 42 个 100% 定向 coverage
+  行为；production audit 是零漏洞。
 
 | Release line | 历史角色                                                                                               | 审计结论                                                                               |
 | ------------ | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
@@ -84,12 +81,16 @@ GitHub。
 | `0.227.1`    | 可移植 release truth、credential privacy、精确 repair 和跨平台 publication gate。                      | 宿主污染证据失败时，release candidate 必须停在发布之前。                               |
 | `0.400.0`    | 共享 browser/computer runtime，加上通用 Agent browser control、search 和 foreground presence。         | Runtime 复用必须伴随显式 target ownership、有界 perception 和真实的 no-focus 合同。    |
 | `0.400.1`    | 领域无关的联邦检索内核，加面向角色的 AI Infra 情报 overlay。                                           | 扩大覆盖时，source execution、evidence contract 与 domain attribution 必须保持解耦。   |
+| `0.400.2`    | Open Agent-Computer Interface 定位，加精确 retrieval、diagnostics 与 target-bound compute execution。  | 广泛控制必须保持 routing、evidence、operation identity 与 target ownership 精确。      |
 
 `0.400.0` 是 epoch 级 minor release：runtime ownership 和 Agent-facing browser
 protocol surface 发生实质变化，但 package name 与 command-envelope contract 保持稳定。
 
 `0.400.1` 是 patch release：它以向后兼容方式扩展稳定 package surface，并闭环
 production package parity、跨平台 broker launch 验证和 publication truth。
+
+`0.400.2` 是 patch release：它保持 package 与 envelope 合同不变，同时使 retrieval
+relevance、跨 transport diagnostics、MCP routing 边界和 compute target ownership 精确化。
 
 ## Changeset
 
@@ -120,7 +121,7 @@ npm run changeset
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
 
-`0.400.0` 的已发布 label 是 `Apollo · Young`。
+`0.400.2` 的已发布 label 是 `Apollo · Duke`。
 
 ## 发布步骤
 
@@ -144,11 +145,11 @@ Release 写成既成事实。只有两个公开端点都验证通过后，元数
 `published`：
 
 ```bash
-npx tsx scripts/release.ts --codename "Apollo · Young" --status published
+npx tsx scripts/release.ts --codename "Apollo · Duke" --status published
 ```
 
-`0.400.1` 的切换发生在 registry、provenance、Release asset、production-only
-安装、实时 PubMed、retrieval source 和浏览器保持 stopped 的 broker probe 全部通过之后。
+`0.400.2` 的切换发生在 registry、provenance、Release asset、完整 release gate、
+production-only 安装和精确 installed-version probe 全部通过之后。
 
 真实发布步骤：
 
