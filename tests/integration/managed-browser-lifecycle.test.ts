@@ -66,7 +66,7 @@ for argument in "$@"; do
 done
 test -n "$user_data_dir" || exit 64
 printf '%s' "$$" > ${JSON.stringify(pidPath)}
-printf '9\\n/devtools/browser/unavailable\\n' > "$user_data_dir/DevToolsActivePort"
+printf '0\\n/devtools/browser/invalid\\n' > "$user_data_dir/DevToolsActivePort"
 trap '' TERM
 while :; do sleep 1; done
 `,
@@ -76,7 +76,7 @@ while :; do sleep 1; done
       const provider = new ManagedBrowserProvider({
         runtimeRoot,
         browserPath,
-        startupTimeoutMs: 1_000,
+        startupTimeoutMs: 15_000,
       });
       providers.add(provider);
 
@@ -86,7 +86,7 @@ while :; do sleep 1; done
           isolated: true,
           ephemeral: true,
         }),
-      ).rejects.toMatchObject({ code: "browser_runtime_start_failed" });
+      ).rejects.toMatchObject({ code: "browser_runtime_identity_invalid" });
 
       expect(existsSync(pidPath)).toBe(true);
       const launchArgs = readFileSync(argsPath, "utf8").trim().split("\n");
@@ -96,7 +96,7 @@ while :; do sleep 1; done
       expect(findProfileDirectories(runtimeRoot)).toEqual([]);
       await expect(provider.close()).resolves.toBeUndefined();
     },
-    10_000,
+    20_000,
   );
 
   it.runIf(process.platform !== "win32")(

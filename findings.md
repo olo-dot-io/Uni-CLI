@@ -772,3 +772,10 @@ unchanged; the final re-review reported zero unresolved P0, P1, or P2 findings.
   now assert dispatched-outcome ambiguity, seed exact window-bound refs, and
   cover real/modeled filesystem failure boundaries without weakening the 100%
   ref/snapshot coverage threshold. Final `npm run verify` passed end to end.
+- A post-publication clean gate exposed a second scheduler-sensitive test
+  contract: managed-browser cleanup used a one-second unreachable-CDP timeout
+  as the fixture trigger, so a heavily loaded host could expire before the fake
+  browser wrote its PID. The fixture now publishes an invalid DevTools identity
+  after its PID, preserving the force-kill/profile-cleanup behavior while
+  removing deadline dependence. Twenty consecutive focused runs and the full
+  integration suite passed.
