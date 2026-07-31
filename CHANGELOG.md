@@ -2,6 +2,10 @@
 
 ## [1.0.1] — 2026-07-31 — Artemis · Glover
 
+> Published from annotated tag `v1.0.1` at commit `a317b32a` through GitHub
+> Actions run `30644287649`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+>
 > The `v1.0.0` candidate remained unpublished. Both release attempts stopped
 > before registry or GitHub Release creation when the shared runner falsified
 > the index-construction performance budget. Version 1.0.1 carries the measured
