@@ -1,6 +1,7 @@
 site: twitch
 name: top
 description: Top live streams on Twitch via GQL public endpoint
+operation_effect: read
 type: web-api
 domain: gql.twitch.tv
 strategy: public

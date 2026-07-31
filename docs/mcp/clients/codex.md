@@ -11,8 +11,10 @@ args = ["-y", "@zenalexa/unicli", "mcp", "serve", "--profile", "computer-use"]
 ```
 
 Existing prompts that call `computer-use.*` tools can keep the same prefix.
-Uni-CLI routes the calls through the cross-platform compute cascade: macOS AX,
-Windows UIA, Linux AT-SPI, CDP for Electron targets, then configured fallbacks.
+Uni-CLI plans one provider before execution: macOS AX, Windows UIA, or Linux
+AT-SPI for native refs; CDP for exact browser/Electron targets; subprocess for
+app launch; and visual coordinates only when the request explicitly selects
+`via: visual`.
 
 Append `--browser-provider chrome --browser-visibility background` to `args`
 for non-focusing Chrome work. `browser_prepare` creates an inactive owned tab;
@@ -23,7 +25,7 @@ cursor. The profile exposes 16 desktop and 16 direct browser tools.
 ## Permissions
 
 On macOS, grant Accessibility to Codex or to the terminal process that launches
-the MCP server. Grant Screen Recording for screenshot fallback. Windows and
+the MCP server. Grant Screen Recording for screenshot capture. Windows and
 Linux require the platform accessibility services used by UIA and AT-SPI.
 
 ## Verify

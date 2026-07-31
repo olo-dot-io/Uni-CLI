@@ -13,7 +13,14 @@
  * @since       2026-07-15
  */
 
-import { AdapterType, type TargetSurface } from "../types.js";
+import {
+  AdapterType,
+  type OperationEffect,
+  type OperationFamily,
+  type PipelineStep,
+  type TargetSurface,
+} from "../types.js";
+export type { OperationEffect } from "../types.js";
 import {
   buildCapabilityApprovalMemory,
   deriveCapabilityScope,
@@ -25,20 +32,6 @@ import type {
 
 export type PermissionProfile = "open" | "confirm" | "locked";
 export type OperationRisk = "none" | "low" | "medium" | "high";
-export type OperationEffect =
-  | "read"
-  | "download_file"
-  | "send_message"
-  | "publish_content"
-  | "account_state"
-  | "remote_transform"
-  | "remote_resource"
-  | "service_state"
-  | "local_app"
-  | "local_file"
-  | "destructive"
-  | "unknown_write";
-
 export interface OperationPolicyInput {
   site: string;
   command: string;
@@ -57,6 +50,9 @@ export interface OperationPolicyInput {
   approved?: boolean;
   approvalSource?: "none" | "invocation" | "env" | "memory";
   effect?: OperationEffect;
+  operationFamily?: OperationFamily;
+  method?: string;
+  pipeline?: PipelineStep[];
   argumentValues?: Record<string, unknown>;
 }
 
@@ -64,6 +60,8 @@ export interface OperationPolicy {
   profile: PermissionProfile;
   effect: OperationEffect;
   risk: OperationRisk;
+  effect_source: "declared" | "heuristic" | "default";
+  effect_confidence: "high" | "medium" | "low";
   capability_scope: CapabilityScope;
   approval_memory: CapabilityApprovalMemory;
   approval_required: boolean;
@@ -240,7 +238,8 @@ const CONTENT_ARG_NAMES = new Set([
 ]);
 
 function commandTokens(site: string, command: string): Set<string> {
-  const raw = `${site}-${command}`.toLowerCase();
+  void site;
+  const raw = command.toLowerCase();
   const pieces = raw.split(/[^a-z0-9]+/).filter(Boolean);
   return new Set([raw, command.toLowerCase(), ...pieces]);
 }
@@ -283,6 +282,102 @@ function looksReadOnlyCommand(input: OperationPolicyInput): boolean {
     return false;
   }
   return !hasContentArg(input.args);
+}
+
+const READ_ONLY_PIPELINE_ACTIONS = new Set([
+  "fetch",
+  "navigate",
+  "wait",
+  "evaluate",
+  "extract",
+  "select",
+  "map",
+  "filter",
+  "sort",
+  "limit",
+  "parse",
+  "regex",
+]);
+
+const MUTATION_PIPELINE_ACTIONS = new Set([
+  "click",
+  "type",
+  "press",
+  "upload",
+  "exec",
+  "write",
+  "delete",
+  "remove",
+  "set",
+  "create",
+  "submit",
+]);
+
+function structuralReadEvidence(
+  input: OperationPolicyInput,
+  tokens: Set<string>,
+): "medium" | undefined {
+  if (
+    input.operationFamily !== "search" &&
+    input.operationFamily !== "get" &&
+    input.operationFamily !== "list"
+  ) {
+    return undefined;
+  }
+  if (
+    hasContentArg(input.args) ||
+    hasDestructiveIntent(input, tokens) ||
+    hasAny(tokens, ACCOUNT_STATE_TOKENS) ||
+    looksMessageCommand(input, tokens) ||
+    looksPublishCommand(input, tokens)
+  ) {
+    return undefined;
+  }
+  const method = input.method?.trim().toUpperCase();
+  if (method && method !== "GET" && method !== "HEAD") return undefined;
+  if (method === "GET" || method === "HEAD") return "medium";
+
+  if (input.pipeline && input.pipeline.length > 0) {
+    let observedReadPrimitive = false;
+    for (const step of input.pipeline) {
+      for (const [action, config] of Object.entries(step)) {
+        if (MUTATION_PIPELINE_ACTIONS.has(action)) return undefined;
+        if (!READ_ONLY_PIPELINE_ACTIONS.has(action)) return undefined;
+        observedReadPrimitive = true;
+        if (action === "fetch" && isRecord(config)) {
+          const fetchMethod =
+            typeof config.method === "string"
+              ? config.method.trim().toUpperCase()
+              : "GET";
+          if (fetchMethod !== "GET" && fetchMethod !== "HEAD") return undefined;
+        }
+      }
+    }
+    if (observedReadPrimitive) return "medium";
+  }
+
+  if (
+    looksReadOnlyCommand(input) ||
+    hasCapability(
+      input,
+      (capability) =>
+        capability === "http.fetch" ||
+        capability.endsWith(".read") ||
+        capability.endsWith(".get") ||
+        capability.endsWith(".list") ||
+        capability.endsWith(".search"),
+    )
+  ) {
+    return "medium";
+  }
+  // A resolved search/get/list family is itself a read contract once content
+  // arguments, mutation tokens, non-GET methods, and unsafe pipeline
+  // primitives have all been excluded above.
+  return "medium";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isExplicitLocalSurface(surface?: TargetSurface): boolean {
@@ -445,26 +540,61 @@ export function resolveOperationAdapterPath(
 export function inferOperationEffect(
   input: OperationPolicyInput,
 ): OperationEffect {
-  if (input.effect !== undefined) return input.effect;
-  const tokens = commandTokens(input.site, input.command);
+  return inferOperationEffectDecision(input).effect;
+}
 
-  if (looksDownloadFileCommand(input, tokens)) return "download_file";
-  if (looksReadOnlyCommand(input)) return "read";
-  if (hasAny(tokens, ACCOUNT_STATE_TOKENS)) return "account_state";
-  if (looksMessageCommand(input, tokens)) return "send_message";
-  if (looksPublishCommand(input, tokens)) return "publish_content";
-  if (looksRemoteTransformCommand(input, tokens)) return "remote_transform";
-  if (looksServiceStateMutation(input, tokens)) return "service_state";
-  if (hasDestructiveIntent(input, tokens)) return "destructive";
-  if (looksRemoteResourceCommand(input, tokens)) return "remote_resource";
-  if (hasAny(tokens, LOCAL_APP_TOKENS)) return "local_app";
-  if (
-    input.adapterType === AdapterType.DESKTOP ||
-    hasAny(tokens, LOCAL_FILE_TOKENS)
-  ) {
-    return "local_file";
+export function inferOperationEffectDecision(
+  input: OperationPolicyInput,
+): Pick<OperationPolicy, "effect" | "effect_source" | "effect_confidence"> {
+  if (input.effect !== undefined) {
+    return {
+      effect: input.effect,
+      effect_source: "declared",
+      effect_confidence: "high",
+    };
   }
-  return "read";
+  const tokens = commandTokens(input.site, input.command);
+  const readEvidence = structuralReadEvidence(input, tokens);
+  if (readEvidence) {
+    return {
+      effect: "read",
+      effect_source: "heuristic",
+      effect_confidence: readEvidence,
+    };
+  }
+
+  let effect: OperationEffect | undefined;
+  if (looksDownloadFileCommand(input, tokens)) effect = "download_file";
+  else if (looksReadOnlyCommand(input)) effect = "read";
+  else if (hasAny(tokens, ACCOUNT_STATE_TOKENS)) effect = "account_state";
+  else if (looksMessageCommand(input, tokens)) effect = "send_message";
+  else if (looksPublishCommand(input, tokens)) effect = "publish_content";
+  else if (looksRemoteTransformCommand(input, tokens))
+    effect = "remote_transform";
+  else if (looksServiceStateMutation(input, tokens)) effect = "service_state";
+  else if (hasDestructiveIntent(input, tokens)) effect = "destructive";
+  else if (looksRemoteResourceCommand(input, tokens))
+    effect = "remote_resource";
+  else if (hasAny(tokens, LOCAL_APP_TOKENS)) effect = "local_app";
+  if (
+    effect === undefined &&
+    (input.adapterType === AdapterType.DESKTOP ||
+      hasAny(tokens, LOCAL_FILE_TOKENS))
+  ) {
+    effect = "local_file";
+  }
+  if (effect !== undefined) {
+    return {
+      effect,
+      effect_source: "heuristic",
+      effect_confidence: "medium",
+    };
+  }
+  return {
+    effect: "unknown_write",
+    effect_source: "default",
+    effect_confidence: "low",
+  };
 }
 
 export function riskForEffect(effect: OperationEffect): OperationRisk {
@@ -478,8 +608,11 @@ export function riskForEffect(effect: OperationEffect): OperationRisk {
     case "remote_resource":
     case "local_app":
     case "local_file":
-    case "unknown_write":
       return "medium";
+    case "unknown_write":
+      // An undeclared effect is not evidence that an operation is safer. Keep
+      // confirm-mode fail-closed until the adapter declares the real effect.
+      return "high";
     case "destructive":
     case "service_state":
     case "publish_content":
@@ -503,7 +636,8 @@ export function evaluateOperationPolicy(
   input: OperationPolicyInput,
 ): OperationPolicy {
   const profile = resolvePermissionProfile(input.profile);
-  const effect = inferOperationEffect(input);
+  const effectDecision = inferOperationEffectDecision(input);
+  const { effect } = effectDecision;
   const risk = riskForEffect(effect);
   const envApproved = process.env.UNICLI_APPROVE === "1";
   const approvalSource =
@@ -532,6 +666,8 @@ export function evaluateOperationPolicy(
   return {
     profile,
     effect,
+    effect_source: effectDecision.effect_source,
+    effect_confidence: effectDecision.effect_confidence,
     risk,
     capability_scope,
     approval_memory,

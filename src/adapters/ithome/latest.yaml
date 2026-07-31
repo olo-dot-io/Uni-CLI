@@ -1,6 +1,7 @@
 site: ithome
 name: latest
 description: Latest IT Home news articles
+operation_effect: read
 domain: www.ithome.com
 type: web-api
 strategy: public

@@ -306,11 +306,15 @@ describe("computer-use direct browser tools", () => {
       12,
       sessionId,
     );
+    const browserSessionId = requests.find(
+      (request) => request.action === "session.start",
+    )?.context.agent_session_id;
+    expect(browserSessionId).toMatch(/^mcp:[a-f0-9]{64}$/);
     await handler.closeSession?.(sessionId, "stdio EOF");
 
     expect(requests.at(-1)).toMatchObject({
       action: "session.end",
-      agent_session_id: sessionId,
+      agent_session_id: browserSessionId,
     });
   });
 

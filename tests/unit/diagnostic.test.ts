@@ -322,6 +322,8 @@ describe("retry step property", () => {
         { select: "items" },
       ],
       { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
     );
     expect(result).toHaveLength(1);
     expect((result[0] as Record<string, unknown>).ok).toBe(true);
@@ -332,6 +334,8 @@ describe("retry step property", () => {
       runPipeline(
         [{ fetch: { url: `${baseUrl}/fail-always` }, retry: 2, backoff: 10 }],
         { args: {}, source: "internal" },
+        undefined,
+        { canMutate: false },
       ),
     ).rejects.toThrow(/500/);
   });
@@ -363,12 +367,13 @@ describe("retry step property", () => {
         { select: "items" },
       ],
       { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
     );
     expect(result).toHaveLength(1);
   });
 
-  it("retry works with fallback (fallback tried on each attempt)", async () => {
-    // This tests that retry wraps the fallback mechanism
+  it("retry re-runs only the explicitly selected operation", async () => {
     endpointCounts["/fail-then-ok?fail=2"] = 0;
 
     const result = await runPipeline(
@@ -381,6 +386,8 @@ describe("retry step property", () => {
         { select: "items" },
       ],
       { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
     );
     expect(result).toHaveLength(1);
   });

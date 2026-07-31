@@ -67,6 +67,14 @@ describe("doctor compute", () => {
       ),
     ).toBe(true);
     expect(providerChecks.some((check) => check.status === "fail")).toBe(false);
+    expect(
+      report.checks.find(
+        (check) =>
+          check.transport === "cua-driver" && check.name === "contract-0.2.0",
+      ),
+    ).toMatchObject({
+      status: expect.stringMatching(/^(ok|warn|skip)$/),
+    });
   });
 
   it("reports the macOS AppKit overlay provider status", async () => {

@@ -31,7 +31,7 @@ cursor. The profile exposes 16 desktop and 16 direct browser tools.
 ## Permissions
 
 macOS requires Accessibility for AX control and Screen Recording for screenshot
-fallback. Grant permissions to Cursor if it launches the server directly, or to
+capture. Grant permissions to Cursor if it launches the server directly, or to
 the terminal/shell process that starts the MCP server. Windows and Linux use the
 UIA and AT-SPI sidecars.
 

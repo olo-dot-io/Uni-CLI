@@ -7,10 +7,11 @@
  * Output shapes:
  *   unicli describe                → {sites: [{name, commands_count, ...}]}
  *   unicli describe <site>         → {site, commands: [{name, ...}]}
- *   unicli describe <site> <cmd>   → full Command schema + channels + example
+ *   unicli describe <site> <cmd>   → concise executable contract
+ *   unicli describe <site> <cmd> --full → full policy + command contract
  *
- * The per-command JSON blob IS the contract. If the agent can read this,
- * it can craft a correct invocation without any out-of-band docs.
+ * Every wire format is derived from the same payload. The concise command
+ * view is sufficient to invoke and recover; --full exposes audit detail.
  */
 
 import { Command } from "commander";
@@ -34,22 +35,38 @@ import {
 import {
   getCoreDiscoveryCommand,
   listCoreDiscoverySites,
+  type CoreDiscoveryArg,
   type CoreDiscoveryCommand,
 } from "../discovery/core-catalog.js";
 import { ExitCode } from "../types.js";
+import { detectFormat } from "../output/formatter.js";
+import { makeCtx, type AgentError } from "../output/envelope.js";
+import {
+  formatDescribeError,
+  formatDescribePayload,
+  nearestDescribeNames,
+  summarizeDescribePayload,
+} from "../output/describe.js";
 import type {
   AdapterArg,
   AdapterCommand,
   AdapterManifest,
+  OutputFormat,
   OutputSchema,
 } from "../types.js";
 
 interface JsonSchemaProperty {
-  type: string;
+  type: string | string[];
+  items?: { type: string };
   description?: string;
   default?: unknown;
   enum?: unknown[];
+  minimum?: number;
+  maximum?: number;
   format?: AdapterArg["format"];
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
   "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
   "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
   "x-unicli-uri-origins"?: AdapterArg["x-unicli-uri-origins"];
@@ -64,8 +81,16 @@ interface JsonSchema {
   additionalProperties: boolean;
 }
 
-/** Map adapter-arg type tokens to JSON Schema `type` strings. */
-function jsonSchemaType(t: AdapterArg["type"]): string {
+type DescribeArg = AdapterArg | CoreDiscoveryArg;
+
+export interface DescribeResult {
+  payload: Record<string, unknown>;
+  exit: number;
+  error?: AgentError;
+}
+
+/** Map command-arg type tokens to JSON Schema `type` strings. */
+function jsonSchemaType(t: DescribeArg["type"]): string | string[] {
   switch (t) {
     case "int":
       return "integer";
@@ -73,18 +98,25 @@ function jsonSchemaType(t: AdapterArg["type"]): string {
       return "number";
     case "bool":
       return "boolean";
+    case "str[]":
+      return "array";
+    case "nullable-float":
+      return ["number", "null"];
+    case "str-or-int":
+      return ["string", "integer"];
     default:
       return "string";
   }
 }
 
 /** Build a JSON Schema draft-2020-12 document from adapter args. */
-function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
+function argsToJsonSchema(args: DescribeArg[]): JsonSchema {
   const properties: Record<string, JsonSchemaProperty> = {};
   const required: string[] = [];
 
   for (const a of args) {
     const prop: JsonSchemaProperty = { type: jsonSchemaType(a.type) };
+    if (a.type === "str[]") prop.items = { type: "string" };
     if (a.description) prop.description = a.description;
     if (a.default !== undefined) prop.default = a.default;
     if (a.choices && a.choices.length > 0) prop.enum = a.choices;
@@ -93,6 +125,11 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
     // `x-unicli-accepts` are annotations adapters declare and describe
     // surfaces so agents see the full contract before invocation.
     if (a.format) prop.format = a.format;
+    if (a.minLength !== undefined) prop.minLength = a.minLength;
+    if (a.maxLength !== undefined) prop.maxLength = a.maxLength;
+    if (a.minimum !== undefined) prop.minimum = a.minimum;
+    if (a.maximum !== undefined) prop.maximum = a.maximum;
+    if (a.pattern !== undefined) prop.pattern = a.pattern;
     if (a["x-unicli-kind"]) prop["x-unicli-kind"] = a["x-unicli-kind"];
     if (a["x-unicli-accepts"]) prop["x-unicli-accepts"] = a["x-unicli-accepts"];
     if (a["x-unicli-uri-origins"])
@@ -113,7 +150,7 @@ function argsToJsonSchema(args: AdapterArg[]): JsonSchema {
 }
 
 /** Produce a realistic example payload agents can copy / modify. */
-function buildExample(args: AdapterArg[]): Record<string, unknown> {
+function buildExample(args: DescribeArg[]): Record<string, unknown> {
   const example: Record<string, unknown> = {};
   for (const a of args) {
     if (a.default !== undefined) {
@@ -131,6 +168,15 @@ function buildExample(args: AdapterArg[]): Record<string, unknown> {
         case "bool":
           example[a.name] = false;
           break;
+        case "str[]":
+          example[a.name] = [];
+          break;
+        case "nullable-float":
+          example[a.name] = null;
+          break;
+        case "str-or-int":
+          example[a.name] = `<${a.name}>`;
+          break;
         default:
           example[a.name] = `<${a.name}>`;
       }
@@ -143,7 +189,7 @@ function buildExample(args: AdapterArg[]): Record<string, unknown> {
 function buildChannels(
   site: string,
   cmdName: string,
-  args: AdapterArg[],
+  args: DescribeArg[],
 ): Record<string, string> {
   const positionals = args
     .filter((a) => a.positional)
@@ -303,6 +349,7 @@ export function describeCommand(
     strategy,
     browser: adapter ? commandUsesBrowser(adapter, cmd) : cmd.browser === true,
     args,
+    effect: cmd.operation_effect,
   });
   return {
     command: `unicli ${site} ${cmdName}`,
@@ -319,11 +366,78 @@ export function describeCommand(
   };
 }
 
+function commandNamesForSite(site: string): string[] {
+  const adapterNames = Object.keys(getAdapter(site)?.commands ?? {});
+  const coreNames =
+    listCoreDiscoverySites()
+      .find((candidate) => candidate.site === site)
+      ?.commands.map((command) => command.command) ?? [];
+  return [...new Set([...adapterNames, ...coreNames])];
+}
+
+function allSiteNames(): string[] {
+  return [
+    ...new Set([
+      ...getAllAdapters().map((adapter) => adapter.name),
+      ...listCoreDiscoverySites().map((site) => site.site),
+    ]),
+  ];
+}
+
+function unknownSiteResult(site: string, cmdName?: string): DescribeResult {
+  const sites = nearestDescribeNames(site, allSiteNames());
+  const alternatives = sites.map((candidate) => {
+    const hasCommand = cmdName
+      ? commandNamesForSite(candidate).includes(cmdName)
+      : false;
+    return `unicli describe ${candidate}${hasCommand ? ` ${cmdName}` : ""}`;
+  });
+  const message = `unknown site: ${site}`;
+  return {
+    payload: { error: message, alternatives },
+    exit: ExitCode.USAGE_ERROR,
+    error: {
+      code: "not_found",
+      message,
+      suggestion:
+        alternatives.length > 0
+          ? "Use the closest registered site below."
+          : "Run `unicli search <intent>` to resolve a registered command.",
+      retryable: false,
+      alternatives:
+        alternatives.length > 0 ? alternatives : ["unicli search <intent>"],
+    },
+  };
+}
+
+function unknownCommandResult(site: string, cmdName: string): DescribeResult {
+  const alternatives = nearestDescribeNames(
+    cmdName,
+    commandNamesForSite(site),
+  ).map((candidate) => `unicli describe ${site} ${candidate}`);
+  const message = `unknown command: ${site} ${cmdName}`;
+  return {
+    payload: { error: message, alternatives },
+    exit: ExitCode.USAGE_ERROR,
+    error: {
+      code: "not_found",
+      message,
+      suggestion:
+        alternatives.length > 0
+          ? "Use the closest command below."
+          : `Run \`unicli describe ${site}\` to inspect this site's commands.`,
+      retryable: false,
+      alternatives:
+        alternatives.length > 0 ? alternatives : [`unicli describe ${site}`],
+    },
+  };
+}
+
 /** Top-level describe payload: root / site / command, driven by arg count. */
 export function describe(
   site: string | undefined,
   cmdName: string | undefined,
-): { payload: Record<string, unknown>; exit: number } {
+): DescribeResult {
   if (!site) {
     const adapters = getAllAdapters();
     const adapterNames = new Set(adapters.map((adapter) => adapter.name));
@@ -377,10 +491,7 @@ export function describe(
         };
       }
     }
-    return {
-      payload: { error: `unknown site: ${site}` },
-      exit: ExitCode.USAGE_ERROR,
-    };
+    return unknownSiteResult(site, cmdName);
   }
 
   if (!cmdName) {
@@ -419,10 +530,7 @@ export function describe(
         exit: ExitCode.SUCCESS,
       };
     }
-    return {
-      payload: { error: `unknown command: ${site} ${cmdName}` },
-      exit: ExitCode.USAGE_ERROR,
-    };
+    return unknownCommandResult(site, cmdName);
   }
 
   return {
@@ -438,9 +546,49 @@ export function registerDescribeCommand(program: Command): void {
     .description(
       "Print JSON Schema + example payload for a command (agents: read this instead of --help)",
     )
-    .action((site: string | undefined, cmdName: string | undefined) => {
-      const { payload, exit } = describe(site, cmdName);
-      console.log(JSON.stringify(payload, null, 2));
-      process.exit(exit);
-    });
+    .option(
+      "--full",
+      "include full governance, approval, evaluation, and repair contract detail",
+      false,
+    )
+    .action(
+      (
+        site: string | undefined,
+        cmdName: string | undefined,
+        opts: { full?: boolean },
+      ) => {
+        const startedAt = Date.now();
+        const result = describe(site, cmdName);
+        const fmt = detectFormat(
+          program.opts().format as OutputFormat | undefined,
+        );
+        const ctx = makeCtx("core.describe", startedAt);
+        ctx.duration_ms = Date.now() - startedAt;
+
+        if (result.error) {
+          ctx.error = result.error;
+          ctx.next_actions = (result.error.alternatives ?? []).map(
+            (command) => ({
+              command,
+              description: "Inspect the closest registered describe target",
+            }),
+          );
+          process.exitCode = result.exit;
+          process.stderr.write(
+            `${formatDescribeError(result.error, fmt, ctx)}\n`,
+          );
+          return;
+        }
+
+        const payload = opts.full
+          ? result.payload
+          : summarizeDescribePayload(result.payload);
+        if (fmt === "table") {
+          process.stderr.write(
+            "[deprecated] `-f table` → `md`. Migrate before v0.215.\n",
+          );
+        }
+        process.stdout.write(`${formatDescribePayload(payload, fmt, ctx)}\n`);
+      },
+    );
 }

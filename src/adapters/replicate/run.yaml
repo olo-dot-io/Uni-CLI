@@ -1,6 +1,7 @@
 site: replicate
 name: run
 description: Run a Replicate AI model
+operation_effect: remote_transform
 type: web-api
 domain: api.replicate.com
 strategy: cookie

@@ -1,6 +1,7 @@
 site: kuaishou
 name: hot
 description: Kuaishou trending videos
+operation_effect: read
 domain: www.kuaishou.com
 strategy: intercept
 lint_listing_detail: skip

@@ -15,11 +15,15 @@ import {
 import { handleApprovals } from "./fast-path/handlers/approvals.js";
 import {
   handleDescribe,
+  handleDo,
   handleList,
   handleRepair,
   handleSearch,
 } from "./fast-path/handlers/discovery.js";
-import { isMissingManifestError } from "./fast-path/manifest.js";
+import {
+  isMissingManifestError,
+  isUserAdapterManifestError,
+} from "./fast-path/manifest.js";
 import type { ParsedArgv } from "./fast-path/parsed-argv.js";
 import { DEFAULT_IO, type Io, isOutputFormat } from "./fast-path/render.js";
 
@@ -141,6 +145,8 @@ export function tryRunFastPath(
         return handleSearch(parsed, io);
       case "describe":
         return handleDescribe(parsed, io);
+      case "do":
+        return handleDo(parsed, io);
       case "repair":
         return handleRepair(parsed, io);
       case "approvals":
@@ -154,6 +160,9 @@ export function tryRunFastPath(
     }
   } catch (error) {
     if (isMissingManifestError(error)) return false;
+    if (parsed.command === "repair" && isUserAdapterManifestError(error)) {
+      return false;
+    }
     throw error;
   }
 }

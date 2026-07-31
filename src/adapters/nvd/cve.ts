@@ -172,6 +172,8 @@ cli({
     "description",
     "url",
   ],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "vulnerability",

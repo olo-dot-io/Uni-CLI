@@ -847,6 +847,33 @@ describe("AI source precision contracts", () => {
     });
   });
 
+  it("distinguishes a missing GitHub repository from a missing gh executable", () => {
+    const repository = Object.assign(
+      new Error(
+        "GraphQL: Could not resolve to a Repository with the name 'missing/repo'.",
+      ),
+      {
+        code: 1,
+        stderr:
+          "GraphQL: Could not resolve to a Repository with the name 'missing/repo'.",
+      },
+    );
+    const executable = Object.assign(new Error("spawn gh ENOENT"), {
+      code: "ENOENT",
+    });
+
+    expect(classifyExecFailure("gh", repository)).toMatchObject({
+      errorType: "not_found",
+      preserveErrorCode: true,
+      suggestion: expect.stringContaining("owner/repository"),
+    });
+    expect(classifyExecFailure("gh", executable)).toMatchObject({
+      errorType: "config_error",
+      preserveErrorCode: true,
+      suggestion: expect.stringContaining("which gh"),
+    });
+  });
+
   it("extracts current Brave result title and summary selectors", () => {
     const extract = readAdapter("brave", "search").pipeline[1].extract;
     const html = `

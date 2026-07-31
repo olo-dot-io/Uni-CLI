@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::inpi-br::search
  * @does        Browser-driven INPI Brasil search at busca.inpi.gov.br/pePI/ — Brazil's patent office has no open API (pre-API status); the public web search is the only programmatic surface.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/inpi-br/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/inpi-br/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.search)
- * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (no rows), PATENT_API_DEPRECATED with MCP_BUS_MISSING
+ * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (no rows), PATENT_API_DEPRECATED with browser provider unavailable
  * @invariants  output rows canonicalized into PatentRecord with source_adapter='inpi-br'
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/inpi-br/search.test.ts
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  inpiBrEnvelope,
-  inpiBrNavigateAndExtract,
-  transportErrorToInpiBrEnvelope,
-} from "./_shared.js";
+import { inpiBrEnvelope, inpiBrNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/inpi-br/search.ts";
 const INPI_BR_SEARCH_URL =
@@ -66,10 +63,13 @@ function buildSearchUrl(query: string): string {
   return `${INPI_BR_SEARCH_URL}?${params.toString()}`;
 }
 
-export async function runInpiBrSearch(kwargs: {
-  query: string;
-  limit?: number;
-}): Promise<unknown[]> {
+export async function runInpiBrSearch(
+  page: IPage,
+  kwargs: {
+    query: string;
+    limit?: number;
+  },
+): Promise<unknown[]> {
   const limit =
     typeof kwargs.limit === "number" && Number.isFinite(kwargs.limit)
       ? Math.max(1, Math.min(100, Math.floor(kwargs.limit)))
@@ -89,38 +89,24 @@ export async function runInpiBrSearch(kwargs: {
   }
   const url = buildSearchUrl(query);
   let extract: { rows: InpiBrRow[] };
-  try {
-    const result = await inpiBrNavigateAndExtract<{ rows: InpiBrRow[] }>(
-      url,
-      EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: inpiBrEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "inpi-br evaluate returned no data; selectors likely drifted",
-          ),
-        },
-      ];
-    }
-    extract = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToInpiBrEnvelope(
-            err,
-            ADAPTER_PATH,
-            "navigate",
-          ),
-        },
-      ];
-    }
-    throw err;
+  const result = await inpiBrNavigateAndExtract<{ rows: InpiBrRow[] }>(
+    page,
+    url,
+    EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: inpiBrEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "inpi-br evaluate returned no data; selectors likely drifted",
+        ),
+      },
+    ];
   }
+  extract = result.data;
   if (extract.rows.length === 0) {
     return [
       {
@@ -161,7 +147,7 @@ export async function runInpiBrSearch(kwargs: {
   if (out.length === 0) {
     out.push({
       envelope: inpiBrEnvelope(
-        "PATENT_NOT_FOUND",
+        "PATENT_SCHEMA_DRIFT",
         ADAPTER_PATH,
         "normalize",
         "inpi-br returned rows but none normalized to a valid publication_number",
@@ -183,6 +169,7 @@ cli({
     {
       name: "query",
       type: "str",
+      minLength: 1,
       required: true,
       positional: true,
       description: "Free-text query for INPI Brasil patent search",
@@ -196,11 +183,15 @@ cli({
   ],
   columns: ["publication_number", "title", "publication_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.search",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runInpiBrSearch(kwargs as { query: string; limit?: number }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runInpiBrSearch(
+      requireBrowserPage(page),
+      kwargs as { query: string; limit?: number },
+    ),
 });

@@ -8,7 +8,7 @@
  *   unicli search --category finance   → lists all finance commands
  */
 
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import chalk from "chalk";
 import { search } from "../discovery/search.js";
 import { format, detectFormat } from "../output/formatter.js";
@@ -16,6 +16,12 @@ import { printErrorEnvelope } from "../output/error-writer.js";
 import { emptySearchResultError } from "../output/error-map.js";
 import type { AgentContext } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
+import type {
+  ExecutionOperator,
+  OperationEffect,
+  TargetSurface,
+} from "../types.js";
+import type { CapabilityRequirements } from "../discovery/feasibility.js";
 
 export function registerSearchCommand(program: Command): void {
   program
@@ -25,8 +31,62 @@ export function registerSearchCommand(program: Command): void {
     )
     .option("-n, --limit <n>", "max results", "8")
     .option("--category <cat>", "filter by category")
+    .addOption(
+      new Option(
+        "--operator <operator>",
+        "require one execution operator",
+      ).choices([
+        "structured-api",
+        "browser-protocol",
+        "native-cli",
+        "browser-semantic",
+        "desktop-accessibility",
+        "visual-observation",
+        "visual-coordinate",
+        "local-runtime",
+      ]),
+    )
+    .addOption(
+      new Option("--surface <surface>", "require one target surface").choices([
+        "web",
+        "desktop",
+        "system",
+        "mobile",
+      ]),
+    )
+    .addOption(
+      new Option("--effect <effect>", "require one operation effect").choices([
+        "read",
+        "download_file",
+        "send_message",
+        "publish_content",
+        "account_state",
+        "remote_transform",
+        "remote_resource",
+        "service_state",
+        "local_app",
+        "local_file",
+        "destructive",
+        "unknown_write",
+      ]),
+    )
+    .addOption(
+      new Option("--platform <platform>", "require a compatible host platform")
+        .choices(["darwin", "win32", "linux"])
+        .default(process.platform),
+    )
     .action(
-      (queryParts: string[], opts: { limit: string; category?: string }) => {
+      (
+        queryParts: string[],
+        opts: {
+          limit: string;
+          category?: string;
+          operator?: ExecutionOperator;
+          surface?: TargetSurface;
+          effect?: OperationEffect;
+          platform?: NodeJS.Platform;
+        },
+      ) => {
         const searchStarted = Date.now();
         const query = queryParts.join(" ");
         const limit = parseInt(opts.limit, 10) || 8;
@@ -41,7 +101,22 @@ export function registerSearchCommand(program: Command): void {
           return;
         }
 
-        const results = search(query, limit, { category: opts.category });
+        const requirements: CapabilityRequirements = {
+          ...(opts.operator ? { operator: opts.operator } : {}),
+          ...(opts.surface ? { target_surface: opts.surface } : {}),
+          ...(opts.effect ? { effect: opts.effect } : {}),
+          ...(opts.platform ? { platform: opts.platform } : {}),
+          ...(opts.operator
+            ? {
+                allow_coordinate_actuation:
+                  opts.operator === "visual-coordinate",
+              }
+            : {}),
+        };
+        const results = search(query, limit, {
+          category: opts.category,
+          requirements,
+        });
 
         const fmt = detectFormat(
           program.opts().format as OutputFormat | undefined,
@@ -70,6 +145,16 @@ export function registerSearchCommand(program: Command): void {
           description: r.description || `${r.command} for ${r.site}`,
           score: r.score,
           category: r.category,
+          ...(r.feasibility
+            ? {
+                operator: r.feasibility.operator,
+                effect: r.feasibility.effect,
+                target_surface: r.feasibility.target_surface,
+                target_scope: r.feasibility.target_scope,
+                evidence_scope: "catalog_contract",
+                runtime_readiness: "not_evaluated",
+              }
+            : {}),
           usage: r.usage,
         }));
 
@@ -80,7 +165,12 @@ export function registerSearchCommand(program: Command): void {
         };
 
         console.log(
-          format(rows, ["command", "description", "score", "usage"], fmt, ctx),
+          format(
+            rows,
+            ["command", "description", "operator", "effect", "score", "usage"],
+            fmt,
+            ctx,
+          ),
         );
       },
     );

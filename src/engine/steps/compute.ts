@@ -1,6 +1,6 @@
 import type { Envelope } from "../../core/envelope.js";
 import { buildTransportCtx, getBus } from "../../transport/bus.js";
-import { tryCascade } from "../../transport/cascade.js";
+import { dispatchComputeRoute } from "../../transport/compute-dispatch.js";
 import type { TransportBus, TransportContext } from "../../transport/types.js";
 import type { PipelineContext } from "../executor.js";
 import { registerStep, type StepHandler } from "../step-registry.js";
@@ -16,7 +16,7 @@ async function dispatch<T>(
   kind: ComputeStepKind,
   params: Record<string, unknown>,
 ): Promise<Envelope<T>> {
-  return tryCascade(
+  return dispatchComputeRoute(
     ctx.bus,
     {
       kind,
@@ -48,10 +48,22 @@ export const handleComputeClick = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
 ) => dispatch(ctx, "compute_click", params);
+export const handleComputePointClick = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_point_click", params);
+export const handleComputeDrag = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_drag", params);
 export const handleComputeType = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
 ) => dispatch(ctx, "compute_type", params);
+export const handleComputeText = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_text", params);
 export const handleComputePress = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
@@ -60,6 +72,10 @@ export const handleComputeScroll = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
 ) => dispatch(ctx, "compute_scroll", params);
+export const handleComputePointScroll = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_point_scroll", params);
 export const handleComputeLaunch = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
@@ -68,6 +84,22 @@ export const handleComputeScreenshot = (
   ctx: ComputeStepContext,
   params: Record<string, unknown> = {},
 ) => dispatch(ctx, "compute_screenshot", params);
+export const handleComputeSessionStart = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_session_start", params);
+export const handleComputeSessionState = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_session_state", params);
+export const handleComputeSessionEscalate = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_session_escalate", params);
+export const handleComputeSessionEnd = (
+  ctx: ComputeStepContext,
+  params: Record<string, unknown>,
+) => dispatch(ctx, "compute_session_end", params);
 export const handleComputeCdpAttach = (
   ctx: ComputeStepContext,
   params: Record<string, unknown>,
@@ -95,11 +127,19 @@ export const COMPUTE_STEP_HANDLERS = {
   compute_snapshot: handleComputeSnapshot,
   compute_find: handleComputeFind,
   compute_click: handleComputeClick,
+  compute_point_click: handleComputePointClick,
+  compute_drag: handleComputeDrag,
   compute_type: handleComputeType,
+  compute_text: handleComputeText,
   compute_press: handleComputePress,
   compute_scroll: handleComputeScroll,
+  compute_point_scroll: handleComputePointScroll,
   compute_launch: handleComputeLaunch,
   compute_screenshot: handleComputeScreenshot,
+  compute_session_start: handleComputeSessionStart,
+  compute_session_state: handleComputeSessionState,
+  compute_session_escalate: handleComputeSessionEscalate,
+  compute_session_end: handleComputeSessionEnd,
   compute_cdp_attach: handleComputeCdpAttach,
   compute_evaluate: handleComputeEvaluate,
   compute_wait: handleComputeWait,
@@ -135,12 +175,12 @@ for (const kind of Object.keys(COMPUTE_STEP_HANDLERS) as ComputeStepKind[]) {
 }
 /**
  * @owner       src::engine::steps::compute
- * @does        Register compute pipeline steps and route each through the capability cascade with request identity and cancellation intact.
- * @needs       transport bus/context/cascade, pipeline context, step registry.
+ * @does        Register compute pipeline steps and dispatch each through one planned provider with request identity and cancellation intact.
+ * @needs       transport bus/context/route planner, pipeline context, step registry.
  * @feeds       YAML pipeline compute actions.
  * @breaks      Returns transport envelopes; cancellation escapes immediately rather than falling through to another physical transport.
  * @invariants  The PipelineContext AbortSignal is present on both TransportContext and ActionRequest.
- * @side-effects Dispatches desktop/browser/visual/subprocess operations selected by the cascade.
+ * @side-effects Dispatches one selected desktop, browser, visual, or subprocess operation.
  * @perf        Constant wrapper overhead around transport work.
  * @concurrency Request state is structural and never stored at module scope.
  * @test        tests/unit/engine/compute-steps.test.ts, tests/unit/engine/executor.test.ts

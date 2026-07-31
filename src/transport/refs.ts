@@ -6,7 +6,7 @@
  * @breaks  First-match alias resolution or reuse after bucket replacement can target a different application than the observed element; corrupt state and lock contention surface distinct typed errors.
  * @invariants A bare alias resolves only when exactly one current bucket owns it; every put creates a new in-process generation; captured matches become stale when their exact bucket is replaced or cleared; persisted native refs retain their exact window and persisted CDP refs retain the renderer endpoint that allocated them; empty latest buckets publish tombstones so old refs cannot revive; independent target writers cannot overwrite one another.
  * @side-effects Reads a legacy aggregate store plus target-sharded records; creates the private shard directory; atomically publishes complete replacement records for touched targets.
- * @perf    In-memory lookup is linear in live buckets; persistence is linear in retained target-bound refs; cross-process disk critical sections are short and synchronous.
+ * @perf    Alias/stable lookup is O(current owners) through inverted indexes; bucket replacement is O(refs in old + new bucket); persistence is linear in retained target-bound refs.
  * @concurrency RefStore mutation is synchronous; disk readers and writers share one recoverable lock so pruning cannot invalidate an enumerated shard; callers can bind before an await and revalidate the exact generation afterward.
  * @test    tests/unit/refs.test.ts and tests/unit/compute-action-execution.test.ts
  * @stability stable
@@ -186,12 +186,14 @@ export class RefStore {
     string,
     { bucket: RefBucket; generation: number }
   >();
+  private readonly aliasOwners = new Map<string, Map<string, RefStoreMatch>>();
+  private readonly stableOwners = new Map<string, Map<string, RefStoreMatch>>();
   private readonly dirtyKeys = new Set<string>();
   private nextGeneration = 0;
 
   put(bucket: RefBucket): void {
     const key = this.key(bucket.transport, bucket.scope);
-    this.latest.set(key, {
+    this.replaceBucket(key, {
       bucket,
       generation: ++this.nextGeneration,
     });
@@ -200,7 +202,7 @@ export class RefStore {
 
   restore(bucket: RefBucket): void {
     const key = this.key(bucket.transport, bucket.scope);
-    this.latest.set(key, {
+    this.replaceBucket(key, {
       bucket,
       generation: ++this.nextGeneration,
     });
@@ -208,12 +210,13 @@ export class RefStore {
   }
 
   matches(value: string): RefStoreMatch[] {
-    const matches: RefStoreMatch[] = [];
-    for (const { bucket, generation } of this.latest.values()) {
-      const ref = bucket.byAlias.get(value) ?? bucket.byStable.get(value);
-      if (ref) matches.push({ ref, bucket, generation });
-    }
-    return matches;
+    const aliasOwners = this.aliasOwners.get(value);
+    const stableOwners = this.stableOwners.get(value);
+    if (!aliasOwners) return stableOwners ? [...stableOwners.values()] : [];
+    if (!stableOwners) return [...aliasOwners.values()];
+    const combined = new Map(stableOwners);
+    for (const [key, match] of aliasOwners) combined.set(key, match);
+    return [...combined.values()];
   }
 
   resolve(alias: string): ElementRef | undefined {
@@ -222,12 +225,9 @@ export class RefStore {
   }
 
   resolveStable(stable: string): ElementRef | undefined {
-    const matches: ElementRef[] = [];
-    for (const { bucket } of this.latest.values()) {
-      const ref = bucket.byStable.get(stable);
-      if (ref) matches.push(ref);
-    }
-    return matches.length === 1 ? matches[0] : undefined;
+    const owners = this.stableOwners.get(stable);
+    if (owners?.size !== 1) return undefined;
+    return owners.values().next().value?.ref;
   }
 
   isCurrent(match: RefStoreMatch): boolean {
@@ -243,6 +243,16 @@ export class RefStore {
   list(): ElementRef[] {
     return Array.from(this.latest.values()).flatMap(({ bucket }) =>
       Array.from(bucket.byAlias.values()),
+    );
+  }
+
+  listMatches(): RefStoreMatch[] {
+    return Array.from(this.latest.values()).flatMap(({ bucket, generation }) =>
+      Array.from(bucket.byAlias.values(), (ref) => ({
+        ref,
+        bucket,
+        generation,
+      })),
     );
   }
 
@@ -275,7 +285,62 @@ export class RefStore {
 
   clear(): void {
     this.latest.clear();
+    this.aliasOwners.clear();
+    this.stableOwners.clear();
     this.dirtyKeys.clear();
+  }
+
+  private replaceBucket(
+    key: string,
+    next: { bucket: RefBucket; generation: number },
+  ): void {
+    const previous = this.latest.get(key);
+    if (previous) this.removePostings(key, previous.bucket);
+    this.latest.set(key, next);
+    this.installPostings(key, next);
+  }
+
+  private installPostings(
+    key: string,
+    entry: { bucket: RefBucket; generation: number },
+  ): void {
+    for (const ref of entry.bucket.byAlias.values()) {
+      const match = {
+        ref,
+        bucket: entry.bucket,
+        generation: entry.generation,
+      };
+      this.addPosting(this.aliasOwners, ref.alias, key, match);
+      this.addPosting(this.stableOwners, ref.stable, key, match);
+    }
+  }
+
+  private removePostings(key: string, bucket: RefBucket): void {
+    for (const ref of bucket.byAlias.values()) {
+      this.removePosting(this.aliasOwners, ref.alias, key);
+      this.removePosting(this.stableOwners, ref.stable, key);
+    }
+  }
+
+  private addPosting(
+    index: Map<string, Map<string, RefStoreMatch>>,
+    value: string,
+    key: string,
+    match: RefStoreMatch,
+  ): void {
+    const owners = index.get(value);
+    if (owners) owners.set(key, match);
+    else index.set(value, new Map([[key, match]]));
+  }
+
+  private removePosting(
+    index: Map<string, Map<string, RefStoreMatch>>,
+    value: string,
+    key: string,
+  ): void {
+    const owners = index.get(value)!;
+    owners.delete(key);
+    if (owners.size === 0) index.delete(value);
   }
 
   private key(transport: string, scope: string): string {

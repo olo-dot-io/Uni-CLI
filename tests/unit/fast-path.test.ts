@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { tryRunFastPath } from "../../src/fast-path.js";
@@ -48,6 +54,215 @@ describe("CLI fast path", () => {
     expect(env.command).toBe("core.list");
     expect(env.data.length).toBeGreaterThan(0);
     expect(env.data.every((row) => row.site.includes("twitter"))).toBe(true);
+  });
+
+  it("uses one merged user-over-packaged catalog for list, search, and describe", () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-user-catalog-"));
+    const originalHome = process.env.HOME;
+    try {
+      process.env.HOME = home;
+      const probe = join(home, ".unicli", "adapters", "probe");
+      const hackernews = join(home, ".unicli", "adapters", "hackernews");
+      mkdirSync(probe, { recursive: true });
+      mkdirSync(hackernews, { recursive: true });
+      writeFileSync(
+        join(probe, "only.yaml"),
+        [
+          "site: probe",
+          "name: ignored-by-loader",
+          "description: sentinel-user-adapter",
+          "type: web-api",
+          "strategy: public",
+          "operation_effect: read",
+          "execution_operator: structured-api",
+          "capabilities: [http.fetch]",
+          "minimum_capability: http.fetch",
+          "args:",
+          "  query:",
+          "    type: str",
+          "    required: true",
+          "    minLength: 2",
+          "    maxLength: 80",
+          "    format: uri",
+          "    x-unicli-uri-origins: [https://example.com]",
+          "defaultFormat: json",
+          "retrieval:",
+          "  operation: discover",
+          "  result_kind: web-record",
+          "  source_class: official",
+          "  arguments:",
+          "    query: query",
+          "output:",
+          "  type: array",
+          "  maxItems: 20",
+          "paginated: true",
+          "",
+        ].join("\n"),
+      );
+      writeFileSync(
+        join(hackernews, "top.yaml"),
+        [
+          "site: hackernews",
+          "name: top",
+          "description: sentinel-user-shadow",
+          "type: web-api",
+          "strategy: public",
+          "operation_effect: read",
+          "execution_operator: structured-api",
+          "capabilities: [http.fetch]",
+          "minimum_capability: http.fetch",
+          "",
+        ].join("\n"),
+      );
+
+      const listed = makeIo();
+      expect(
+        tryRunFastPath(
+          ["node", "unicli", "-f", "json", "list", "--site", "probe"],
+          listed.io,
+        ),
+      ).toBe(true);
+      expect(
+        (
+          JSON.parse(listed.stdout.join("")) as {
+            data: Array<{ site: string; command: string }>;
+          }
+        ).data,
+      ).toEqual([expect.objectContaining({ site: "probe", command: "only" })]);
+
+      const searched = makeIo();
+      expect(
+        tryRunFastPath(
+          ["node", "unicli", "-f", "json", "search", "sentinel-user-adapter"],
+          searched.io,
+        ),
+      ).toBe(true);
+      expect(
+        (
+          JSON.parse(searched.stdout.join("")) as {
+            data: Array<{ command: string }>;
+          }
+        ).data,
+      ).toContainEqual(expect.objectContaining({ command: "probe only" }));
+
+      const probeDescription = makeIo();
+      expect(
+        tryRunFastPath(
+          [
+            "node",
+            "unicli",
+            "-f",
+            "json",
+            "describe",
+            "probe",
+            "only",
+            "--full",
+          ],
+          probeDescription.io,
+        ),
+      ).toBe(true);
+      const probeContract = (
+        JSON.parse(probeDescription.stdout.join("")) as {
+          contract: {
+            schemas: {
+              input: { properties: Record<string, unknown> };
+              output: Record<string, unknown>;
+            };
+            effect: { paginated: boolean };
+            retrieval: Record<string, unknown>;
+          };
+        }
+      ).data.contract;
+      expect(probeContract.schemas.input.properties.query).toMatchObject({
+        type: "string",
+        minLength: 2,
+        maxLength: 80,
+        format: "uri",
+        "x-unicli-uri-origins": ["https://example.com"],
+      });
+      expect(probeContract.schemas.output).toMatchObject({
+        type: "array",
+        maxItems: 20,
+      });
+      expect(probeContract.effect.paginated).toBe(true);
+      expect(probeContract.retrieval).toEqual({
+        operation: "discover",
+        result_kind: "web-record",
+        source_class: "official",
+        arguments: { query: "query" },
+      });
+
+      const described = makeIo();
+      expect(
+        tryRunFastPath(
+          [
+            "node",
+            "unicli",
+            "-f",
+            "json",
+            "describe",
+            "hackernews",
+            "top",
+            "--full",
+          ],
+          described.io,
+        ),
+      ).toBe(true);
+      const payload = (
+        JSON.parse(described.stdout.join("")) as {
+          data: {
+            description: string;
+            contract: {
+              identity: {
+                source_tier: string;
+                source_path: string;
+                shadowed_source_path: string;
+              };
+            };
+          };
+        }
+      ).data;
+      expect(payload.description).toBe("sentinel-user-shadow");
+      expect(payload.contract.identity).toMatchObject({
+        source_tier: "user",
+        source_path: join(hackernews, "top.yaml"),
+        shadowed_source_path: "src/adapters/hackernews/top.yaml",
+      });
+
+      const mergedSite = makeIo();
+      tryRunFastPath(
+        ["node", "unicli", "-f", "json", "list", "--site", "hackernews"],
+        mergedSite.io,
+      );
+      const rows = (
+        JSON.parse(mergedSite.stdout.join("")) as {
+          data: Array<{ command: string; description: string }>;
+        }
+      ).data;
+      expect(rows.length).toBeGreaterThan(1);
+      expect(rows).toContainEqual(
+        expect.objectContaining({
+          command: "top",
+          description: "sentinel-user-shadow",
+        }),
+      );
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME;
+      else process.env.HOME = originalHome;
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("delegates command help and invalid choice parsing to Commander", () => {
+    expect(
+      tryRunFastPath(["node", "unicli", "search", "--help"], makeIo().io),
+    ).toBe(false);
+    expect(
+      tryRunFastPath(
+        ["node", "unicli", "search", "issues", "--operator", "guess"],
+        makeIo().io,
+      ),
+    ).toBe(false);
   });
 
   it("includes manifest categories in list output", () => {
@@ -109,12 +324,12 @@ describe("CLI fast path", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "describe", "gh", "search-repos"],
+      ["node", "unicli", "-f", "json", "describe", "gh", "search-repos"],
       io,
     );
 
     expect(handled).toBe(true);
-    expect(JSON.parse(stdout.join(""))).toMatchObject({
+    expect(JSON.parse(stdout.join("")).data).toMatchObject({
       auth: true,
       auth_setup: "gh auth login",
     });
@@ -124,12 +339,12 @@ describe("CLI fast path", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "describe", "retrieval", "search"],
+      ["node", "unicli", "-f", "json", "describe", "retrieval", "search"],
       io,
     );
 
     expect(handled).toBe(true);
-    expect(JSON.parse(stdout.join(""))).toMatchObject({
+    expect(JSON.parse(stdout.join("")).data).toMatchObject({
       auth: false,
       auth_optional: true,
       auth_setup: "gh auth login",
@@ -227,12 +442,19 @@ describe("CLI fast path", () => {
     expect(handled).toBe(true);
     const env = JSON.parse(stdout.join("")) as {
       command: string;
-      data: Array<{ command: string }>;
+      data: Array<{
+        command: string;
+        evidence_scope?: string;
+        runtime_readiness?: string;
+      }>;
     };
     expect(env.command).toBe("core.search");
-    expect(env.data.some((row) => row.command === "twitter trending")).toBe(
-      true,
-    );
+    expect(
+      env.data.find((row) => row.command === "twitter trending"),
+    ).toMatchObject({
+      evidence_scope: "catalog_contract",
+      runtime_readiness: "not_evaluated",
+    });
   });
 
   it("hard-filters fast-path search results by category", () => {
@@ -264,23 +486,68 @@ describe("CLI fast path", () => {
     expect(env.data.map((row) => row.command)).toContain("unpaywall oa");
   });
 
-  it("serves describe command schemas from manifest metadata", () => {
+  it("intersects fast-path ranking with manifest capability requirements", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "describe", "twitter", "search"],
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "search",
+        "papers",
+        "research",
+        "--operator",
+        "structured-api",
+        "--surface",
+        "web",
+        "--effect",
+        "read",
+      ],
       io,
     );
 
     expect(handled).toBe(true);
-    const payload = JSON.parse(stdout.join("")) as {
-      args_schema: {
-        properties: Record<string, { type: string }>;
-        required: string[];
-        additionalProperties: boolean;
-      };
-      channels: { shell: string };
+    const env = JSON.parse(stdout.join("")) as {
+      data: Array<{
+        operator: string;
+        effect: string;
+        target_surface: string;
+      }>;
     };
+    expect(env.data.length).toBeGreaterThan(0);
+    expect(
+      env.data.every(
+        (row) =>
+          row.operator === "structured-api" &&
+          row.effect === "read" &&
+          row.target_surface === "web",
+      ),
+    ).toBe(true);
+  });
+
+  it("serves describe command schemas from manifest metadata", () => {
+    const { stdout, io } = makeIo();
+
+    const handled = tryRunFastPath(
+      ["node", "unicli", "-f", "json", "describe", "twitter", "search"],
+      io,
+    );
+
+    expect(handled).toBe(true);
+    const payload = (
+      JSON.parse(stdout.join("")) as {
+        data: {
+          args_schema: {
+            properties: Record<string, { type: string }>;
+            required: string[];
+            additionalProperties: boolean;
+          };
+          channels: { shell: string };
+        };
+      }
+    ).data;
     expect(payload.args_schema.properties.query).toMatchObject({
       type: "string",
     });
@@ -289,27 +556,104 @@ describe("CLI fast path", () => {
     expect(payload.channels.shell).toContain("<query>");
   });
 
+  it.each([
+    [["hackernew", "top"], "unknown site", "unicli describe hackernews top"],
+    [
+      ["hackernews", "topp"],
+      "unknown command",
+      "unicli describe hackernews top",
+    ],
+  ] as const)(
+    "returns one-hop recovery for a describe typo: %s",
+    (target, message, alternative) => {
+      const { stdout, stderr, io } = makeIo();
+
+      const handled = tryRunFastPath(
+        ["node", "unicli", "-f", "json", "describe", ...target],
+        io,
+      );
+
+      expect(handled).toBe(true);
+      expect(stdout).toEqual([]);
+      const envelope = JSON.parse(stderr.join("")) as {
+        ok: boolean;
+        error: { message: string; alternatives: string[] };
+      };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.message).toContain(message);
+      expect(envelope.error.alternatives[0]).toBe(alternative);
+    },
+  );
+
+  it.each([
+    ["hackernews", "top", "structured-api", "http-or-service-protocol"],
+    ["gh", "release", "native-cli", "subprocess"],
+  ] as const)(
+    "projects the %s %s operator through the manifest fast path",
+    (site, command, operator, provider) => {
+      const { stdout, io } = makeIo();
+
+      const handled = tryRunFastPath(
+        ["node", "unicli", "-f", "json", "describe", site, command, "--full"],
+        io,
+      );
+
+      expect(handled).toBe(true);
+      const payload = (
+        JSON.parse(stdout.join("")) as {
+          data: {
+            contract?: {
+              execution: {
+                operator: string;
+                provider: string;
+                visual: boolean;
+              };
+            };
+          };
+        }
+      ).data;
+      expect(payload.contract?.execution).toMatchObject({
+        operator,
+        provider,
+        coordinate_actuation: false,
+      });
+    },
+  );
+
   it("passes manifest capabilities into describe operation policy", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "-f", "json", "describe", "arxiv", "download"],
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "describe",
+        "arxiv",
+        "download",
+        "--full",
+      ],
       io,
     );
 
     expect(handled).toBe(true);
-    const payload = JSON.parse(stdout.join("")) as {
-      operation_policy: {
-        effect: string;
-        capability_scope: {
-          dimensions: {
-            network: { access: string };
-            file: { access: string };
+    const payload = (
+      JSON.parse(stdout.join("")) as {
+        data: {
+          operation_policy: {
+            effect: string;
+            capability_scope: {
+              dimensions: {
+                network: { access: string };
+                file: { access: string };
+              };
+              resources: { paths: string[] };
+            };
           };
-          resources: { paths: string[] };
         };
-      };
-    };
+      }
+    ).data;
     expect(payload.operation_policy.effect).toBe("download_file");
     expect(
       payload.operation_policy.capability_scope.dimensions.network.access,
@@ -361,26 +705,39 @@ describe("CLI fast path", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "describe", "wechat-work", "type-text"],
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "describe",
+        "wechat-work",
+        "type-text",
+        "--full",
+      ],
       io,
     );
 
     expect(handled).toBe(true);
-    const payload = JSON.parse(stdout.join("")) as {
-      args_schema: {
-        properties: Record<string, { type: string }>;
-        required: string[];
-      };
-      channels: { shell: string };
-      operation_policy: {
-        capability_scope: {
-          dimensions: {
-            desktop: { access: string };
-            process: { access: string };
+    const payload = (
+      JSON.parse(stdout.join("")) as {
+        data: {
+          args_schema: {
+            properties: Record<string, { type: string }>;
+            required: string[];
+          };
+          channels: { shell: string };
+          operation_policy: {
+            capability_scope: {
+              dimensions: {
+                desktop: { access: string };
+                process: { access: string };
+              };
+            };
           };
         };
-      };
-    };
+      }
+    ).data;
     expect(payload.args_schema.properties.text).toMatchObject({
       type: "string",
     });
@@ -402,33 +759,46 @@ describe("CLI fast path", () => {
     const { stdout, io } = makeIo();
 
     const handled = tryRunFastPath(
-      ["node", "unicli", "describe", "compute", "capture"],
+      [
+        "node",
+        "unicli",
+        "-f",
+        "json",
+        "describe",
+        "compute",
+        "capture",
+        "--full",
+      ],
       io,
     );
 
     expect(handled).toBe(true);
-    const payload = JSON.parse(stdout.join("")) as {
-      command: string;
-      source_path?: string;
-      adapter_path?: string;
-      args_schema: {
-        properties: Record<
-          string,
-          { type: string; default?: unknown; enum?: string[] }
-        >;
-      };
-      channels: { shell: string };
-      contract?: {
-        schema_version: string;
-        identity: { site: string; command: string; source_path?: string };
-        repair: {
-          source_kind: string;
+    const payload = (
+      JSON.parse(stdout.join("")) as {
+        data: {
+          command: string;
           source_path?: string;
           adapter_path?: string;
-          repair_command?: string;
+          args_schema: {
+            properties: Record<
+              string,
+              { type: string; default?: unknown; enum?: string[] }
+            >;
+          };
+          channels: { shell: string };
+          contract?: {
+            schema_version: string;
+            identity: { site: string; command: string; source_path?: string };
+            repair: {
+              source_kind: string;
+              source_path?: string;
+              adapter_path?: string;
+              repair_command?: string;
+            };
+          };
         };
-      };
-    };
+      }
+    ).data;
     expect(payload.command).toBe("unicli compute capture");
     expect(payload.source_path).toBe("src/commands/compute.ts");
     expect(payload.adapter_path).toBeUndefined();

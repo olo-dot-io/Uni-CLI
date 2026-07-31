@@ -9,6 +9,7 @@
 site: patsnap
 name: search
 description: PatSnap Eureka patent search via OAuth2 client_credentials
+operation_effect: read
 domain: connect.zhihuiya.com
 type: web-api
 strategy: header

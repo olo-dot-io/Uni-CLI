@@ -31,6 +31,7 @@ import {
   COMPUTER_USE_TOOLS,
 } from "./profiles/computer-use.js";
 import { BROWSER_CONTROL_TOOLS } from "./profiles/browser-control.js";
+import type { McpTaskInputBridge } from "./jsonrpc.js";
 
 export interface McpToolAnnotations {
   readOnlyHint?: boolean;
@@ -45,6 +46,15 @@ export interface McpToolExecution {
 
 export interface McpToolExecutionContext {
   signal?: AbortSignal;
+  task?: McpTaskInputBridge;
+  principalId?: string;
+  mcpSessionId?: string;
+  agentSessionId?: string;
+}
+
+export interface McpModernTaskSelectionContext {
+  transport: "mcp-stdio" | "mcp-http";
+  principalId?: string;
 }
 
 export interface McpTool {
@@ -55,6 +65,14 @@ export interface McpTool {
   _meta?: Record<string, unknown>;
   annotations?: McpToolAnnotations;
   execution?: McpToolExecution;
+  /**
+   * Server-owned, synchronous execution-mode decision for a modern optional
+   * tool. This internal hook is stripped from tools/list responses.
+   */
+  selectModernTask?: (
+    args: Readonly<Record<string, unknown>>,
+    context: McpModernTaskSelectionContext,
+  ) => "sync" | "task";
   handler?: (
     args: Record<string, unknown>,
     context?: McpToolExecutionContext,
@@ -157,7 +175,7 @@ export function buildDefaultTools(): McpTool[] {
     {
       name: "unicli_list",
       description:
-        "List discoverable commands with source_kind, mcp_run_supported, and invocation metadata. Filter by site, category, or adapter type.",
+        "List discoverable commands with source_kind, mcp_run_supported, and invocation metadata. Filter by site, category, or adapter type and follow next_cursor for more.",
       inputSchema: {
         type: "object",
         properties: {
@@ -174,6 +192,17 @@ export function buildDefaultTools(): McpTool[] {
             type: "string",
             description: "Filter by adapter type",
             enum: ["web-api", "desktop", "browser", "bridge", "service"],
+          },
+          cursor: {
+            type: "string",
+            description: "Opaque next_cursor from the previous page",
+          },
+          limit: {
+            type: "integer",
+            description: "Maximum commands per page (1-256, default 200)",
+            default: 200,
+            minimum: 1,
+            maximum: 256,
           },
         },
       },
@@ -210,6 +239,60 @@ export function buildDefaultTools(): McpTool[] {
             type: "string",
             description:
               "Hard-filter results by site category (e.g. scholarly, social, finance, dev)",
+          },
+          operator: {
+            type: "string",
+            description: "Require one execution operator before ranking top-k",
+            enum: [
+              "structured-api",
+              "browser-protocol",
+              "native-cli",
+              "browser-semantic",
+              "desktop-accessibility",
+              "visual-observation",
+              "visual-coordinate",
+              "local-runtime",
+            ],
+          },
+          target_surface: {
+            type: "string",
+            description: "Require one target surface",
+            enum: ["web", "desktop", "system", "mobile"],
+          },
+          effect: {
+            type: "string",
+            description: "Require one operation effect",
+            enum: [
+              "read",
+              "download_file",
+              "send_message",
+              "publish_content",
+              "account_state",
+              "remote_transform",
+              "remote_resource",
+              "service_state",
+              "local_app",
+              "local_file",
+              "destructive",
+              "unknown_write",
+            ],
+          },
+          max_interaction_impact: {
+            type: "string",
+            description:
+              "Reject candidates whose interaction impact exceeds this ceiling",
+            enum: ["background", "target-scoped", "foreground"],
+          },
+          platform: {
+            type: "string",
+            description: "Require statically compatible host platform",
+            enum: ["darwin", "win32", "linux"],
+          },
+          allow_coordinate_actuation: {
+            type: "boolean",
+            description:
+              "Authorize visual-coordinate candidates; otherwise coordinate actuation requires operator=visual-coordinate",
+            default: false,
           },
         },
         required: ["query"],

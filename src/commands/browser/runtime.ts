@@ -241,18 +241,26 @@ export async function operatorAction(
       code: string;
       suggestion: string;
       exitCode: number;
+      retryable: boolean;
+      adapter_path: string;
+      step: number;
+      stage: string;
     }>;
     const code = tagged.code ?? errorTypeToCode(err);
     ctx.error = {
       code,
       message,
+      adapter_path: tagged.adapter_path ?? "src/commands/browser/runtime.ts",
+      step: tagged.step ?? 0,
+      ...(tagged.stage ? { stage: tagged.stage } : {}),
       ...(tagged.suggestion ? { suggestion: tagged.suggestion } : {}),
       retryable:
-        code === "stale_ref" ||
-        code === "browser_lease_locked" ||
-        /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|broker failed/i.test(
-          message,
-        ),
+        tagged.retryable ??
+        (code === "stale_ref" ||
+          code === "browser_lease_locked" ||
+          /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|broker failed/i.test(
+            message,
+          )),
     };
     ctx.duration_ms = Date.now() - startedAt;
     console.error(format(null, undefined, fmt, ctx));

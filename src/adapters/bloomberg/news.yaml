@@ -1,6 +1,7 @@
 site: bloomberg
 name: news
 description: Bloomberg latest news headlines (RSS)
+operation_effect: read
 domain: feeds.bloomberg.com
 type: web-api
 strategy: public

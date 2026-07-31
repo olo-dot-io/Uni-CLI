@@ -1,6 +1,7 @@
 site: 36kr
 name: latest
 description: Latest 36Kr tech news articles
+operation_effect: read
 domain: 36kr.com
 type: web-api
 strategy: public

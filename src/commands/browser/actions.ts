@@ -1561,21 +1561,17 @@ export function registerBrowserOperatorSubcommands(
 
           const cachePath =
             opts.cache ?? join(userHome(), ".unicli", "observe-cache.jsonl");
-          try {
-            mkdirSync(pathDirname(cachePath), { recursive: true });
-            appendFileSync(
-              cachePath,
-              JSON.stringify({
-                ts: new Date().toISOString(),
-                url: await page.url(),
-                query,
-                candidates,
-              }) + "\n",
-              "utf-8",
-            );
-          } catch {
-            // Cache failures are non-fatal.
-          }
+          mkdirSync(pathDirname(cachePath), { recursive: true });
+          appendFileSync(
+            cachePath,
+            JSON.stringify({
+              ts: new Date().toISOString(),
+              url: await page.url(),
+              query,
+              candidates,
+            }) + "\n",
+            "utf-8",
+          );
 
           return { query, candidates };
         },

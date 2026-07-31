@@ -7,6 +7,7 @@
 site: lens
 name: get
 description: Retrieve a single Lens.org patent record by publication number
+operation_effect: read
 domain: api.lens.org
 type: web-api
 strategy: header

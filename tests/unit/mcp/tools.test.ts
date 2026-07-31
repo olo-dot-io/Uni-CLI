@@ -25,6 +25,11 @@ import { describe as describeUnicli } from "../../../src/commands/describe.js";
 import { invalidateCache } from "../../../src/discovery/search.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterManifest } from "../../../src/types.js";
+import {
+  MCP_MAX_RESULT_BYTES,
+  MCP_RESULT_NOT_SERIALIZABLE,
+  MCP_RESULT_TOO_LARGE,
+} from "../../../src/mcp/result-budget.js";
 
 const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
 
@@ -110,9 +115,140 @@ describe("deterministic tool ordering", () => {
     expect(adapterTools.length).toBeGreaterThan(0);
     expect(adapterTools).toEqual(sorted);
   });
+
+  it("paginates tools/list with opaque cursors instead of exceeding the result budget", async () => {
+    const tools = Array.from({ length: 300 }, (_, index) => ({
+      name: `tool_${String(index).padStart(3, "0")}`,
+      description: `pagination fixture ${index}`,
+      inputSchema: { type: "object" as const, properties: {} },
+    }));
+    const handler = buildHandler(tools);
+
+    const first = await handler({
+      jsonrpc: "2.0",
+      id: 100,
+      method: "tools/list",
+      params: {},
+    });
+    const firstResult = first?.result as {
+      tools: Array<{ name: string }>;
+      nextCursor?: string;
+    };
+    expect(firstResult.tools).toHaveLength(256);
+    expect(firstResult.nextCursor).toBe("tools:256");
+
+    const second = await handler({
+      jsonrpc: "2.0",
+      id: 101,
+      method: "tools/list",
+      params: { cursor: firstResult.nextCursor },
+    });
+    const secondResult = second?.result as {
+      tools: Array<{ name: string }>;
+      nextCursor?: string;
+    };
+    expect(secondResult.tools).toHaveLength(44);
+    expect(secondResult.tools[0]?.name).toBe("tool_256");
+    expect(secondResult.nextCursor).toBeUndefined();
+
+    const invalid = await handler({
+      jsonrpc: "2.0",
+      id: 102,
+      method: "tools/list",
+      params: { cursor: "catalog:1" },
+    });
+    expect(invalid?.error).toMatchObject({ code: -32602 });
+    await handler.closeAll?.("test complete");
+  });
 });
 
 describe("DEFAULT_TOOL_NAMES registry", () => {
+  it("rejects duplicate advertised tool names at startup", () => {
+    const duplicate = {
+      name: "duplicate",
+      description: "duplicate fixture",
+      inputSchema: { type: "object" as const, properties: {} },
+    };
+    expect(() => buildHandler([duplicate, { ...duplicate }])).toThrow(
+      "Duplicate MCP tool name: duplicate",
+    );
+  });
+
+  it("rejects oversized synchronous results before transport serialization", async () => {
+    const handler = buildHandler([
+      {
+        name: "oversized",
+        description: "oversized result fixture",
+        inputSchema: { type: "object", properties: {} },
+        execution: { taskSupport: "optional" },
+        handler: async () => ({
+          content: [
+            { type: "text", text: "x".repeat(MCP_MAX_RESULT_BYTES + 1) },
+          ],
+        }),
+      },
+    ]);
+
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 300,
+      method: "tools/call",
+      params: { name: "oversized", arguments: {} },
+    });
+
+    expect(response).toMatchObject({
+      id: 300,
+      error: {
+        code: MCP_RESULT_TOO_LARGE,
+        data: {
+          code: "result_too_large",
+          max_bytes: MCP_MAX_RESULT_BYTES,
+          retryable: false,
+        },
+      },
+    });
+    expect(JSON.stringify(response).length).toBeLessThan(2_000);
+    await handler.closeAll?.("test complete");
+  });
+
+  it("turns cyclic and BigInt tool results into typed protocol errors", async () => {
+    const cyclic: Record<string, unknown> = { content: [] };
+    cyclic.self = cyclic;
+    let calls = 0;
+    const handler = buildHandler([
+      {
+        name: "not-serializable",
+        description: "serialization fixture",
+        inputSchema: { type: "object", properties: {} },
+        execution: { taskSupport: "optional" },
+        handler: async () => {
+          calls += 1;
+          return (calls === 1 ? cyclic : { content: [], value: 1n }) as never;
+        },
+      },
+    ]);
+
+    for (const id of [310, 311]) {
+      const response = await handler({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: { name: "not-serializable", arguments: {} },
+      });
+      expect(response).toMatchObject({
+        id,
+        error: {
+          code: MCP_RESULT_NOT_SERIALIZABLE,
+          data: {
+            code: "result_not_serializable",
+            retryable: false,
+          },
+        },
+      });
+    }
+    await handler.closeAll?.("test complete");
+  });
+
   it("buildDefaultTools stays in lock-step with DEFAULT_TOOL_NAMES", () => {
     const names = buildDefaultTools().map((t) => t.name);
     for (const n of names) {
@@ -126,7 +262,66 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
     );
 
     expect(listTool?.inputSchema.properties).toHaveProperty("category");
+    expect(listTool?.inputSchema.properties).toHaveProperty("cursor");
+    expect(listTool?.inputSchema.properties).toHaveProperty("limit");
     expect(listTool?.description).toContain("category");
+  });
+
+  it("unicli_list paginates the catalog with stable totals", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const readPage = async (id: number, cursor?: string) => {
+      const response = await handler({
+        jsonrpc: "2.0",
+        id,
+        method: "tools/call",
+        params: {
+          name: "unicli_list",
+          arguments: { limit: 1, ...(cursor ? { cursor } : {}) },
+        },
+      });
+      return (
+        response?.result as {
+          structuredContent: {
+            data: {
+              total_commands: number;
+              returned_commands: number;
+              next_cursor?: string;
+              adapters: Array<{
+                site: string;
+                commands: Array<{ name: string }>;
+              }>;
+            };
+          };
+        }
+      ).structuredContent.data;
+    };
+
+    const first = await readPage(103);
+    const second = await readPage(104, first.next_cursor);
+    expect(first.returned_commands).toBe(1);
+    expect(second.returned_commands).toBe(1);
+    expect(first.total_commands).toBe(second.total_commands);
+    expect(first.next_cursor).toBe("catalog:1");
+    expect(second.next_cursor).toBe("catalog:2");
+    expect(first.adapters[0]).not.toEqual(second.adapters[0]);
+
+    const invalid = await handler({
+      jsonrpc: "2.0",
+      id: 105,
+      method: "tools/call",
+      params: {
+        name: "unicli_list",
+        arguments: { cursor: "tools:1" },
+      },
+    });
+    expect(invalid?.result).toMatchObject({
+      isError: true,
+      structuredContent: {
+        data: { code: "invalid_input", retryable: false },
+      },
+    });
+    await handler.closeAll?.("test complete");
   });
 
   it("unicli_search exposes category filtering in the MCP schema", () => {
@@ -135,6 +330,11 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
     );
 
     expect(searchTool?.inputSchema.properties).toHaveProperty("category");
+    expect(searchTool?.inputSchema.properties).toHaveProperty("operator");
+    expect(searchTool?.inputSchema.properties).toHaveProperty("effect");
+    expect(searchTool?.inputSchema.properties).toHaveProperty(
+      "max_interaction_impact",
+    );
     expect(searchTool?.description).toContain("category");
   });
 
@@ -297,6 +497,51 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
     );
     expect(results.map((result) => result.site)).toContain("unpaywall");
   });
+
+  it("unicli_search intersects ranking with hard capability requirements", async () => {
+    const handler = buildHandler(buildDefaultTools());
+
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 305,
+      method: "tools/call",
+      params: {
+        name: "unicli_search",
+        arguments: {
+          query: "papers research",
+          operator: "structured-api",
+          target_surface: "web",
+          effect: "read",
+          max_interaction_impact: "background",
+          limit: 8,
+        },
+      },
+    });
+
+    const payload = response?.result as {
+      structuredContent?: {
+        data?: {
+          results?: Array<{
+            operator: string;
+            effect: string;
+            target_surface: string;
+            interaction_impact: string;
+          }>;
+        };
+      };
+    };
+    const results = payload.structuredContent?.data?.results ?? [];
+    expect(results.length).toBeGreaterThan(0);
+    expect(
+      results.every(
+        (result) =>
+          result.operator === "structured-api" &&
+          result.effect === "read" &&
+          result.target_surface === "web" &&
+          result.interaction_impact === "background",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("computer-use profile", () => {
@@ -353,11 +598,27 @@ describe("computer-use profile", () => {
       "computer-use.snapshot",
       "computer-use.find",
       "computer-use.click",
+      "computer-use.point_click",
+      "computer-use.drag",
       "computer-use.type",
+      "computer-use.text",
       "computer-use.press",
       "computer-use.scroll",
+      "computer-use.point_scroll",
       "computer-use.launch",
       "computer-use.screenshot",
+      "computer-use.screenshot_file",
+      "computer-use.session_start",
+      "computer-use.session_state",
+      "computer-use.session_escalate",
+      "computer-use.session_end",
+      "computer-use.screen_size",
+      "computer-use.cursor_position",
+      "computer-use.move_cursor",
+      "computer-use.agent_cursor_state",
+      "computer-use.agent_cursor_enable",
+      "computer-use.agent_cursor_motion",
+      "computer-use.agent_cursor_theme",
       "computer-use.attach",
       "computer-use.evaluate",
       "computer-use.wait",
@@ -400,6 +661,28 @@ describe("computer-use profile", () => {
       copyReference: { type: "boolean", default: false },
       referenceRoot: { type: "string" },
     });
+    const inlineScreenshot = tools.find(
+      (candidate) => candidate.name === "computer-use.screenshot",
+    );
+    expect(inlineScreenshot).toMatchObject({
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+      },
+      execution: { taskSupport: "optional" },
+    });
+    expect(inlineScreenshot?.inputSchema.properties).not.toHaveProperty("path");
+    const fileScreenshot = tools.find(
+      (candidate) => candidate.name === "computer-use.screenshot_file",
+    );
+    expect(fileScreenshot).toMatchObject({
+      annotations: {
+        readOnlyHint: false,
+        idempotentHint: false,
+      },
+      execution: { taskSupport: "required" },
+    });
+    expect(fileScreenshot?.inputSchema.required).toContain("path");
     const browserState = tools.find(
       (candidate) => candidate.name === "computer-use.browser_state",
     );
@@ -495,7 +778,6 @@ describe("computer-use profile", () => {
       ["press", "computer-use.press"],
       ["scroll", "computer-use.scroll"],
       ["launch", "computer-use.launch"],
-      ["screenshot", "computer-use.screenshot"],
       ["attach", "computer-use.attach"],
       ["eval", "computer-use.evaluate"],
       ["wait", "computer-use.wait"],
@@ -632,7 +914,7 @@ describe("computer-use profile", () => {
           expect.objectContaining({ state: "observe" }),
           expect.objectContaining({
             state: "error",
-            transport: "visual",
+            transport: "local-runtime",
           }),
         ],
       },
@@ -642,7 +924,7 @@ describe("computer-use profile", () => {
         action: "compute_find",
         dispatch: {
           status: "failed",
-          transport: "visual",
+          transport: "local-runtime",
         },
         overlay: {
           provider: "none",

@@ -8,7 +8,7 @@
  * @side-effects Explicit writes create/replace cookie files; reads tighten legacy broad permissions before loading.
  * @perf        O(serialized cookie bytes); one fsync per explicit write.
  * @concurrency Same-directory atomic rename prevents partial readers; last completed writer wins.
- * @test        tests/unit/cookie-storage.test.ts, tests/unit/engine/cookie-refresh-format.test.ts
+ * @test        tests/unit/cookie-storage.test.ts, tests/unit/engine/cookie-storage-roundtrip.test.ts
  * @stability   stable
  * @since       2026-07-12
  */

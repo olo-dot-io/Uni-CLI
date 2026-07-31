@@ -24,7 +24,7 @@ import {
   isProcessVerifiedDebugPort,
   knownLocalBrowserInstalls,
   readUserDataDirDebugPort,
-  resolvePreferredLocalBrowserProfile,
+  requireLocalBrowserIdentity,
   type LocalBrowserProfile,
 } from "./local-profiles.js";
 import {
@@ -272,7 +272,7 @@ function resolveLaunchSeedProfile(
   if (ephemeral) return null;
   if (options && "seedProfile" in options) return options.seedProfile ?? null;
   if (options?.userDataDir !== undefined) return null;
-  return resolvePreferredLocalBrowserProfile();
+  return requireLocalBrowserIdentity().profile;
 }
 
 function resolveLaunchUserDataDir(

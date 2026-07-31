@@ -46,12 +46,18 @@ export function isHelpToken(value: string): boolean {
   return value === "-h" || value === "--help" || value === "help";
 }
 
-export function jsonSchemaType(type: ManifestArg["type"]): string {
+export function jsonSchemaType(type: ManifestArg["type"]): string | string[] {
   switch (type) {
+    case "str[]":
+      return "array";
     case "int":
       return "integer";
     case "float":
       return "number";
+    case "nullable-float":
+      return ["number", "null"];
+    case "str-or-int":
+      return ["string", "integer"];
     case "bool":
       return "boolean";
     default:
@@ -67,10 +73,16 @@ export function argsToJsonSchema(args: ManifestArg[]): Record<string, unknown> {
     const prop: Record<string, unknown> = {
       type: jsonSchemaType(arg.type),
     };
+    if (arg.type === "str[]") prop.items = { type: "string" };
     if (arg.description) prop.description = arg.description;
     if (arg.default !== undefined) prop.default = arg.default;
     if (arg.choices && arg.choices.length > 0) prop.enum = arg.choices;
     if (arg.format) prop.format = arg.format;
+    if (arg.minLength !== undefined) prop.minLength = arg.minLength;
+    if (arg.maxLength !== undefined) prop.maxLength = arg.maxLength;
+    if (arg.minimum !== undefined) prop.minimum = arg.minimum;
+    if (arg.maximum !== undefined) prop.maximum = arg.maximum;
+    if (arg.pattern !== undefined) prop.pattern = arg.pattern;
     if (arg["x-unicli-kind"]) prop["x-unicli-kind"] = arg["x-unicli-kind"];
     if (arg["x-unicli-accepts"]) {
       prop["x-unicli-accepts"] = arg["x-unicli-accepts"];
@@ -106,11 +118,20 @@ export function buildExample(args: ManifestArg[]): Record<string, unknown> {
       continue;
     }
     switch (arg.type) {
+      case "str[]":
+        example[arg.name] = ["value"];
+        break;
       case "int":
         example[arg.name] = 10;
         break;
       case "float":
         example[arg.name] = 0.5;
+        break;
+      case "nullable-float":
+        example[arg.name] = null;
+        break;
+      case "str-or-int":
+        example[arg.name] = `<${arg.name}>`;
         break;
       case "bool":
         example[arg.name] = false;
@@ -133,7 +154,7 @@ export function buildChannels(
     .join(" ");
   const options = args
     .filter((arg) => !arg.positional)
-    .map((arg) => `[--${arg.name} <${arg.type ?? "value"}>]`)
+    .map((arg) => `[--${arg.name} <${arg.type ?? "str"}>]`)
     .join(" ");
   const shell =
     `unicli ${site} ${command}` +
@@ -174,6 +195,13 @@ export function coerceArgValue(
     if (typeof value === "boolean") return value;
     const text = String(value).toLowerCase();
     return text === "1" || text === "true" || text === "yes";
+  }
+  if (type === "str[]") {
+    if (Array.isArray(value)) return value.map(String);
+    return String(value)
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
   }
   return value;
 }

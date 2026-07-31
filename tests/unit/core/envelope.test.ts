@@ -14,6 +14,7 @@ import {
   exitCodeFor,
   EnvelopeExit,
 } from "../../../src/core/envelope.js";
+import { confirmedEffectVerdict } from "../../../src/core/effect-verdict.js";
 
 describe("envelope.ok", () => {
   it("wraps data with ok=true and no error field", () => {
@@ -32,6 +33,16 @@ describe("envelope.ok", () => {
   it("carries elapsedMs when provided", () => {
     const e = ok({ a: 1 }, { elapsedMs: 42 });
     expect(e.elapsedMs).toBe(42);
+  });
+
+  it("carries a typed effect verdict when provided", () => {
+    const effectVerdict = confirmedEffectVerdict(
+      "authoritative_response",
+      "service returned the committed resource",
+      "protocol-result",
+    );
+    const e = ok({ id: "new" }, { effect_verdict: effectVerdict });
+    expect(e.effect_verdict).toEqual(effectVerdict);
   });
 });
 
@@ -87,6 +98,7 @@ describe("envelope.err", () => {
 describe("envelope.exitCodeFor", () => {
   it("maps reason tokens to sysexits codes", () => {
     expect(exitCodeFor("auth_required")).toBe(EnvelopeExit.AUTH_REQUIRED); // 77
+    expect(exitCodeFor("permission_denied")).toBe(EnvelopeExit.AUTH_REQUIRED);
     expect(exitCodeFor("config_error")).toBe(EnvelopeExit.CONFIG_ERROR); // 78
     expect(exitCodeFor("service_unavailable")).toBe(
       EnvelopeExit.SERVICE_UNAVAILABLE,

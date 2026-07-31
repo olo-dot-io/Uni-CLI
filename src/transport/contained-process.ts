@@ -27,6 +27,8 @@ export interface ContainedProcessOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
   cancellationDelivery?: CancellationDelivery;
+  maxStdoutBytes?: number;
+  maxStderrBytes?: number;
   onStdout?: (chunk: Buffer) => void;
   onStderr?: (chunk: Buffer) => void;
 }
@@ -46,7 +48,7 @@ export class OperationOutcomeAmbiguousError extends Error {
     readonly cancellationReason: unknown,
   ) {
     super(
-      `${operation} was cancelled after dispatch; its external outcome is ambiguous`,
+      `${operation} was terminated after dispatch; its external outcome is ambiguous`,
       { cause: cancellationReason },
     );
     this.name = "OperationOutcomeAmbiguousError";
@@ -97,6 +99,23 @@ class TimeoutTrigger extends Error {
 }
 
 const PROCESS_CLOSE_GRACE_MS = 2_000;
+const DEFAULT_MAX_STDOUT_BYTES = 16 * 1024 * 1024;
+const DEFAULT_MAX_STDERR_BYTES = 4 * 1024 * 1024;
+
+export class ProcessOutputLimitError extends Error {
+  readonly code = "output_limit_exceeded";
+  readonly retryable = false;
+
+  constructor(
+    readonly stream: "stdout" | "stderr",
+    readonly maximumBytes: number,
+  ) {
+    super(
+      `native process ${stream} exceeded ${String(maximumBytes)} buffered bytes`,
+    );
+    this.name = "ProcessOutputLimitError";
+  }
+}
 
 export async function runContainedProcess(
   command: string,
@@ -107,11 +126,34 @@ export async function runContainedProcess(
   const child = spawnOwnedProcess(command, args, spawnOptions(options)).child;
   const stdoutChunks: Buffer[] = [];
   const stderrChunks: Buffer[] = [];
+  const maxStdoutBytes = options.maxStdoutBytes ?? DEFAULT_MAX_STDOUT_BYTES;
+  const maxStderrBytes = options.maxStderrBytes ?? DEFAULT_MAX_STDERR_BYTES;
+  let stdoutBytes = 0;
+  let stderrBytes = 0;
+  let rejectOutputLimit!: (error: ProcessOutputLimitError) => void;
+  const outputLimit = new Promise<never>((_resolve, reject) => {
+    rejectOutputLimit = reject;
+  });
+  let outputLimitExceeded = false;
   child.stdout?.on("data", (chunk: Buffer) => {
+    if (outputLimitExceeded) return;
+    stdoutBytes += chunk.length;
+    if (stdoutBytes > maxStdoutBytes) {
+      outputLimitExceeded = true;
+      rejectOutputLimit(new ProcessOutputLimitError("stdout", maxStdoutBytes));
+      return;
+    }
     stdoutChunks.push(chunk);
     options.onStdout?.(chunk);
   });
   child.stderr?.on("data", (chunk: Buffer) => {
+    if (outputLimitExceeded) return;
+    stderrBytes += chunk.length;
+    if (stderrBytes > maxStderrBytes) {
+      outputLimitExceeded = true;
+      rejectOutputLimit(new ProcessOutputLimitError("stderr", maxStderrBytes));
+      return;
+    }
     stderrChunks.push(chunk);
     options.onStderr?.(chunk);
   });
@@ -160,6 +202,7 @@ export async function runContainedProcess(
     const completed = await Promise.race([
       closed,
       failed,
+      outputLimit,
       ...(cancelled ? [cancelled] : []),
       ...(timedOut ? [timedOut] : []),
     ]);
@@ -222,7 +265,8 @@ function authoritativeProcessError(
       : error.reason;
   }
   if (
-    error instanceof TimeoutTrigger &&
+    (error instanceof TimeoutTrigger ||
+      error instanceof ProcessOutputLimitError) &&
     cancellationDelivery === "outcome-ambiguous"
   ) {
     return new OperationOutcomeAmbiguousError(command, error);

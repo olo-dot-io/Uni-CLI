@@ -550,6 +550,8 @@ cli({
     "pdf_url",
     "source_url",
   ],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "paper",

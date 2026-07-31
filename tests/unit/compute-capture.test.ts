@@ -73,7 +73,7 @@ function nativeTransportKind(): TransportKind {
 describe("compute capture exact target", () => {
   it("binds the screenshot and replay trajectory to the window proven by the snapshot", async () => {
     const bus = createTransportBus();
-    // REASON: only the host accessibility boundary is substituted; capture, cascade, ref allocation, and provenance stay real.
+    // REASON: only the host accessibility boundary is substituted; capture, selected-provider dispatch, ref allocation, and provenance stay real.
     const native = new NativeCaptureStub(nativeTransportKind(), 101, 101);
     bus.register(native);
 
@@ -101,7 +101,7 @@ describe("compute capture exact target", () => {
 
   it("rejects a transport result that contradicts the bound snapshot window", async () => {
     const bus = createTransportBus();
-    // REASON: the contradictory host result is the external fault injected into the real capture and cascade path.
+    // REASON: the contradictory host result is the external fault injected into the real capture and selected-provider path.
     const native = new NativeCaptureStub(nativeTransportKind(), 101, 202);
     bus.register(native);
 

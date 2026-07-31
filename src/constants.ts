@@ -23,7 +23,14 @@ export const USER_AGENT = `Uni-CLI/${VERSION_SHORT}`;
 export const NAME = pkg.name;
 
 /** MCP protocol version — single source of truth for all transports */
+/** Legacy, initialization-based MCP revision retained for existing clients. */
 export const MCP_PROTOCOL_VERSION = "2025-11-25";
+/** Stateless, per-request metadata MCP revision. */
+export const MCP_MODERN_PROTOCOL_VERSION = "2026-07-28";
+export const MCP_SUPPORTED_PROTOCOL_VERSIONS = [
+  MCP_MODERN_PROTOCOL_VERSION,
+  MCP_PROTOCOL_VERSION,
+] as const;
 
 /** ACP protocol version — single source of truth for the ACP server */
 export const ACP_PROTOCOL_VERSION = "2026-03-27";

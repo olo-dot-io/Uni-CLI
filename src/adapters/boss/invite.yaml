@@ -1,6 +1,7 @@
 site: boss
 name: invite
 description: Invite a candidate to interview on BOSS Zhipin
+operation_effect: send_message
 domain: www.zhipin.com
 strategy: intercept
 browser: true

@@ -192,6 +192,7 @@ cli({
   domain: "x.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  operation_family: "update",
   args: [
     { name: "list", type: "str", required: true, positional: true },
     { name: "user", type: "str", required: true },
@@ -229,6 +230,7 @@ cli({
   domain: "x.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  operation_family: "update",
   args: [
     { name: "list", type: "str", required: true, positional: true },
     { name: "user", type: "str", required: true },

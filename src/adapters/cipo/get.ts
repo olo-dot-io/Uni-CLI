@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::cipo::get
  * @does        Browser-driven CIPO single-document retrieval — Canadian Patents Database detail page extracted into a PatentRecord.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cipo/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cipo/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.get)
- * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED (MCP_BUS_MISSING)
+ * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED (browser provider unavailable)
  * @invariants  output row is a canonical PatentRecord
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/cipo/search.test.ts (transport-error shared path)
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  cipoEnvelope,
-  cipoNavigateAndExtract,
-  transportErrorToCipoEnvelope,
-} from "./_shared.js";
+import { cipoEnvelope, cipoNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/cipo/get.ts";
 
@@ -62,9 +59,12 @@ function detailUrlFor(pubNo: string): string {
   return `https://cipo.ic.gc.ca/opic-cipo/cpd/eng/patent/${encodeURIComponent(stripped)}/summary.html`;
 }
 
-export async function runCipoGet(kwargs: {
-  publication_number: string;
-}): Promise<unknown[]> {
+export async function runCipoGet(
+  page: IPage,
+  kwargs: {
+    publication_number: string;
+  },
+): Promise<unknown[]> {
   const pubNo = String(kwargs.publication_number ?? "").trim();
   if (pubNo.length === 0) {
     return [
@@ -80,34 +80,24 @@ export async function runCipoGet(kwargs: {
   }
   const url = detailUrlFor(pubNo);
   let detail: CipoDetail;
-  try {
-    const result = await cipoNavigateAndExtract<CipoDetail>(
-      url,
-      DETAIL_EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: cipoEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "cipo detail evaluate returned no data",
-          ),
-        },
-      ];
-    }
-    detail = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToCipoEnvelope(err, ADAPTER_PATH, "navigate"),
-        },
-      ];
-    }
-    throw err;
+  const result = await cipoNavigateAndExtract<CipoDetail>(
+    page,
+    url,
+    DETAIL_EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: cipoEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "cipo detail evaluate returned no data",
+        ),
+      },
+    ];
   }
+  detail = result.data;
   if (!detail.publication_number && !detail.title) {
     return [
       {
@@ -169,6 +159,8 @@ cli({
     {
       name: "publication_number",
       type: "str",
+      minLength: 1,
+      pattern: "^(?:CA-?)?[A-Z0-9]+-?[A-Z][0-9]?$",
       required: true,
       positional: true,
       description: "CA publication number (with or without CA prefix)",
@@ -181,8 +173,12 @@ cli({
     "grant_date",
     "source_url",
   ],
-  capabilities: ["mcp-browser.navigate", "mcp-browser.evaluate", "patent.get"],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runCipoGet(kwargs as { publication_number: string }),
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate", "patent.get"],
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runCipoGet(
+      requireBrowserPage(page),
+      kwargs as { publication_number: string },
+    ),
 });

@@ -10,8 +10,8 @@ import { CAPABILITY_MATRIX } from "../../src/transport/capability.js";
 describe("built-in action surface", () => {
   it("matches executable ownership to the capability matrix exactly", () => {
     const surface = getBuiltInStepSurface();
-    expect(surface.totalCount).toBe(105);
-    expect(surface.registeredCount).toBe(50);
+    expect(surface.totalCount).toBe(113);
+    expect(surface.registeredCount).toBe(58);
     expect(surface.transportNativeCount).toBe(55);
     expect(surface.totalCount).toBe(
       surface.registeredCount + surface.transportNativeCount,

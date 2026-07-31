@@ -151,8 +151,8 @@ cli({
   ],
   columns: ["rank", "title", "authors", "source", "year", "cited", "url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "scholar.search",
   ],
   func: async (page, kwargs) => {

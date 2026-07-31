@@ -4,6 +4,8 @@ description: Jike post detail with comments
 domain: m.okjike.com
 type: browser
 strategy: cookie
+operation_effect: read
+operation_family: get
 auth_cookies: [accessToken]
 
 args:

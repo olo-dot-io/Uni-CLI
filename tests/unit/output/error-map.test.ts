@@ -343,12 +343,12 @@ describe("errorToAgentFields — PipelineError branch", () => {
 });
 
 describe("errorToAgentFields — BridgeConnectionError branch", () => {
-  it("uses suggestion/retryable/alternatives from the instance; adapter_path/step are undefined", () => {
+  it("uses suggestion/retryable/alternatives from the instance at the owning adapter boundary", () => {
     const err = new BridgeConnectionError("bridge down");
     const fields = errorToAgentFields(err, "src/adapters/foo/bar.yaml", "foo");
     expect(fields).toEqual({
-      adapter_path: undefined,
-      step: undefined,
+      adapter_path: "src/adapters/foo/bar.yaml",
+      step: 0,
       suggestion: err.suggestion,
       retryable: err.retryable,
       alternatives: err.alternatives,
@@ -360,8 +360,8 @@ describe("errorToAgentFields — generic Error branch", () => {
   it("builds default suggestion with siteName and flags transient retryable=true", () => {
     const err = new Error("connect ETIMEDOUT 1.2.3.4:443");
     const fields = errorToAgentFields(err, "src/adapters/foo/bar.yaml", "foo");
-    expect(fields.adapter_path).toBeUndefined();
-    expect(fields.step).toBeUndefined();
+    expect(fields.adapter_path).toBe("src/adapters/foo/bar.yaml");
+    expect(fields.step).toBe(0);
     expect(fields.suggestion).toBe(
       "Run 'unicli test foo' to diagnose, or report this error.",
     );

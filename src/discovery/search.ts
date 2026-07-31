@@ -6,7 +6,7 @@
  * @breaks  Returns an empty result set when the registry/manifest has no matching commands.
  * @invariants Runtime search uses the live registry; generated search-index artifacts are not a source of truth.
  * @side-effects Caches an in-memory index by command-document signature; reads dynamic macOS data only when enabled.
- * @perf    Cold index build is O(commands * terms); warm searches reuse the cache until documents change.
+ * @perf    Cold index build is O(commands * terms); warm retrieval is O(postings + feasible candidates * log(limit)) through a bounded min-heap.
  * @concurrency Module cache is process-local and rebuilt synchronously inside a search call.
  * @test    tests/unit/search.test.ts, tests/unit/search-eval.test.ts, tests/unit/commands/search.test.ts
  * @stability Public CLI/MCP discovery behavior.
@@ -37,6 +37,19 @@ import {
   listCoreDiscoveryCommands,
 } from "./core-catalog.js";
 import { getRegistryVersion, listCommands } from "../registry.js";
+import {
+  commandFeasibilityProfile,
+  evaluateCommandFeasibility,
+  evaluateFeasibilityProfile,
+  type CapabilityRequirements,
+  type CommandFeasibilityProfile,
+} from "./feasibility.js";
+import { buildCoreCommandContract } from "../core/command-contract.js";
+import { BoundedTopK } from "../core/bounded-top-k.js";
+import {
+  intentEntityCommandBoost,
+  resolveTaskIntentFrame,
+} from "../core/intent-frame.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -47,10 +60,12 @@ export interface SearchResult {
   score: number;
   usage: string;
   category: string;
+  feasibility?: CommandFeasibilityProfile;
 }
 
 export interface SearchOptions {
   category?: string;
+  requirements?: CapabilityRequirements;
 }
 
 export interface CommandSearchDocument {
@@ -58,6 +73,7 @@ export interface CommandSearchDocument {
   command: string;
   description: string;
   category?: string;
+  feasibility?: CommandFeasibilityProfile;
 }
 
 /** One document in the search corpus: a single adapter command. */
@@ -67,18 +83,28 @@ interface Document {
   command: string;
   description: string;
   category?: string;
+  feasibility?: CommandFeasibilityProfile;
   /** Pre-tokenized terms from site + command + description */
   terms: string[];
   /** Total term count for BM25 length normalization */
   termCount: number;
 }
 
+interface ScoredCandidate {
+  idx: number;
+  score: number;
+  ordinal: number;
+  feasibility?: CommandFeasibilityProfile;
+}
+
 /** In-memory search index built from command documents. */
 export interface SearchIndex {
   /** Mapping: term → list of document indices that contain this term */
-  postings: Record<string, number[]>;
+  postings: Map<string, number[]>;
+  /** Term frequencies aligned by position with each postings list. */
+  frequencies: Map<string, number[]>;
   /** IDF (Inverse Document Frequency) for each term */
-  idf: Record<string, number>;
+  idf: Map<string, number>;
   /** All documents with their metadata */
   documents: Array<{
     id: string;
@@ -86,14 +112,22 @@ export interface SearchIndex {
     command: string;
     description: string;
     category?: string;
+    feasibility?: CommandFeasibilityProfile;
     terms: string[];
+    /** Query-independent BM25 denominator component. */
+    bm25LengthNorm: number;
+    /** Query-independent TF-IDF document-vector norm. */
+    tfidfNorm: number;
+    /** Normalized fields used by exact phrase boosts. */
+    normalizedCommand: string;
+    normalizedDescription: string;
   }>;
   /** Average document length (term count) across the corpus */
   avgDl: number;
   /** Total document count */
   N: number;
   /** Registered site names for O(1) query hint checks. */
-  siteLookup: Record<string, true>;
+  siteLookup: Set<string>;
   /** Normalized multi-token site names for phrase hint matching. */
   sitePhrases: Array<{ site: string; phrase: string }>;
 }
@@ -121,9 +155,27 @@ const ALPHA_TFIDF = 0.8;
 const BOOST_SITE_EXACT = 15.0; // Query token exactly matches site name
 const BOOST_SITE_ALIAS = 12.0; // Query token's alias matches site name
 const BOOST_SITE_PHRASE = 28.0; // Query phrase matches hyphenated site name
-const BOOST_CMD_EXACT = 8.0; // Query token exactly matches command name
+const BOOST_CMD_EXACT = 8.0; // Entire query exactly matches command name
+const BOOST_CMD_TOKEN = 2.0; // One token in a longer intent names the action
 const BOOST_CMD_PARTIAL = 3.0; // Query token is substring of command name
+const BOOST_DESCRIPTION_PHRASE = 18.0; // Multi-token phrase appears in description
 const BOOST_CATEGORY = 2.0; // Query token matches site's category
+const PROVIDER_DIVERSITY_ACTION_TERMS = new Set([
+  "tag",
+  "tags",
+  "booru",
+  "illustration",
+  "イラスト",
+  "search",
+  "download",
+  "read",
+  "post",
+  "trending",
+  "latest",
+  "anime",
+  "manga",
+  "game",
+]);
 
 // ── Index Management ────────────────────────────────────────────────────────
 
@@ -144,7 +196,7 @@ function loadIndex(): SearchIndex {
   return cachedIndex;
 }
 
-function runtimeSearchDocuments(): CommandSearchDocument[] {
+export function runtimeSearchDocuments(): CommandSearchDocument[] {
   const seen = new Set<string>();
   const documents: CommandSearchDocument[] = [];
 
@@ -168,6 +220,9 @@ function runtimeSearchDocuments(): CommandSearchDocument[] {
       command: doc.command,
       description: doc.description,
       category: doc.category,
+      feasibility: commandFeasibilityProfile(
+        buildCoreCommandContract({ command: doc }),
+      ),
     });
   }
 
@@ -194,14 +249,13 @@ export function buildIndexFromDocuments(
       command: doc.command,
       description: doc.description,
       ...(doc.category ? { category: doc.category } : {}),
+      ...(doc.feasibility ? { feasibility: doc.feasibility } : {}),
       terms,
       termCount: terms.length,
     });
   }
 
-  const siteLookup = Object.fromEntries(
-    Array.from(siteSet, (site) => [site, true] as const),
-  );
+  const siteLookup = new Set(siteSet);
   const sitePhrases = Array.from(siteSet, (site) => ({
     site,
     phrase: normalizeSitePhrase(site),
@@ -211,42 +265,83 @@ export function buildIndexFromDocuments(
   const avgDl =
     N > 0 ? documents.reduce((sum, d) => sum + d.termCount, 0) / N : 0;
 
-  // Build inverted index
-  const postings: Record<string, number[]> = {};
+  // Build the positional inverted index. Frequency arrays are aligned with
+  // postings so retrieval can accumulate both lexical scores directly from
+  // query-term posting lists instead of rebuilding a term-frequency Map once
+  // per candidate and per scoring model.
+  const postings = new Map<string, number[]>();
+  const frequencies = new Map<string, number[]>();
+  const documentTermFrequencies: Array<Map<string, number>> = [];
   for (let i = 0; i < documents.length; i++) {
-    const seen = new Set<string>();
+    const termFrequencies = new Map<string, number>();
     for (const term of documents[i].terms) {
-      if (seen.has(term)) continue;
-      seen.add(term);
-      if (!postings[term]) postings[term] = [];
-      postings[term].push(i);
+      termFrequencies.set(term, (termFrequencies.get(term) ?? 0) + 1);
+    }
+    documentTermFrequencies.push(termFrequencies);
+    for (const [term, frequency] of termFrequencies) {
+      const posting = postings.get(term);
+      const termFrequency = frequencies.get(term);
+      if (posting && termFrequency) {
+        posting.push(i);
+        termFrequency.push(frequency);
+      } else {
+        postings.set(term, [i]);
+        frequencies.set(term, [frequency]);
+      }
     }
   }
 
   // Compute IDF for each term
-  const idf: Record<string, number> = {};
-  for (const [term, docs] of Object.entries(postings)) {
+  const idf = new Map<string, number>();
+  for (const [term, docs] of postings) {
     // BM25 IDF: log((N - df + 0.5) / (df + 0.5) + 1)
     const df = docs.length;
-    idf[term] = Math.log((N - df + 0.5) / (df + 0.5) + 1);
+    idf.set(term, Math.log((N - df + 0.5) / (df + 0.5) + 1));
   }
 
   return {
     postings,
+    frequencies,
     idf,
-    documents: documents.map((d) => ({
+    documents: documents.map((d, index) => ({
       id: d.id,
       site: d.site,
       command: d.command,
       description: d.description,
       ...(d.category ? { category: d.category } : {}),
+      ...(d.feasibility ? { feasibility: d.feasibility } : {}),
       terms: d.terms,
+      bm25LengthNorm:
+        K1 * (1 - B + B * (avgDl === 0 ? 0 : d.termCount / avgDl)),
+      tfidfNorm: documentTfidfNorm(
+        d.termCount,
+        documentTermFrequencies[index]!,
+        idf,
+      ),
+      normalizedCommand: normalizeSitePhrase(d.command),
+      normalizedDescription: normalizeSitePhrase(d.description),
     })),
     avgDl,
     N,
     siteLookup,
     sitePhrases,
   };
+}
+
+function documentTfidfNorm(
+  termCount: number,
+  termFrequencies: ReadonlyMap<string, number>,
+  idf: ReadonlyMap<string, number>,
+): number {
+  if (termCount === 0) return 0;
+  let normSquare = 0;
+  for (const [term, count] of termFrequencies) {
+    const termIdf = idf.get(term);
+    if (termIdf === undefined) continue;
+    const weight = (count / termCount) * termIdf;
+    normSquare += weight * weight;
+  }
+  return Math.sqrt(normSquare);
 }
 
 export function searchDocuments(
@@ -339,100 +434,6 @@ function tokenizeDocument(
   return terms;
 }
 
-// ── BM25 Scoring ────────────────────────────────────────────────────────────
-
-/**
- * Compute BM25 score for a single document given query terms.
- */
-function bm25Score(
-  docTerms: string[],
-  docLength: number,
-  queryTerms: string[],
-  index: SearchIndex,
-): number {
-  let score = 0;
-
-  // Count term frequencies in this document
-  const tf = new Map<string, number>();
-  for (const term of docTerms) {
-    tf.set(term, (tf.get(term) ?? 0) + 1);
-  }
-
-  for (const qt of queryTerms) {
-    const termIdf = index.idf[qt];
-    if (termIdf === undefined) continue; // term not in corpus
-
-    const termTf = tf.get(qt) ?? 0;
-    if (termTf === 0) continue;
-
-    // BM25 TF component: (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl/avgdl))
-    const numerator = termTf * (K1 + 1);
-    const denominator = termTf + K1 * (1 - B + B * (docLength / index.avgDl));
-    score += termIdf * (numerator / denominator);
-  }
-
-  return score;
-}
-
-// ── TF-IDF Cosine Similarity ────────────────────────────────────────────────
-
-/**
- * Compute TF-IDF cosine similarity between a query and a document.
- *
- * TF-IDF for a term t in document d:
- *   tf(t,d) = count(t in d) / |d|
- *   tfidf(t,d) = tf(t,d) * idf(t)
- *
- * Cosine similarity = dot(query_vec, doc_vec) / (|query_vec| * |doc_vec|)
- */
-function tfidfCosine(
-  docTerms: string[],
-  queryTerms: string[],
-  index: SearchIndex,
-): number {
-  const docLen = docTerms.length;
-  if (docLen === 0) return 0;
-
-  // Build full doc TF map
-  const docTf = new Map<string, number>();
-  for (const term of docTerms) {
-    docTf.set(term, (docTf.get(term) ?? 0) + 1);
-  }
-
-  // Compute full document norm (all terms, not just query overlap)
-  let docNormSq = 0;
-  for (const [term, count] of docTf) {
-    const idfVal = index.idf[term];
-    if (idfVal === undefined) continue;
-    const w = (count / docLen) * idfVal;
-    docNormSq += w * w;
-  }
-
-  // Compute query norm and dot product
-  let dotProduct = 0;
-  let queryNormSq = 0;
-
-  for (const qt of queryTerms) {
-    const idfVal = index.idf[qt];
-    if (idfVal === undefined) continue;
-
-    // Query TF-IDF: binary tf (1) × idf
-    const queryWeight = idfVal;
-    queryNormSq += queryWeight * queryWeight;
-
-    // Doc TF-IDF: normalized tf × idf
-    const rawTf = docTf.get(qt) ?? 0;
-    if (rawTf === 0) continue;
-    const docWeight = (rawTf / docLen) * idfVal;
-    dotProduct += queryWeight * docWeight;
-  }
-
-  const normProduct = Math.sqrt(queryNormSq) * Math.sqrt(docNormSq);
-  if (normProduct === 0) return 0;
-
-  return dotProduct / normProduct;
-}
-
 // ── Main Search Function ────────────────────────────────────────────────────
 
 /**
@@ -516,6 +517,7 @@ function searchIndex(
 
   // Step 1: Tokenize
   const rawTokens = tokenizeQuery(query);
+  const normalizedQuery = normalizeSitePhrase(query);
 
   // Step 2: Expand via aliases
   const expandedTerms: string[] = [];
@@ -534,7 +536,7 @@ function searchIndex(
 
     // Check if this token is directly a known site
     const lowerToken = token.toLowerCase();
-    if (index.siteLookup[lowerToken]) {
+    if (index.siteLookup.has(lowerToken)) {
       siteHints.push(lowerToken);
     }
 
@@ -545,23 +547,43 @@ function searchIndex(
   }
 
   const queryTerms = [...new Set(expandedTerms.map((t) => t.toLowerCase()))];
+  const queryTermSet = new Set(queryTerms);
   const categoryFilter = options.category;
+  const taskIntentFrame = resolveTaskIntentFrame(query);
+  siteHints.push(...taskIntentFrame.site_hints);
+  const effectiveTaskSiteHints = [
+    ...new Set([...siteHints, ...sitePhraseHints]),
+  ];
   const intentFrame = resolveIntentFrame({
     query,
     queryTerms,
-    siteHints: [...siteHints, ...sitePhraseHints],
+    siteHints: effectiveTaskSiteHints,
   });
 
-  // Step 3: Find candidate documents (union of posting lists)
+  // Step 3: Accumulate lexical scores directly from the inverted index. The
+  // dense score vectors are small (one slot per command), avoid candidate-
+  // local Maps, and touch only documents named by query-term posting lists.
   const candidateSet = new Set<number>();
+  const bm25Scores = new Float64Array(index.N);
+  const tfidfDots = new Float64Array(index.N);
+  let queryNormSquare = 0;
   for (const qt of queryTerms) {
-    const postings = index.postings[qt];
-    if (postings) {
-      for (const docIdx of postings) {
-        candidateSet.add(docIdx);
-      }
+    const postings = index.postings.get(qt);
+    const frequencies = index.frequencies.get(qt);
+    const termIdf = index.idf.get(qt);
+    if (!postings || !frequencies || termIdf === undefined) continue;
+    queryNormSquare += termIdf * termIdf;
+    for (let i = 0; i < postings.length; i++) {
+      const docIdx = postings[i]!;
+      const frequency = frequencies[i]!;
+      const doc = index.documents[docIdx]!;
+      candidateSet.add(docIdx);
+      bm25Scores[docIdx] +=
+        termIdf * ((frequency * (K1 + 1)) / (frequency + doc.bm25LengthNorm));
+      tfidfDots[docIdx] += termIdf * ((frequency / doc.terms.length) * termIdf);
     }
   }
+  const queryNorm = Math.sqrt(queryNormSquare);
 
   // If site hints exist, also add ALL commands for those sites
   for (const siteHint of new Set([...siteHints, ...sitePhraseHints])) {
@@ -576,14 +598,49 @@ function searchIndex(
   // Step 4: Score candidates using hybrid BM25 + TF-IDF
   const boundedLimit = Math.max(0, Math.floor(limit));
   if (boundedLimit === 0) return [];
-  const shouldSortAll = boundedLimit >= candidateSet.size;
-  const scored: Array<{ idx: number; score: number }> = [];
-  const topScored: Array<{ idx: number; score: number }> = [];
+  // Alias expansion can intentionally name several independent providers
+  // (for example an entity lookup spanning AniList, Jikan, Bangumi, and
+  // Moegirl). In that mode, retrieving only K commands lets one adapter's
+  // sibling commands crowd every other provider out before result shaping.
+  const expandedProviderCount = queryTerms.reduce(
+    (count, term) => count + (index.siteLookup.has(term) ? 1 : 0),
+    0,
+  );
+  const hasExplicitAction = rawTokens.some((term) =>
+    PROVIDER_DIVERSITY_ACTION_TERMS.has(term),
+  );
+  const diversifyProviders =
+    siteHints.length === 0 && expandedProviderCount >= 3 && !hasExplicitAction;
+  const candidateLimit = diversifyProviders
+    ? Math.min(index.N, Math.max(boundedLimit, boundedLimit * 4))
+    : boundedLimit;
+  const topScored = new BoundedTopK<ScoredCandidate>(
+    candidateLimit,
+    compareBestCandidate,
+  );
+  let scoreOrdinal = 0;
 
   for (const idx of candidateSet) {
     const doc = index.documents[idx];
     const docCategory = documentCategory(doc);
     if (categoryFilter && docCategory !== categoryFilter) continue;
+    const feasibilityDecision = options.requirements
+      ? doc.feasibility
+        ? evaluateFeasibilityProfile(
+            doc.site,
+            doc.command,
+            doc.feasibility,
+            options.requirements,
+          )
+        : evaluateCommandFeasibility(
+            doc.site,
+            doc.command,
+            options.requirements,
+          )
+      : undefined;
+    if (feasibilityDecision && !feasibilityDecision.contract_compatible) {
+      continue;
+    }
     const intentDecision = evaluateIntentFrame(intentFrame, doc);
     if (intentDecision.blocked) continue;
 
@@ -591,8 +648,9 @@ function searchIndex(
     // BM25 scores are unbounded; cosine is [0,1] and is scaled by a fixed
     // ×10 so the 20/80 blend keeps both regimes on comparable magnitudes
     // (empirically tuned against the eval suite; NOT normalized per-query).
-    const bm25 = bm25Score(doc.terms, doc.terms.length, queryTerms, index);
-    const tfidf = tfidfCosine(doc.terms, queryTerms, index);
+    const bm25 = bm25Scores[idx]!;
+    const normProduct = queryNorm * doc.tfidfNorm;
+    const tfidf = normProduct === 0 ? 0 : tfidfDots[idx]! / normProduct;
     let score = ALPHA_BM25 * bm25 + ALPHA_TFIDF * tfidf * 10;
 
     // Boost: exact site name match
@@ -608,37 +666,82 @@ function searchIndex(
     // queries AND fires alone when a DOMAIN_ALIASES expansion lands on a
     // site name (e.g. 漫画→mangadex) — that second path is the zh-domain
     // site-routing channel the eval suite depends on.
+    const wholeQueryMatchesCommand =
+      normalizedQuery.length > 0 && normalizedQuery === doc.normalizedCommand;
+    if (wholeQueryMatchesCommand) score += BOOST_CMD_EXACT;
+    let commandTokenMatched = false;
     for (const qt of queryTerms) {
       if (qt === doc.site) score += BOOST_SITE_ALIAS;
-      if (qt === doc.command) score += BOOST_CMD_EXACT;
-      if (doc.command.includes(qt) && qt.length > 2) score += BOOST_CMD_PARTIAL;
+      if (
+        !wholeQueryMatchesCommand &&
+        !commandTokenMatched &&
+        qt === doc.command
+      ) {
+        score += BOOST_CMD_TOKEN;
+        commandTokenMatched = true;
+      }
+      if (rawTokens.length === 1 && doc.command.includes(qt) && qt.length > 2) {
+        score += BOOST_CMD_PARTIAL;
+      }
     }
 
+    // A multi-token phrase in the task description is stronger evidence than
+    // one generic action token such as "user" or "read".
+    if (
+      normalizedQuery.includes(" ") &&
+      hasPhrase(doc.normalizedDescription, normalizedQuery)
+    ) {
+      score += BOOST_DESCRIPTION_PHRASE;
+    }
     // Boost: category match
     if (categoryHints.includes(docCategory)) {
       score += BOOST_CATEGORY;
     }
 
-    score += intentBoost(doc, queryTerms, [...siteHints, ...sitePhraseHints]);
+    score += intentBoost(doc, queryTermSet, effectiveTaskSiteHints);
+    score += intentEntityCommandBoost(
+      taskIntentFrame,
+      doc.site,
+      doc.command,
+      effectiveTaskSiteHints,
+    );
     score += intentDecision.boost;
+    if (feasibilityDecision?.compatibility === "unknown") {
+      score -= 24 + feasibilityDecision.uncertain_by.length * 4;
+    } else if (
+      options.requirements?.operator &&
+      feasibilityDecision?.compatibility === "compatible" &&
+      feasibilityDecision.contract?.operator === options.requirements.operator
+    ) {
+      score += 16;
+    }
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
-    score *= appActionScorePrior(doc, queryTerms);
+    score *= appActionScorePrior(doc, queryTermSet);
 
     if (score <= 0) continue;
-    if (shouldSortAll) {
-      scored.push({ idx, score });
-    } else {
-      pushTopScore(topScored, { idx, score }, boundedLimit);
-    }
+    topScored.add({
+      idx,
+      score,
+      ordinal: scoreOrdinal,
+      ...(feasibilityDecision?.contract
+        ? { feasibility: feasibilityDecision.contract }
+        : {}),
+    });
+    scoreOrdinal += 1;
   }
 
-  // Step 5: Sort and return top-K
-  const topK = shouldSortAll
-    ? scored.sort((a, b) => b.score - a.score).slice(0, boundedLimit)
-    : topScored;
+  // Step 5: Sort the bounded heap and return top-K.
+  const ranked = topScored.values();
+  const topK = diversifyProviders
+    ? takeProviderDiverseCandidates(index, ranked, boundedLimit)
+    : ranked;
 
-  return topK.map(({ idx, score }) => {
+  return topK.map(({ idx, score, feasibility: evaluatedFeasibility }) => {
     const doc = index.documents[idx];
+    const feasibility =
+      doc.feasibility ??
+      evaluatedFeasibility ??
+      evaluateCommandFeasibility(doc.site, doc.command, {}).contract;
     return {
       site: doc.site,
       command: doc.command,
@@ -646,8 +749,34 @@ function searchIndex(
       score: Math.round(score * 100) / 100,
       usage: buildUsageExample(doc.site, doc.command),
       category: documentCategory(doc),
+      ...(feasibility ? { feasibility } : {}),
     };
   });
+}
+
+function takeProviderDiverseCandidates(
+  index: SearchIndex,
+  ranked: readonly ScoredCandidate[],
+  limit: number,
+): ScoredCandidate[] {
+  const selected: ScoredCandidate[] = [];
+  const seenSites = new Set<string>();
+  for (const candidate of ranked) {
+    const site = index.documents[candidate.idx]?.site;
+    if (!site || seenSites.has(site)) continue;
+    seenSites.add(site);
+    selected.push(candidate);
+    if (selected.length === limit) return selected;
+  }
+  // A small catalog may have fewer providers than the requested result count;
+  // fill the remaining slots in original score order without duplicates.
+  const selectedIds = new Set(selected.map((candidate) => candidate.idx));
+  for (const candidate of ranked) {
+    if (selectedIds.has(candidate.idx)) continue;
+    selected.push(candidate);
+    if (selected.length === limit) break;
+  }
+  return selected;
 }
 
 function addSiteCandidates(
@@ -655,7 +784,7 @@ function addSiteCandidates(
   site: string,
   candidateSet: Set<number>,
 ): void {
-  for (const docIdx of index.postings[site] ?? []) {
+  for (const docIdx of index.postings.get(site) ?? []) {
     if (index.documents[docIdx]?.site === site) candidateSet.add(docIdx);
   }
 }
@@ -665,22 +794,17 @@ function addCategoryCandidates(
   category: string,
   candidateSet: Set<number>,
 ): void {
-  for (const docIdx of index.postings[category] ?? []) {
+  for (const docIdx of index.postings.get(category) ?? []) {
     const doc = index.documents[docIdx];
     if (doc && documentCategory(doc) === category) candidateSet.add(docIdx);
   }
 }
 
-function pushTopScore(
-  topScored: Array<{ idx: number; score: number }>,
-  candidate: { idx: number; score: number },
-  limit: number,
-): void {
-  let insertAt = topScored.findIndex((entry) => candidate.score > entry.score);
-  if (insertAt === -1) insertAt = topScored.length;
-  if (insertAt >= limit) return;
-  topScored.splice(insertAt, 0, candidate);
-  if (topScored.length > limit) topScored.pop();
+function compareBestCandidate(
+  left: ScoredCandidate,
+  right: ScoredCandidate,
+): number {
+  return right.score - left.score || left.ordinal - right.ordinal;
 }
 
 function documentCategory(doc: SearchIndex["documents"][number]): string {
@@ -715,7 +839,20 @@ function normalizeSitePhrase(value: string): string {
 }
 
 function hasPhrase(haystack: string, phrase: string): boolean {
-  return ` ${haystack} `.includes(` ${phrase} `);
+  let offset = 0;
+  while (offset <= haystack.length - phrase.length) {
+    const index = haystack.indexOf(phrase, offset);
+    if (index < 0) return false;
+    const end = index + phrase.length;
+    if (
+      (index === 0 || haystack.charCodeAt(index - 1) === 32) &&
+      (end === haystack.length || haystack.charCodeAt(end) === 32)
+    ) {
+      return true;
+    }
+    offset = index + 1;
+  }
+  return false;
 }
 
 /**

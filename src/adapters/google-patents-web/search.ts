@@ -16,7 +16,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import { buildPatentEnvelope } from "../../engine/normalizer/patent-envelope.js";
+import { throwPatentAdapterError } from "../../engine/normalizer/patent-envelope.js";
 import {
   GooglePatentsHttpError,
   buildGooglePatentsXhrUrl,
@@ -53,7 +53,7 @@ export async function runGooglePatentsWebSearch(
   if (query.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_UNSUPPORTED_QUERY",
           adapter_path: ADAPTER_PATH,
           step: "validate",
@@ -74,7 +74,7 @@ export async function runGooglePatentsWebSearch(
     if (err instanceof GooglePatentsHttpError) {
       return [
         {
-          envelope: buildPatentEnvelope({
+          envelope: throwPatentAdapterError({
             code:
               err.status === 429
                 ? "PATENT_RATE_LIMIT"
@@ -98,7 +98,7 @@ export async function runGooglePatentsWebSearch(
     if (!body.results || !Array.isArray(body.results.cluster)) {
       return [
         {
-          envelope: buildPatentEnvelope({
+          envelope: throwPatentAdapterError({
             code: "PATENT_SCHEMA_DRIFT",
             adapter_path: ADAPTER_PATH,
             step: "select",
@@ -111,7 +111,7 @@ export async function runGooglePatentsWebSearch(
     }
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_NOT_FOUND",
           adapter_path: ADAPTER_PATH,
           step: "select",
@@ -140,8 +140,8 @@ export async function runGooglePatentsWebSearch(
   if (out.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
-          code: "PATENT_NOT_FOUND",
+        envelope: throwPatentAdapterError({
+          code: "PATENT_SCHEMA_DRIFT",
           adapter_path: ADAPTER_PATH,
           step: "normalize",
           suggestion: `google-patents-web returned ${rows.length} rows but none carried a canonicalisable publication_number`,
@@ -189,6 +189,8 @@ cli({
     "assignees",
     "source_url",
   ],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "patent",

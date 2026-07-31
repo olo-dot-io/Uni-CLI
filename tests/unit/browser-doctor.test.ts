@@ -29,6 +29,11 @@ vi.mock("../../src/browser/local-profiles.js", () => ({
       browser_path: "/Applications/Chrome",
     },
   ],
+  selectBrowserIdentityFromProfiles: (profiles: unknown[]) => ({
+    status: "selected",
+    source: "preferred",
+    profile: profiles[0],
+  }),
   resolvePreferredLocalBrowserProfile: () => ({
     id: "google-chrome:Default",
     browser_path_exists: true,

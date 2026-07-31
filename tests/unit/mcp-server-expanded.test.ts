@@ -61,8 +61,42 @@ function sendRequest(
   });
 }
 
+interface ListedTool {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: string;
+    properties: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+async function listAllTools(proc: ChildProcess): Promise<ListedTool[]> {
+  const tools: ListedTool[] = [];
+  let cursor: string | undefined;
+  let id = 10_000;
+  do {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: id++,
+      method: "tools/list",
+      params: cursor ? { cursor } : {},
+    });
+    const result = response.result as
+      | { tools?: ListedTool[]; nextCursor?: string }
+      | undefined;
+    if (!result?.tools) {
+      throw new Error(`tools/list failed: ${JSON.stringify(response.error)}`);
+    }
+    tools.push(...result.tools);
+    cursor = result.nextCursor;
+  } while (cursor);
+  return tools;
+}
+
 describe("MCP server — expanded mode (--expanded)", () => {
   let proc: ChildProcess;
+  let listedTools: ListedTool[];
 
   beforeAll(async () => {
     // `npx` → `npx.cmd` on Windows (the actual executable).
@@ -91,6 +125,7 @@ describe("MCP server — expanded mode (--expanded)", () => {
         reject(err);
       });
     });
+    listedTools = await listAllTools(proc);
   }, SERVER_START_TIMEOUT_MS);
 
   afterAll(() => {
@@ -100,17 +135,9 @@ describe("MCP server — expanded mode (--expanded)", () => {
   it(
     "registers many tools (one per adapter command + 4 default)",
     async () => {
-      const response = await sendRequest(proc, {
-        jsonrpc: "2.0",
-        id: 100,
-        method: "tools/list",
-        params: {},
-      });
-
-      const result = response.result as { tools: Array<{ name: string }> };
       // Default mode is exactly 4; expanded must be many more than that
-      expect(result.tools.length).toBeGreaterThan(50);
-      const names = result.tools.map((t) => t.name);
+      expect(listedTools.length).toBeGreaterThan(50);
+      const names = listedTools.map((t) => t.name);
       expect(names).toContain("unicli_list");
       expect(names).toContain("unicli_run");
       expect(names).toContain("unicli_search");
@@ -119,15 +146,8 @@ describe("MCP server — expanded mode (--expanded)", () => {
     MCP_CALL_TIMEOUT_MS,
   );
 
-  it("uses the unicli_<site>_<command> naming convention", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 101,
-      method: "tools/list",
-      params: {},
-    });
-    const result = response.result as { tools: Array<{ name: string }> };
-    const expanded = result.tools.filter((t) => t.name.startsWith("unicli_"));
+  it("uses the unicli_<site>_<command> naming convention", () => {
+    const expanded = listedTools.filter((t) => t.name.startsWith("unicli_"));
     expect(expanded.length).toBeGreaterThan(0);
     // Names match alphanumeric + underscore only — Anthropic / Claude Desktop
     // accept this; rejected chars get normalized at build time.
@@ -136,42 +156,15 @@ describe("MCP server — expanded mode (--expanded)", () => {
     }
   });
 
-  it("includes hackernews tools and they have valid input schema", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 102,
-      method: "tools/list",
-      params: {},
-    });
-    const result = response.result as {
-      tools: Array<{
-        name: string;
-        inputSchema: { type: string; properties: Record<string, unknown> };
-      }>;
-    };
-    const hnTop = result.tools.find((t) => t.name === "unicli_hackernews_top");
+  it("includes hackernews tools and they have valid input schema", () => {
+    const hnTop = listedTools.find((t) => t.name === "unicli_hackernews_top");
     expect(hnTop).toBeDefined();
     expect(hnTop!.inputSchema.type).toBe("object");
     expect(hnTop!.inputSchema.properties.limit).toBeDefined();
   });
 
-  it("translates required args into schema.required", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 103,
-      method: "tools/list",
-      params: {},
-    });
-    const result = response.result as {
-      tools: Array<{
-        name: string;
-        inputSchema: {
-          required?: string[];
-          properties: Record<string, unknown>;
-        };
-      }>;
-    };
-    const hnSearch = result.tools.find(
+  it("translates required args into schema.required", () => {
+    const hnSearch = listedTools.find(
       (t) => t.name === "unicli_hackernews_search",
     );
     expect(hnSearch).toBeDefined();
@@ -179,17 +172,8 @@ describe("MCP server — expanded mode (--expanded)", () => {
     expect(hnSearch!.inputSchema.properties.query).toBeDefined();
   });
 
-  it("tool descriptions are at most 68 tokens (~52 words)", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 110,
-      method: "tools/list",
-      params: {},
-    });
-    const result = response.result as {
-      tools: Array<{ name: string; description: string }>;
-    };
-    const expanded = result.tools.filter((t) => t.name.startsWith("unicli_"));
+  it("tool descriptions are at most 68 tokens (~52 words)", () => {
+    const expanded = listedTools.filter((t) => t.name.startsWith("unicli_"));
     for (const t of expanded) {
       const words = t.description.split(/\s+/).filter(Boolean).length;
       const approxTokens = Math.ceil(words * 1.3);
@@ -213,20 +197,13 @@ describe("MCP server — expanded mode (--expanded)", () => {
     expect(error.code).toBe(-32602);
   });
 
-  it("registers tools for commands with hyphens in the filename", async () => {
+  it("registers tools for commands with hyphens in the filename", () => {
     // v0.208 ships adapters with hyphenated command filenames like
     // `hermes/skills-read.yaml`, `renderdoc/capture-list.yaml`. The tool
     // name normalizer collapses hyphens to underscores, but the dispatch
     // path must still resolve to the original command key via the
     // expandedRegistry lookup (not by reversing the normalization).
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 105,
-      method: "tools/list",
-      params: {},
-    });
-    const result = response.result as { tools: Array<{ name: string }> };
-    const names = new Set(result.tools.map((t) => t.name));
+    const names = new Set(listedTools.map((t) => t.name));
     // All adapters register regardless of detect: — verify hyphenated names
     expect(names.has("unicli_hermes_skills_read")).toBe(true);
     expect(names.has("unicli_hermes_sessions_search")).toBe(true);

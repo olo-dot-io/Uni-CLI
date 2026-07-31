@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::espacenet::legal-status
  * @does        Browser-driven Espacenet legal-status lookup — INPADOC events table on the legal-status tab.
- * @needs       src/engine/transport/mcp-browser.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.legal-status)
- * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED (MCP_BUS_MISSING)
+ * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED (browser provider unavailable)
  * @invariants  output row carries legal_status as the most-recent INPADOC event verbatim
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/espacenet/search.test.ts (shared transport-error path)
@@ -15,12 +15,9 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
-import {
-  espacenetEnvelope,
-  espacenetNavigateAndExtract,
-  transportErrorToEspacenetEnvelope,
-} from "./_shared.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
+import { espacenetEnvelope, espacenetNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/espacenet/legal-status.ts";
 
@@ -48,9 +45,12 @@ function legalUrlFor(pubNo: string): string {
   return `https://worldwide.espacenet.com/patent/search/legal-status/${encodeURIComponent(pubNo)}`;
 }
 
-export async function runEspacenetLegalStatus(kwargs: {
-  publication_number: string;
-}): Promise<unknown[]> {
+export async function runEspacenetLegalStatus(
+  page: IPage,
+  kwargs: {
+    publication_number: string;
+  },
+): Promise<unknown[]> {
   const pubNo = String(kwargs.publication_number ?? "").trim();
   if (pubNo.length === 0) {
     return [
@@ -66,38 +66,24 @@ export async function runEspacenetLegalStatus(kwargs: {
   }
   const url = legalUrlFor(pubNo);
   let detail: EspacenetLegalExtract;
-  try {
-    const result = await espacenetNavigateAndExtract<EspacenetLegalExtract>(
-      url,
-      EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: espacenetEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "espacenet legal-status evaluate returned no data",
-          ),
-        },
-      ];
-    }
-    detail = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToEspacenetEnvelope(
-            err,
-            ADAPTER_PATH,
-            "navigate",
-          ),
-        },
-      ];
-    }
-    throw err;
+  const result = await espacenetNavigateAndExtract<EspacenetLegalExtract>(
+    page,
+    url,
+    EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: espacenetEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "espacenet legal-status evaluate returned no data",
+        ),
+      },
+    ];
   }
+  detail = result.data;
   if (!detail.legal_status) {
     return [
       {
@@ -134,6 +120,8 @@ cli({
     {
       name: "publication_number",
       type: "str",
+      minLength: 1,
+      pattern: "^[A-Z]{2}-?[A-Z0-9]+-?[A-Z][0-9]?$",
       required: true,
       positional: true,
       description: "ST.16 publication number",
@@ -141,11 +129,15 @@ cli({
   ],
   columns: ["publication_number", "legal_status", "status_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.legal-status",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runEspacenetLegalStatus(kwargs as { publication_number: string }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runEspacenetLegalStatus(
+      requireBrowserPage(page),
+      kwargs as { publication_number: string },
+    ),
 });

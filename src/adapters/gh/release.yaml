@@ -17,9 +17,19 @@ pipeline:
         - --limit
         - ${{ args.limit }}
         - --json
-        - tagName,name,publishedAt,isPrerelease,url
+        - tagName,name,publishedAt,isPrerelease
       parse: json
       timeout: 30000
+
+  # `gh release list --json` does not expose a `url` field. Build the stable
+  # public release URL from the repository and tag while preserving our output
+  # contract.
+  - map:
+      tagName: ${{ item.tagName }}
+      name: ${{ item.name }}
+      publishedAt: ${{ item.publishedAt }}
+      isPrerelease: ${{ item.isPrerelease }}
+      url: "${{ 'https://github.com/' + args.repo + '/releases/tag/' + encodeURIComponent(item.tagName) }}"
 
 args:
   repo:

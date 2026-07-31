@@ -89,8 +89,10 @@ describe("SubprocessTransport", () => {
     const res = await t.action<{ stdout: string; exitCode: number }>({
       kind: "exec",
       params: { command: "echo", args: ["hello", "world"] },
+      canMutate: false,
     });
     expect(res.ok).toBe(true);
+    expect(res.effect_verdict?.evidence).not.toBe("declared_read");
     if (res.ok) {
       expect(res.data.stdout).toMatch(/hello world/);
       expect(res.data.exitCode).toBe(0);

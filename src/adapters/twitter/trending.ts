@@ -4,7 +4,7 @@
 
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
-import { browserTrendingTopics } from "./browser-fallback.js";
+import { browserTrendingTopics } from "./browser-extraction.js";
 import type { IPage } from "../../types.js";
 
 cli({

@@ -10,7 +10,7 @@ import type { IPage } from "../types.js";
 import { readCookies, type CookieRow } from "../engine/chromium-cookies.js";
 import {
   browserCookieIdForLocalProfile,
-  resolvePreferredLocalBrowserProfile,
+  selectLocalBrowserIdentity,
   type LocalBrowserProfile,
   type LocalProfileDiscoveryOptions,
 } from "./local-profiles.js";
@@ -22,6 +22,7 @@ export type BrowserAuthSyncResult =
       status: "synced";
       cookie_count: number;
       profile_id: string;
+      profile_selection_source: "explicit" | "preferred";
       domain: string;
     }
   | {
@@ -29,9 +30,11 @@ export type BrowserAuthSyncResult =
       reason:
         | "missing-domain"
         | "missing-profile"
+        | "profile-ambiguous"
         | "unsupported-browser"
         | "no-cookies";
       profile_id?: string;
+      profile_selection_source?: "explicit" | "preferred";
       domain?: string;
     }
   | {
@@ -64,13 +67,21 @@ export async function syncLocalProfileCookiesToPage(
   const domain = authSyncDomain(opts);
   if (!domain) return { status: "skipped", reason: "missing-domain" };
 
-  const profile = resolvePreferredLocalBrowserProfile({
+  const selection = selectLocalBrowserIdentity({
     ...opts,
     profileId: opts.profileId,
   });
-  if (!profile) {
+  if (selection.status === "ambiguous") {
+    return {
+      status: "skipped",
+      reason: "profile-ambiguous",
+      domain,
+    };
+  }
+  if (selection.status === "unavailable") {
     return { status: "skipped", reason: "missing-profile", domain };
   }
+  const profile = selection.profile;
 
   const browser = browserIdForLocalProfile(profile);
   if (!browser) {
@@ -127,6 +138,7 @@ export async function syncLocalProfileCookiesToPage(
     status: "synced",
     cookie_count: cookies.length,
     profile_id: profile.id,
+    profile_selection_source: selection.source,
     domain,
   };
 }

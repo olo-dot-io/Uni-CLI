@@ -10,6 +10,7 @@
 site: linear
 name: issue-update
 description: Update a Linear issue's workflow state
+operation_effect: remote_resource
 type: web-api
 domain: api.linear.app
 strategy: public # auth is via Authorization header from env, no cookies

@@ -14,6 +14,7 @@ cli({
   domain: "creator.douyin.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  operation_effect: "publish_content",
   args: [
     {
       name: "aweme_id",

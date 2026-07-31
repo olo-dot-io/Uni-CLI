@@ -26,8 +26,8 @@ import { authorizeBrowserCommand } from "./permission.js";
 import {
   browserCookieIdForLocalProfile,
   detectLocalBrowserProfiles,
+  requireLocalBrowserIdentity,
   resolveLocalBrowserProfile,
-  resolvePreferredLocalBrowserProfile,
   type LocalBrowserProfile,
 } from "../../browser/local-profiles.js";
 import {
@@ -195,7 +195,7 @@ function registerCookieCommand(browser: Command, program: Command): void {
 function resolveCookieProfile(profileId?: string): LocalBrowserProfile {
   const profile = profileId
     ? resolveLocalBrowserProfile(profileId)
-    : resolvePreferredLocalBrowserProfile();
+    : requireLocalBrowserIdentity().profile;
   if (!profile) {
     throw new Error(
       profileId
@@ -238,6 +238,9 @@ function emitBrowserCommandFailure(input: {
     suggestion: string;
     retryable: boolean;
     exitCode: number;
+    adapter_path: string;
+    step: number;
+    stage: string;
   }>;
   input.context.duration_ms = Date.now() - input.startedAt;
   input.context.error = {
@@ -245,6 +248,9 @@ function emitBrowserCommandFailure(input: {
     message:
       input.error instanceof Error ? input.error.message : String(input.error),
     suggestion: tagged.suggestion ?? input.fallbackSuggestion,
+    adapter_path: tagged.adapter_path ?? "src/commands/browser/index.ts",
+    step: tagged.step ?? 0,
+    ...(tagged.stage ? { stage: tagged.stage } : {}),
     retryable: tagged.retryable ?? false,
   };
   console.error(format(null, undefined, input.outputFormat, input.context));

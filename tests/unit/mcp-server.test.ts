@@ -74,6 +74,45 @@ async function sendTaskRequest(
   });
 }
 
+async function listAllTools(
+  proc: ChildProcess,
+  firstRequestId: number,
+): Promise<
+  Array<{
+    name: string;
+    inputSchema: { properties?: Record<string, unknown> };
+    _meta?: Record<string, unknown>;
+  }>
+> {
+  const tools: Array<{
+    name: string;
+    inputSchema: { properties?: Record<string, unknown> };
+    _meta?: Record<string, unknown>;
+  }> = [];
+  let cursor: string | undefined;
+  let requestId = firstRequestId;
+  do {
+    const response = await sendRequest(proc, {
+      jsonrpc: "2.0",
+      id: requestId++,
+      method: "tools/list",
+      params: cursor ? { cursor } : {},
+    });
+    const result = response.result as
+      | {
+          tools?: typeof tools;
+          nextCursor?: string;
+        }
+      | undefined;
+    if (!result?.tools) {
+      throw new Error(`tools/list failed: ${JSON.stringify(response.error)}`);
+    }
+    tools.push(...result.tools);
+    cursor = result.nextCursor;
+  } while (cursor);
+  return tools;
+}
+
 describe("MCP server — smart default mode", () => {
   let proc: ChildProcess;
 
@@ -407,11 +446,27 @@ describe("MCP server — computer-use profile", () => {
       "computer-use.snapshot",
       "computer-use.find",
       "computer-use.click",
+      "computer-use.point_click",
+      "computer-use.drag",
       "computer-use.type",
+      "computer-use.text",
       "computer-use.press",
       "computer-use.scroll",
+      "computer-use.point_scroll",
       "computer-use.launch",
       "computer-use.screenshot",
+      "computer-use.screenshot_file",
+      "computer-use.session_start",
+      "computer-use.session_state",
+      "computer-use.session_escalate",
+      "computer-use.session_end",
+      "computer-use.screen_size",
+      "computer-use.cursor_position",
+      "computer-use.move_cursor",
+      "computer-use.agent_cursor_state",
+      "computer-use.agent_cursor_enable",
+      "computer-use.agent_cursor_motion",
+      "computer-use.agent_cursor_theme",
       "computer-use.attach",
       "computer-use.evaluate",
       "computer-use.wait",
@@ -507,22 +562,9 @@ describe("MCP server — deferred profile", () => {
   }, SERVER_START_TIMEOUT_MS);
 
   it("lists deferred stubs with compact schemas over stdio", async () => {
-    const response = await sendRequest(proc, {
-      jsonrpc: "2.0",
-      id: 201,
-      method: "tools/list",
-      params: {},
-    });
-
-    const result = response.result as {
-      tools: Array<{
-        name: string;
-        inputSchema: { properties?: Record<string, unknown> };
-        _meta?: Record<string, unknown>;
-      }>;
-    };
-    expect(result.tools.length).toBeGreaterThan(50);
-    const hnTop = result.tools.find((tool) => {
+    const tools = await listAllTools(proc, 201);
+    expect(tools.length).toBeGreaterThan(50);
+    const hnTop = tools.find((tool) => {
       return tool.name === "unicli_hackernews_top";
     });
     expect(hnTop).toBeDefined();

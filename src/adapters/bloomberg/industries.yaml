@@ -1,6 +1,7 @@
 site: bloomberg
 name: industries
 description: Bloomberg Industries top stories (RSS)
+operation_effect: read
 domain: feeds.bloomberg.com
 type: web-api
 strategy: public

@@ -1,6 +1,7 @@
 site: jike
 name: feed
 description: Jike following feed
+operation_effect: read
 domain: web-api.okjike.com
 type: web-api
 strategy: cookie

@@ -18,6 +18,10 @@ import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import { assertSafeRequestUrl } from "../../engine/executor.js";
 import { fetchWithProxy } from "../../engine/proxy.js";
 import type { Envelope } from "../../core/envelope.js";
+import {
+  confirmedEffectVerdict,
+  type EffectVerdict,
+} from "../../core/effect-verdict.js";
 import { settleDispatchedAction } from "../action-settlement.js";
 import { isOperationOutcomeAmbiguousError } from "../contained-process.js";
 import type {
@@ -278,7 +282,7 @@ export class HttpTransport implements TransportAdapter {
       } catch {
         this.lastBodyPreview = "";
       }
-      return ok(data);
+      return ok(data, authoritativeHttpEffect(method, resp.status, url));
     } catch (e) {
       signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
@@ -425,7 +429,16 @@ export class HttpTransport implements TransportAdapter {
           retryable: false,
         });
       }
-      return ok({ path: result.path, size: result.size ?? 0 });
+      return ok(
+        { path: result.path, size: result.size ?? 0 },
+        {
+          effect_verdict: confirmedEffectVerdict(
+            "postcondition_observation",
+            "the download committed an addressable destination file",
+            "protocol-result",
+          ),
+        },
+      );
     } catch (e) {
       signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
@@ -443,13 +456,42 @@ export class HttpTransport implements TransportAdapter {
 }
 
 function httpActionCanMutate(req: ActionRequest): boolean {
-  if (req.canMutate !== undefined) return req.canMutate;
-  if (req.kind !== "fetch" && req.kind !== "fetch_text") return false;
+  // Download writes through an owned staging file and atomically renames only
+  // after full receipt; cancellation removes staging and leaves the prior
+  // destination intact, so direct transport cancellation is contained.
+  if (req.kind === "download") return req.canMutate === true;
+  if (req.kind !== "fetch" && req.kind !== "fetch_text") {
+    return req.canMutate === true;
+  }
   const method =
     typeof req.params.method === "string"
       ? req.params.method.toUpperCase()
       : "GET";
-  return !new Set(["GET", "HEAD", "OPTIONS", "TRACE"]).has(method);
+  return (
+    !new Set(["GET", "HEAD", "OPTIONS", "TRACE"]).has(method) ||
+    req.canMutate === true
+  );
+}
+
+function authoritativeHttpEffect(
+  method: string,
+  status: number,
+  url: string,
+): { effect_verdict?: EffectVerdict } {
+  const normalized = method.toUpperCase();
+  if (
+    !["POST", "PUT", "PATCH", "DELETE"].includes(normalized) ||
+    (status !== 201 && status !== 204)
+  ) {
+    return {};
+  }
+  return {
+    effect_verdict: confirmedEffectVerdict(
+      "authoritative_response",
+      `${normalized} ${url} returned authoritative HTTP ${String(status)}`,
+      "protocol-result",
+    ),
+  };
 }
 
 function httpOperation(req: ActionRequest): string {

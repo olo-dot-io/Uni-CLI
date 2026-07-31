@@ -1,6 +1,7 @@
 site: google
 name: search
 description: Google web search via RSS
+operation_effect: read
 type: web-api
 strategy: public
 lint_listing_detail: skip

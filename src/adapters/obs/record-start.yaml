@@ -2,6 +2,7 @@
 site: obs
 name: record-start
 description: Start OBS recording
+operation_effect: local_file
 type: service
 
 args:

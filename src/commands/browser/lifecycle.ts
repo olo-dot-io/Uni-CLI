@@ -453,11 +453,18 @@ async function runLifecycleCommand(
       suggestion: string;
       retryable: boolean;
       exitCode: number;
+      adapter_path: string;
+      step: number;
+      stage: string;
     }>;
     context.duration_ms = Date.now() - startedAt;
     context.error = {
       code: structured.code ?? "browser_runtime_error",
       message: error instanceof Error ? error.message : String(error),
+      adapter_path:
+        structured.adapter_path ?? "src/commands/browser/lifecycle.ts",
+      step: structured.step ?? 0,
+      ...(structured.stage ? { stage: structured.stage } : {}),
       ...(structured.suggestion ? { suggestion: structured.suggestion } : {}),
       retryable: structured.retryable ?? false,
     };

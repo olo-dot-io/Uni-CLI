@@ -38,6 +38,30 @@ export async function readDomItems<T>(
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+export interface BrowserDomResult<T> {
+  ok: true;
+  data: T;
+}
+
+export function requireBrowserPage(page: unknown): IPage {
+  if (!page) {
+    throw new Error(
+      "This command requires the declared browser substrate; no browser page was provided",
+    );
+  }
+  return page as IPage;
+}
+
+export async function evaluateDom<T>(
+  page: IPage,
+  url: string,
+  script: string,
+  settleMs = 1600,
+): Promise<BrowserDomResult<T>> {
+  await gotoSettled(page, url, settleMs);
+  return { ok: true, data: (await page.evaluate(script)) as T };
+}
+
 export async function clickFirst(
   page: IPage,
   selectors: readonly string[],

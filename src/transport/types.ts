@@ -3,7 +3,7 @@
  * @owner       src::transport::types
  * @does        Define transport capabilities, action/snapshot requests, shared context, adapters, and the transport bus.
  * @needs       core envelope, ref store, snapshot encoding.
- * @feeds       transport adapters, cascade routing, engine compute steps, plugins.
+ * @feeds       transport adapters, task-directed routing, engine compute steps, plugins.
  * @breaks      Compile-time mismatch in transport implementations or callers, or coercing cancellation/ambiguous delivery into an ordinary failure envelope.
  * @invariants  Request cancellation and immutable target params are available to snapshot boundaries; ordinary failures return envelopes, while cancellation and outcome ambiguity remain typed control-flow throws; cleanup remains unconditional and idempotent.
  * @side-effects none
@@ -14,13 +14,14 @@
  * @since       2026-06-29
  *
  * A `TransportAdapter` is a physical execution channel (HTTP, Chrome CDP,
- * subprocess, macOS AX, Windows UIA, Linux AT-SPI, screenshot-based Visual)
- * behind a uniform 5-method interface: open / snapshot / action / stream /
- * close.
+ * subprocess, macOS AX, Windows UIA, Linux AT-SPI, an explicit OS driver, or
+ * screenshot-based Visual) behind a uniform 5-method interface:
+ * open / snapshot / action / stream / close.
  *
  * Design contract:
- *  - `action()` returns ordinary failures as an `ActionResult.error` envelope
- *    so the YAML runner can sequence fallbacks. Exact cancellation and
+ *  - `action()` returns ordinary failures as an `ActionResult.error` envelope.
+ *    The owning task planner decides whether to repair or explicitly replan;
+ *    transports never select another provider. Exact cancellation and
  *    outcome-ambiguous delivery throw because replay would be unsafe.
  *  - `Capability.steps` is the single source of truth for pipeline-step
  *    dispatch; the runner validates at parse time, not at execution time.
@@ -34,9 +35,9 @@ import type { RefStore } from "./refs.js";
 import type { SnapshotEncoding } from "./snapshot-encoder.js";
 
 /**
- * The seven transports that together cover the full "operate anything"
- * surface. A transport is a physical execution channel; a strategy
- * (auth path) is orthogonal and lives on the adapter, not here.
+ * The built-in transports that together cover the full "operate anything"
+ * surface. A transport is a physical execution channel; a strategy (auth
+ * path) is orthogonal and lives on the adapter, not here.
  */
 export type TransportKind =
   | "http"
@@ -45,6 +46,7 @@ export type TransportKind =
   | "desktop-ax"
   | "desktop-uia"
   | "desktop-atspi"
+  | "cua-driver"
   | "visual";
 
 /**
@@ -93,7 +95,11 @@ export interface ActionRequest {
   params: Record<string, unknown>;
   timeoutMs?: number;
   signal?: AbortSignal;
-  /** Canonical command-contract projection; transports default conservatively when absent. */
+  /**
+   * Canonical command-contract projection. `true` may conservatively elevate
+   * an action, while `false` must never downgrade a physically mutating
+   * action detected by the transport.
+   */
   canMutate?: boolean;
 }
 
@@ -140,9 +146,9 @@ export interface TransportEvent {
 }
 
 /**
- * Dispatcher surface injected into every transport so transports can
- * compose (e.g. `cdp-browser` delegates `snapshot(format:"screenshot")`
- * to `visual` on non-trivial perception tasks).
+ * Dispatcher surface injected into every transport. Cross-provider work must
+ * arrive as an explicit task route; a transport must not delegate to a broader
+ * provider after failure.
  */
 export interface TransportBus {
   refs: RefStore;
@@ -198,6 +204,16 @@ export interface TransportAdapter {
   snapshot(opts?: SnapshotRequest): Promise<Snapshot>;
 
   action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>>;
+
+  /**
+   * Retire provider-local stale state before a bounded retry. The dispatcher
+   * calls this only for the already selected provider and physical action.
+   */
+  recover?(
+    req: ActionRequest,
+    failure: unknown,
+    ctx: TransportContext,
+  ): Promise<void>;
 
   stream?(filter?: { kinds?: string[] }): AsyncIterable<TransportEvent>;
 

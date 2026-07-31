@@ -160,6 +160,58 @@ describe("kernel stage parity", () => {
     expect(effects).toBe(1);
   });
 
+  it("turns a mutation failure sentinel into a top-level non-zero error", async () => {
+    sendImplementation = async () => [
+      { status: "failed", message: "Submit button not found" },
+    ];
+    const inv = buildInvocation("cli", "kernel-stage-fixture", "send", {
+      args: { text: "hello" },
+      source: "shell",
+    })!;
+
+    const result = await execute(inv);
+
+    expect(result.exitCode).not.toBe(0);
+    expect(result.results).toEqual([]);
+    expect(result.error).toMatchObject({
+      code: "provider_reported_failure",
+      message: "Submit button not found",
+      retryable: false,
+    });
+    expect(result.effectVerdict.status).not.toBe("confirmed");
+  });
+
+  it("preserves bounded receipts when only part of a mutation batch fails", async () => {
+    sendImplementation = async () => [
+      { ok: true, id: "sent-1" },
+      { ok: false, id: "failed-2", reason: "recipient rejected" },
+    ];
+    const inv = buildInvocation("cli", "kernel-stage-fixture", "send", {
+      args: { text: "hello" },
+      source: "shell",
+    })!;
+
+    const result = await execute(inv);
+
+    expect(result.exitCode).not.toBe(0);
+    expect(result.error).toMatchObject({
+      code: "partial_mutation",
+      retryable: false,
+      partial_success: true,
+      mutation_receipts: {
+        successful_count: 1,
+        failed_count: 1,
+        truncated: false,
+        successful: [{ ok: true, id: "sent-1" }],
+        failed: [{ ok: false, id: "failed-2", reason: "recipient rejected" }],
+      },
+    });
+    expect(result.effectVerdict).toMatchObject({
+      status: "unverifiable",
+      evidence: "dispatch_receipt",
+    });
+  });
+
   it("preserves structural outcome ambiguity through the MCP envelope", async () => {
     sendImplementation = async () => {
       throw new OperationOutcomeAmbiguousError(

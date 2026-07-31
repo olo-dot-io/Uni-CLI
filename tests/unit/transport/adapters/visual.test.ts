@@ -115,8 +115,10 @@ describe("VisualTransport", () => {
     const res = await t.action({
       kind: "visual_click",
       params: { x: 100, y: 200, button: "right" },
+      canMutate: false,
     });
     expect(res.ok).toBe(true);
+    expect(res.effect_verdict?.evidence).not.toBe("declared_read");
     const last = backend.history.at(-1);
     expect(last?.verb).toBe("click");
     expect(last?.args).toEqual([100, 200, "right"]);

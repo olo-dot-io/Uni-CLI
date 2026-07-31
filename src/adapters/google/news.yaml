@@ -1,6 +1,7 @@
 site: google
 name: news
 description: Google News RSS feed for a search query
+operation_effect: read
 type: web-api
 strategy: public
 

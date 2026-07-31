@@ -136,6 +136,7 @@ describe("loader runs from src directly without crashing", () => {
         "citations",
         "paper",
         "read",
+        "recommendations",
         "references",
         "search",
       ]);

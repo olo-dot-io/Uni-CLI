@@ -7,11 +7,14 @@
 
 import { cli, Strategy } from "../../registry.js";
 import type { IPage } from "../../types.js";
-import { fetchCreatorNotes, type CreatorNoteRow } from "./creator-notes.js";
+import {
+  fetchCreatorNotes,
+  type CreatorNoteRow,
+} from "./_creator-notes-data.js";
 import {
   fetchCreatorNoteDetailRows,
   type CreatorNoteDetailRow,
-} from "./creator-note-detail.js";
+} from "./_creator-note-detail-data.js";
 
 interface CreatorNoteSummaryRow {
   rank: number;

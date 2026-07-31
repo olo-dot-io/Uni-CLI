@@ -86,6 +86,14 @@ export interface ArchitectureCommandInventoryEntry {
   source_path?: string;
   safety_class: string;
   operation_effect: string;
+  effect_source: "declared" | "heuristic" | "default";
+  effect_confidence: "high" | "medium" | "low";
+  execution_operator: string;
+  perception: string;
+  actuation: string;
+  target_scope: string;
+  verification: string;
+  interaction_impact: string;
   category?: string;
   minimum_capability?: string;
   capabilities: string[];
@@ -126,7 +134,9 @@ export interface ArchitectureTreeAudit {
   workflow_readiness: ArchitectureWorkflowReadiness[];
   missing_source_paths: string[];
   non_product_identities: string[];
-  ready_for_full_rewrite: boolean;
+  evidence_scope: "catalog-contracts";
+  catalog_integrity: "complete" | "incomplete";
+  runtime_readiness: "not_evaluated";
 }
 
 export interface BuildArchitectureTreeInput {
@@ -189,6 +199,14 @@ function collectCommandInventory(
           : {}),
         safety_class: contract.effect.safety_class,
         operation_effect: contract.effect.operation_effect,
+        effect_source: contract.effect.effect_source,
+        effect_confidence: contract.effect.effect_confidence,
+        execution_operator: contract.execution.operator,
+        perception: contract.execution.perception,
+        actuation: contract.execution.actuation,
+        target_scope: contract.execution.target_scope,
+        verification: contract.execution.verification,
+        interaction_impact: contract.execution.interaction_impact,
         ...(command.minimum_capability
           ? { minimum_capability: command.minimum_capability }
           : {}),
@@ -234,6 +252,14 @@ function collectCoreCommandInventory(
         : {}),
       safety_class: contract.effect.safety_class,
       operation_effect: contract.effect.operation_effect,
+      effect_source: contract.effect.effect_source,
+      effect_confidence: contract.effect.effect_confidence,
+      execution_operator: contract.execution.operator,
+      perception: contract.execution.perception,
+      actuation: contract.execution.actuation,
+      target_scope: contract.execution.target_scope,
+      verification: contract.execution.verification,
+      interaction_impact: contract.execution.interaction_impact,
       capabilities: [],
       uses_browser: contract.effect.browser,
       is_local_computer_use: isLocalComputerUseCoreCommand(
@@ -398,11 +424,11 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
           }),
           node({
             id: "visual-substrate",
-            label: "Visual fallback",
+            label: "Visual coordinate operator",
             kind: "substrate",
             priority: "P2",
             description:
-              "Screenshot-driven action path, valid only when it can see, act, and verify post-state evidence.",
+              "Explicit screenshot-and-coordinate action path, valid only when it can see, act, and verify post-state evidence.",
           }),
         ],
       }),
@@ -451,12 +477,12 @@ function buildRootNode(summary: ArchitectureTreeSummary): ArchitectureTreeNode {
               "Opt-in broad tool exposure; compact MCP remains default.",
           }),
           node({
-            id: "visual-fallback",
-            label: "Visual fallback",
+            id: "visual-coordinate-operator",
+            label: "Visual coordinate operator",
             kind: "surface",
             priority: "P2",
             description:
-              "Valid only when it can see, act, and verify post-state evidence.",
+              "Explicit desktop-scoped operator, valid only when it can see, act, and verify post-state evidence.",
           }),
           node({
             id: "typescript-adapters",
@@ -540,13 +566,17 @@ export function auditArchitectureTree(
     missing_source_paths: missingSourcePaths,
     non_product_identities: [
       "expanded-mcp",
-      "visual-fallback",
+      "visual-coordinate-operator",
       "typescript-adapters",
       "browser-automation-only",
       "computer-use-sandbox-only",
       "per-site-wrapper-only",
     ],
-    ready_for_full_rewrite:
-      tree.summary.total_commands > 0 && missingSourcePaths.length === 0,
+    evidence_scope: "catalog-contracts",
+    catalog_integrity:
+      tree.summary.total_commands > 0 && missingSourcePaths.length === 0
+        ? "complete"
+        : "incomplete",
+    runtime_readiness: "not_evaluated",
   };
 }

@@ -2,6 +2,7 @@
 site: adguardhome
 name: toggle
 description: Enable or disable AdGuard Home DNS filtering protection
+operation_effect: service_state
 type: service
 strategy: public
 base: "http://localhost:3000"

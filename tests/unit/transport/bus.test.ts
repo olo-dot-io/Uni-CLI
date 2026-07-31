@@ -10,8 +10,11 @@
 import { describe, it, expect } from "vitest";
 import {
   createTransportBus,
+  getNamespacedBus,
   NoTransportForStepError,
+  releaseTransportBusNamespace,
 } from "../../../src/transport/bus.js";
+import { RefAllocator } from "../../../src/transport/refs.js";
 import type {
   TransportAdapter,
   TransportKind,
@@ -89,6 +92,30 @@ describe("TransportBus.list", () => {
   });
 });
 
+describe("TransportBus ref namespaces", () => {
+  it("isolates ref authority and releases it with the owning session", () => {
+    const first = getNamespacedBus("principal-a/session-a");
+    const second = getNamespacedBus("principal-b/session-b");
+    const allocator = new RefAllocator();
+    allocator.alloc({
+      stable: "desktop-ax:window-1:Button[0]",
+      role: "button",
+    });
+    first.refs.put(allocator.freeze("desktop-ax", "window-1"));
+
+    expect(first.refs.resolve("@e1")).toBeDefined();
+    expect(second.refs.resolve("@e1")).toBeUndefined();
+    expect(getNamespacedBus("principal-a/session-a")).toBe(first);
+
+    releaseTransportBusNamespace("principal-a/session-a");
+    expect(
+      getNamespacedBus("principal-a/session-a").refs.resolve("@e1"),
+    ).toBeUndefined();
+    releaseTransportBusNamespace("principal-a/session-a");
+    releaseTransportBusNamespace("principal-b/session-b");
+  });
+});
+
 describe("TransportBus.require", () => {
   it("returns the transport that declares support for a step", () => {
     const bus = createTransportBus();
@@ -97,11 +124,28 @@ describe("TransportBus.require", () => {
     expect(bus.require("fetch")).toBe(http);
   });
 
-  it("prefers a registered transport listed in the capability matrix", () => {
+  it("returns the only registered transport listed in the capability matrix", () => {
     const bus = createTransportBus();
     const cdp = makeStub("cdp-browser", ["click"]);
     bus.register(cdp);
     expect(bus.require("click")).toBe(cdp);
+  });
+
+  it("rejects step-only lookup when multiple providers are feasible", () => {
+    const bus = createTransportBus();
+    bus.register(makeStub("http", ["html_to_md"]));
+    bus.register(makeStub("cdp-browser", ["html_to_md"]));
+
+    try {
+      bus.require("html_to_md");
+      throw new Error("should have thrown");
+    } catch (error) {
+      const typed = error as NoTransportForStepError;
+      expect(typed.envelope.error).toMatchObject({
+        reason: "ambiguous transport for step html_to_md: http, cdp-browser",
+        minimum_capability: "route.html_to_md.provider_required",
+      });
+    }
   });
 
   it("throws a typed envelope error when step has no matching transport", () => {

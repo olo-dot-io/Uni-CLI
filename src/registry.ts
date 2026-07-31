@@ -60,8 +60,128 @@ export async function withAdapterSourcePath<T>(
 
 /** Register a full adapter manifest (typically from YAML) */
 export function registerAdapter(manifest: AdapterManifest): void {
-  adapters.set(manifest.name, manifest);
+  const existing = adapters.get(manifest.name);
+  if (!existing) {
+    adapters.set(manifest.name, canonicalizeManifest(manifest));
+    bumpRegistryVersion();
+    return;
+  }
+
+  const commands = Object.assign(
+    Object.create(null) as Record<string, AdapterCommand>,
+    existing.commands,
+  );
+  for (const [name, incoming] of Object.entries(manifest.commands)) {
+    const current = commands[name];
+    if (!current) {
+      commands[name] = canonicalizeCommand(incoming);
+      continue;
+    }
+    const incomingTier = sourceTierRank(incoming.source_tier);
+    const currentTier = sourceTierRank(current.source_tier);
+    if (incomingTier < currentTier) continue;
+    if (
+      incomingTier === currentTier &&
+      incoming.adapter_path &&
+      current.adapter_path &&
+      incoming.adapter_path !== current.adapter_path
+    ) {
+      throw new Error(
+        `Duplicate ${incoming.source_tier ?? "runtime"} adapter command ${manifest.name}.${name}: ${current.adapter_path} and ${incoming.adapter_path}`,
+      );
+    }
+    commands[name] = canonicalizeCommand({
+      ...incoming,
+      ...(incomingTier > currentTier && current.adapter_path
+        ? { shadowed_adapter_path: current.adapter_path }
+        : {}),
+    });
+  }
+  adapters.set(manifest.name, canonicalizeManifest({ ...existing, commands }));
   bumpRegistryVersion();
+}
+
+/** Atomically replace one owned command family without exposing mutable registry state. */
+export function replaceAdapterCommands(
+  site: string,
+  shouldRemove: (name: string, command: AdapterCommand) => boolean,
+  additions: Readonly<Record<string, AdapterCommand>>,
+  create?: Omit<AdapterManifest, "name" | "commands">,
+): void {
+  const current = adapters.get(site);
+  if (!current && !create) {
+    throw new Error(`Cannot replace commands for unknown adapter: ${site}`);
+  }
+  const commands = Object.create(null) as Record<string, AdapterCommand>;
+  for (const [name, command] of Object.entries(current?.commands ?? {})) {
+    if (!shouldRemove(name, command)) commands[name] = command;
+  }
+  for (const [name, command] of Object.entries(additions)) {
+    commands[name] = command;
+  }
+  adapters.set(
+    site,
+    canonicalizeManifest(
+      current ? { ...current, commands } : { name: site, ...create!, commands },
+    ),
+  );
+  bumpRegistryVersion();
+}
+
+function canonicalizeManifest(manifest: AdapterManifest): AdapterManifest {
+  const commands = Object.create(null) as Record<string, AdapterCommand>;
+  for (const [name, command] of Object.entries(manifest.commands)) {
+    commands[name] = canonicalizeCommand(command);
+  }
+  return deepFreeze({ ...manifest, commands });
+}
+
+function canonicalizeCommand(command: AdapterCommand): AdapterCommand {
+  return deepFreeze({
+    ...command,
+    ...(command.adapterArgs
+      ? { adapterArgs: command.adapterArgs.map((arg) => ({ ...arg })) }
+      : {}),
+    ...(command.pipeline
+      ? { pipeline: command.pipeline.map((step) => ({ ...step })) }
+      : {}),
+    ...(command.capabilities
+      ? { capabilities: [...command.capabilities] }
+      : {}),
+    ...(command.executables ? { executables: [...command.executables] } : {}),
+    ...(command.columns ? { columns: [...command.columns] } : {}),
+  });
+}
+
+function deepFreeze<T>(value: T): T {
+  if (
+    value === null ||
+    (typeof value !== "object" && typeof value !== "function") ||
+    Object.isFrozen(value)
+  ) {
+    return value;
+  }
+  for (const child of Object.values(value as Record<string, unknown>)) {
+    if (child && (typeof child === "object" || typeof child === "function")) {
+      deepFreeze(child);
+    }
+  }
+  return Object.freeze(value);
+}
+
+function sourceTierRank(
+  tier: AdapterCommand["source_tier"] | undefined,
+): number {
+  switch (tier) {
+    case "packaged":
+      return 0;
+    case "runtime":
+      return 1;
+    case "user":
+      return 2;
+    default:
+      return 1;
+  }
 }
 
 /** Get an adapter by name */
@@ -126,20 +246,28 @@ export function commandUsesBrowser(
   adapter: AdapterManifest,
   command: AdapterCommand,
 ): boolean {
+  if (capabilityUsesBrowser(command.minimum_capability)) return true;
   if (command.browser !== undefined) return command.browser;
+  if (command.capabilities?.some(capabilityUsesBrowser)) {
+    return true;
+  }
   const strategy = commandStrategy(adapter, command);
   if (command.strategy !== undefined) {
-    return (
-      adapter.type === AdapterType.BROWSER ||
-      strategy === Strategy.INTERCEPT ||
-      strategy === Strategy.UI
-    );
+    return strategy === Strategy.INTERCEPT || strategy === Strategy.UI;
   }
   if (adapter.browser !== undefined) return adapter.browser;
   return (
     adapter.type === AdapterType.BROWSER ||
     strategy === Strategy.INTERCEPT ||
     strategy === Strategy.UI
+  );
+}
+
+function capabilityUsesBrowser(capability: string | undefined): boolean {
+  if (!capability) return false;
+  const normalized = capability.toLowerCase();
+  return (
+    normalized.startsWith("browser.") || normalized.startsWith("cdp-browser.")
   );
 }
 
@@ -202,13 +330,17 @@ export interface CliRegistration {
   browserSession?: BrowserSessionPreference;
   adapter_path?: string;
   target_surface?: TargetSurface;
+  operation_effect?: AdapterCommand["operation_effect"];
+  execution_operator?: AdapterCommand["execution_operator"];
+  operation_family?: AdapterCommand["operation_family"];
+  idempotency?: AdapterCommand["idempotency"];
   args?: AdapterArg[];
   columns?: string[];
   socialCapabilities?: SocialCapability[];
   defaultFormat?: AdapterCommand["defaultFormat"];
   /**
    * Capability tokens this command can execute. Carries both pipeline-step
-   * names (e.g. `mcp-browser.evaluate`) and vertical capability tags
+   * names (e.g. `cdp-browser.evaluate`) and vertical capability tags
    * (e.g. `patent.search`). Vertical tags let meta-commands like
    * `unicli patent` discover the adapter without hard-coding a site list.
    *
@@ -246,32 +378,46 @@ export function cli(config: CliRegistration): void {
       }
     }
   }
-  let adapter = adapters.get(config.site);
-  if (!adapter) {
-    adapter = {
-      name: config.site,
-      type: AdapterType.WEB_API,
-      domain: config.domain,
-      base: config.base,
-      strategy: config.strategy,
-      browser: config.browser,
-      commands: {},
-    };
-    adapters.set(config.site, adapter);
-  } else {
-    if (config.domain) adapter.domain = config.domain;
-    if (config.base) adapter.base = config.base;
-    if (config.strategy) adapter.strategy = config.strategy;
-    if (config.browser !== undefined) adapter.browser = config.browser;
+  const currentAdapter = adapters.get(config.site);
+  const existing = currentAdapter?.commands[config.name];
+  const sourceTier = adapterSourceTier(activeAdapterSourcePath);
+  if (
+    existing &&
+    sourceTierRank(sourceTier) < sourceTierRank(existing.source_tier)
+  ) {
+    return;
+  }
+  const incomingPath = config.adapter_path ?? activeAdapterSourcePath;
+  if (
+    existing &&
+    sourceTierRank(sourceTier) === sourceTierRank(existing.source_tier) &&
+    incomingPath &&
+    existing.adapter_path &&
+    incomingPath !== existing.adapter_path
+  ) {
+    throw new Error(
+      `Duplicate ${sourceTier} adapter command ${config.site}.${config.name}: ${existing.adapter_path} and ${incomingPath}`,
+    );
   }
 
-  const existing = adapter!.commands[config.name];
-  adapter!.commands[config.name] = {
+  // Decide command precedence before publishing any site mutation. A rejected
+  // or duplicate registration must not leave an empty adapter or partially
+  // updated site metadata in the process registry.
+  const command: AdapterCommand = {
     name: config.name,
     description: config.description,
     adapter_path:
       config.adapter_path ?? existing?.adapter_path ?? activeAdapterSourcePath,
+    source_tier: sourceTier,
+    ...(sourceTierRank(sourceTier) > sourceTierRank(existing?.source_tier) &&
+    existing?.adapter_path
+      ? { shadowed_adapter_path: existing.adapter_path }
+      : {}),
     target_surface: config.target_surface,
+    operation_effect: config.operation_effect,
+    execution_operator: config.execution_operator,
+    operation_family: config.operation_family,
+    idempotency: config.idempotency,
     adapterArgs: config.args,
     strategy: config.strategy,
     browser: config.browser,
@@ -288,5 +434,40 @@ export function cli(config: CliRegistration): void {
     minimum_capability: config.minimum_capability,
     func: config.func as AdapterCommand["func"],
   };
+  const adapter: AdapterManifest = currentAdapter
+    ? {
+        ...currentAdapter,
+        ...(config.domain ? { domain: config.domain } : {}),
+        ...(config.base ? { base: config.base } : {}),
+        ...(config.strategy ? { strategy: config.strategy } : {}),
+        ...(config.browser !== undefined ? { browser: config.browser } : {}),
+        commands: {
+          ...currentAdapter.commands,
+          [config.name]: command,
+        },
+      }
+    : {
+        name: config.site,
+        type: AdapterType.WEB_API,
+        domain: config.domain,
+        base: config.base,
+        strategy: config.strategy,
+        browser: config.browser,
+        commands: { [config.name]: command },
+      };
+  adapters.set(config.site, canonicalizeManifest(adapter));
   bumpRegistryVersion();
+}
+
+function adapterSourceTier(
+  sourcePath: string | undefined,
+): AdapterCommand["source_tier"] {
+  if (sourcePath?.includes("/.unicli/adapters/")) return "user";
+  if (
+    sourcePath?.startsWith("src/adapters/") ||
+    sourcePath?.startsWith("dist/adapters/")
+  ) {
+    return "packaged";
+  }
+  return "runtime";
 }

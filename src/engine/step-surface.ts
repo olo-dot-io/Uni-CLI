@@ -6,7 +6,7 @@
  * @breaks      Registry/matrix mismatch, duplicate ownership, or budget growth throws with exact action names.
  * @invariants  Built-ins split into registered pipeline actions and transport-native actions; plugins are excluded.
  * @side-effects Imports built-in step modules once so they self-register.
- * @perf        O(number of built-in actions), currently bounded at 105.
+ * @perf        O(number of built-in actions), currently bounded at 113.
  * @concurrency Read-only after module initialization; registry initialization is module-scoped.
  * @test        tests/unit/step-surface.test.ts
  * @stability   stable
@@ -20,7 +20,7 @@ import { DESKTOP_AX_STEP_HANDLERS } from "./steps/desktop-ax.js";
 import { DESKTOP_SIDECAR_STEP_HANDLERS } from "./steps/desktop-sidecar.js";
 import { CAPABILITY_MATRIX } from "../transport/capability.js";
 
-export const REGISTERED_STEP_BUDGET = 50;
+export const REGISTERED_STEP_BUDGET = 58;
 export const TRANSPORT_NATIVE_STEP_BUDGET = 55;
 
 export interface BuiltInStepSurface {

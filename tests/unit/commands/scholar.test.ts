@@ -658,17 +658,19 @@ describe("unicli scholar — source discovery", () => {
     const adapter = listScholarAdapters().find(
       (candidate) => candidate.name === "fixture-scholar-b",
     )!;
-    const command = findScholarCommandByCapability(
+    const registeredCommand = findScholarCommandByCapability(
       adapter,
       "scholar.get",
     )!.command;
-
-    command.adapterArgs = [
-      { name: "id", type: "str", required: true },
-      { name: "limit", type: "int", default: 20 },
-      { name: "volume", type: "str", default: "235" },
-      { name: "email", type: "str" },
-    ];
+    const command: AdapterCommand = {
+      ...registeredCommand,
+      adapterArgs: [
+        { name: "id", type: "str", required: true },
+        { name: "limit", type: "int", default: 20 },
+        { name: "volume", type: "str", default: "235" },
+        { name: "email", type: "str" },
+      ],
+    };
 
     expect(
       normalizeScholarCommandArgs(command, {

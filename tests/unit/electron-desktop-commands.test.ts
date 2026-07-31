@@ -15,7 +15,7 @@ describe("Electron desktop command discovery", () => {
 
     const ids = new Set(listCommands().map((c) => `${c.site}/${c.command}`));
 
-    for (const site of ["slack", "notion", "vscode", "figma", "obsidian"]) {
+    for (const site of ["slack", "notion-app", "vscode", "figma", "obsidian"]) {
       expect(ids).toContain(`${site}/open-app`);
       expect(ids).toContain(`${site}/status-app`);
       expect(ids).toContain(`${site}/dump`);
@@ -56,7 +56,7 @@ describe("Electron desktop command discovery", () => {
       ["chatwise", "history"],
       ["cursor", "extract-code"],
       ["discord-app", "status"],
-      ["notion", "sidebar"],
+      ["notion-app", "sidebar"],
       ["codex", "projects"],
     ] as const) {
       expect(resolveCommand(site, command)?.command).toMatchObject({

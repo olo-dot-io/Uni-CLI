@@ -13,7 +13,7 @@ import {
 } from "../../../src/transport/capability.js";
 
 describe("CAPABILITY_MATRIX shape", () => {
-  it("lists all 7 transports in TRANSPORT_KINDS", () => {
+  it("lists all 8 transports in TRANSPORT_KINDS", () => {
     expect(TRANSPORT_KINDS).toEqual([
       "http",
       "cdp-browser",
@@ -21,15 +21,16 @@ describe("CAPABILITY_MATRIX shape", () => {
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
+      "cua-driver",
       "visual",
     ]);
   });
 
   it("declares the executable built-in action surface", () => {
-    expect(Object.keys(CAPABILITY_MATRIX)).toHaveLength(105);
+    expect(Object.keys(CAPABILITY_MATRIX)).toHaveLength(113);
   });
 
-  it("uses only the 7 known transport kinds in each row", () => {
+  it("uses only the 8 known transport kinds in each row", () => {
     const kinds = new Set<TransportKind>(TRANSPORT_KINDS);
     for (const [step, row] of Object.entries(CAPABILITY_MATRIX)) {
       for (const kind of row.transports) {
@@ -71,12 +72,13 @@ describe("stepSupportedBy", () => {
     expect(stepSupportedBy("wait")).toEqual(["cdp-browser", "subprocess"]);
   });
 
-  it("compute_screenshot advertises Visual as the last visual fallback", () => {
+  it("compute_screenshot lists legal providers without implying route order", () => {
     expect(stepSupportedBy("compute_screenshot")).toEqual([
       "cdp-browser",
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
+      "cua-driver",
       "visual",
     ]);
   });

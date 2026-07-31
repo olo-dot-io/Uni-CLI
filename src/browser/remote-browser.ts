@@ -58,6 +58,10 @@ type RemoteBrowserErrorCode =
 export class RemoteBrowserError extends Error {
   readonly retryable: boolean;
   readonly suggestion: string;
+  readonly adapter_path = "src/browser/remote-browser.ts";
+  readonly step = 0;
+  readonly stage = "provider_acquire";
+  readonly exitCode: number;
 
   constructor(
     readonly code: RemoteBrowserErrorCode,
@@ -68,6 +72,14 @@ export class RemoteBrowserError extends Error {
     this.name = "RemoteBrowserError";
     this.retryable = code === "remote_browser_connect_failed";
     this.suggestion = suggestionFor(code);
+    this.exitCode =
+      code === "remote_browser_configuration_invalid" ||
+      code === "remote_browser_unavailable" ||
+      code === "remote_browser_endpoint_unsupported"
+        ? 78
+        : code === "remote_browser_target_not_found"
+          ? 66
+          : 69;
   }
 }
 

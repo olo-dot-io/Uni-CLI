@@ -182,15 +182,60 @@ describe("buildIndexFromDocuments", () => {
 
     expect(index.N).toBe(3);
     expect(index.documents).toHaveLength(3);
-    expect(Object.keys(index.postings).length).toBeGreaterThan(0);
-    expect(Object.keys(index.idf).length).toBeGreaterThan(0);
+    expect(index.postings.size).toBeGreaterThan(0);
+    expect(index.idf.size).toBeGreaterThan(0);
     expect(index.avgDl).toBeGreaterThan(0);
+  });
+
+  it("aligns posting frequencies without retaining candidate-local TF maps", () => {
+    const index = buildIndexFromDocuments([
+      {
+        site: "frequency-probe",
+        command: "search-search",
+        description: "Search the searchable search catalog",
+      },
+      {
+        site: "frequency-probe",
+        command: "read",
+        description: "Read the catalog",
+      },
+    ]);
+    const postings = index.postings.get("search")!;
+    const frequencies = index.frequencies.get("search")!;
+
+    expect(frequencies).toHaveLength(postings.length);
+    expect(frequencies[postings.indexOf(0)]).toBe(4);
+    expect(frequencies[postings.indexOf(1)]).toBeUndefined();
+    expect(index.documents[0].tfidfNorm).toBeGreaterThan(0);
+    expect(index.documents[0].bm25LengthNorm).toBeGreaterThan(0);
   });
 
   it("handles empty command documents", () => {
     const index = buildIndexFromDocuments([]);
     expect(index.N).toBe(0);
     expect(index.documents).toHaveLength(0);
+  });
+
+  it("indexes hostile user-controlled identity tokens without prototype collisions", () => {
+    const documents = [
+      {
+        site: "__proto__",
+        command: "constructor",
+        description: "Hostile identity regression sentinel",
+      },
+      {
+        site: "constructor",
+        command: "__proto__",
+        description: "Second hostile identity regression sentinel",
+      },
+    ];
+    const index = buildIndexFromDocuments(documents);
+
+    expect(index.postings.get("__proto__")).toEqual(expect.any(Array));
+    expect(index.postings.get("constructor")).toEqual(expect.any(Array));
+    expect(
+      searchDocuments(documents, "hostile identity sentinel", 2),
+    ).toHaveLength(2);
   });
 });
 

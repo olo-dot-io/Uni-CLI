@@ -30,8 +30,8 @@ cli({
   ],
   columns: ["id", "title", "authors", "source", "year", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "scholar.search",
   ],
   func: async (page, kwargs) => {

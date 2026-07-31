@@ -43,7 +43,7 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -55,13 +55,13 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 **Chinese**: zhihu (27), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +28 more (`unicli list`)
 
-**International**: twitter (47), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +81 more (`unicli list`)
+**International**: twitter (47), instagram (29), reddit (24), tiktok (18), youtube (17), nowcoder (16), discord-app (15), facebook (15), +82 more (`unicli list`)
 
-**AI / ML**: chatgpt (17), antigravity (16), chatwise (16), notebooklm (15), claude (14), doubao-app (13), yollomi (12), deepseek (9), +17 more (`unicli list`)
+**AI / ML**: chatgpt (18), antigravity (17), chatwise (17), notebooklm (15), claude (14), doubao-app (14), yollomi (12), deepseek (9), +17 more (`unicli list`)
 
 **Finance**: eastmoney (18), xueqiu (14), binance (13), coingecko (7), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), +2 more (`unicli list`)
 
-**Developer**: codex (18), cursor (18), gh (11), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), +29 more (`unicli list`)
+**Developer**: codex (19), cursor (19), gh (11), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), +29 more (`unicli list`)
 
 **News**: hackernews (11), bloomberg (10), 36kr (5), bbc (5), reuters (5), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 

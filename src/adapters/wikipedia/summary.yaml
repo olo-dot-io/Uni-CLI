@@ -1,6 +1,7 @@
 site: wikipedia
 name: summary
 description: Get Wikipedia article summary
+operation_effect: read
 domain: wikipedia.org
 type: web-api
 strategy: public

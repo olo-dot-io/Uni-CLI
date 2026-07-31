@@ -117,11 +117,11 @@ const EXIT_CODE_BY_CLASS: Record<PatentErrorCode, number> = {
   PATENT_NOT_FOUND: 66,
   PATENT_API_DEPRECATED: 69,
   PATENT_REGION_BLOCKED: 77,
-  PATENT_INVALID_NUMBER: 65,
-  PATENT_FAMILY_BROKER_DOWN: 1,
-  PATENT_BROWSER_CAPTCHA: 1,
-  PATENT_UNSUPPORTED_QUERY: 1,
-  PATENT_SCHEMA_DRIFT: 1,
+  PATENT_INVALID_NUMBER: 2,
+  PATENT_FAMILY_BROKER_DOWN: 69,
+  PATENT_BROWSER_CAPTCHA: 77,
+  PATENT_UNSUPPORTED_QUERY: 2,
+  PATENT_SCHEMA_DRIFT: 78,
 };
 
 /**
@@ -146,6 +146,42 @@ export function buildPatentEnvelope(input: {
     alternatives: input.alternatives ?? [],
     exit_code: EXIT_CODE_BY_CLASS[input.code] ?? 1,
   };
+}
+
+/**
+ * Runtime failure for executable patent adapters.
+ *
+ * `PatentEnvelope` remains a serializable value for diagnostics and tests, but
+ * executable adapters must throw this error rather than return the envelope as
+ * a normal data row. Returning `{ envelope: ... }` makes the kernel report
+ * `ok: true` and exit 0 for CAPTCHA, schema drift, invalid input, and not-found
+ * outcomes.
+ */
+export class PatentAdapterError extends Error {
+  readonly code: PatentErrorCode;
+  readonly suggestion: string;
+  readonly retryable: boolean;
+  readonly alternatives: string[];
+  readonly adapter_path: string;
+  readonly stage: string;
+
+  constructor(envelope: PatentEnvelope, message = envelope.suggestion) {
+    super(message);
+    this.name = "PatentAdapterError";
+    this.code = envelope.code;
+    this.suggestion = envelope.suggestion;
+    this.retryable = envelope.retryable;
+    this.alternatives = envelope.alternatives;
+    this.adapter_path = envelope.adapter_path;
+    this.stage = envelope.step;
+  }
+}
+
+/** Throw a typed adapter failure that the kernel renders as a top-level error. */
+export function throwPatentAdapterError(
+  input: Parameters<typeof buildPatentEnvelope>[0],
+): never {
+  throw new PatentAdapterError(buildPatentEnvelope(input));
 }
 
 /**

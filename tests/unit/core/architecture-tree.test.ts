@@ -193,6 +193,8 @@ describe("architecture tree", () => {
       "browser-tab-control",
     );
     expect(audit.lifecycle_steps).toEqual(COMMAND_LIFECYCLE_STEPS);
-    expect(audit.ready_for_full_rewrite).toBe(false);
+    expect(audit.evidence_scope).toBe("catalog-contracts");
+    expect(audit.catalog_integrity).toBe("incomplete");
+    expect(audit.runtime_readiness).toBe("not_evaluated");
   });
 });

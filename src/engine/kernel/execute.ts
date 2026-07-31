@@ -45,6 +45,11 @@ import {
   observeCliLocalLogWarning,
   observeCliTrace,
 } from "../../runtime/cli-invocation-log.js";
+import { defaultEffectVerdict } from "../../core/effect-verdict.js";
+import {
+  runWithCookieInvocationOverride,
+  type CookieInvocationOverride,
+} from "../cookies.js";
 
 export { KernelLookupError };
 
@@ -63,6 +68,7 @@ export function buildInvocation(
     approved?: boolean;
     rememberApproval?: boolean;
     signal?: AbortSignal;
+    cookieInvocationOverride?: CookieInvocationOverride;
     parentInvocationId?: string;
     operationRole?: "direct" | "nested";
   } = {},
@@ -88,6 +94,7 @@ export function buildInvocation(
     permissionProfile: options.permissionProfile,
     approved: options.approved,
     rememberApproval: options.rememberApproval,
+    cookieInvocationOverride: options.cookieInvocationOverride,
     signal: options.signal,
     trace_id: newULID(),
     ...diagnosticIdentity,
@@ -105,7 +112,17 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
   const ctx = resolveKernelCommandContext(inv);
   if (inv.surface === "cli") observeCliTrace(inv.trace_id);
 
-  const result = await executeResolved(inv, ctx, startedAt, warnings);
+  let result: InvocationResult;
+  try {
+    result = inv.cookieInvocationOverride
+      ? await runWithCookieInvocationOverride(
+          inv.cookieInvocationOverride,
+          () => executeResolved(inv, ctx, startedAt, warnings),
+        )
+      : await executeResolved(inv, ctx, startedAt, warnings);
+  } catch (error) {
+    result = executionErrorResult(inv, ctx, startedAt, warnings, error).result;
+  }
   if (!isLocalLoggingEnabled()) return result;
   const resultBytes = serializedResultBytes(result.results);
   const warning = localEventWarning(
@@ -210,11 +227,89 @@ async function executeResolved(
       inv,
       ctx,
       authorization.policy.effect !== "read",
+      warnings,
     );
-    return successKernelResult(inv, ctx, startedAt, warnings, results);
+    if (authorization.policy.effect !== "read") {
+      const sentinel = mutationFailureSentinel(results);
+      if (sentinel) throw sentinel;
+    }
+    return successKernelResult(
+      inv,
+      ctx,
+      startedAt,
+      warnings,
+      results,
+      defaultEffectVerdict({
+        canMutate: authorization.policy.effect !== "read",
+        phase: "success",
+      }),
+    );
   } catch (err) {
     return executionErrorResult(inv, ctx, startedAt, warnings, err).result;
   }
+}
+
+function mutationFailureSentinel(
+  results: readonly unknown[],
+): Error | undefined {
+  const successful: unknown[] = [];
+  const failedResults: unknown[] = [];
+  for (const result of results) {
+    if (!result || typeof result !== "object" || Array.isArray(result)) {
+      successful.push(result);
+      continue;
+    }
+    const row = result as Record<string, unknown>;
+    const status =
+      typeof row.status === "string" ? row.status.toLowerCase() : undefined;
+    const failed =
+      row.ok === false ||
+      row.success === false ||
+      status === "failed" ||
+      status === "failure" ||
+      status === "error";
+    if (failed) failedResults.push(result);
+    else successful.push(result);
+  }
+  if (failedResults.length === 0) return undefined;
+
+  const failedRow = failedResults[0] as Record<string, unknown>;
+  const detail = [failedRow.message, failedRow.reason, failedRow.error].find(
+    (value) => typeof value === "string" && value.length > 0,
+  );
+  const partial = successful.length > 0;
+  const receiptLimit = 50;
+  return Object.assign(
+    new Error(
+      partial
+        ? `${successful.length} mutation result(s) succeeded and ${failedResults.length} failed; inspect receipts before any replay.`
+        : typeof detail === "string"
+          ? detail
+          : "The provider reported that the mutation failed.",
+    ),
+    {
+      code: partial ? "partial_mutation" : "provider_reported_failure",
+      suggestion: partial
+        ? "Reconcile the successful and failed receipts with external state; retry only the confirmed failed subset."
+        : "Inspect the current external state and adapter selectors before issuing a new mutation.",
+      retryable: false,
+      alternatives: [] as string[],
+      ...(partial
+        ? {
+            partial_success: true as const,
+            mutation_receipts: {
+              successful_count: successful.length,
+              failed_count: failedResults.length,
+              truncated:
+                successful.length > receiptLimit ||
+                failedResults.length > receiptLimit,
+              successful: successful.slice(0, receiptLimit),
+              failed: failedResults.slice(0, receiptLimit),
+            },
+          }
+        : {}),
+    },
+  );
 }
 
 function serializedResultBytes(results: unknown[]): number | undefined {

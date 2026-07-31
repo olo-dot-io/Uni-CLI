@@ -8,7 +8,7 @@
  * @side-effects none
  * @perf        O(length of one endpoint URL).
  * @concurrency Pure parsing over request-local values.
- * @test        tests/unit/transport/adapters/cdp-browser.test.ts, tests/unit/compute-cascade.test.ts
+ * @test        tests/unit/transport/adapters/cdp-browser.test.ts, tests/unit/compute-dispatch.test.ts
  * @stability   stable
  * @since       0.400.2
  */

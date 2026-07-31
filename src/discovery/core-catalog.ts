@@ -6,22 +6,34 @@
  * @breaks  Throws during module initialization when a listed compute command has no owned contract; missing rows make built-in capabilities undiscoverable.
  * @invariants Each core command has one site/command identity and list APIs return deterministic lexical order with an owned source path when available.
  * @side-effects none
- * @perf List operations are O(n log n); point lookup and category lookup are O(n) over a bounded static catalog.
+ * @perf Immutable indexes are compiled once; point/category lookup is average O(1), full listing is O(n) output construction.
  * @concurrency Pure reads over immutable module data; list and lookup APIs return new top-level row objects.
  * @test tests/unit/command-contract.test.ts, tests/unit/commands/architecture.test.ts
  * @stability stable
  * @since 2026-05-25
  */
 
-import type { TargetSurface } from "../types.js";
+import type {
+  AdapterArg,
+  AdapterCommand,
+  ExecutionOperator,
+  OperationEffect,
+  OperationFamily,
+  TargetSurface,
+} from "../types.js";
+import type { CommandOperatorProfile } from "../core/operator-model.js";
 import {
   getComputeCommandContract,
   type ComputeCommandArg,
 } from "../compute/contracts.js";
+import {
+  BROWSER_OPERATION_SPECS,
+  browserOperationShell,
+} from "../commands/browser/operation-spec.js";
 
-export interface CoreDiscoveryArg {
+export interface CoreDiscoveryArg extends AdapterArg {
   name: string;
-  type?: "str" | "int" | "float" | "bool";
+  type?: AdapterArg["type"];
   default?: unknown;
   required?: boolean;
   positional?: boolean;
@@ -41,6 +53,19 @@ export interface CoreDiscoveryCommand {
   channels?: Record<string, string>;
   capabilities?: readonly string[];
   minimum_capability?: string;
+  execution_operator?: ExecutionOperator;
+  execution_profile?: Partial<
+    Omit<
+      CommandOperatorProfile,
+      | "operator"
+      | "selection_reason"
+      | "operator_source"
+      | "operator_confidence"
+    >
+  >;
+  operation_effect?: OperationEffect;
+  operation_family?: OperationFamily;
+  idempotency?: AdapterCommand["idempotency"];
 }
 
 const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
@@ -553,48 +578,44 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
       },
     ],
   },
-  {
+  ...BROWSER_OPERATION_SPECS.map((spec) => ({
     site: "browser",
-    command: "evidence",
+    command: spec.command,
     category: "dev",
     type: "browser",
-    target_surface: "web",
-    description:
-      "Capture browser operator evidence for web automation, website control, agent workflows, MCP/CLI debugging, DOM snapshots, screenshots, network summaries, render-aware observation, session leases, and audit trails.",
-  },
-  {
-    site: "browser",
-    command: "extract",
-    category: "dev",
-    type: "browser",
-    target_surface: "web",
-    description:
-      "Extract rendered website text through the browser operator with render-aware waiting, session lease metadata, DOM evidence, and agent-friendly structured output.",
-  },
-  {
-    site: "browser",
-    command: "state",
-    category: "dev",
-    type: "browser",
-    target_surface: "web",
-    description:
-      "Read the current browser page state, accessibility tree, refs, URL, and DOM snapshot for website control and agent browser automation.",
-  },
-  {
-    site: "browser",
-    command: "click",
-    category: "dev",
-    type: "browser",
-    target_surface: "web",
-    description:
-      "Click a browser page ref with stale-ref checks, session lease ownership, action evidence, watchdog movement checks, and recorded run traces.",
-  },
+    target_surface: "web" as const,
+    source_path: spec.source_path,
+    description: spec.description,
+    args: spec.args.map(({ flags: _flags, ...arg }) => ({
+      ...arg,
+      ...(arg.choices ? { choices: [...arg.choices] } : {}),
+    })),
+    channels: { shell: browserOperationShell(spec) },
+    capabilities: [spec.capability],
+    minimum_capability: spec.capability,
+    execution_operator: spec.execution_operator,
+    execution_profile: {
+      provider: "cdp-browser",
+      perception: spec.perception,
+      actuation: spec.actuation,
+      target_scope: "browser-renderer" as const,
+      verification: spec.verification,
+      interaction_impact: spec.interaction_impact,
+      coordinate_actuation: false,
+    },
+    operation_effect: spec.operation_effect,
+    operation_family: spec.operation_family,
+    idempotency: spec.idempotency,
+  })),
   {
     site: "browser",
     command: "bind",
     category: "dev",
     type: "browser",
     target_surface: "web",
+    operation_family: "update",
+    operation_effect: "service_state",
+    idempotency: "conditional",
     description:
       "Bind the current visible browser tab into a named workspace with domain and path guards for profile reuse and multi-command automation.",
   },
@@ -613,6 +634,8 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "browser",
     target_surface: "web",
+    operation_effect: "unknown_write",
+    idempotency: "none",
     description:
       "Operate a browser page by clicking refs with recorded evidence and session lease metadata.",
   },
@@ -685,6 +708,7 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     command: "run",
     category: "dev",
     type: "service",
+    operation_effect: "unknown_write",
     description:
       "Execute the next delivery experiment from an objective spec through the shared command kernel, record the new run trace, and return the updated trajectory.",
   },
@@ -718,7 +742,39 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     category: "dev",
     type: "service",
     description:
-      "Audit Uni-CLI Agent-Computer Interface readiness, including command counts, local computer-use coverage, control stages, missing source paths, substrate identity boundaries, and full rewrite readiness.",
+      "Audit Uni-CLI Agent-Computer Interface catalog contracts, including command counts, local computer-use coverage, control stages, missing source paths, and substrate identity boundaries without claiming runtime readiness.",
+  },
+  {
+    site: "compute",
+    command: "route",
+    category: "desktop",
+    type: "service",
+    target_surface: "system",
+    source_path: "src/commands/compute.ts",
+    execution_operator: "local-runtime",
+    description:
+      "Explain the single native, browser, process, driver, or visual provider selected for one compute operation without opening or executing that provider.",
+    args: [
+      {
+        name: "operation",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "Compute command name such as snapshot, click, or launch",
+      },
+      {
+        name: "params",
+        type: "str",
+        default: "{}",
+        description: "Operation arguments encoded as one JSON object",
+      },
+      {
+        name: "via",
+        type: "str",
+        choices: ["native", "browser", "process", "driver", "visual"],
+        description: "Explicit route override",
+      },
+    ],
   },
   {
     site: "compute",
@@ -770,11 +826,35 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   },
   {
     site: "compute",
+    command: "point-click",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("point-click"),
+  },
+  {
+    site: "compute",
+    command: "drag",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("drag"),
+  },
+  {
+    site: "compute",
     command: "type",
     category: "desktop",
     type: "desktop",
     target_surface: "desktop",
     ...computeCommandFields("type"),
+  },
+  {
+    site: "compute",
+    command: "text",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("text"),
   },
   {
     site: "compute",
@@ -794,6 +874,14 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   },
   {
     site: "compute",
+    command: "point-scroll",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("point-scroll"),
+  },
+  {
+    site: "compute",
     command: "launch",
     category: "desktop",
     type: "desktop",
@@ -807,6 +895,94 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     type: "desktop",
     target_surface: "desktop",
     ...computeCommandFields("screenshot"),
+  },
+  {
+    site: "compute",
+    command: "session-start",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("session-start"),
+  },
+  {
+    site: "compute",
+    command: "session-state",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("session-state"),
+  },
+  {
+    site: "compute",
+    command: "session-escalate",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("session-escalate"),
+  },
+  {
+    site: "compute",
+    command: "session-end",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("session-end"),
+  },
+  {
+    site: "compute",
+    command: "screen-size",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("screen-size"),
+  },
+  {
+    site: "compute",
+    command: "cursor-position",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("cursor-position"),
+  },
+  {
+    site: "compute",
+    command: "move-cursor",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("move-cursor"),
+  },
+  {
+    site: "compute",
+    command: "agent-cursor-state",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("agent-cursor-state"),
+  },
+  {
+    site: "compute",
+    command: "agent-cursor-enable",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("agent-cursor-enable"),
+  },
+  {
+    site: "compute",
+    command: "agent-cursor-motion",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("agent-cursor-motion"),
+  },
+  {
+    site: "compute",
+    command: "agent-cursor-theme",
+    category: "desktop",
+    type: "desktop",
+    target_surface: "desktop",
+    ...computeCommandFields("agent-cursor-theme"),
   },
   {
     site: "compute",
@@ -850,21 +1026,73 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   },
 ];
 
-export function listCoreDiscoveryCommands(): CoreDiscoveryCommand[] {
-  return CORE_DISCOVERY_COMMANDS.map(withCoreSourcePath).sort(
+const SORTED_CORE_DISCOVERY_COMMANDS = Object.freeze(
+  CORE_DISCOVERY_COMMANDS.map(withCoreSourcePath).sort(
     (a, b) =>
       a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
+  ),
+);
+const CORE_DISCOVERY_COMMAND_BY_ID = new Map<string, CoreDiscoveryCommand>();
+const CORE_DISCOVERY_CATEGORY_BY_SITE = new Map<string, string>();
+const CORE_DISCOVERY_SITES: ReadonlyArray<{
+  site: string;
+  category: string;
+  type: string;
+  commands: readonly CoreDiscoveryCommand[];
+}> = (() => {
+  const sites = new Map<
+    string,
+    {
+      category: string;
+      type: string;
+      commands: CoreDiscoveryCommand[];
+    }
+  >();
+  for (const command of SORTED_CORE_DISCOVERY_COMMANDS) {
+    const id = `${command.site}\u0000${command.command}`;
+    if (CORE_DISCOVERY_COMMAND_BY_ID.has(id)) {
+      throw new Error(
+        `duplicate core discovery command: ${command.site}/${command.command}`,
+      );
+    }
+    CORE_DISCOVERY_COMMAND_BY_ID.set(id, command);
+    const existing = sites.get(command.site);
+    if (existing && existing.category !== command.category) {
+      throw new Error(
+        `inconsistent core discovery site category: ${command.site}`,
+      );
+    }
+    const site = existing ?? {
+      category: command.category,
+      type: command.type,
+      commands: [],
+    };
+    site.commands.push(command);
+    sites.set(command.site, site);
+    CORE_DISCOVERY_CATEGORY_BY_SITE.set(command.site, command.category);
+  }
+  return Object.freeze(
+    [...sites.entries()].map(([site, info]) => ({
+      site,
+      category: info.category,
+      type: info.type,
+      commands: Object.freeze([...info.commands]),
+    })),
   );
+})();
+
+export function listCoreDiscoveryCommands(): CoreDiscoveryCommand[] {
+  return SORTED_CORE_DISCOVERY_COMMANDS.map((command) => ({ ...command }));
 }
 
 export function getCoreDiscoveryCommand(
   site: string,
   command: string,
 ): CoreDiscoveryCommand | undefined {
-  const coreCommand = CORE_DISCOVERY_COMMANDS.find(
-    (candidate) => candidate.site === site && candidate.command === command,
+  const coreCommand = CORE_DISCOVERY_COMMAND_BY_ID.get(
+    `${site}\u0000${command}`,
   );
-  return coreCommand ? withCoreSourcePath(coreCommand) : undefined;
+  return coreCommand ? { ...coreCommand } : undefined;
 }
 
 export function listCoreDiscoverySites(): Array<{
@@ -873,34 +1101,16 @@ export function listCoreDiscoverySites(): Array<{
   type: string;
   commands: CoreDiscoveryCommand[];
 }> {
-  const sites = new Map<
-    string,
-    { category: string; type: string; commands: CoreDiscoveryCommand[] }
-  >();
-  for (const command of CORE_DISCOVERY_COMMANDS.map(withCoreSourcePath)) {
-    const entry = sites.get(command.site) ?? {
-      category: command.category,
-      type: command.type,
-      commands: [],
-    };
-    entry.commands.push(command);
-    sites.set(command.site, entry);
-  }
-  return Array.from(sites.entries())
-    .map(([site, info]) => ({
-      site,
-      category: info.category,
-      type: info.type,
-      commands: [...info.commands].sort((a, b) =>
-        a.command.localeCompare(b.command),
-      ),
-    }))
-    .sort((a, b) => a.site.localeCompare(b.site));
+  return CORE_DISCOVERY_SITES.map((site) => ({
+    site: site.site,
+    category: site.category,
+    type: site.type,
+    commands: site.commands.map((command) => ({ ...command })),
+  }));
 }
 
 export function coreDiscoveryCategory(site: string): string | undefined {
-  return CORE_DISCOVERY_COMMANDS.find((command) => command.site === site)
-    ?.category;
+  return CORE_DISCOVERY_CATEGORY_BY_SITE.get(site);
 }
 
 function withCoreSourcePath(
@@ -914,13 +1124,26 @@ function withCoreSourcePath(
 
 function computeCommandFields(
   command: string,
-): Pick<CoreDiscoveryCommand, "args" | "channels" | "description"> {
+): Pick<
+  CoreDiscoveryCommand,
+  | "args"
+  | "channels"
+  | "description"
+  | "execution_operator"
+  | "execution_profile"
+  | "operation_effect"
+> {
   const contract = getComputeCommandContract(command);
   if (!contract) {
     throw new Error(`missing compute command contract for ${command}`);
   }
   return {
     description: contract.description,
+    execution_operator: contract.executionOperator,
+    ...(contract.executionProfile
+      ? { execution_profile: contract.executionProfile }
+      : {}),
+    operation_effect: contract.readOnly === true ? "read" : "local_app",
     args: contract.args.map(toCoreDiscoveryArg),
     ...(contract.channels ? { channels: contract.channels } : {}),
   };
@@ -935,5 +1158,9 @@ function toCoreDiscoveryArg(arg: ComputeCommandArg): CoreDiscoveryArg {
     ...(arg.positional === undefined ? {} : { positional: arg.positional }),
     ...(arg.choices === undefined ? {} : { choices: [...arg.choices] }),
     ...(arg.description === undefined ? {} : { description: arg.description }),
+    ...(arg.minimum === undefined ? {} : { minimum: arg.minimum }),
+    ...(arg.maximum === undefined ? {} : { maximum: arg.maximum }),
+    ...(arg.minLength === undefined ? {} : { minLength: arg.minLength }),
+    ...(arg.maxLength === undefined ? {} : { maxLength: arg.maxLength }),
   };
 }

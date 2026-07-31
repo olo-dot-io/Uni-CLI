@@ -1,6 +1,7 @@
 site: lesswrong
 name: top
 description: Top all-time posts
+operation_effect: read
 domain: www.lesswrong.com
 strategy: public
 

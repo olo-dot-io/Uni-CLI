@@ -3,6 +3,7 @@
 site: autoagent
 name: eval/run
 description: Run an AutoAgent evaluation (hill-climbing on agent.py)
+operation_effect: remote_transform
 type: bridge
 strategy: public
 binary: autoagent

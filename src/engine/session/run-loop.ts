@@ -110,6 +110,7 @@ async function evaluatePermissionForEvent(
       strategy: inv.command.strategy ?? inv.adapter.strategy,
       browser: inv.adapter.browser === true || inv.command.browser === true,
       args: inv.command.adapterArgs,
+      effect: inv.command.operation_effect,
       profile: inv.permissionProfile,
       approved: inv.approved,
       argumentValues: inv.bag.args,
@@ -173,6 +174,7 @@ function successData(result: InvocationResult): Record<string, unknown> {
     result_count: result.results.length,
     duration_ms: result.durationMs,
     outcome: result.results.length === 0 ? "empty" : "success",
+    effect_verdict: result.effectVerdict,
     envelope: result.envelope,
   };
 }
@@ -192,6 +194,7 @@ function failureData(
     exit_code: result.exitCode,
     result_count: result.results.length,
     duration_ms: result.durationMs,
+    effect_verdict: result.effectVerdict,
     error,
     envelope: result.envelope,
   };
@@ -211,6 +214,7 @@ function evidenceData(
     exit_code: result.exitCode,
     result_count: result.results.length,
     duration_ms: result.durationMs,
+    effect_verdict: result.effectVerdict,
     adapter_path: metadata.adapter_path,
     envelope_command: result.envelope.command,
     has_error: result.error !== undefined,

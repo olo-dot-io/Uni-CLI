@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->324<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9816<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9983<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -269,10 +269,10 @@ browser health 是三层独立证据，绝不相加成“可用命令数”。�
 <p><strong>开发</strong><br>
   <a data-site="claude-code" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="claude-code: 1 command"><img alt="claude-code" src="https://img.shields.io/static/v1?label=claude-code&message=1+cmds&color=4f46e5&style=flat-square&logo=anthropic&logoColor=white"></a>
   <a data-site="cocoapods" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cocoapods: 2 commands"><img alt="cocoapods" src="https://img.shields.io/static/v1?label=cocoapods&message=2+cmds&color=4f46e5&style=flat-square&logo=cocoapods&logoColor=white"></a>
-  <a data-site="codex" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="codex: 18 commands"><img alt="codex" src="https://img.shields.io/static/v1?label=codex&message=18+cmds&color=4f46e5&style=flat-square&logo=openai&logoColor=white"></a>
+  <a data-site="codex" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="codex: 19 commands"><img alt="codex" src="https://img.shields.io/static/v1?label=codex&message=19+cmds&color=4f46e5&style=flat-square&logo=openai&logoColor=white"></a>
   <a data-site="codex-cli" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="codex-cli: 1 command"><img alt="codex-cli" src="https://img.shields.io/static/v1?label=codex-cli&message=1+cmds&color=4f46e5&style=flat-square&logo=openai&logoColor=white"></a>
   <a data-site="crates-io" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="crates-io: 3 commands"><img alt="crates-io" src="https://img.shields.io/static/v1?label=crates-io&message=3+cmds&color=4f46e5&style=flat-square&logo=rust&logoColor=white"></a>
-  <a data-site="cursor" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cursor: 18 commands"><img alt="cursor" src="https://img.shields.io/static/v1?label=cursor&message=18+cmds&color=4f46e5&style=flat-square&logo=cursor&logoColor=white"></a>
+  <a data-site="cursor" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cursor: 19 commands"><img alt="cursor" src="https://img.shields.io/static/v1?label=cursor&message=19+cmds&color=4f46e5&style=flat-square&logo=cursor&logoColor=white"></a>
   <a data-site="docker-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-desktop: 7 commands"><img alt="docker-desktop" src="https://img.shields.io/static/v1?label=docker-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
   <a data-site="docker-hub" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-hub: 3 commands"><img alt="docker-hub" src="https://img.shields.io/static/v1?label=docker-hub&message=3+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
   <a data-site="gh" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gh: 11 commands"><img alt="gh" src="https://img.shields.io/static/v1?label=gh&message=11+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
@@ -296,8 +296,8 @@ browser health 是三层独立证据，绝不相加成“可用命令数”。�
   <a data-site="vscode" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="vscode: 10 commands"><img alt="vscode" src="https://img.shields.io/static/v1?label=vscode&message=10+cmds&color=4f46e5&style=flat-square&logo=visualstudiocode&logoColor=white"></a>
 </p>
 <p><strong>AI</strong><br>
-  <a data-site="antigravity" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="antigravity: 16 commands"><img alt="antigravity" src="https://img.shields.io/static/v1?label=antigravity&message=16+cmds&color=7c3aed&style=flat-square&logo=google&logoColor=white"></a>
-  <a data-site="chatgpt" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="chatgpt: 17 commands"><img alt="chatgpt" src="https://img.shields.io/static/v1?label=chatgpt&message=17+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
+  <a data-site="antigravity" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="antigravity: 17 commands"><img alt="antigravity" src="https://img.shields.io/static/v1?label=antigravity&message=17+cmds&color=7c3aed&style=flat-square&logo=google&logoColor=white"></a>
+  <a data-site="chatgpt" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="chatgpt: 18 commands"><img alt="chatgpt" src="https://img.shields.io/static/v1?label=chatgpt&message=18+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
   <a data-site="claude" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="claude: 14 commands"><img alt="claude" src="https://img.shields.io/static/v1?label=claude&message=14+cmds&color=7c3aed&style=flat-square&logo=anthropic&logoColor=white"></a>
   <a data-site="deepseek" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="deepseek: 9 commands"><img alt="deepseek" src="https://img.shields.io/static/v1?label=deepseek&message=9+cmds&color=7c3aed&style=flat-square&logo=deepseek&logoColor=white"></a>
   <a data-site="gemini" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gemini: 5 commands"><img alt="gemini" src="https://img.shields.io/static/v1?label=gemini&message=5+cmds&color=7c3aed&style=flat-square&logo=googlegemini&logoColor=white"></a>
@@ -327,7 +327,7 @@ browser health 是三层独立证据，绝不相加成“可用命令数”。�
 </p>
 <p><strong>效率</strong><br>
   <a data-site="apple-notes" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="apple-notes: 3 commands"><img alt="apple-notes" src="https://img.shields.io/static/v1?label=apple-notes&message=3+cmds&color=475569&style=flat-square&logo=apple&logoColor=white"></a>
-  <a data-site="notion" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="notion: 18 commands"><img alt="notion" src="https://img.shields.io/static/v1?label=notion&message=18+cmds&color=475569&style=flat-square&logo=notion&logoColor=white"></a>
+  <a data-site="notion" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="notion: 3 commands"><img alt="notion" src="https://img.shields.io/static/v1?label=notion&message=3+cmds&color=475569&style=flat-square&logo=notion&logoColor=white"></a>
   <a data-site="obsidian" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="obsidian: 10 commands"><img alt="obsidian" src="https://img.shields.io/static/v1?label=obsidian&message=10+cmds&color=475569&style=flat-square&logo=obsidian&logoColor=white"></a>
   <a data-site="typora" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="typora: 7 commands"><img alt="typora" src="https://img.shields.io/static/v1?label=typora&message=7+cmds&color=475569&style=flat-square&logo=typora&logoColor=white"></a>
 </p>

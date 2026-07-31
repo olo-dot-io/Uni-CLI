@@ -45,6 +45,15 @@ export function classifyExecFailure(
   const message = error instanceof Error ? error.message : String(error);
   const stderr = detail?.stderr ? String(detail.stderr) : "";
   const corpus = `${message}\n${stderr}`;
+  if (detail.code === "ENOENT") {
+    return {
+      errorType: "config_error",
+      suggestion: `Install "${command}" or configure the adapter to use its actual executable path. Verify with: which ${command}`,
+      retryable: false,
+      alternatives: [],
+      preserveErrorCode: true,
+    };
+  }
   if (
     (command === "gh" && Number(detail?.code) === 4) ||
     /\bgh auth login\b|\bnot logged in\b|\bauthentication required\b|\bunauthorized\b|\bcredentials? (?:are )?required\b/i.test(
@@ -62,11 +71,46 @@ export function classifyExecFailure(
       preserveErrorCode: true,
     };
   }
+  if (
+    command === "gh" &&
+    /Could not resolve to a Repository|repository (?:was )?not found|HTTP 404/i.test(
+      corpus,
+    )
+  ) {
+    return {
+      errorType: "not_found",
+      suggestion:
+        "Verify the owner/repository spelling and that the authenticated GitHub account can view it. Run `gh repo view <owner/repo>`.",
+      retryable: false,
+      alternatives: ["gh repo view <owner/repo>"],
+      preserveErrorCode: true,
+    };
+  }
   const transient = /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(corpus);
+  if (transient) {
+    return {
+      errorType: "timeout",
+      suggestion: `Retry "${command}" after checking its upstream service and network connectivity.`,
+      retryable: true,
+      alternatives: [],
+    };
+  }
+  if (
+    typeof detail.code === "number" ||
+    (typeof detail.code === "string" && /^\d+$/.test(detail.code))
+  ) {
+    return {
+      errorType: "upstream_error",
+      suggestion: `Inspect the structured stderr from "${command}" and correct the reported upstream resource, arguments, or service state.`,
+      retryable: false,
+      alternatives: [],
+      preserveErrorCode: true,
+    };
+  }
   return {
-    errorType: transient ? "timeout" : "parse_error",
-    suggestion: `Check that "${command}" is installed and accessible. Run: which ${command}`,
-    retryable: transient,
+    errorType: "parse_error",
+    suggestion: `The output from "${command}" did not match this adapter's parser; inspect the installed CLI version and adapter parse contract.`,
+    retryable: false,
     alternatives: [],
   };
 }

@@ -7,6 +7,7 @@
 site: stagehand
 name: wrap/observe
 description: Run Stagehand's observe() verb against an open page (subprocess wrapper)
+operation_effect: read
 type: bridge
 strategy: public
 binary: stagehand

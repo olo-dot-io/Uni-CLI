@@ -41,6 +41,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "structured-api",
   args: [
     {
       name: "query",
@@ -172,6 +175,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "structured-api",
   args: [
     {
       name: "profile",
@@ -256,6 +262,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "structured-api",
   args: [
     {
       name: "url",
@@ -328,6 +337,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "local-runtime",
   columns: [
     "source",
     "kind",
@@ -349,6 +361,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "local-runtime",
   args: [
     {
       name: "profile",
@@ -389,6 +404,9 @@ cli({
   strategy: Strategy.PUBLIC,
   browser: false,
   target_surface: "web",
+  operation_effect: "read",
+  idempotency: "guaranteed",
+  execution_operator: "local-runtime",
   columns: [
     "profile",
     "name",

@@ -13,7 +13,7 @@
  * @since       2026-07-15
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 export type BrowserInvocationTransport =
   | "cli"
@@ -38,6 +38,7 @@ export interface BrowserInvocationContextInput {
   upstreamTurnId?: string;
   profilePartitionId?: string;
   mcpSessionId?: string;
+  principalId?: string;
   metadata?: unknown;
   environment?: NodeJS.ProcessEnv;
 }
@@ -57,14 +58,17 @@ export function createBrowserInvocationContext(
   input: BrowserInvocationContextInput,
 ): BrowserInvocationContext {
   const codex = readCodexTurnMetadata(input.metadata);
-  const agentSessionId = validateIdentity(
+  const declaredAgentSession =
     input.agentSessionId ??
-      codex?.thread_id ??
-      codex?.session_id ??
-      input.mcpSessionId ??
-      defaultAgentSessionId(input),
-    "agent session",
-  );
+    codex?.thread_id ??
+    codex?.session_id ??
+    input.mcpSessionId ??
+    (input.principalId ? "authenticated-principal" : undefined) ??
+    defaultAgentSessionId(input);
+  const agentSessionId =
+    input.transport === "cli"
+      ? validateIdentity(declaredAgentSession, "agent session")
+      : mcpAgentSessionIdentity(input, declaredAgentSession);
   const turnId = validateIdentity(
     input.turnId ?? `invocation:${randomUUID()}`,
     "turn",
@@ -87,6 +91,29 @@ export function createBrowserInvocationContext(
         }
       : {}),
   };
+}
+
+function mcpAgentSessionIdentity(
+  input: BrowserInvocationContextInput,
+  declaredAgentSession: string,
+): string {
+  const identity = JSON.stringify({
+    transport: input.transport,
+    principal: validateOptionalIdentity(input.principalId, "principal"),
+    mcp_session: validateOptionalIdentity(input.mcpSessionId, "MCP session"),
+    declared_agent_session: validateIdentity(
+      declaredAgentSession,
+      "agent session",
+    ),
+  });
+  return `mcp:${createHash("sha256").update(identity).digest("hex")}`;
+}
+
+function validateOptionalIdentity(
+  value: string | undefined,
+  label: string,
+): string | undefined {
+  return value === undefined ? undefined : validateIdentity(value, label);
 }
 
 function defaultAgentSessionId(input: BrowserInvocationContextInput): string {

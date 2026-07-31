@@ -299,6 +299,9 @@ cli({
   site: "threads",
   name: "post",
   description: "Get a public Threads post from its metadata",
+  operation_effect: "read",
+  operation_family: "get",
+  idempotency: "guaranteed",
   domain: "threads.net",
   strategy: Strategy.PUBLIC,
   args: [

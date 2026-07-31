@@ -229,7 +229,7 @@ function isNetworkCapable(input: OperationPolicyInput): boolean {
       (capability) =>
         capability === "http.fetch" ||
         capability === "http.download" ||
-        capability.startsWith("mcp-browser."),
+        capability.startsWith("cdp-browser."),
     ) ||
     input.minimumCapability === "http.fetch" ||
     input.minimumCapability === "http.download"

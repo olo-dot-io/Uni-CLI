@@ -4,7 +4,7 @@
  * @needs       no runtime dependencies
  * @feeds       MCP handler plus stdio, simple HTTP, and Streamable HTTP transports
  * @breaks      Type or validation drift here breaks every MCP transport at compile time or admits malformed requests inconsistently.
- * @invariants  Every transport rejects non-object or malformed envelopes before field access; handler context distinguishes stdio/HTTP, carries one stable MCP session id, and owns request cancellation; handler lifecycle hooks contain durable tasks before a session exits.
+ * @invariants  Every transport rejects non-object or malformed envelopes before field access; handler context distinguishes stdio/HTTP, optionally carries a legacy session id, and owns request cancellation; lifecycle hooks contain durable legacy tasks before a session exits.
  * @side-effects None.
  * @perf        Validation is O(serialized request fields).
  * @concurrency Immutable request-local types.
@@ -27,10 +27,29 @@ export interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
+export interface JsonRpcNotification {
+  jsonrpc: "2.0";
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+export type JsonRpcServerMessage = JsonRpcResponse | JsonRpcNotification;
+
 export interface McpRequestContext {
   transport: "mcp-stdio" | "mcp-http";
   mcpSessionId?: string;
+  principalId?: string;
   signal?: AbortSignal;
+  task?: McpTaskInputBridge;
+  emit?: (message: JsonRpcServerMessage) => void | Promise<void>;
+}
+
+export interface McpTaskInputBridge {
+  taskId: string;
+  requestInput(
+    key: string,
+    request: Record<string, unknown>,
+  ): Promise<Record<string, unknown>>;
 }
 
 export interface JsonRpcHandler {
@@ -39,6 +58,7 @@ export interface JsonRpcHandler {
     context?: McpRequestContext,
   ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined>;
   closeSession?(sessionId: string, reason: string): Promise<void>;
+  closeSubscriptions?(reason: string): Promise<void>;
   closeAll?(reason: string): Promise<void>;
 }
 
@@ -104,8 +124,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isJsonRpcId(value: unknown): boolean {
   return (
-    value === null ||
     typeof value === "string" ||
-    (typeof value === "number" && Number.isFinite(value))
+    (typeof value === "number" && Number.isSafeInteger(value))
   );
 }

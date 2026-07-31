@@ -3,11 +3,13 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { ok } from "../../src/core/envelope.js";
+import { executeComputeAction } from "../../src/compute/action-execution.js";
+import { issueVisualObservation } from "../../src/compute/visual-observation.js";
 import { DesktopAtspiTransport } from "../../src/transport/adapters/desktop-atspi.js";
 import { DesktopAxTransport } from "../../src/transport/adapters/desktop-ax.js";
 import { DesktopUiaTransport } from "../../src/transport/adapters/desktop-uia.js";
 import { createTransportBus } from "../../src/transport/bus.js";
-import { tryCascade } from "../../src/transport/cascade.js";
+import { dispatchComputeRoute } from "../../src/transport/compute-dispatch.js";
 import { RefAllocator } from "../../src/transport/refs.js";
 import {
   encodeSnapshot,
@@ -31,6 +33,7 @@ const BUDGET_MS = {
   snapshotEncode400P95: 15,
   cdpWarmP95: 40,
   visualP95: 3000,
+  coordinatePostCaptureP95: 50,
   liveSnapshotP95: 80,
   clickBurst1000: 30_000,
 } as const;
@@ -58,16 +61,142 @@ class BudgetTransport implements TransportAdapter {
   async close(): Promise<void> {}
 }
 
+class CoordinateBudgetTransport implements TransportAdapter {
+  readonly kind: TransportKind = "cua-driver";
+  readonly capability: Capability = {
+    steps: ["cua_click", "cua_get_desktop_state"],
+    snapshotFormats: ["screenshot"],
+    mutatesHost: true,
+  };
+
+  async open(_ctx: TransportContext): Promise<void> {}
+
+  async snapshot(): Promise<Snapshot> {
+    return { format: "screenshot", data: Buffer.alloc(0) };
+  }
+
+  async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
+    if (req.kind === "cua_get_desktop_state") {
+      return ok({
+        transport: this.kind,
+        screenshot_png_b64: POST_ACTION_FRAME_BASE64,
+        screenshot_mime_type: "image/png",
+        screenshot_width: 1280,
+        screenshot_height: 720,
+        screen_width: 1280,
+        screen_height: 720,
+      } as T);
+    }
+    return ok({ transport: this.kind, kind: req.kind } as T);
+  }
+
+  async close(): Promise<void> {}
+}
+
+const POST_ACTION_FRAME_BASE64 = Buffer.alloc(256 * 1024, 0x5a).toString(
+  "base64",
+);
+
 describe("compute performance budget", () => {
-  it("keeps structured cascade overhead under the p95 budget", async () => {
-    const snapshot = await measureCascade("compute_snapshot", {
+  it("keeps selected-provider dispatch overhead under the p95 budget", async () => {
+    const snapshot = await measureDispatch("compute_snapshot", {
       app: "Calculator",
       format: "compact",
     });
-    const click = await measureCascade("compute_click", { ref: "@e1" });
+    const click = await measureDispatch("compute_click", { ref: "@e1" });
 
     expect(snapshot.p95).toBeLessThan(BUDGET_MS.structuredWireP95);
     expect(click.p95).toBeLessThan(BUDGET_MS.structuredWireP95);
+  });
+
+  it("keeps explicit coordinate-provider planning and dispatch under the p95 budget", async () => {
+    const bus = createTransportBus();
+    bus.register(new CoordinateBudgetTransport());
+    const observations = await Promise.all(
+      Array.from({ length: 30 }, async () =>
+        issueVisualObservation({
+          provider: "cua-driver",
+          targetScope: "desktop",
+          data: {
+            screenshot_png_b64: Buffer.from("budget-pixels").toString("base64"),
+            screenshot_width: 200,
+            screenshot_height: 200,
+            screen_width: 200,
+            screen_height: 200,
+          },
+        }),
+      ),
+    );
+    let observationIndex = 0;
+    const samples = await measureAsync(30, async () => {
+      const observation = observations[observationIndex++];
+      if (!observation) throw new Error("missing visual observation fixture");
+      const result = await dispatchComputeRoute(
+        bus,
+        {
+          kind: "compute_point_click",
+          params: {
+            x: 120,
+            y: 80,
+            via: "driver",
+            observation: observation.ref,
+          },
+        },
+        "darwin",
+      );
+      expect(result.ok).toBe(true);
+    });
+
+    expect(samples.p95).toBeLessThan(BUDGET_MS.structuredWireP95);
+  });
+
+  it("keeps a 256 KiB same-provider post-action frame out of structured evidence within budget", async () => {
+    const bus = createTransportBus();
+    bus.register(new CoordinateBudgetTransport());
+    const observations = await Promise.all(
+      Array.from({ length: 20 }, async () =>
+        issueVisualObservation({
+          provider: "cua-driver",
+          targetScope: "desktop",
+          data: {
+            screenshot_png_b64: POST_ACTION_FRAME_BASE64,
+            screenshot_width: 1280,
+            screenshot_height: 720,
+            screen_width: 1280,
+            screen_height: 720,
+          },
+        }),
+      ),
+    );
+    let observationIndex = 0;
+    const samples = await measureAsync(20, async () => {
+      const observation = observations[observationIndex++];
+      if (!observation) throw new Error("missing visual observation fixture");
+      const execution = await executeComputeAction(
+        bus,
+        {
+          kind: "compute_point_click",
+          params: {
+            x: 120,
+            y: 80,
+            via: "driver",
+            observation: observation.ref,
+          },
+        },
+        {
+          tool: "computer-use.point_click",
+          platform: "darwin",
+          postActionCapture: "coordinate",
+        },
+      );
+      expect(execution.result.ok).toBe(true);
+      expect(JSON.stringify(execution.evidence)).not.toContain(
+        POST_ACTION_FRAME_BASE64,
+      );
+      expect(execution.postActionImage?.data).toBe(POST_ACTION_FRAME_BASE64);
+    });
+
+    expect(samples.p95).toBeLessThan(BUDGET_MS.coordinatePostCaptureP95);
   });
 
   it("keeps 400-node snapshot encoding under the p95 budget", async () => {
@@ -92,7 +221,7 @@ describe("compute performance budget", () => {
 
     const started = performance.now();
     for (let i = 1; i <= 1000; i++) {
-      const result = await tryCascade(
+      const result = await dispatchComputeRoute(
         bus,
         { kind: "compute_click", params: { ref: `@e${i}` } },
         "darwin",
@@ -119,11 +248,15 @@ describe("compute performance budget", () => {
       },
     };
     try {
-      const warmup = await tryCascade(bus, request, process.platform);
+      const warmup = await dispatchComputeRoute(bus, request, process.platform);
       expect(warmup.ok).toBe(true);
 
       const samples = await measureAsync(10, async () => {
-        const result = await tryCascade(bus, request, process.platform);
+        const result = await dispatchComputeRoute(
+          bus,
+          request,
+          process.platform,
+        );
         expect(result.ok).toBe(true);
       });
 
@@ -136,7 +269,7 @@ describe("compute performance budget", () => {
   });
 });
 
-async function measureCascade(
+async function measureDispatch(
   kind: string,
   params: Record<string, unknown>,
 ): Promise<{ p50: number; p95: number; p99: number }> {
@@ -144,7 +277,7 @@ async function measureCascade(
   bus.register(new BudgetTransport());
   seedBudgetRefs(bus, 1);
   return measureAsync(30, async () => {
-    const result = await tryCascade(bus, { kind, params }, "darwin");
+    const result = await dispatchComputeRoute(bus, { kind, params }, "darwin");
     expect(result.ok).toBe(true);
   });
 }

@@ -17,6 +17,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { JsonRpcHandler, JsonRpcResponse } from "../jsonrpc.js";
 import { ALLOWED_ORIGINS, isOriginAllowed } from "../origin-guard.js";
+import { serializeBoundedJsonRpcMessage } from "../result-budget.js";
 
 export { ALLOWED_ORIGINS, isOriginAllowed };
 export type Handler = JsonRpcHandler;
@@ -37,9 +38,21 @@ export const SESSION_TTL_MS = 3_600_000;
 export const PRUNE_INTERVAL_MS = 300_000;
 export const HEARTBEAT_MS = 30_000;
 export const MAX_SESSIONS = 100;
+export const MAX_SESSIONS_PER_PRINCIPAL = 25;
 export const STREAMING_METHODS = new Set(["tools/call"]);
 
 export const sessions = new Map<string, Session>();
+
+export function canAdmitSession(principalId?: string): boolean {
+  const principalKey = principalId ?? "<anonymous>";
+  let count = 0;
+  for (const session of sessions.values()) {
+    if ((session.principalId ?? "<anonymous>") !== principalKey) continue;
+    count += 1;
+    if (count >= MAX_SESSIONS_PER_PRINCIPAL) return false;
+  }
+  return true;
+}
 
 export function corsHeaders(req?: IncomingMessage): Record<string, string> {
   const origin = req?.headers?.origin;
@@ -63,7 +76,11 @@ export function jsonResponse(
     ...corsHeaders(req),
     ...extraHeaders,
   });
-  res.end(JSON.stringify(body));
+  res.end(
+    "jsonrpc" in body
+      ? serializeBoundedJsonRpcMessage(body as JsonRpcResponse)
+      : JSON.stringify(body),
+  );
 }
 
 export function readBody(req: IncomingMessage): Promise<string> {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCommandContract } from "../../src/core/command-contract.js";
-import { buildCoreCommandContract } from "../../src/core/command-contract.js";
+import {
+  buildCommandContract,
+  buildCoreCommandContract,
+  buildManifestCommandContract,
+} from "../../src/core/command-contract.js";
 import { lintCommandContract } from "../../src/core/command-contract-lint.js";
 import * as core from "../../src/core/index.js";
 import {
@@ -16,6 +19,74 @@ import {
 } from "../../src/types.js";
 
 describe("CommandContract", () => {
+  it("treats a CDP minimum capability as browser use even on a web-api registration helper", () => {
+    const adapter: AdapterManifest = {
+      name: "electron-helper",
+      type: AdapterType.WEB_API,
+      strategy: Strategy.PUBLIC,
+      commands: {
+        read: {
+          name: "read",
+          target_surface: "desktop",
+          browser: false,
+          minimum_capability: "cdp-browser.cdp_attach",
+        },
+      },
+    };
+
+    const contract = buildCommandContract({
+      adapter,
+      commandName: "read",
+      command: adapter.commands.read,
+    });
+
+    expect(contract.execution).toMatchObject({
+      operator: "browser-semantic",
+      target_scope: "browser-renderer",
+    });
+    expect(contract.effect.browser).toBe(true);
+    expect(contract.governance.dimensions.browser.access).not.toBe("none");
+  });
+
+  it("preserves command-specific session operator edges in core discovery", () => {
+    const state = getCoreDiscoveryCommand("compute", "session-state");
+    const start = getCoreDiscoveryCommand("compute", "session-start");
+
+    expect(
+      state && buildCoreCommandContract({ command: state }).execution,
+    ).toMatchObject({
+      operator: "local-runtime",
+      provider: "cua-driver",
+      perception: "local-state",
+      actuation: "none",
+      target_scope: "local-runtime",
+      verification: "local-result",
+      interaction_impact: "background",
+      coordinate_actuation: false,
+    });
+    expect(
+      start && buildCoreCommandContract({ command: start }).execution,
+    ).toMatchObject({
+      operator: "local-runtime",
+      provider: "cua-driver",
+      actuation: "protocol-call",
+      coordinate_actuation: false,
+    });
+  });
+
+  it("treats browser clicks as non-idempotent writes", () => {
+    for (const site of ["browser", "operate"]) {
+      const command = getCoreDiscoveryCommand(site, "click");
+      expect(
+        command && buildCoreCommandContract({ command }).effect,
+      ).toMatchObject({
+        operation_effect: "unknown_write",
+        read_only: false,
+        idempotent: false,
+      });
+    }
+  });
+
   it("projects registry metadata into one agent-native command contract", () => {
     const adapter: AdapterManifest = {
       name: "contract-fixture",
@@ -34,6 +105,7 @@ describe("CommandContract", () => {
           description: "Capture a page",
           adapter_path: "src/adapters/contract-fixture/capture.yaml",
           target_surface: "web",
+          operation_effect: "read",
           minimum_capability: "cdp-browser.snapshot",
           adapterArgs: [
             {
@@ -75,6 +147,8 @@ describe("CommandContract", () => {
       items: { title: "string", url: "string" },
     });
     expect(contract.effect).toMatchObject({
+      effect_source: "declared",
+      effect_confidence: "high",
       safety_class: "auth_read",
       target_surface: "web",
       browser: true,
@@ -99,6 +173,34 @@ describe("CommandContract", () => {
       quarantined: false,
     });
     expect(contract.artifacts.validators).toEqual([]);
+  });
+
+  it("uses the generated effect decision instead of reclassifying an incomplete read model", () => {
+    const contract = buildManifestCommandContract({
+      site: "manifest-fixture",
+      commandName: "search",
+      adapterType: "web-api",
+      command: {
+        description: "Search while submitting a stateful upstream query",
+        strategy: "public",
+        operation_family: "search",
+        effect_projection: {
+          operation_effect: "unknown_write",
+          effect_source: "default",
+          effect_confidence: "low",
+        },
+      },
+    });
+
+    expect(contract.effect).toMatchObject({
+      operation_effect: "unknown_write",
+      effect_source: "default",
+      effect_confidence: "low",
+      risk: "high",
+      safety_class: "write",
+      read_only: false,
+    });
+    expect(contract.governance.dimensions.network.access).toBe("write");
   });
 
   it("reports missing source path as a contract lint error", () => {

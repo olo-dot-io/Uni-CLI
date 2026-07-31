@@ -15,6 +15,7 @@
 site: google-patents-bq
 name: search
 description: BigQuery search over the Google Patents Public Datasets corpus
+operation_effect: read
 domain: bigquery.googleapis.com
 type: web-api
 strategy: header

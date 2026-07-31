@@ -157,12 +157,11 @@ describe("patent properties — P3: family-broker envelope", () => {
     const envelope = buildPatentEnvelope({
       code: "PATENT_FAMILY_BROKER_DOWN",
       adapter_path: "src/commands/patent.ts",
-      step: "family-broker-fallback",
-      suggestion: "Retry with --sources all or check unicli patent doctor.",
+      step: "family-broker",
+      suggestion: "Inspect unicli patent doctor.",
       retryable: true,
     });
-    // PATENT_FAMILY_BROKER_DOWN falls under "default 1" — assert that.
-    expect(envelope.exit_code).toBe(1);
+    expect(envelope.exit_code).toBe(69);
     expect(envelope.retryable).toBe(true);
     expect(envelope.code).toBe("PATENT_FAMILY_BROKER_DOWN");
   });
@@ -186,12 +185,11 @@ describe("patent properties — P3: family-broker envelope", () => {
     );
     const source = fs.readFileSync(sourcePath, "utf-8");
     expect(source).toContain("PATENT_FAMILY_BROKER_DOWN");
-    // The fallback path must precede the failure envelope — that is the
-    // structural invariant of "try EPO, then home office, then envelope".
     const epoIndex = source.indexOf("FAMILY_BROKER");
-    const fallbackIndex = source.indexOf("PATENT_FAMILY_BROKER_DOWN");
+    const failureIndex = source.indexOf("PATENT_FAMILY_BROKER_DOWN");
     expect(epoIndex).toBeGreaterThan(0);
-    expect(fallbackIndex).toBeGreaterThan(epoIndex);
+    expect(failureIndex).toBeGreaterThan(epoIndex);
+    expect(source).not.toContain("home-office fallback");
   });
 });
 

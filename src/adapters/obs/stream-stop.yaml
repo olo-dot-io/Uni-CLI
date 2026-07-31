@@ -2,6 +2,7 @@
 site: obs
 name: stream-stop
 description: Stop OBS streaming
+operation_effect: publish_content
 type: service
 lint_listing_detail: skip
 

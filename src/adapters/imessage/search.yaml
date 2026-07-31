@@ -16,6 +16,7 @@
 site: imessage
 name: search
 description: Full-text LIKE search over all message bodies
+operation_effect: read
 type: desktop
 lint_listing_detail: skip
 binary: sqlite3

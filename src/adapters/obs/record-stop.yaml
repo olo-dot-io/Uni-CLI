@@ -2,6 +2,7 @@
 site: obs
 name: record-stop
 description: Stop OBS recording and return output file path
+operation_effect: local_file
 type: service
 
 args:

@@ -1,6 +1,7 @@
 site: lesswrong
 name: new
 description: Latest posts
+operation_effect: read
 domain: www.lesswrong.com
 strategy: public
 

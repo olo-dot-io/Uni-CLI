@@ -105,6 +105,7 @@ cli({
   domain: "taobao.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  operation_effect: "account_state",
   args: [
     { name: "id", type: "str", required: true, positional: true },
     { name: "spec", type: "str", required: false },

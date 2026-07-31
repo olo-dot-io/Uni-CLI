@@ -295,11 +295,12 @@ export function registerAIChatCommands(
     },
   });
 
-  // dump -- Full page content as JSON
+  // dom-snapshot -- Compact DOM snapshot for AI-specific inspection. The
+  // generic desktop pack owns `dump` as bounded visible text.
   cli({
     site,
-    name: "dump",
-    description: `Dump full page content from ${displayName}`,
+    name: "dom-snapshot",
+    description: `Capture a compact DOM snapshot from ${displayName}`,
     strategy: Strategy.PUBLIC,
     ...desktopCommandMeta,
     func: async () => {

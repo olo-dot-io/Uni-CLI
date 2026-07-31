@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::cnipa::get
- * @does        Browser-driven retrieval of a single CNIPA patent document by publication number; loads the detail page through the mcp-browser transport and extracts the bibliographic fields into a PatentRecord.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cnipa/_shared.ts, src/registry.ts
+ * @does        Browser-driven retrieval of a single CNIPA patent document by publication number; loads the detail page through the registry-owned browser page and extracts the bibliographic fields into a PatentRecord.
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cnipa/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.get)
- * @breaks      emits PATENT_INVALID_NUMBER when input is empty or fails canonicalization; emits PATENT_NOT_FOUND when the detail page returns no fields; PATENT_BROWSER_CAPTCHA when the page is captcha-gated; PATENT_API_DEPRECATED with MCP_BUS_MISSING context when no outbound MCP transport is registered
+ * @breaks      emits PATENT_INVALID_NUMBER when input is empty or fails canonicalization; emits PATENT_NOT_FOUND when the detail page returns no fields; PATENT_BROWSER_CAPTCHA when the page is captcha-gated; PATENT_API_DEPRECATED with browser provider unavailable context when the declared browser provider is unavailable
  * @invariants  output is a single PatentRecord row when the upstream answers; never falls back to a stub record
- * @side-effects controls the user's Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + one evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/cnipa/search.test.ts (transport-error path) — get-specific tests deferred to integration
@@ -15,13 +15,13 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
 import {
   cnipaEnvelope,
   looksLikeCaptcha,
   navigateAndExtract,
-  transportErrorToEnvelope,
 } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/cnipa/get.ts";
@@ -66,9 +66,12 @@ const DETAIL_EXTRACTOR = `(() => {
   };
 })()`;
 
-export async function runCnipaGet(kwargs: {
-  publication_number: string;
-}): Promise<unknown[]> {
+export async function runCnipaGet(
+  page: IPage,
+  kwargs: {
+    publication_number: string;
+  },
+): Promise<unknown[]> {
   const pubNo = String(kwargs.publication_number ?? "").trim();
   if (pubNo.length === 0) {
     return [
@@ -84,31 +87,24 @@ export async function runCnipaGet(kwargs: {
   }
   const url = `${CNIPA_DETAIL_URL}?pubNo=${encodeURIComponent(pubNo)}`;
   let detail: CnipaDetail;
-  try {
-    const result = await navigateAndExtract<CnipaDetail>(url, DETAIL_EXTRACTOR);
-    if (!result.data) {
-      return [
-        {
-          envelope: cnipaEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "mcp-browser evaluate returned no data; check selector schema in src/adapters/cnipa/get.ts",
-          ),
-        },
-      ];
-    }
-    detail = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToEnvelope(err, ADAPTER_PATH, "navigate"),
-        },
-      ];
-    }
-    throw err;
+  const result = await navigateAndExtract<CnipaDetail>(
+    page,
+    url,
+    DETAIL_EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: cnipaEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "managed browser evaluate returned no data; check selector schema in src/adapters/cnipa/get.ts",
+        ),
+      },
+    ];
   }
+  detail = result.data;
 
   // Captcha heuristic: detail page returned without any of the expected
   // bibliographic fields → almost certainly captcha-gated.
@@ -180,6 +176,8 @@ cli({
     {
       name: "publication_number",
       type: "str",
+      minLength: 1,
+      pattern: "^CN-?[A-Z0-9]+-?[A-Z][0-9]?$",
       required: true,
       positional: true,
       description: "ST.16 publication number (e.g. CN114123456A)",
@@ -192,8 +190,12 @@ cli({
     "legal_status",
     "source_url",
   ],
-  capabilities: ["mcp-browser.navigate", "mcp-browser.evaluate", "patent.get"],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runCnipaGet(kwargs as { publication_number: string }),
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate", "patent.get"],
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runCnipaGet(
+      requireBrowserPage(page),
+      kwargs as { publication_number: string },
+    ),
 });

@@ -1,7 +1,7 @@
 /**
  * @owner   src/compute/capture.ts
  * @does    Build a reusable exact-target desktop context packet with snapshot, screenshot, image-integrity, and coordinate-transform evidence.
- * @needs   node crypto/fs, core envelopes, transport cascade/types, visual timeline
+ * @needs   node crypto/fs, core envelopes, compute route dispatch/types, visual timeline
  * @feeds   src/commands/compute.ts, src/mcp/profiles/computer-use.ts
  * @breaks  Returns a structured transport envelope when every requested capture part fails; missing bounds omit rather than guess native-to-image geometry.
  * @invariants Capture reuses compute_* actions; app and native window identity remain identical across snapshot and screenshot; image hashes cover returned bytes; native bounds produce an explicit affine transform; it does not bypass transport policy or ref allocation.
@@ -14,7 +14,11 @@
  */
 
 import { err, exitCodeFor, ok } from "../core/envelope.js";
-import { tryCascade } from "../transport/cascade.js";
+import { dispatchComputeRoute } from "../transport/compute-dispatch.js";
+import {
+  planComputeRoute,
+  type ComputeRouteName,
+} from "../transport/routing.js";
 import type { ActionResult, TransportBus } from "../transport/types.js";
 import { buildCaptureVisualTimeline } from "./visual-timeline.js";
 import type { ComputeVisualTimeline } from "./visual-timeline.js";
@@ -31,6 +35,7 @@ export interface ComputeCaptureOptions {
   format?: CaptureSnapshotFormat;
   maxDepth?: number;
   screenshotPath?: string;
+  via?: ComputeRouteName;
 }
 
 export interface ComputeCaptureHooks {
@@ -122,6 +127,32 @@ export async function captureComputeContext(
     });
   }
   const includes = parsedIncludes.includes;
+  for (const include of includes) {
+    const action =
+      include === "snapshot" ? "compute_snapshot" : "compute_screenshot";
+    const route = planComputeRoute({
+      kind: action,
+      params: {
+        ...(options.app ? { app: options.app } : {}),
+        ...(options.windowId === undefined
+          ? {}
+          : { windowId: options.windowId }),
+        ...(options.via ? { via: options.via } : {}),
+      },
+    });
+    if (route.status === "unavailable") {
+      return err({
+        transport: route.candidates[0]?.transport ?? "visual",
+        adapter_path: "src/compute/capture.ts",
+        step: 0,
+        action: action,
+        reason: `compute route unavailable: ${route.reason}`,
+        suggestion: route.suggestion,
+        minimum_capability: `compute.${action}.route_unavailable`,
+        exit_code: exitCodeFor("service_unavailable"),
+      });
+    }
+  }
   const parts: Partial<Pick<ComputeCapturePacket, "snapshot" | "screenshot">> =
     {};
   const trajectory: ComputeCaptureTrajectoryStep[] = [];
@@ -139,8 +170,9 @@ export async function captureComputeContext(
       ...(options.windowId === undefined ? {} : { windowId: options.windowId }),
       format: options.format ?? "compact",
       maxDepth: options.maxDepth ?? 64,
+      ...(options.via ? { via: options.via } : {}),
     };
-    const snapshotResult = await tryCascade(bus, {
+    const snapshotResult = await dispatchComputeRoute(bus, {
       kind: "compute_snapshot",
       params,
       ...(hooks.signal ? { signal: hooks.signal } : {}),
@@ -178,8 +210,9 @@ export async function captureComputeContext(
       ...(options.app ? { app: options.app } : {}),
       ...(exactWindowId === undefined ? {} : { windowId: exactWindowId }),
       ...(options.screenshotPath ? { path: options.screenshotPath } : {}),
+      ...(options.via ? { via: options.via } : {}),
     };
-    const screenshotResult = await tryCascade(bus, {
+    const screenshotResult = await dispatchComputeRoute(bus, {
       kind: "compute_screenshot",
       params,
       ...(hooks.signal ? { signal: hooks.signal } : {}),
@@ -571,7 +604,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readCaptureIncludes(value: ComputeCaptureOptions["include"]): {
+export function readCaptureIncludes(value: ComputeCaptureOptions["include"]): {
   includes: CaptureInclude[];
   invalid: string[];
 } {

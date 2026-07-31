@@ -722,6 +722,7 @@ describe("CdpBrowserTransport", () => {
     const action = transport.action({
       kind: "click",
       params: { selector: "#submit" },
+      canMutate: false,
       signal: controller.signal,
     });
     await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());

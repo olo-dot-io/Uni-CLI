@@ -3,10 +3,60 @@ import {
   parseDebugPortProcessTargets,
   parseDefaultProfileDebugBlocks,
   parseUserDataDirDebugPort,
+  selectBrowserIdentityFromProfiles,
+  type LocalBrowserProfile,
   type LocalBrowserInstall,
 } from "../../src/browser/local-profiles.js";
 
+function profile(id: string): LocalBrowserProfile {
+  return {
+    id,
+    browser_name: "Google Chrome",
+    browser_path: "/Applications/Google Chrome",
+    browser_path_exists: true,
+    user_data_dir: `/tmp/${id}`,
+    profile_dir: "Default",
+    profile_name: id,
+    profile_path: `/tmp/${id}/Default`,
+    display_name: id,
+    debug_port: { state: "not-recorded" },
+  };
+}
+
 describe("local browser profile diagnostics", () => {
+  it("never guesses an account when multiple profiles are available", () => {
+    const profiles = [profile("chrome:work"), profile("chrome:personal")];
+
+    expect(selectBrowserIdentityFromProfiles(profiles)).toEqual({
+      status: "ambiguous",
+      profile_ids: ["chrome:personal", "chrome:work"],
+    });
+    expect(
+      selectBrowserIdentityFromProfiles(profiles, "chrome:work"),
+    ).toMatchObject({
+      status: "selected",
+      source: "explicit",
+      profile: { id: "chrome:work" },
+    });
+  });
+
+  it("auto-selects only a single profile and reports missing identities", () => {
+    expect(selectBrowserIdentityFromProfiles([])).toEqual({
+      status: "unavailable",
+    });
+    expect(selectBrowserIdentityFromProfiles([], "chrome:missing")).toEqual({
+      status: "unavailable",
+      requested_profile_id: "chrome:missing",
+    });
+    expect(
+      selectBrowserIdentityFromProfiles([profile("chrome:only")]),
+    ).toMatchObject({
+      status: "selected",
+      source: "preferred",
+      profile: { id: "chrome:only" },
+    });
+  });
+
   it("classifies Chrome default-profile remote-debugging launches as blocked", () => {
     const installs: LocalBrowserInstall[] = [
       {

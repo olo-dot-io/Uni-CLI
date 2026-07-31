@@ -9,6 +9,7 @@ import {
   type AgentEnvelope,
   type AgentContext,
 } from "../../../src/output/envelope.js";
+import { defaultEffectVerdict } from "../../../src/core/effect-verdict.js";
 
 const baseCtx: AgentContext = {
   command: "twitter.search",
@@ -57,11 +58,37 @@ describe("makeEnvelope", () => {
       adapter_version: "1.2.3",
       surface: "web",
       operator: "test-op",
+      effect_verdict: defaultEffectVerdict({
+        canMutate: false,
+        phase: "success",
+      }),
+      recovery_trace: {
+        strategy: "same-primitive-retry",
+        attempts: 2,
+        recovered: true,
+        provider: "cdp-browser",
+        physical_action: "snapshot",
+        failures: [
+          {
+            attempt: 1,
+            trigger: "retryable-read-failure",
+            reason: "connection closed",
+          },
+        ],
+      },
     };
     const env = makeEnvelope(ctx, []);
     expect(env.meta.adapter_version).toBe("1.2.3");
     expect(env.meta.surface).toBe("web");
     expect(env.meta.operator).toBe("test-op");
+    expect(env.meta.effect_verdict).toMatchObject({
+      status: "not_applicable",
+    });
+    expect(env.meta.recovery_trace).toMatchObject({
+      attempts: 2,
+      recovered: true,
+      provider: "cdp-browser",
+    });
   });
 
   // ── v0.213.1 Task T12 / Fix #14 — optional content[] argument ──────────────

@@ -19,6 +19,8 @@
 
 import type { ResolvedArgs } from "../args.js";
 import type { AgentContext, AgentError } from "../../output/envelope.js";
+import type { EffectVerdict } from "../../core/effect-verdict.js";
+import type { CookieInvocationOverride } from "../cookies.js";
 import type {
   AdapterArg,
   AdapterCommand,
@@ -34,6 +36,8 @@ interface InvocationCore {
   permissionProfile?: string;
   approved?: boolean;
   rememberApproval?: boolean;
+  /** Opaque one-shot credential capability created by an explicit auth refresh. */
+  cookieInvocationOverride?: CookieInvocationOverride;
   /** Request-owned cancellation propagated by transports that support it. */
   signal?: AbortSignal;
   /** ULID — 26-char Crockford Base32, time-sortable and monotonic within ms. */
@@ -67,11 +71,12 @@ export interface CompiledCommand {
   example: Record<string, unknown>;
   channels: readonly ["shell", "file", "stdin"];
   argByName: Map<string, AdapterArg>;
-  validate: (
-    args: unknown,
-  ) =>
+  validate: (args: unknown) =>
     | { ok: true }
-    | { ok: false; errors: NonNullable<AjvValidateFn["errors"]> };
+    | {
+        ok: false;
+        errors: Readonly<NonNullable<AjvValidateFn["errors"]>>;
+      };
 }
 
 export interface InvocationResult {
@@ -80,6 +85,7 @@ export interface InvocationResult {
   durationMs: number;
   exitCode: number;
   warnings: string[];
+  effectVerdict: EffectVerdict;
   error?: AgentError;
   diagnostics?: InvocationDiagnostic[];
 }

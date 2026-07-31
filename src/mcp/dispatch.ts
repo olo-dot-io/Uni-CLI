@@ -160,7 +160,11 @@ export async function runResolvedCommand(
     return withWarnings(base, result.warnings);
   }
 
-  const data = { count: result.results.length, results: result.results };
+  const data = {
+    count: result.results.length,
+    results: result.results,
+    effect_verdict: result.effectVerdict,
+  };
   const base: McpToolResult = {
     content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
     structuredContent: { type: "json", data },

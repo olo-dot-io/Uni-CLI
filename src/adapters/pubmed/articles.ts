@@ -522,6 +522,8 @@ cli({
     { name: "limit", type: "int", default: 20, description: "Max results" },
   ],
   columns: SUMMARY_COLUMNS,
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "paper",

@@ -1,6 +1,7 @@
 site: boss
 name: mark
 description: Mark/tag a candidate on BOSS Zhipin
+operation_effect: account_state
 domain: www.zhipin.com
 strategy: intercept
 browser: true

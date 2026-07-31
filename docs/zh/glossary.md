@@ -1,6 +1,6 @@
 ---
 title: Uni-CLI 术语表
-description: Uni-CLI 全部术语的标准定义——operation contract、action substrate、adapter、AgentEnvelope、策略级联、pipeline step、self-repair，以及项目里用到的所有约定。
+description: Uni-CLI 全部术语的标准定义——operation contract、action substrate、adapter、AgentEnvelope、声明式 strategy、pipeline step、self-repair，以及项目里用到的所有约定。
 ---
 
 # 术语表
@@ -13,7 +13,7 @@ Agent 能向 computer 发出的命令，以及 computer 返回的反馈。Uni-CL
 
 ## Action substrate (行动 substrate)
 
-Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser CDP、desktop accessibility、subprocess、文件操作、协议服务、visual fallback 或 App-specific harness。substrate 位于 Agent-Computer Interface runtime 边界之下。
+Uni-CLI 可以用来让真实软件行动的具体技术边界：HTTP、browser CDP、desktop accessibility、subprocess、文件操作、协议服务、visual coordinate 或 App-specific harness。substrate 位于 Agent-Computer Interface runtime 边界之下。
 
 ## Adapter (适配器)
 
@@ -57,7 +57,7 @@ Uni-CLI 用来控制真实 Chrome 实例的 wire protocol。在 `src/browser/cdp
 
 ## Cookie file (Cookie 文件)
 
-用户可以显式把每站认证态以 plaintext JSON 存到 `~/.unicli/cookies/<site>.json`；`cookie`/`header` adapter 也可以只把 live browser/CDP Cookie 读入本次进程内存。Cookie 值只发送给该命令选择的目标请求/浏览器边界。
+用户可以显式把每站认证态以 plaintext JSON 存到 `~/.unicli/cookies/<site>.json`；普通 `cookie`/`header` invocation 读取该站点绑定的来源。显式 `--auth-retry` 根据结构化失败选择一个 local-browser profile 或一个 live CDP target。新值封装为一次性 opaque capability，只能由一个匹配 site/domain 的新 invocation 消费；miss 或错误不会改变 credential source。Cookie 值只发送给该命令选择的目标请求边界。
 
 ## Browser Runtime Broker (浏览器运行时代理)
 
@@ -81,7 +81,7 @@ CLI command 使用的 process status。0 代表成功；结构化 command failur
 
 ## Header strategy
 
-把显式 cookie storage 或 live browser/CDP session 读入内存，自动抽取 CSRF token，再把两者注入目标请求 header 的认证策略。用于状态变更请求需要 CSRF 的站点 (Reddit `vote`、Twitter `like`)。
+从 command 已选择的 cookie source 读取认证态，自动抽取 CSRF token，再把两者注入目标请求 header；一次 invocation 内 source identity 不变。用于状态变更请求需要 CSRF 的站点 (Reddit `vote`、Twitter `like`)。
 
 ## Intercept strategy
 
@@ -102,8 +102,8 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 ## Pipeline
 
 适配器为产出结果按顺序执行的 action 列表。可执行 built-in surface 共
-<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个名字：
-<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+<span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个名字：
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span>
 个注册 pipeline action，加
 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 个底层 transport-native action。action 共享 context；plugin 不计入该预算。
@@ -138,9 +138,12 @@ Uni-CLI 稳定的产品原语。operation contract 描述 identity、args、输�
 
 ## Strategy (策略)
 
-Adapter 声明的认证或交互路径：`public`、`cookie`、`header`、`intercept`、`ui`。这五个值不是一条自动五路 cascade。只有 `public`、`cookie`、`header` 进入有界 HTTP probe；`intercept` 与 `ui` 是显式 browser-backed strategy。
+Adapter 声明的认证或交互路径：`public`、`cookie`、`header`、`intercept`、`ui`。运行时只执行声明的 strategy，失败后不会切换 strategy。前三者是结构化 HTTP 合约；`intercept` 与 `ui` 是 browser-backed 合约。
 
-## Strategy cascade (策略级联)
+## Strategy replan（策略重规划）
+
+显式把 operation 从一种 strategy 改为另一种。它与 retry 分离，因为
+strategy 变化会改变认证、session ownership、证据、延迟与副作用边界。
 
 存在 probe URL 时使用的有界 HTTP 探测。依次尝试 `public`、`cookie`、`header`，并在进程内缓存第一个有效结果。它不会静默升级到 `intercept` 或 `ui`；browser-backed strategy 必须由 operation 明确声明。
 

@@ -1,7 +1,7 @@
 /**
  * @owner       src::adapters::semantic-scholar::papers
- * @does        Registers Semantic Scholar Graph API paper search, detail, citations, references, and source PDF read commands.
- * @needs       api.semanticscholar.org Graph v1, optional SEMANTIC_SCHOLAR_API_KEY, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
+ * @does        Registers Semantic Scholar Graph and Recommendations API paper search, detail, graph, recommendation, and source PDF read commands.
+ * @needs       api.semanticscholar.org Graph/Recommendations v1, optional SEMANTIC_SCHOLAR_API_KEY, src/adapters/scholar-artifacts/pdf-read.ts, pdftotext
  * @feeds       src/commands/scholar.ts via scholar.* capability tags and AI paper intelligence via ai.* tags
  * @breaks      Graph API rate limits, response-shape drift, missing OA PDF URLs, or pdftotext failures surface as explicit adapter errors; no cached fallback is used.
  * @invariants  Paper references are normalized to Semantic Scholar's accepted DOI:/ARXIV:/paperId formats; read requires openAccessPdf.url before text is claimed.
@@ -17,7 +17,9 @@ import { cli, Strategy } from "../../registry.js";
 import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
 
-const API = "https://api.semanticscholar.org/graph/v1";
+const GRAPH_API = "https://api.semanticscholar.org/graph/v1";
+const RECOMMENDATIONS_API =
+  "https://api.semanticscholar.org/recommendations/v1";
 const REQUEST_TIMEOUT_MS = 15_000;
 const FIELDS = [
   "paperId",
@@ -74,7 +76,17 @@ function bareArxiv(value: unknown): string {
 
 export function requireSemanticScholarPaperRef(value: unknown): string {
   const raw = String(value ?? "").trim();
-  if (!raw) throw new Error("semantic-scholar paper reference is required.");
+  if (!raw) {
+    throw semanticScholarError(
+      "invalid_input",
+      "semantic-scholar paper reference is required.",
+      "Provide a Semantic Scholar paperId, DOI, arXiv id, or supported prefixed id.",
+    );
+  }
+  const semanticScholarUrl = raw.match(
+    /^https?:\/\/(?:www\.)?semanticscholar\.org\/paper\/(?:[^/]+\/)?([a-f0-9]{40})(?:[/?#]|$)/i,
+  );
+  if (semanticScholarUrl?.[1]) return semanticScholarUrl[1].toLowerCase();
   const doi = bareDoi(raw);
   if (/^10\.\S+\/\S+/.test(doi)) return `DOI:${doi}`;
   if (
@@ -82,10 +94,53 @@ export function requireSemanticScholarPaperRef(value: unknown): string {
   ) {
     return `ARXIV:${bareArxiv(raw)}`;
   }
-  if (/^[a-f0-9]{40}$/i.test(raw)) return raw;
-  throw new Error(
+  if (/^[a-f0-9]{40}$/i.test(raw)) return raw.toLowerCase();
+  if (/^(?:MAG|ACL|PMID|PMCID|URL|CorpusId|DBLP):\S+$/i.test(raw)) {
+    return raw;
+  }
+  throw semanticScholarError(
+    "invalid_input",
     `semantic-scholar paper reference "${raw}" is not recognised.`,
+    "Use a Semantic Scholar paperId, DOI, arXiv id, Semantic Scholar URL, or supported prefixed id.",
   );
+}
+
+type SemanticScholarErrorCode =
+  | "invalid_input"
+  | "empty_result"
+  | "upstream_error"
+  | "rate_limited";
+
+function semanticScholarError(
+  code: SemanticScholarErrorCode,
+  message: string,
+  suggestion: string,
+): Error {
+  return Object.assign(new Error(message), {
+    code,
+    suggestion,
+    retryable: code === "upstream_error" || code === "rate_limited",
+    alternatives: [] as string[],
+  });
+}
+
+export function requireSemanticScholarBoundedInt(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+  label: string,
+): number {
+  const number =
+    value === undefined || value === null ? fallback : Number(value);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw semanticScholarError(
+      "invalid_input",
+      `semantic-scholar ${label} must be an integer in [${String(minimum)}, ${String(maximum)}].`,
+      `Choose a bounded ${label} value and retry.`,
+    );
+  }
+  return number;
 }
 
 function headers(): Record<string, string> {
@@ -99,29 +154,48 @@ function headers(): Record<string, string> {
   return out;
 }
 
-async function fetchS2(path: string, label: string): Promise<unknown> {
-  const response = await fetch(`${API}${path}`, {
+async function fetchS2Url(url: string, label: string): Promise<unknown> {
+  const response = await fetch(url, {
     headers: headers(),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  if (response.status === 404) throw new Error(`${label} returned no result.`);
-  if (response.status === 429) {
-    throw new Error(
-      `${label} returned HTTP 429; set SEMANTIC_SCHOLAR_API_KEY or retry later.`,
+  if (response.status === 404) {
+    throw semanticScholarError(
+      "empty_result",
+      `${label} returned no result.`,
+      "Verify the paper reference or search Semantic Scholar first.",
     );
   }
-  if (!response.ok)
-    throw new Error(`${label} returned HTTP ${response.status}.`);
+  if (response.status === 429) {
+    throw semanticScholarError(
+      "rate_limited",
+      `${label} returned HTTP 429; set SEMANTIC_SCHOLAR_API_KEY or retry later.`,
+      "Set SEMANTIC_SCHOLAR_API_KEY or retry after the provider rate-limit window.",
+    );
+  }
+  if (!response.ok) {
+    throw semanticScholarError(
+      "upstream_error",
+      `${label} returned HTTP ${response.status}.`,
+      "Retry after the Semantic Scholar API is reachable and healthy.",
+    );
+  }
   const json = (await response.json()) as {
     error?: unknown;
     message?: unknown;
   };
   if (json.error || json.message) {
-    throw new Error(
+    throw semanticScholarError(
+      "upstream_error",
       `${label} returned API error: ${String(json.error ?? json.message)}.`,
+      "Inspect the provider error, correct the request when needed, and retry.",
     );
   }
   return json;
+}
+
+async function fetchS2(path: string, label: string): Promise<unknown> {
+  return fetchS2Url(`${GRAPH_API}${path}`, label);
 }
 
 export function mapSemanticScholarPaper(
@@ -189,6 +263,42 @@ function rows(
   return list.map((paper) => mapSemanticScholarPaper(paper as S2Paper, source));
 }
 
+export function mapSemanticScholarRecommendations(
+  payload: unknown,
+  limit: number,
+): Array<ScholarlyWorkRecord & { rank: number }> {
+  if (payload === null || typeof payload !== "object") {
+    throw semanticScholarError(
+      "upstream_error",
+      "semantic-scholar recommendations returned a non-object payload.",
+      "Retry after the Recommendations API response stabilizes.",
+    );
+  }
+  const recommended = (payload as { recommendedPapers?: unknown })
+    .recommendedPapers;
+  if (!Array.isArray(recommended)) {
+    throw semanticScholarError(
+      "upstream_error",
+      "semantic-scholar recommendations omitted recommendedPapers.",
+      "Retry after the Recommendations API response stabilizes.",
+    );
+  }
+  if (recommended.length === 0) {
+    throw semanticScholarError(
+      "empty_result",
+      "Semantic Scholar returned no recommendations for this paper.",
+      "Use a paper with a populated Semantic Scholar citation graph.",
+    );
+  }
+  return recommended.slice(0, limit).map((paper, index) => ({
+    rank: index + 1,
+    ...mapSemanticScholarPaper(
+      paper as S2Paper,
+      "semantic-scholar-recommendations",
+    ),
+  }));
+}
+
 cli({
   site: "semantic-scholar",
   name: "search",
@@ -196,8 +306,14 @@ cli({
   domain: "api.semanticscholar.org",
   strategy: Strategy.PUBLIC,
   args: [
-    { name: "query", type: "str", required: true, positional: true },
-    { name: "limit", type: "int", default: 20 },
+    {
+      name: "query",
+      type: "str",
+      required: true,
+      positional: true,
+      minLength: 1,
+    },
+    { name: "limit", type: "int", default: 20, minimum: 1, maximum: 100 },
   ],
   columns: [
     "id",
@@ -209,6 +325,8 @@ cli({
     "pdf_url",
     "source_url",
   ],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "paper",
@@ -220,7 +338,13 @@ cli({
     const query = String(kwargs.query ?? "").trim();
     if (!query)
       throw new Error("semantic-scholar search query cannot be empty.");
-    const limit = Math.min(Math.max(Number(kwargs.limit ?? 20), 1), 100);
+    const limit = requireSemanticScholarBoundedInt(
+      kwargs.limit,
+      20,
+      1,
+      100,
+      "search limit",
+    );
     const body = (await fetchS2(
       `/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=${encodeURIComponent(FIELDS)}`,
       "semantic-scholar search",
@@ -335,7 +459,19 @@ for (const [name, path, cap] of [
     strategy: Strategy.PUBLIC,
     args: [
       { name: "id", type: "str", required: true, positional: true },
-      { name: "limit", type: "int", default: 20 },
+      {
+        name: "limit",
+        type: "int",
+        default: 20,
+        minimum: 1,
+        maximum: 1000,
+      },
+      {
+        name: "offset",
+        type: "int",
+        default: 0,
+        minimum: 0,
+      },
     ],
     columns: [
       "id",
@@ -350,9 +486,22 @@ for (const [name, path, cap] of [
     capabilities: ["http.fetch", cap],
     func: async (_page, kwargs) => {
       const ref = requireSemanticScholarPaperRef(kwargs.id ?? kwargs.ref);
-      const limit = Math.min(Math.max(Number(kwargs.limit ?? 20), 1), 100);
+      const limit = requireSemanticScholarBoundedInt(
+        kwargs.limit,
+        20,
+        1,
+        1000,
+        `${name} limit`,
+      );
+      const offset = requireSemanticScholarBoundedInt(
+        kwargs.offset,
+        0,
+        0,
+        Number.MAX_SAFE_INTEGER,
+        `${name} offset`,
+      );
       const body = (await fetchS2(
-        `/paper/${encodeURIComponent(ref)}/${path}?limit=${limit}&fields=${encodeURIComponent(FIELDS)}`,
+        `/paper/${encodeURIComponent(ref)}/${path}?limit=${limit}&offset=${offset}&fields=${encodeURIComponent(FIELDS)}`,
         `semantic-scholar ${name} ${ref}`,
       )) as { data?: Array<{ citingPaper?: S2Paper; citedPaper?: S2Paper }> };
       const papers = (body.data ?? []).map((item) =>
@@ -365,3 +514,75 @@ for (const [name, path, cap] of [
     },
   });
 }
+
+cli({
+  site: "semantic-scholar",
+  name: "recommendations",
+  description:
+    "Get Semantic Scholar AI-curated related papers for a paperId, DOI, or arXiv id",
+  domain: "api.semanticscholar.org",
+  strategy: Strategy.PUBLIC,
+  operation_effect: "read",
+  execution_operator: "structured-api",
+  operation_family: "list",
+  minimum_capability: "http.fetch",
+  args: [
+    { name: "id", type: "str", required: true, positional: true, minLength: 1 },
+    {
+      name: "limit",
+      type: "int",
+      default: 10,
+      minimum: 1,
+      maximum: 500,
+    },
+    {
+      name: "pool",
+      type: "str",
+      default: "recent",
+      choices: ["recent", "all-cs"],
+      description: "Recommendation candidate pool",
+    },
+  ],
+  columns: [
+    "rank",
+    "id",
+    "title",
+    "authors",
+    "year",
+    "venue",
+    "doi",
+    "pdf_url",
+    "source_url",
+  ],
+  capabilities: ["http.fetch", "scholar.recommendations"],
+  func: async (_page, kwargs) => {
+    const ref = requireSemanticScholarPaperRef(kwargs.id ?? kwargs.ref);
+    const limit = requireSemanticScholarBoundedInt(
+      kwargs.limit,
+      10,
+      1,
+      500,
+      "recommendations limit",
+    );
+    const pool = String(kwargs.pool ?? "recent");
+    if (pool !== "recent" && pool !== "all-cs") {
+      throw semanticScholarError(
+        "invalid_input",
+        'semantic-scholar recommendations pool must be "recent" or "all-cs".',
+        "Choose one of the declared recommendation pools.",
+      );
+    }
+    const query = new URLSearchParams({
+      fields: FIELDS,
+      limit: String(limit),
+      from: pool,
+    });
+    return mapSemanticScholarRecommendations(
+      await fetchS2Url(
+        `${RECOMMENDATIONS_API}/papers/forpaper/${encodeURIComponent(ref)}?${query.toString()}`,
+        `semantic-scholar recommendations ${ref}`,
+      ),
+      limit,
+    );
+  },
+});

@@ -36,14 +36,14 @@ default/deferred/expanded profile；固定 core command 当前以 native CLI 为
 harness 都有价值，但它们不是 Uni-CLI 的类目。它们是 Agent-Computer Interface
 可以执行或暴露的具体技术边界。
 
-| Substrate       | 贡献什么                                           | Uni-CLI 在它上面保留什么                  |
-| --------------- | -------------------------------------------------- | ----------------------------------------- |
-| Web/API         | typed fetch、cookie/header auth、download、extract | operation contract、policy、结构化结果    |
-| Browser         | CDP 控制、DOM/accessibility ref、截图、网络捕获    | 已声明 strategy、recording、诊断          |
-| Desktop/OS      | installed app、无障碍树、截图、本地状态            | governed action 与平台诊断                |
-| 本地工具/文件   | subprocess、PDF、媒体工具、开发者 CLI              | typed args、output envelope、retryability |
-| 协议            | MCP、ACP、Streamable HTTP、JSON stream             | 当前投影 adapter；更广 parity 在路线图中  |
-| Visual fallback | 最后一公里屏幕交互                                 | 真实性闸门：只声明能看见、能行动的路径    |
+| Substrate         | 贡献什么                                           | Uni-CLI 在它上面保留什么                  |
+| ----------------- | -------------------------------------------------- | ----------------------------------------- |
+| Web/API           | typed fetch、cookie/header auth、download、extract | operation contract、policy、结构化结果    |
+| Browser           | CDP 控制、DOM/accessibility ref、截图、网络捕获    | 已声明 strategy、recording、诊断          |
+| Desktop/OS        | installed app、无障碍树、截图、本地状态            | governed action 与平台诊断                |
+| 本地工具/文件     | subprocess、PDF、媒体工具、开发者 CLI              | typed args、output envelope、retryability |
+| 协议              | MCP、ACP、Streamable HTTP、JSON stream             | 当前投影 adapter；更广 parity 在路线图中  |
+| Visual coordinate | 显式的桌面像素与坐标交互                           | 真实性闸门：只声明能看见、能行动的路径    |
 
 ## 它在协议栈中的位置
 
@@ -110,9 +110,9 @@ columns: [title, published, url]
 
 ## 内部 pipeline 注册表
 
-runtime 暴露 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+runtime 暴露 <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span>
 个 built-in action name，但它们不是一门扁平编程语言：
-<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span>
 个属于注册 pipeline action，另有
 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 个是 Visual/AX/UIA/AT-SPI 的底层 transport-native action。预算由机器门禁；新行为
@@ -138,29 +138,36 @@ Pipeline 自上而下走，共享一个 context 对象。每步读 `ctx.data`、
 ## 策略级联
 
 认证是接触现代 web 时最脏的部分。Operation 可以声明五种 strategy 之一，但它们
-不是一条自动五路 cascade。
+运行时只执行 operation 声明的 strategy，失败后不会自动切换到另一种
+strategy。`public`、`cookie`、`header` 是独立的结构化 HTTP 合约；
+`intercept` 和 `ui` 是浏览器合约。跨 strategy 需要修复 adapter 或显式重规划。
 
 | 策略        | 认证来源                         | 典型成本                      |
 | ----------- | -------------------------------- | ----------------------------- |
 | `public`    | 无                               | 直接 fetch                    |
-| `cookie`    | 显式文件或 live browser/CDP 内存 | 注入目标请求 header           |
+| `cookie`    | 一个声明的站点 credential source | 注入目标请求 header           |
 | `header`    | Cookie + 自动抽 CSRF             | 抽取 CSRF，注入目标请求       |
 | `intercept` | 浏览器在线会话                   | Navigate 页面，捕获 XHR/fetch |
 | `ui`        | 浏览器在线会话                   | 点击、输入、snapshot          |
 
-存在 probe URL 时，有界 HTTP probe 尝试 `public → cookie → header`，并在进程内
-缓存第一个有效结果。它不会静默升级到 `intercept` 或 `ui`；browser-backed
-strategy 必须由 operation 明确声明。
+有界 HTTP probe 可以为诊断比较 `public`、`cookie` 与 `header`，但 command
+execution 只运行声明的 strategy。普通 invocation 读取持久化 site credential；
+`--auth-retry` 根据结构化失败显式选择唯一来源：`auth_required` 使用已选定的
+local-browser profile，`challenge_required` 使用当前 live CDP target。新值由
+一次性 opaque capability 绑定到一个新的、site/domain 匹配的 invocation。
+miss、失败或 profile 歧义都会终止刷新，不会更换 credential authority。
+Browser-backed strategy 必须由 operation 明确声明。
 
-live browser/CDP 获取只停留在本次进程内存。只有显式执行 `auth import` 或
-`browser cookies` 才会在 `~/.unicli/cookies/` 写入 plaintext JSON。
+live browser/CDP 获取只停留在该 invocation 的 async context。只有显式执行
+`auth import` 或 `browser cookies` 才会在 `~/.unicli/cookies/` 写入
+plaintext JSON。
 
 ## v2 AgentEnvelope
 
 每条经 CLI formatter 渲染的已注册 adapter command 都返回包含 success/failure arm
 的 v2 AgentEnvelope。Agent
 用一份 schema 解析静态 adapter catalog 中的
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条命令；固定 core
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条命令；固定 core
 命令与主机动态发现命令会在运行时单独列出。
 
 ```json
@@ -264,8 +271,8 @@ $ unicli hackernews top -n 10 -f json \
 
 这是规范的完整暴露路径。Adapter operation contract 也能通过 MCP profile 运行；
 ACP、HTTP、skill 与 CI 暴露各自记录过的支持子集。一种命令形状覆盖静态目录中的
-<span><!-- STATS:site_count -->324<!-- /STATS --></span> 个 adapter 站点与
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册 adapter command；
+<span><!-- STATS:site_count -->326<!-- /STATS --></span> 个 adapter 站点与
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条已注册 adapter command；
 固定 core 与主机动态发现 command 在运行时加入 native CLI。渲染调用共享 v2 成功/错误
 envelope 形状；可选 evidence 与 repair field 取决于 operation 和失败类别。
 

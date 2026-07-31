@@ -15,7 +15,7 @@
 
 import type { TransportKind } from "./types.js";
 
-/** Canonical ordering for the 7 transports; stable across releases. */
+/** Canonical ordering for the built-in transports; stable across releases. */
 export const TRANSPORT_KINDS: readonly TransportKind[] = [
   "http",
   "cdp-browser",
@@ -23,6 +23,7 @@ export const TRANSPORT_KINDS: readonly TransportKind[] = [
   "desktop-ax",
   "desktop-uia",
   "desktop-atspi",
+  "cua-driver",
   "visual",
 ] as const;
 
@@ -126,7 +127,7 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
   visual_backend: { transports: ["visual"] },
   visual_launch: { transports: ["visual"] },
 
-  // --- Unified compute family (AX/UIA/AT-SPI/CDP/Visual cascade) ---
+  // --- Unified compute family (legal providers; routing is task-directed) ---
   compute_apps: {
     transports: ["desktop-ax", "desktop-uia", "desktop-atspi", "subprocess"],
   },
@@ -160,6 +161,12 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "visual",
     ],
   },
+  compute_point_click: {
+    transports: ["cua-driver", "visual"],
+  },
+  compute_drag: {
+    transports: ["cua-driver", "visual"],
+  },
   compute_type: {
     transports: [
       "desktop-ax",
@@ -169,12 +176,16 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "visual",
     ],
   },
+  compute_text: {
+    transports: ["cua-driver", "visual"],
+  },
   compute_press: {
     transports: [
       "desktop-ax",
       "cdp-browser",
       "desktop-uia",
       "desktop-atspi",
+      "cua-driver",
       "visual",
     ],
   },
@@ -187,6 +198,9 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "visual",
     ],
   },
+  compute_point_scroll: {
+    transports: ["cua-driver"],
+  },
   compute_launch: {
     transports: ["subprocess", "desktop-ax", "desktop-uia", "desktop-atspi"],
   },
@@ -196,16 +210,21 @@ export const CAPABILITY_MATRIX: Readonly<Record<string, CapabilityRow>> = {
       "desktop-ax",
       "desktop-uia",
       "desktop-atspi",
+      "cua-driver",
       "visual",
     ],
   },
+  compute_session_start: { transports: ["cua-driver"] },
+  compute_session_state: { transports: ["cua-driver"] },
+  compute_session_escalate: { transports: ["cua-driver"] },
+  compute_session_end: { transports: ["cua-driver"] },
   compute_cdp_attach: { transports: ["cdp-browser"] },
   compute_evaluate: { transports: ["cdp-browser"] },
   compute_wait: {
     transports: ["desktop-ax", "cdp-browser", "desktop-uia", "desktop-atspi"],
   },
   compute_observe: {
-    transports: ["desktop-ax", "desktop-uia", "desktop-atspi", "cdp-browser"],
+    transports: [],
   },
   compute_assert: {
     transports: [

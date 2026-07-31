@@ -1,6 +1,7 @@
 site: juejin
 name: hot
 description: 掘金全站热门推荐 / Juejin all-categories hot feed
+operation_effect: read
 domain: juejin.cn
 type: web-api
 strategy: public

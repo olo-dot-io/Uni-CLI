@@ -15,7 +15,11 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { loadAllAdapters, loadTsAdapters } from "./discovery/loader.js";
+import {
+  getAdapterLoadFailures,
+  loadAllAdapters,
+  loadTsAdapters,
+} from "./discovery/loader.js";
 import {
   commandStrategy,
   commandUsesBrowser,
@@ -130,7 +134,7 @@ export async function createCli(): Promise<Command> {
     )
     .option(
       "--auth-retry",
-      "on auth_required, refresh cookies from the local browser and retry once",
+      "on auth_required/challenge_required, refresh from its selected browser source and retry once",
     )
     .option(
       "--record",
@@ -154,7 +158,12 @@ export async function createCli(): Promise<Command> {
     );
 
   // Load YAML adapters synchronously, then TS adapters asynchronously
-  const yamlCount = loadAllAdapters();
+  const startupCommand = process.argv
+    .slice(2)
+    .find((argument) => !argument.startsWith("-"));
+  const diagnosticStartup =
+    startupCommand === "doctor" || startupCommand === "repair";
+  const yamlCount = loadAllAdapters({ strict: !diagnosticStartup });
   const tsCount = await loadTsAdapters();
   const adapterCount = yamlCount + tsCount;
 
@@ -237,6 +246,19 @@ export async function createCli(): Promise<Command> {
       console.log(`  Sites:    ${chalk.green(getAllAdapters().length)}`);
       console.log(`  Node.js:  ${chalk.green(process.version)}`);
       console.log(`  Platform: ${chalk.green(process.platform)}`);
+      const adapterLoadFailures = getAdapterLoadFailures();
+      console.log(
+        `  Imports:  ${
+          adapterLoadFailures.length === 0
+            ? chalk.green("all loaded")
+            : chalk.red(`${String(adapterLoadFailures.length)} failed`)
+        }`,
+      );
+      for (const failure of adapterLoadFailures.slice(0, 5)) {
+        console.log(
+          `            ${chalk.red(failure.adapter_path)} — ${failure.message}`,
+        );
+      }
       console.log("");
 
       // 2. Browser Runtime Broker and lazy providers. This probe never starts
@@ -325,7 +347,7 @@ export async function createCli(): Promise<Command> {
   // Register browser commands — broker-owned browser runtimes
   registerBrowserCommands(program);
 
-  // Register compute commands — local app control cascade
+  // Register compute commands — task-planned local app control
   registerComputeCommand(program);
 
   // Register completion command — shell tab completion
@@ -430,7 +452,7 @@ export async function createCli(): Promise<Command> {
   // Register lint command — schema-v2 static validation
   registerLintCommand(program);
 
-  // Register architecture command — callable system tree + rewrite audit
+  // Register architecture command — callable system tree + catalog audit
   registerArchitectureCommand(program);
 
   // Register describe command — runtime schema introspection for agents

@@ -1,6 +1,7 @@
 site: boss
 name: resume
 description: View a candidate resume on BOSS Zhipin
+operation_effect: read
 domain: www.zhipin.com
 strategy: intercept
 browser: true

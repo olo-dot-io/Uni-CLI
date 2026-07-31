@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   existsSync,
   linkSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -28,6 +29,7 @@ import {
   findRecoverableFileLockError,
   RecoverableFileLockError,
   withRecoverableFileStoreLock,
+  withRecoverableFileStoreLockAsync,
 } from "../../src/runtime/recoverable-file-lock.js";
 
 const require = createRequire(import.meta.url);
@@ -112,6 +114,25 @@ describe("RefStore", () => {
     ).toBe("Edit");
   });
 
+  it("deduplicates a token indexed as both an alias and a stable ref", () => {
+    const allocator = new RefAllocator();
+    const ref = allocator.alloc({
+      stable: "@e1",
+      role: "AXButton",
+      name: "Self-indexed",
+    });
+    const store = new RefStore();
+    store.put(allocator.freeze("desktop-ax", "self-indexed"));
+
+    expect(store.matches("@e1")).toEqual([
+      expect.objectContaining({
+        ref,
+        generation: 1,
+      }),
+    ]);
+    expect(store.resolve("@e1")).toBe(ref);
+  });
+
   it("replaces old aliases for the same transport and scope", () => {
     const first = new RefAllocator();
     first.alloc({
@@ -176,6 +197,16 @@ describe("RefStore", () => {
     store.put(alloc.freeze("desktop-ax", "calc"));
 
     expect(store.list()).toHaveLength(1);
+    expect(store.listMatches()).toEqual([
+      expect.objectContaining({
+        ref: expect.objectContaining({ name: "1" }),
+        bucket: expect.objectContaining({
+          transport: "desktop-ax",
+          scope: "calc",
+        }),
+        generation: 1,
+      }),
+    ]);
     const [bucket] = store.buckets();
     expect(bucket?.byAlias.get("@e1")?.name).toBe("1");
     bucket?.byAlias.clear();
@@ -337,6 +368,44 @@ describe("RefStore", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   }, 10_000);
+
+  it("keeps the event loop responsive while an async caller waits for a live lock", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-async-lock-"));
+    const root = join(dir, "store");
+    mkdirSync(root);
+    let entered!: () => void;
+    const holding = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
+      const owner = withRecoverableFileStoreLockAsync(root, async () => {
+        entered();
+        await gate;
+      });
+      await holding;
+      let timerFired = false;
+      const timer = new Promise<void>((resolve) => {
+        setTimeout(() => {
+          timerFired = true;
+          resolve();
+        }, 30);
+      });
+      const waiter = withRecoverableFileStoreLockAsync(root, async () => true);
+
+      await timer;
+      expect(timerFired).toBe(true);
+      release();
+      await expect(waiter).resolves.toBe(true);
+      await owner;
+    } finally {
+      release?.();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 
   it("surfaces unverifiable stale-lock ownership as a non-retryable lock failure", () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-refs-lock-io-"));

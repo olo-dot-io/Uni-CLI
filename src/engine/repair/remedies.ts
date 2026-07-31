@@ -49,12 +49,12 @@ const REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
     doc: "docs/operate/troubleshooting.md#desktop-atspino_a11y_attr",
   },
   "desktop-atspi.wayland-input": {
-    message: "Install a Wayland input helper for fallback key/mouse actions.",
+    message: "Install the selected AT-SPI provider's Wayland input helper.",
     command: "sudo apt install ydotool",
     doc: "docs/operate/troubleshooting.md#desktop-atspiwayland-input",
   },
   "desktop-atspi.x11-input": {
-    message: "Install xdotool for X11 fallback key/mouse actions.",
+    message: "Install the selected AT-SPI provider's X11 input helper.",
     command: "sudo apt install xdotool",
     doc: "docs/operate/troubleshooting.md#desktop-atspix11-input",
   },
@@ -76,7 +76,7 @@ const REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
     doc: "docs/operate/troubleshooting.md#desktop-axpermission",
   },
   "desktop-ax.screen-recording": {
-    message: "Grant macOS Screen Recording for screenshot fallback.",
+    message: "Grant macOS Screen Recording for the selected screenshot route.",
     deeplink:
       "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
     doc: "docs/operate/troubleshooting.md#desktop-axscreen-recording",
@@ -97,7 +97,7 @@ const REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
     doc: "docs/operate/troubleshooting.md#cdp-browserelectron_running_without_debug_port",
   },
   "visual.no_backend": {
-    message: "Configure a Visual backend key for screenshot/VLM fallback.",
+    message: "Configure a Visual backend before selecting the visual route.",
     doc: "docs/operate/troubleshooting.md#visualno_backend",
   },
   "compute.compute_find.ref-store": {
@@ -107,10 +107,17 @@ const REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
   },
 };
 
-const COMPUTE_NO_TRANSPORT: EnvelopeRemedy = {
-  message: "Run the compute doctor to identify the blocked transport.",
+const COMPUTE_ROUTE_UNAVAILABLE: EnvelopeRemedy = {
+  message: "Bind an exact target or select a compatible compute route.",
+  command: "unicli compute route <operation> --params '<json>'",
+  doc: "docs/operate/troubleshooting.md#computesteproute_unavailable",
+};
+
+const COMPUTE_PROVIDER_UNAVAILABLE: EnvelopeRemedy = {
+  message:
+    "Repair the selected provider or explicitly replan after inspecting the target.",
   command: "unicli doctor compute",
-  doc: "docs/operate/troubleshooting.md#computestepno-transport-available",
+  doc: "docs/operate/troubleshooting.md#computestepprovider_unavailable",
 };
 
 const COMPUTE_EDGE_REMEDIES: Readonly<Record<string, EnvelopeRemedy>> = {
@@ -160,11 +167,13 @@ export function lookupRemedy(
 ): EnvelopeRemedy | undefined {
   if (!minimumCapability) return undefined;
   if (minimumCapability in REMEDIES) return REMEDIES[minimumCapability];
-  if (
-    minimumCapability.startsWith("compute.") &&
-    minimumCapability.endsWith(".no-transport-available")
-  ) {
-    return COMPUTE_NO_TRANSPORT;
+  if (minimumCapability.startsWith("compute.")) {
+    if (minimumCapability.endsWith(".route_unavailable")) {
+      return COMPUTE_ROUTE_UNAVAILABLE;
+    }
+    if (minimumCapability.endsWith(".provider_unavailable")) {
+      return COMPUTE_PROVIDER_UNAVAILABLE;
+    }
   }
   const edgeKey = minimumCapability.split(".").at(-1);
   if (

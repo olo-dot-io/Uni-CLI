@@ -35,7 +35,7 @@ cursor. The profile exposes 16 desktop and 16 direct browser tools.
 
 ## Permissions
 
-macOS requires Accessibility for structured app control. Screenshot fallback
+macOS requires Accessibility for structured app control. Screenshot capture
 also requires Screen Recording. Grant both to Claude Desktop, Terminal, or the
 launcher that starts the MCP server.
 

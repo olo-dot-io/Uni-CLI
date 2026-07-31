@@ -20,10 +20,14 @@
  */
 
 import type { TransportKind } from "../transport/types.js";
+import type { EffectVerdict } from "./effect-verdict.js";
+import type { RecoveryTrace } from "./recovery.js";
+
+export type EnvelopeTransport = TransportKind | "local-runtime";
 
 /** Structured error carried inside a failed envelope. */
 export interface EnvelopeError {
-  transport: TransportKind;
+  transport: EnvelopeTransport;
   adapter_path?: string;
   step: number;
   action: string;
@@ -46,6 +50,8 @@ export interface EnvelopeRemedy {
 /** Optional metadata fields the runner or orchestrator may attach. */
 export interface EnvelopeMeta {
   elapsedMs?: number;
+  effect_verdict?: EffectVerdict;
+  recovery_trace?: RecoveryTrace;
 }
 
 /** Success envelope — `data` is populated, `error` is absent. */
@@ -99,6 +105,7 @@ export function exitCodeFor(reason: string): EnvelopeExitCode {
       return EnvelopeExit.TEMP_FAILURE;
     case "auth_required":
     case "auth":
+    case "permission_denied":
       return EnvelopeExit.AUTH_REQUIRED;
     case "config_error":
     case "config":
@@ -114,12 +121,18 @@ export function ok<T>(data: T, meta: EnvelopeMeta = {}): EnvelopeOk<T> {
     ok: true,
     data,
     ...(meta.elapsedMs !== undefined ? { elapsedMs: meta.elapsedMs } : {}),
+    ...(meta.effect_verdict !== undefined
+      ? { effect_verdict: meta.effect_verdict }
+      : {}),
+    ...(meta.recovery_trace !== undefined
+      ? { recovery_trace: meta.recovery_trace }
+      : {}),
   };
 }
 
 /** Input shape for {@link err}. All but five fields are optional. */
 export interface ErrInput {
-  transport: TransportKind;
+  transport: EnvelopeTransport;
   step: number;
   action: string;
   reason: string;
@@ -157,5 +170,11 @@ export function err(input: ErrInput, meta: EnvelopeMeta = {}): EnvelopeErr {
     ok: false,
     error,
     ...(meta.elapsedMs !== undefined ? { elapsedMs: meta.elapsedMs } : {}),
+    ...(meta.effect_verdict !== undefined
+      ? { effect_verdict: meta.effect_verdict }
+      : {}),
+    ...(meta.recovery_trace !== undefined
+      ? { recovery_trace: meta.recovery_trace }
+      : {}),
   };
 }

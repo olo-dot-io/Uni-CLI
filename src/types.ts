@@ -42,6 +42,86 @@ export type AuthRequirement = "required" | "optional" | "none";
 export type TargetSurface = "web" | "desktop" | "system" | "mobile";
 export type BrowserSessionPreference = "auto" | "user" | "cdp";
 
+/**
+ * The operator that actually performs a command.
+ *
+ * Adapter type, target surface, authentication strategy, and execution
+ * operator are independent axes. Keeping the operator explicit lets agents
+ * select a structured integration before browser or computer control without
+ * treating either as a generic fallback.
+ */
+export type ExecutionOperator =
+  | "structured-api"
+  | "browser-protocol"
+  | "native-cli"
+  | "browser-semantic"
+  | "desktop-accessibility"
+  | "visual-observation"
+  | "visual-coordinate"
+  | "local-runtime";
+
+/** Semantic action family, independent from execution substrate and effects. */
+export type OperationFamily =
+  | "search"
+  | "get"
+  | "list"
+  | "create"
+  | "update"
+  | "delete"
+  | "invoke"
+  | "capture"
+  | "navigate"
+  | "download"
+  | "authenticate"
+  | "unknown";
+
+export type PerceptionModality =
+  | "structured-data"
+  | "process-output"
+  | "dom-accessibility"
+  | "os-accessibility"
+  | "pixels"
+  | "local-state";
+
+export type ActuationModality =
+  | "none"
+  | "protocol-call"
+  | "process-call"
+  | "dom-action"
+  | "accessibility-action"
+  | "desktop-input"
+  | "coordinate-action"
+  | "screen-capture"
+  | "local-function";
+
+export type OperatorTargetScope =
+  | "service"
+  | "host-process"
+  | "browser-renderer"
+  | "native-window"
+  | "desktop"
+  | "local-runtime";
+
+export type OperationEffect =
+  | "read"
+  | "download_file"
+  | "send_message"
+  | "publish_content"
+  | "account_state"
+  | "remote_transform"
+  | "remote_resource"
+  | "service_state"
+  | "local_app"
+  | "local_file"
+  | "destructive"
+  | "unknown_write";
+
+export type IdempotencyClass =
+  | "guaranteed"
+  | "conditional"
+  | "none"
+  | "unknown";
+
 export interface CommandExecutionContext {
   signal?: AbortSignal;
 }
@@ -71,12 +151,27 @@ export type SocialCapability =
 
 export interface AdapterArg {
   name: string;
-  type?: "str" | "int" | "float" | "bool";
+  type?:
+    | "str"
+    | "str[]"
+    | "int"
+    | "float"
+    | "nullable-float"
+    | "str-or-int"
+    | "bool";
   default?: unknown;
   required?: boolean;
   positional?: boolean;
   choices?: string[];
   description?: string;
+  /** JSON Schema string length constraints, enforced before substrate acquisition. */
+  minLength?: number;
+  maxLength?: number;
+  /** JSON Schema numeric bounds, enforced before substrate acquisition. */
+  minimum?: number;
+  maximum?: number;
+  /** JSON Schema ECMA-262 regular expression, enforced before execution. */
+  pattern?: string;
   /**
    * JSON Schema draft-2020-12 `format:` vocabulary (standard). Validated
    * fail-closed via ajv's format-assertion vocabulary — a declared `format`
@@ -158,11 +253,23 @@ export interface AdapterCommand {
   description?: string;
   /** Source adapter file used in repair and evidence-bearing error envelopes. */
   adapter_path?: string;
+  /** Registry precedence and discovery provenance for this concrete command. */
+  source_tier?: "packaged" | "user" | "runtime";
+  /** Lower-precedence implementation replaced by this command, when any. */
+  shadowed_adapter_path?: string;
   /**
    * Runtime target surface. TS helper commands can operate on desktop apps
    * even when their registration helper keeps the site in a web-api manifest.
    */
   target_surface?: TargetSurface;
+  /** Explicit side-effect class. Declared truth outranks name heuristics. */
+  operation_effect?: OperationEffect;
+  /** Exact task-facing operator. Declared truth outranks adapter-type inference. */
+  execution_operator?: ExecutionOperator;
+  /** Semantic action family. It prevents substrate constraints changing the verb. */
+  operation_family?: OperationFamily;
+  /** Replay guarantee, independent from read/write effect. Defaults to unknown. */
+  idempotency?: IdempotencyClass;
 
   /**
    * When true, the adapter is quarantined: skipped by `unicli test` and the

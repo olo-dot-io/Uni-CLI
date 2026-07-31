@@ -103,6 +103,10 @@
       "types": "./dist/transport/adapters/desktop-ax.d.ts",
       "import": "./dist/transport/adapters/desktop-ax.js"
     },
+    "./transport/cua-driver": {
+      "types": "./dist/transport/adapters/cua-driver.d.ts",
+      "import": "./dist/transport/adapters/cua-driver.js"
+    },
     "./transport/visual": {
       "types": "./dist/transport/adapters/visual.d.ts",
       "import": "./dist/transport/adapters/visual.js"
@@ -168,6 +172,7 @@
     "accept:browser-auth": "tsx scripts/browser-auth-default-acceptance.ts",
     "e2e:real": "npm run build && tsx scripts/e2e-real-matrix.ts",
     "compute:smoke": "tsx scripts/compute-live-smoke.ts",
+    "smoke:capabilities": "tsx scripts/capability-live-smoke.ts",
     "coverage:compute-snapshot": "vitest run --project unit tests/unit/refs.test.ts tests/unit/snapshot-encoder.test.ts --coverage --coverage.enabled=true --coverage.provider=v8 --coverage.include=src/transport/refs.ts --coverage.include=src/transport/snapshot-encoder.ts --coverage.reporter=text --coverage.thresholds.lines=100 --coverage.thresholds.functions=100 --coverage.thresholds.branches=100 --coverage.thresholds.statements=100",
     "coverage:adapter-test": "tsx scripts/check-adapter-test-coverage.ts --threshold 50",
     "adapter:bootstrap": "tsx scripts/bootstrap-adapter-tests.ts",
@@ -212,7 +217,7 @@
     "postversion": "npm run build && tsx scripts/release.ts",
     "bench": "tsx bench/report.ts",
     "bench:self-discovery": "tsx bench/self-discovery.ts",
-    "bench:surface-coverage": "tsx bench/surface-coverage.ts",
+    "bench:surface-coverage": "tsx bench/surface-coverage.ts --mappings bench/surface-parity-mappings.json",
     "bench:quick": "tsx bench/agent/report.ts",
     "bench:agent": "tsx bench/agent/sdk-runner.ts",
     "bench:gate": "node scripts/bench/check-ship-gate.js",

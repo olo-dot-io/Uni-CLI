@@ -4,6 +4,8 @@ description: Get a single Weibo post by ID
 domain: weibo.com
 type: web-api
 strategy: cookie
+operation_effect: read
+operation_family: get
 auth_cookies: [SUB, SUBP]
 
 args:

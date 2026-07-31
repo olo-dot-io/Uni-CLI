@@ -197,8 +197,11 @@ export const SITE_ALIASES: ReadonlyMap<string, string> = strictMap([
 
   // International social — common abbreviations
   ["twitter", "twitter"],
-  ["x", "twitter"],
+  ["x.com", "twitter"],
+  ["tweet", "twitter"],
+  ["tweets", "twitter"],
   ["reddit", "reddit"],
+  ["github", "gh"],
   ["fb", "facebook"],
   ["ins", "instagram"],
   ["ig", "instagram"],
@@ -514,7 +517,7 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
 
     // Shopping
     ["商品", ["product", "item", "goods"]],
-    ["价格", ["price", "cost"]],
+    ["价格", ["price", "prices", "cost"]],
     ["成交", ["trades", "trade", "volume"]],
     ["最新成交", ["trades", "trade"]],
     ["深度", ["depth", "orderbook", "book"]],
@@ -1031,10 +1034,6 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
         "jikan",
         "bangumi",
         "kitsu",
-        "pixiv",
-        "danbooru",
-        "yandere",
-        "tag",
       ],
     ],
     [
@@ -1052,12 +1051,6 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
         "jikan",
         "bangumi",
         "kitsu",
-        "mangadex",
-        "pixiv",
-        "danbooru",
-        "yandere",
-        "konachan",
-        "tag",
       ],
     ],
     [
@@ -1157,10 +1150,6 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
         "jikan",
         "bangumi",
         "kitsu",
-        "pixiv",
-        "danbooru",
-        "yandere",
-        "tag",
       ],
     ],
     [
@@ -1178,10 +1167,6 @@ export const DOMAIN_ALIASES: ReadonlyMap<string, readonly string[]> = strictMap(
         "anilist",
         "jikan",
         "bangumi",
-        "pixiv",
-        "danbooru",
-        "yandere",
-        "tag",
       ],
     ],
     [

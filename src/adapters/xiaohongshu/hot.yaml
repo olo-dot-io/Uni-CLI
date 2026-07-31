@@ -1,6 +1,7 @@
 site: xiaohongshu
 name: hot
 description: "Xiaohongshu trending/hot notes"
+operation_effect: read
 domain: www.xiaohongshu.com
 strategy: intercept
 lint_listing_detail: skip

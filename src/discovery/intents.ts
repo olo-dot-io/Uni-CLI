@@ -102,6 +102,7 @@ const TRAVEL_LODGING_TERMS = new Set([
 ]);
 
 const BOOST_RUN_TRACE_INTENT = 45.0;
+const BOOST_BROWSER_AUTOMATION_WORKFLOW = 72.0;
 const BOOST_ACG_CREATOR_INTENT = 36.0;
 const BOOST_ACG_MEDIA_TREND_INTENT = 42.0;
 const BOOST_WEATHER_INTENT = 30.0;
@@ -140,6 +141,9 @@ const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "huggingface-papers/search",
   "huggingface-papers/daily",
 ]);
+const SCHOLARLY_WORKFLOW_SITES = new Set(
+  [...SCHOLARLY_WORKFLOW_COMMANDS].map((id) => id.slice(0, id.indexOf("/"))),
+);
 const SCHOLARLY_NON_BLOCKING_SITE_HINTS = new Set(["agents", "pdf"]);
 
 export function resolveIntentFrame(
@@ -199,30 +203,28 @@ const SHORTCUTS_INTENT_TERMS: ReadonlySet<string> = new Set([
 
 export function appActionScorePrior(
   doc: SearchDocument,
-  queryTerms: readonly string[],
+  terms: ReadonlySet<string>,
 ): number {
   if (doc.site !== "macos") return 1;
   if (!doc.command.startsWith(APP_ACTION_COMMAND_PREFIX)) return 1;
-  for (const term of queryTerms) {
-    if (SHORTCUTS_INTENT_TERMS.has(term)) return 1;
-  }
+  if (hasAnyValue(terms, SHORTCUTS_INTENT_TERMS)) return 1;
   return APP_ACTION_SCORE_PRIOR;
 }
 
 export function intentBoost(
   doc: SearchDocument,
-  queryTerms: string[],
-  siteHints: string[],
+  terms: ReadonlySet<string>,
+  siteHints: readonly string[],
 ): number {
   return (
-    architectureIntentBoost(doc, queryTerms) +
-    acgCreatorIntentBoost(doc, queryTerms) +
-    acgMediaTrendIntentBoost(doc, queryTerms) +
-    weatherIntentBoost(doc, queryTerms) +
-    computeContextIntentBoost(doc, queryTerms) +
-    socialUserTimelineIntentBoost(doc, queryTerms) +
-    marxistsArchiveIntentBoost(doc, queryTerms) +
-    scholarlyIntentBoost(doc, queryTerms, siteHints)
+    architectureIntentBoost(doc, terms) +
+    acgCreatorIntentBoost(doc, terms) +
+    acgMediaTrendIntentBoost(doc, terms) +
+    weatherIntentBoost(doc, terms) +
+    computeContextIntentBoost(doc, terms) +
+    socialUserTimelineIntentBoost(doc, terms) +
+    marxistsArchiveIntentBoost(doc, terms) +
+    scholarlyIntentBoost(doc, terms, siteHints)
   );
 }
 
@@ -317,9 +319,29 @@ function documentCategory(doc: SearchDocument): string {
 
 function architectureIntentBoost(
   doc: SearchDocument,
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
-  const terms = new Set(queryTerms);
+  const browserAutomationCandidate =
+    (doc.site === "browser" &&
+      (doc.command === "evidence" || doc.command === "extract")) ||
+    (doc.site === "operate" && doc.command === "state");
+  if (!browserAutomationCandidate && doc.site !== "runs") return 0;
+  const browserAutomationWorkflow =
+    terms.has("browser") &&
+    hasAny(terms, ["automation", "control", "website", "web"]) &&
+    hasAny(terms, ["agent", "mcp", "cli", "operator", "tool"]);
+  if (browserAutomationWorkflow) {
+    if (doc.site === "browser" && doc.command === "evidence") {
+      return BOOST_BROWSER_AUTOMATION_WORKFLOW;
+    }
+    if (doc.site === "browser" && doc.command === "extract") {
+      return BOOST_BROWSER_AUTOMATION_WORKFLOW * 0.76;
+    }
+    if (doc.site === "operate" && doc.command === "state") {
+      return BOOST_BROWSER_AUTOMATION_WORKFLOW * 0.68;
+    }
+  }
+
   const runTraceIntent =
     (hasAny(terms, ["run", "runs"]) &&
       hasAny(terms, [
@@ -339,9 +361,15 @@ function architectureIntentBoost(
 
 function acgCreatorIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
-  const terms = new Set(queryTerms);
+  const acgCreatorCommand =
+    (doc.site === "mangadex" && doc.command === "authors") ||
+    (doc.site === "dlsite" && doc.command === "creator") ||
+    (doc.site === "anilist" && doc.command === "staff") ||
+    (doc.site === "jikan" && doc.command === "people") ||
+    (doc.site === "vndb" && doc.command === "staff");
+  if (!acgCreatorCommand) return 0;
   const creatorIntent = hasAny(terms, [
     "author",
     "authors",
@@ -370,13 +398,6 @@ function acgCreatorIntentBoost(
     "vndb",
     "dlsite",
   ]);
-  const acgCreatorCommand =
-    (doc.site === "mangadex" && doc.command === "authors") ||
-    (doc.site === "dlsite" && doc.command === "creator") ||
-    (doc.site === "anilist" && doc.command === "staff") ||
-    (doc.site === "jikan" && doc.command === "people") ||
-    (doc.site === "vndb" && doc.command === "staff");
-
   return creatorIntent && acgIntent && acgCreatorCommand
     ? BOOST_ACG_CREATOR_INTENT
     : 0;
@@ -384,9 +405,25 @@ function acgCreatorIntentBoost(
 
 function acgMediaTrendIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
-  const terms = new Set(queryTerms);
+  const acgMediaCommand =
+    (doc.site === "anilist" &&
+      (doc.command === "anime" || doc.command === "manga")) ||
+    (doc.site === "jikan" &&
+      (doc.command === "anime" || doc.command === "manga")) ||
+    (doc.site === "kitsu" &&
+      (doc.command === "anime" || doc.command === "manga")) ||
+    (doc.site === "bangumi" &&
+      (doc.command === "anime" ||
+        doc.command === "book" ||
+        doc.command === "game")) ||
+    (doc.site === "mangadex" && doc.command === "manga") ||
+    (doc.site === "vndb" &&
+      (doc.command === "search" || doc.command === "releases")) ||
+    (doc.site === "dlsite" &&
+      ["search", "manga", "cg", "game"].includes(doc.command));
+  if (!acgMediaCommand) return 0;
   const acgMediaIntent =
     hasAny(terms, [
       "acg",
@@ -422,23 +459,6 @@ function acgMediaTrendIntentBoost(
       "newest",
       "year",
     ]) || [...terms].some((term) => /^20[0-9]{2}$/.test(term));
-  const acgMediaCommand =
-    (doc.site === "anilist" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "jikan" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "kitsu" &&
-      (doc.command === "anime" || doc.command === "manga")) ||
-    (doc.site === "bangumi" &&
-      (doc.command === "anime" ||
-        doc.command === "book" ||
-        doc.command === "game")) ||
-    (doc.site === "mangadex" && doc.command === "manga") ||
-    (doc.site === "vndb" &&
-      (doc.command === "search" || doc.command === "releases")) ||
-    (doc.site === "dlsite" &&
-      ["search", "manga", "cg", "game"].includes(doc.command));
-
   return acgMediaIntent && rankingOrFreshnessIntent && acgMediaCommand
     ? BOOST_ACG_MEDIA_TREND_INTENT
     : 0;
@@ -446,26 +466,24 @@ function acgMediaTrendIntentBoost(
 
 function weatherIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
-  const terms = new Set(queryTerms);
-  const weatherIntent = hasAny(terms, ["weather", "forecast", "temperature"]);
   const weatherCommand =
     (doc.site === "wttr" &&
       (doc.command === "forecast" || doc.command === "now")) ||
     (doc.site === "qweather" &&
       (doc.command === "forecast" || doc.command === "now"));
+  if (!weatherCommand) return 0;
+  const weatherIntent = hasAny(terms, ["weather", "forecast", "temperature"]);
 
   return weatherIntent && weatherCommand ? BOOST_WEATHER_INTENT : 0;
 }
 
 function computeContextIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
   if (doc.site !== "compute") return 0;
-
-  const terms = new Set(queryTerms);
   const localComputerUseIntent =
     hasAny(terms, [
       "computer",
@@ -519,16 +537,15 @@ function computeContextIntentBoost(
 
 function socialUserTimelineIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
-  const terms = new Set(queryTerms);
-  const userTimelineIntent =
-    hasAny(terms, ["user", "users", "profile", "author"]) &&
-    hasAny(terms, ["timeline", "timelines", "tweets", "posts", "feed"]);
   const userTimelineCommand =
     doc.site === "twitter" &&
     (doc.command === "user-timeline" || doc.command === "user-tweets");
-
+  if (!userTimelineCommand) return 0;
+  const userTimelineIntent =
+    hasAny(terms, ["user", "users", "profile", "author"]) &&
+    hasAny(terms, ["timeline", "timelines", "tweets", "posts", "feed"]);
   return userTimelineIntent && userTimelineCommand
     ? BOOST_SOCIAL_USER_TIMELINE_INTENT
     : 0;
@@ -536,10 +553,9 @@ function socialUserTimelineIntentBoost(
 
 function marxistsArchiveIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
+  terms: ReadonlySet<string>,
 ): number {
   if (doc.site !== "marxists-cn") return 0;
-  const terms = new Set(queryTerms);
   const marxistSubjectIntent = hasAny(terms, [
     "marxism",
     "marxist",
@@ -655,10 +671,16 @@ function marxistsArchiveIntentBoost(
 
 function scholarlyIntentBoost(
   doc: SearchIndex["documents"][number],
-  queryTerms: string[],
-  siteHints: string[],
+  terms: ReadonlySet<string>,
+  siteHints: readonly string[],
 ): number {
-  const terms = new Set(queryTerms);
+  if (
+    SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
+    (!SCHOLARLY_WORKFLOW_SITES.has(doc.site) ||
+      !SCHOLARLY_WORKFLOW_COMMANDS.has(`${doc.site}/${doc.command}`))
+  ) {
+    return 0;
+  }
   const scholarlyIntent = hasAny(terms, [
     "academic",
     "scholar",
@@ -742,12 +764,6 @@ function scholarlyIntentBoost(
       SITE_CATEGORIES.get(site) !== "scholarly",
   );
   if (explicitNonScholarlySite) return 0;
-
-  const key = `${doc.site}/${doc.command}`;
-  const isScholarlyCommand =
-    SITE_CATEGORIES.get(doc.site) === "scholarly" ||
-    SCHOLARLY_WORKFLOW_COMMANDS.has(key);
-  if (!isScholarlyCommand) return 0;
 
   let boost = BOOST_SCHOLARLY_INTENT;
   boost += scholarlyVenueSourceBoost(doc, terms);
@@ -991,7 +1007,7 @@ function scholarlyIntentBoost(
 
 function scholarlyVenueSourceBoost(
   doc: SearchIndex["documents"][number],
-  terms: Set<string>,
+  terms: ReadonlySet<string>,
 ): number {
   const wantsPmlr = hasAny(terms, ["pmlr", "icml"]);
   if (wantsPmlr && doc.site === "pmlr") return BOOST_SCHOLARLY_VENUE_SOURCE;
@@ -1018,7 +1034,7 @@ function scholarlyVenueSourceBoost(
 
 function scholarlyProviderSourceBoost(
   doc: SearchIndex["documents"][number],
-  terms: Set<string>,
+  terms: ReadonlySet<string>,
 ): number {
   const doiIntent = terms.has("doi");
   const openAccessIntent =
@@ -1066,12 +1082,15 @@ function scholarlyProviderSourceBoost(
   return 0;
 }
 
-function hasAny(terms: Set<string>, values: string[]): boolean {
+function hasAny(
+  terms: ReadonlySet<string>,
+  values: readonly string[],
+): boolean {
   return values.some((value) => terms.has(value));
 }
 
 function hasAnyValue<T>(
-  values: Set<T>,
+  values: ReadonlySet<T>,
   needles: ReadonlySet<T> | readonly T[],
 ): boolean {
   for (const needle of needles) {

@@ -1,8 +1,14 @@
 import http from "node:http";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MCP_PROTOCOL_VERSION } from "../../src/constants.js";
+import {
+  MCP_MODERN_PROTOCOL_VERSION,
+  MCP_PROTOCOL_VERSION,
+} from "../../src/constants.js";
 import { buildHandler } from "../../src/mcp/handler.js";
 import type { JsonRpcHandler, JsonRpcResponse } from "../../src/mcp/jsonrpc.js";
 import { _test as oauthTest } from "../../src/mcp/oauth.js";
@@ -81,6 +87,73 @@ function parse(response: HttpResult): JsonRpcResponse {
   return JSON.parse(response.body) as JsonRpcResponse;
 }
 
+function modernPayload(
+  id: number,
+  method: string,
+  params: Record<string, unknown> = {},
+  protocolVersion = MCP_MODERN_PROTOCOL_VERSION,
+): Record<string, unknown> {
+  return {
+    jsonrpc: "2.0",
+    id,
+    method,
+    params: {
+      ...params,
+      _meta: {
+        "io.modelcontextprotocol/protocolVersion": protocolVersion,
+        "io.modelcontextprotocol/clientInfo": {
+          name: "streamable-http-test",
+          version: "1.0.0",
+        },
+        "io.modelcontextprotocol/clientCapabilities": {},
+      },
+    },
+  };
+}
+
+function modernTaskPayload(
+  id: number,
+  method: string,
+  params: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const payload = modernPayload(id, method, params);
+  const payloadParams = payload.params as Record<string, unknown>;
+  const meta = payloadParams._meta as Record<string, unknown>;
+  meta["io.modelcontextprotocol/clientCapabilities"] = {
+    extensions: {
+      "io.modelcontextprotocol/tasks": {},
+    },
+  };
+  return payload;
+}
+
+function modernRpc(
+  port: number,
+  payload: Record<string, unknown>,
+): Promise<HttpResult> {
+  const params = payload.params as Record<string, unknown> | undefined;
+  const meta = params?._meta as Record<string, unknown> | undefined;
+  const headers: Record<string, string> = {
+    "MCP-Protocol-Version": String(
+      meta?.["io.modelcontextprotocol/protocolVersion"] ??
+        MCP_MODERN_PROTOCOL_VERSION,
+    ),
+    "Mcp-Method": String(payload.method),
+  };
+  if (payload.method === "tools/call" || payload.method === "prompts/get") {
+    headers["Mcp-Name"] = String(params?.name ?? "");
+  } else if (
+    payload.method === "tasks/get" ||
+    payload.method === "tasks/update" ||
+    payload.method === "tasks/cancel"
+  ) {
+    headers["Mcp-Name"] = String(params?.taskId ?? "");
+  } else if (payload.method === "resources/read") {
+    headers["Mcp-Name"] = String(params?.uri ?? "");
+  }
+  return rpc(port, payload, undefined, headers);
+}
+
 const echoHandler: JsonRpcHandler = (request) => {
   if (request.method === "initialize") {
     return {
@@ -113,6 +186,7 @@ const echoHandler: JsonRpcHandler = (request) => {
 
 describe("Streamable HTTP transport", () => {
   let runtimePort: number | undefined;
+  const temporaryDirectories: string[] = [];
 
   async function start(
     handler: JsonRpcHandler = echoHandler,
@@ -145,6 +219,11 @@ describe("Streamable HTTP transport", () => {
     runtimePort = undefined;
     sessions.clear();
     oauthTest.tokens.clear();
+    await Promise.all(
+      temporaryDirectories
+        .splice(0)
+        .map((directory) => rm(directory, { recursive: true, force: true })),
+    );
   });
 
   it("serves health, CORS preflight, and bounded session initialization", async () => {
@@ -174,6 +253,359 @@ describe("Streamable HTTP transport", () => {
       protocolVersion: MCP_PROTOCOL_VERSION,
     });
     expect(sessions.has(initialized.sessionId)).toBe(true);
+  });
+
+  it("serves stateless modern discovery without minting a session", async () => {
+    const port = await start(buildHandler([]));
+    const response = await modernRpc(
+      port,
+      modernPayload(10, "server/discover"),
+    );
+    const body = parse(response);
+
+    expect(response.status).toBe(200);
+    expect(response.headers["mcp-session-id"]).toBeUndefined();
+    expect(response.headers["mcp-protocol-version"]).toBe(
+      MCP_MODERN_PROTOCOL_VERSION,
+    );
+    expect(body.result).toMatchObject({
+      resultType: "complete",
+      supportedVersions: [MCP_MODERN_PROTOCOL_VERSION, MCP_PROTOCOL_VERSION],
+      cacheScope: "public",
+    });
+    expect(sessions.size).toBe(0);
+  });
+
+  it("validates modern mirrored headers and protocol versions", async () => {
+    const port = await start(buildHandler([]));
+    const missingMeta = await rpc(
+      port,
+      {
+        jsonrpc: "2.0",
+        id: 10,
+        method: "tools/list",
+        params: {},
+      },
+      undefined,
+      {
+        "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/list",
+      },
+    );
+    const missingMethod = await rpc(
+      port,
+      modernPayload(11, "tools/list"),
+      undefined,
+      {
+        "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+      },
+    );
+    const unsupported = await rpc(
+      port,
+      modernPayload(12, "tools/list", {}, "1900-01-01"),
+      undefined,
+      {
+        "MCP-Protocol-Version": "1900-01-01",
+        "Mcp-Method": "tools/list",
+      },
+    );
+
+    expect(missingMeta.status).toBe(400);
+    expect(parse(missingMeta).error).toMatchObject({ code: -32602 });
+    expect(missingMethod.status).toBe(400);
+    expect(parse(missingMethod).error).toMatchObject({ code: -32020 });
+    expect(unsupported.status).toBe(400);
+    expect(parse(unsupported).error).toMatchObject({
+      code: -32022,
+      data: {
+        requested: "1900-01-01",
+        supported: [MCP_MODERN_PROTOCOL_VERSION, MCP_PROTOCOL_VERSION],
+      },
+    });
+  });
+
+  it("returns modern method errors as HTTP 404", async () => {
+    const port = await start(buildHandler([]));
+    const response = await modernRpc(port, modernPayload(13, "unknown/method"));
+
+    expect(response.status).toBe(404);
+    expect(parse(response).error).toMatchObject({ code: -32601 });
+  });
+
+  it("returns missing Tasks capability as HTTP 400 before JSON or SSE success", async () => {
+    const port = await start(
+      buildHandler([mutatingTool(async () => toolSuccess("must not run"))]),
+    );
+    const payload = modernPayload(14, "tools/call", {
+      name: "mutate",
+      arguments: {},
+    });
+    const json = await modernRpc(port, payload);
+    const sse = await rpc(port, payload, undefined, {
+      Accept: "text/event-stream",
+      "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+      "Mcp-Method": "tools/call",
+      "Mcp-Name": "mutate",
+    });
+
+    expect(json.status).toBe(400);
+    expect(sse.status).toBe(400);
+    expect(json.headers["content-type"]).toContain("application/json");
+    expect(sse.headers["content-type"]).toContain("application/json");
+    expect(parse(json).error).toMatchObject({ code: -32021 });
+    expect(parse(sse).error).toMatchObject({ code: -32021 });
+  });
+
+  it("compares Mcp-Name as an exact standard header without parameter decoding", async () => {
+    const port = await start(
+      buildHandler([
+        {
+          name: "abc",
+          description: "Exact-name probe",
+          inputSchema: { type: "object", properties: {} },
+          annotations: { readOnlyHint: true },
+          handler: () => toolSuccess("matched"),
+        },
+      ]),
+    );
+    const payload = modernPayload(15, "tools/call", {
+      name: "abc",
+      arguments: {},
+    });
+
+    for (const encoded of ["=?base64?YWJj?=", "=base64YWJj="]) {
+      const response = await rpc(port, payload, undefined, {
+        "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": encoded,
+      });
+      expect(response.status).toBe(400);
+      expect(parse(response).error).toMatchObject({ code: -32020 });
+    }
+  });
+
+  it("treats a closed modern response stream as request cancellation", async () => {
+    const observed = deferred<AbortSignal>();
+    const handler = buildHandler([
+      {
+        name: "slow_read",
+        description: "Wait until the response stream closes",
+        inputSchema: { type: "object", properties: {} },
+        annotations: { readOnlyHint: true },
+        handler: async (_args, context) => {
+          const signal = context!.signal!;
+          observed.resolve(signal);
+          await new Promise<void>((_resolve, reject) => {
+            signal.addEventListener("abort", () => reject(signal.reason), {
+              once: true,
+            });
+          });
+          return toolSuccess("unreachable");
+        },
+      },
+    ]);
+    const port = await start(handler);
+    const payload = modernPayload(14, "tools/call", {
+      name: "slow_read",
+      arguments: {},
+    });
+    const client = http.request({
+      hostname: "127.0.0.1",
+      port,
+      path: "/mcp",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "slow_read",
+      },
+    });
+    client.on("error", () => undefined);
+    client.end(JSON.stringify(payload));
+    const signal = await observed.promise;
+    client.destroy();
+
+    await vi.waitFor(() => expect(signal.aborted).toBe(true));
+  });
+
+  it("runs modern durable tasks statelessly with task-addressed routing headers", async () => {
+    const taskStoreDirectory = await mkdtemp(
+      join(tmpdir(), "unicli-streamable-modern-tasks-"),
+    );
+    temporaryDirectories.push(taskStoreDirectory);
+    const gate = deferred<ReturnType<typeof toolSuccess>>();
+    const handler = buildHandler([mutatingTool(async () => gate.promise)], [], {
+      modernTaskStoreDirectory: taskStoreDirectory,
+    });
+    const port = await start(handler);
+
+    const created = parse(
+      await modernRpc(
+        port,
+        modernTaskPayload(15, "tools/call", {
+          name: "mutate",
+          arguments: {},
+        }),
+      ),
+    );
+    const taskId = (created.result as { taskId: string }).taskId;
+    expect(created.result).toMatchObject({
+      resultType: "task",
+      taskId,
+      status: "working",
+    });
+
+    const mismatchedHeader = await rpc(
+      port,
+      modernTaskPayload(16, "tasks/get", { taskId }),
+      undefined,
+      {
+        "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+        "Mcp-Method": "tasks/get",
+        "Mcp-Name": "wrong-task",
+      },
+    );
+    expect(mismatchedHeader.status).toBe(400);
+    expect(parse(mismatchedHeader).error).toMatchObject({ code: -32020 });
+
+    const working = parse(
+      await modernRpc(port, modernTaskPayload(17, "tasks/get", { taskId })),
+    );
+    expect(working.result).toMatchObject({
+      resultType: "complete",
+      taskId,
+      status: "working",
+    });
+
+    gate.resolve(toolSuccess("settled"));
+    await vi.waitFor(async () => {
+      const completed = parse(
+        await modernRpc(port, modernTaskPayload(18, "tasks/get", { taskId })),
+      );
+      expect(completed.result).toMatchObject({
+        status: "completed",
+        result: {
+          content: [{ type: "text", text: "settled" }],
+        },
+      });
+    });
+    expect(sessions.size).toBe(0);
+  });
+
+  it("streams acknowledged task subscriptions and closes them gracefully", async () => {
+    const taskStoreDirectory = await mkdtemp(
+      join(tmpdir(), "unicli-streamable-subscriptions-"),
+    );
+    temporaryDirectories.push(taskStoreDirectory);
+    const gate = deferred<ReturnType<typeof toolSuccess>>();
+    const handler = buildHandler([mutatingTool(async () => gate.promise)], [], {
+      modernTaskStoreDirectory: taskStoreDirectory,
+    });
+    const port = await start(handler);
+    const created = parse(
+      await modernRpc(
+        port,
+        modernTaskPayload(30, "tools/call", {
+          name: "mutate",
+          arguments: {},
+        }),
+      ),
+    );
+    const taskId = (created.result as { taskId: string }).taskId;
+    const messages: Array<Record<string, unknown>> = [];
+    const acknowledged = deferred<void>();
+    const taskNotification = deferred<void>();
+    const ended = deferred<void>();
+    let buffered = "";
+    const payload = modernTaskPayload(31, "subscriptions/listen", {
+      notifications: { taskIds: [taskId] },
+    });
+    const client = http.request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: "/mcp",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "MCP-Protocol-Version": MCP_MODERN_PROTOCOL_VERSION,
+          "Mcp-Method": "subscriptions/listen",
+        },
+      },
+      (incoming) => {
+        expect(incoming.statusCode).toBe(200);
+        expect(incoming.headers["content-type"]).toContain("text/event-stream");
+        expect(incoming.headers["x-accel-buffering"]).toBe("no");
+        incoming.on("data", (chunk: Buffer) => {
+          buffered += chunk.toString("utf8");
+          const events = buffered.split("\n\n");
+          buffered = events.pop() ?? "";
+          for (const event of events) {
+            const data = event
+              .split("\n")
+              .find((line) => line.startsWith("data: "));
+            if (!data) continue;
+            const message = JSON.parse(data.slice(6)) as Record<
+              string,
+              unknown
+            >;
+            messages.push(message);
+            if (message.method === "notifications/subscriptions/acknowledged") {
+              acknowledged.resolve();
+            }
+            if (
+              message.method === "notifications/tasks" &&
+              (message.params as { status?: string }).status === "completed"
+            ) {
+              taskNotification.resolve();
+            }
+          }
+        });
+        incoming.on("end", () => ended.resolve());
+      },
+    );
+    client.on("error", () => undefined);
+    client.end(JSON.stringify(payload));
+
+    await acknowledged.promise;
+    expect(messages[0]).toMatchObject({
+      method: "notifications/subscriptions/acknowledged",
+      params: {
+        notifications: { taskIds: [taskId] },
+        _meta: { "io.modelcontextprotocol/subscriptionId": 31 },
+      },
+    });
+    gate.resolve(toolSuccess("streamed"));
+    await taskNotification.promise;
+    expect(
+      messages.find(
+        (message) =>
+          message.method === "notifications/tasks" &&
+          (message.params as { status?: string }).status === "completed",
+      ),
+    ).toMatchObject({
+      method: "notifications/tasks",
+      params: {
+        taskId,
+        status: "completed",
+        result: { content: [{ type: "text", text: "streamed" }] },
+      },
+    });
+
+    const closing = stopStreamableHttp(port, "subscription test complete");
+    await ended.promise;
+    await closing;
+    runtimePort = undefined;
+    expect(messages.at(-1)).toMatchObject({
+      id: 31,
+      result: {
+        resultType: "complete",
+        _meta: { "io.modelcontextprotocol/subscriptionId": 31 },
+      },
+    });
   });
 
   it("rejects invalid origins, malformed JSON, and missing sessions", async () => {
@@ -721,15 +1153,18 @@ describe("Streamable HTTP transport", () => {
   });
 
   it("binds an authenticated session to the OAuth client principal", async () => {
-    oauthTest.tokens.set("client-a-token", {
-      clientId: "client-a",
-      expiresAt: Date.now() + 60_000,
-    });
-    oauthTest.tokens.set("client-b-token", {
-      clientId: "client-b",
-      expiresAt: Date.now() + 60_000,
-    });
     const port = await start(echoHandler, { auth: true });
+    const resource = `http://127.0.0.1:${port}/mcp`;
+    oauthTest.putToken("client-a-token", {
+      clientId: "client-a",
+      resource,
+      expiresAt: Date.now() + 60_000,
+    });
+    oauthTest.putToken("client-b-token", {
+      clientId: "client-b",
+      resource,
+      expiresAt: Date.now() + 60_000,
+    });
     const { sessionId } = await initialize(port, "Bearer client-a-token");
     const adopted = await rpc(
       port,

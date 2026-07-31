@@ -1,6 +1,7 @@
 site: bloomberg
 name: opinions
 description: Bloomberg Opinion top stories (RSS)
+operation_effect: read
 domain: feeds.bloomberg.com
 type: web-api
 strategy: public

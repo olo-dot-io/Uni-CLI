@@ -4,16 +4,16 @@
  * @needs       compute authorization/capture/action modules, transport bus, direct browser-control profile, MCP tool contracts
  * @feeds       computer-use MCP profile
  * @breaks      Tool handlers must never create overlays, transports, files, clipboard writes, desktop actions, or browser targets before authorization.
- * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects; browser preparation, snapshot refs, target ownership, and foreground presence remain explicit.
+ * @invariants  Every tool is authorized from canonical pre-transform arguments; request AbortSignal reaches the final transport and capture side effects; visual-coordinate mutations capture their next frame through that same selected provider; image bytes use MCP ImageContent and never structured JSON; browser preparation, snapshot refs, target ownership, and foreground presence remain explicit.
  * @side-effects Controls local apps and browsers and may persist explicitly requested capture references.
- * @perf        One permission evaluation plus one selected compute cascade per ordinary call; direct browser tools retain their own bounded command budgets.
+ * @perf        One permission evaluation plus one selected compute provider per ordinary call; direct browser tools retain their own bounded command budgets.
  * @concurrency MCP request signals isolate cancellation; the transport bus, ref store, and Browser Runtime Broker retain their documented scopes.
  * @test        tests/unit/mcp/tools.test.ts, tests/unit/mcp-server.test.ts, tests/unit/mcp/browser-control.test.ts
  * @stability   experimental
  * @since       2026-07-15
  */
 
-import { getBus } from "../../transport/bus.js";
+import { getBus, getNamespacedBus } from "../../transport/bus.js";
 import {
   executeComputeAction,
   type ComputeActionExecution,
@@ -31,6 +31,7 @@ import {
   getComputeCommandContract,
 } from "../../compute/contracts.js";
 import { err, exitCodeFor } from "../../core/envelope.js";
+import { attachDefaultEffectVerdict } from "../../core/effect-verdict.js";
 import type { ActionResult } from "../../transport/types.js";
 import type { McpToolResult } from "../dispatch.js";
 import type { McpPrompt, McpTool, McpToolExecutionContext } from "../tools.js";
@@ -74,7 +75,7 @@ const DEFINITIONS: ToolDef[] = [
         );
       }
       const result = await captureComputeContext(
-        getBus(),
+        computeBus(context),
         {
           ...(typeof input.app === "string" ? { app: input.app } : {}),
           ...(typeof input.windowId === "string" ||
@@ -92,6 +93,16 @@ const DEFINITIONS: ToolDef[] = [
               : 64,
           ...(typeof input.screenshotPath === "string"
             ? { screenshotPath: input.screenshotPath }
+            : {}),
+          ...(typeof input.via === "string"
+            ? {
+                via: input.via as
+                  | "native"
+                  | "browser"
+                  | "process"
+                  | "driver"
+                  | "visual",
+              }
             : {}),
         },
         context?.signal ? { signal: context.signal } : {},
@@ -154,11 +165,27 @@ const DEFINITIONS: ToolDef[] = [
   computeToolDef("snapshot"),
   computeToolDef("find"),
   computeToolDef("click"),
+  computeToolDef("point-click"),
+  computeToolDef("drag"),
   computeToolDef("type"),
+  computeToolDef("text"),
   computeToolDef("press"),
   computeToolDef("scroll"),
+  computeToolDef("point-scroll"),
   computeToolDef("launch"),
-  computeToolDef("screenshot"),
+  screenshotToolDef("inline"),
+  screenshotToolDef("file"),
+  computeToolDef("session-start"),
+  computeToolDef("session-state"),
+  computeToolDef("session-escalate"),
+  computeToolDef("session-end"),
+  computeToolDef("screen-size"),
+  computeToolDef("cursor-position"),
+  computeToolDef("move-cursor"),
+  computeToolDef("agent-cursor-state"),
+  computeToolDef("agent-cursor-enable"),
+  computeToolDef("agent-cursor-motion"),
+  computeToolDef("agent-cursor-theme"),
   computeToolDef("attach"),
   {
     ...computeToolDef("eval"),
@@ -180,6 +207,9 @@ export const COMPUTER_USE_PROMPTS: McpPrompt[] = [
       "You are operating a real desktop through Uni-CLI.",
       "Start with compact accessibility snapshots and use the returned refs for actions.",
       "Use screenshots when accessibility data is empty or the UI is canvas-rendered.",
+      "Use point_click/drag/text/point_scroll only for a foreground desktop task with fresh pixels; select driver or visual explicitly and never pass an accessibility ref as a coordinate.",
+      "A successful visual-coordinate action returns one fresh same-provider screenshot and its next single-use observation ref; inspect encoded_frame_change as frame evidence, not as proof that the intended task outcome occurred.",
+      "Use session_start/state/escalate/end for explicit Cua Driver lifecycle; auto scope requires a stated escalation after window-scoped attempts are checked.",
       "Use capture to package snapshot refs, screenshot evidence, image metadata, and app-shot references for handoff.",
       "Always re-snapshot after actions that may have changed the UI.",
       "Prefer background actions. Set focus only when the target app needs keyboard focus.",
@@ -220,7 +250,7 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
       overlay === true ? createPlatformComputeOverlayProvider() : undefined;
     try {
       const execution = await executeComputeAction(
-        getBus(),
+        computeBus(context),
         {
           kind: def.kind,
           params,
@@ -229,20 +259,21 @@ export const COMPUTER_USE_TOOLS: McpTool[] = DEFINITIONS.map((def) => ({
         {
           tool: `computer-use.${def.suffix}`,
           ...(overlayProvider ? { overlayProvider } : {}),
-          ...(overlayProvider ? { postActionCapture: true } : {}),
+          postActionCapture: overlayProvider ? true : "coordinate",
         },
       );
-      return actionResultToMcp(
-        execution.result,
-        def,
-        params,
-        execution.evidence,
-      );
+      return actionResultToMcp(execution.result, def, params, execution);
     } finally {
       await overlayProvider?.close?.();
     }
   },
 }));
+
+function computeBus(context?: McpToolExecutionContext) {
+  return context?.agentSessionId
+    ? getNamespacedBus(context.agentSessionId)
+    : getBus();
+}
 
 function computeToolDef(command: string): ToolDef {
   const contract = getComputeCommandContract(command);
@@ -252,10 +283,38 @@ function computeToolDef(command: string): ToolDef {
   return {
     command: contract.command,
     suffix: contract.mcpSuffix,
-    description: contract.description,
+    description:
+      contract.executionOperator === "visual-coordinate" &&
+      contract.readOnly !== true
+        ? `${contract.description} Successful MCP execution captures one fresh frame through that same selected provider, returns its next single-use observation ref, and carries image bytes only as standard MCP ImageContent.`
+        : contract.description,
     kind: contract.kind,
     inputSchema: buildComputeInputSchema(contract.args),
     readOnly: contract.readOnly,
+  };
+}
+
+function screenshotToolDef(mode: "inline" | "file"): ToolDef {
+  const contract = getComputeCommandContract("screenshot");
+  if (!contract) {
+    throw new Error("missing compute command contract for screenshot");
+  }
+  const args =
+    mode === "inline"
+      ? contract.args.filter((arg) => arg.name !== "path")
+      : contract.args.map((arg) =>
+          arg.name === "path" ? { ...arg, required: true } : arg,
+        );
+  return {
+    command: contract.command,
+    suffix: mode === "inline" ? contract.mcpSuffix : "screenshot_file",
+    description:
+      mode === "inline"
+        ? "Capture pixels inline as native MCP image content without writing a host file."
+        : "Write a screenshot to an explicit host path as a durable mutating task.",
+    kind: contract.kind,
+    inputSchema: buildComputeInputSchema(args),
+    readOnly: mode === "inline",
   };
 }
 
@@ -263,32 +322,45 @@ function actionResultToMcp(
   result: ActionResult<unknown>,
   def: ToolDef,
   params: Params = {},
-  evidence?: ComputeActionExecution["evidence"],
+  execution?: ComputeActionExecution,
 ): McpToolResult {
-  const rawData = result.ok ? result.data : result.error;
-  const image =
+  const settledResult = attachDefaultEffectVerdict(result, {
+    canMutate: def.readOnly !== true,
+    phase: result.ok ? "success" : "pre_dispatch",
+  });
+  const rawData = settledResult.ok ? settledResult.data : settledResult.error;
+  const directImage =
     result.ok && (def.command === "screenshot" || def.command === "capture")
       ? readImagePayload(rawData)
       : undefined;
+  const image = directImage ?? execution?.postActionImage;
   const data = image ? withoutImageBytes(rawData, image.mimeType) : rawData;
-  const transport = result.ok
-    ? readResultTransport(result.data)
-    : result.error.transport;
+  const transport = settledResult.ok
+    ? readResultTransport(settledResult.data)
+    : settledResult.error.transport;
   const generatedEvidence = buildComputeActionVisualEvidence({
     tool: `computer-use.${def.suffix}`,
     action: def.kind,
     params,
-    ok: result.ok,
+    ok: settledResult.ok,
     ...(transport ? { transport } : {}),
   });
   const visualTimeline =
     readResultVisualTimeline(data) ??
-    evidence?.visual_timeline ??
+    execution?.evidence.visual_timeline ??
     generatedEvidence.visual_timeline;
   const visualAction =
     readResultVisualAction(data) ??
-    evidence?.visual_action ??
+    execution?.evidence.visual_action ??
     generatedEvidence.visual_action;
+  const structuredData = withPostActionCapture(
+    withActionSettlement(
+      data,
+      settledResult.effect_verdict,
+      settledResult.recovery_trace,
+    ),
+    execution?.evidence.visual_action.post_capture,
+  );
   return {
     content: [
       ...(image
@@ -300,29 +372,37 @@ function actionResultToMcp(
             },
           ]
         : []),
-      { type: "text", text: JSON.stringify(data, null, 2) },
+      { type: "text", text: JSON.stringify(structuredData, null, 2) },
     ],
-    structuredContent: { type: "json", data },
+    structuredContent: { type: "json", data: structuredData },
     _meta: {
       evidence: {
         evidence_type: "computer-use-action",
         tool: `computer-use.${def.suffix}`,
         action: def.kind,
-        ok: result.ok,
+        ok: settledResult.ok,
+        effect_verdict: settledResult.effect_verdict,
+        recovery_trace: settledResult.recovery_trace,
         visual_timeline: visualTimeline,
         visual_action: visualAction,
-        ...(result.ok
+        ...(settledResult.ok
           ? {}
           : {
-              transport: result.error.transport,
-              minimum_capability: result.error.minimum_capability,
-              retryable: result.error.retryable,
-              exit_code: result.error.exit_code,
+              transport: settledResult.error.transport,
+              minimum_capability: settledResult.error.minimum_capability,
+              retryable: settledResult.error.retryable,
+              exit_code: settledResult.error.exit_code,
             }),
       },
     },
-    ...(result.ok ? {} : { isError: true }),
+    ...(settledResult.ok ? {} : { isError: true }),
   };
+}
+
+function withPostActionCapture(data: unknown, postCapture: unknown): unknown {
+  if (!postCapture) return data;
+  if (isRecord(data)) return { ...data, post_action_capture: postCapture };
+  return { value: data, post_action_capture: postCapture };
 }
 
 interface McpImagePayload {
@@ -374,6 +454,26 @@ function withoutImageBytes(data: unknown, mimeType: string): unknown {
       .filter(([key]) => key !== "base64")
       .map(([key, value]) => [key, withoutImageBytes(value, mimeType)]),
   );
+}
+
+function withActionSettlement(
+  data: unknown,
+  effectVerdict: unknown,
+  recoveryTrace: unknown,
+): unknown {
+  if (!effectVerdict && !recoveryTrace) return data;
+  if (isRecord(data)) {
+    return {
+      ...data,
+      ...(effectVerdict ? { effect_verdict: effectVerdict } : {}),
+      ...(recoveryTrace ? { recovery_trace: recoveryTrace } : {}),
+    };
+  }
+  return {
+    value: data,
+    ...(effectVerdict ? { effect_verdict: effectVerdict } : {}),
+    ...(recoveryTrace ? { recovery_trace: recoveryTrace } : {}),
+  };
 }
 
 function inferImageMime(bytes: Buffer): string | undefined {

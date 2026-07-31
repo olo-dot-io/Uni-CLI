@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::espacenet::search
  * @does        Browser-driven Espacenet front-end search at worldwide.espacenet.com/patent/search — the EPO public no-key fallback for global patent search; complements the keyed EPO OPS adapter at src/adapters/epo/*.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.search)
- * @breaks      PATENT_API_DEPRECATED with MCP_BUS_MISSING when no outbound MCP transport; PATENT_NOT_FOUND on empty result; PATENT_BROWSER_CAPTCHA on EPO's anti-bot challenge
+ * @breaks      PATENT_API_DEPRECATED with browser provider unavailable when the declared browser provider is unavailable; PATENT_NOT_FOUND on empty result; PATENT_BROWSER_CAPTCHA on EPO's anti-bot challenge
  * @invariants  output rows are canonical PatentRecord; source_adapter='espacenet'
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/espacenet/search.test.ts
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  espacenetEnvelope,
-  espacenetNavigateAndExtract,
-  transportErrorToEspacenetEnvelope,
-} from "./_shared.js";
+import { espacenetEnvelope, espacenetNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/espacenet/search.ts";
 const ESPACENET_SEARCH_URL = "https://worldwide.espacenet.com/patent/search";
@@ -75,10 +72,13 @@ function buildSearchUrl(query: string, limit: number): string {
   return `${ESPACENET_SEARCH_URL}?${params.toString()}`;
 }
 
-export async function runEspacenetSearch(kwargs: {
-  query: string;
-  limit?: number;
-}): Promise<unknown[]> {
+export async function runEspacenetSearch(
+  page: IPage,
+  kwargs: {
+    query: string;
+    limit?: number;
+  },
+): Promise<unknown[]> {
   const limit =
     typeof kwargs.limit === "number" && Number.isFinite(kwargs.limit)
       ? Math.max(1, Math.min(100, Math.floor(kwargs.limit)))
@@ -98,38 +98,24 @@ export async function runEspacenetSearch(kwargs: {
   }
   const url = buildSearchUrl(query, limit);
   let extract: EspacenetExtractResult;
-  try {
-    const result = await espacenetNavigateAndExtract<EspacenetExtractResult>(
-      url,
-      EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: espacenetEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "espacenet evaluate returned no data; selector schema likely changed",
-          ),
-        },
-      ];
-    }
-    extract = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToEspacenetEnvelope(
-            err,
-            ADAPTER_PATH,
-            "navigate",
-          ),
-        },
-      ];
-    }
-    throw err;
+  const result = await espacenetNavigateAndExtract<EspacenetExtractResult>(
+    page,
+    url,
+    EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: espacenetEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "espacenet evaluate returned no data; selector schema likely changed",
+        ),
+      },
+    ];
   }
+  extract = result.data;
   if (extract.rows.length === 0) {
     const marker = (extract.html_marker ?? "").toLowerCase();
     if (
@@ -183,7 +169,7 @@ export async function runEspacenetSearch(kwargs: {
   if (out.length === 0) {
     out.push({
       envelope: espacenetEnvelope(
-        "PATENT_NOT_FOUND",
+        "PATENT_SCHEMA_DRIFT",
         ADAPTER_PATH,
         "normalize",
         "espacenet returned rows but none carried a valid publication_number",
@@ -206,6 +192,7 @@ cli({
     {
       name: "query",
       type: "str",
+      minLength: 1,
       required: true,
       positional: true,
       description: "Espacenet smart-search query (CQL-lite syntax)",
@@ -219,11 +206,15 @@ cli({
   ],
   columns: ["publication_number", "title", "publication_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.search",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runEspacenetSearch(kwargs as { query: string; limit?: number }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runEspacenetSearch(
+      requireBrowserPage(page),
+      kwargs as { query: string; limit?: number },
+    ),
 });

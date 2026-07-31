@@ -1,6 +1,7 @@
 site: arxiv
 name: trending
 description: Recent arXiv papers by category (newest submissions)
+operation_effect: read
 domain: export.arxiv.org
 type: web-api
 strategy: public

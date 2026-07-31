@@ -15,15 +15,17 @@ import { validateEnvelope } from "../../../src/output/envelope.js";
 import { getBus } from "../../../src/transport/bus.js";
 import { loadCdpSession } from "../../../src/transport/cdp-session.js";
 
-const cascadeMock = vi.hoisted(() => ({
-  tryCascade: vi.fn(),
+const dispatchMock = vi.hoisted(() => ({
+  dispatchComputeRoute: vi.fn(),
+  prepareComputeRequest: vi.fn(),
 }));
 const actionExecutionMock = vi.hoisted(() => ({
   executeComputeAction: vi.fn(),
 }));
 
-vi.mock("../../../src/transport/cascade.js", () => ({
-  tryCascade: cascadeMock.tryCascade,
+vi.mock("../../../src/transport/compute-dispatch.js", () => ({
+  dispatchComputeRoute: dispatchMock.dispatchComputeRoute,
+  prepareComputeRequest: dispatchMock.prepareComputeRequest,
 }));
 vi.mock("../../../src/compute/action-execution.js", () => ({
   executeComputeAction: actionExecutionMock.executeComputeAction,
@@ -90,7 +92,12 @@ function restoreEnvironment(name: string, value: string | undefined): void {
 
 describe("unicli compute", () => {
   beforeEach(() => {
-    cascadeMock.tryCascade.mockReset();
+    dispatchMock.dispatchComputeRoute.mockReset();
+    dispatchMock.prepareComputeRequest.mockReset();
+    dispatchMock.prepareComputeRequest.mockImplementation((_bus, request) => ({
+      status: "ready",
+      prepared: { request },
+    }));
     actionExecutionMock.executeComputeAction.mockReset();
     process.exitCode = undefined;
     delete process.env.UNICLI_COMPUTE_REFS_PATH;
@@ -99,6 +106,96 @@ describe("unicli compute", () => {
     restoreEnvironment("UNICLI_PERMISSION_RULES_PATH", originalRulesPath);
     restoreEnvironment("UNICLI_PERMISSION_PROFILE", originalPermissionProfile);
     restoreEnvironment("UNICLI_APPROVE", originalApprove);
+  });
+
+  it("explains one process route without opening a provider", async () => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "route",
+          "launch",
+          "--params",
+          '{"app":"Calculator"}',
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
+    expect(cap.getStderr()).toBe("");
+    const envelope = JSON.parse(cap.getStdout()) as {
+      data: {
+        schema_version: string;
+        route: { selection: Record<string, unknown> };
+      };
+    };
+    expect(envelope.data).toMatchObject({
+      schema_version: "compute-route.v1",
+      route: {
+        status: "selected",
+        selection: {
+          transport: "subprocess",
+          operator: "native-cli",
+          target_scope: "host-process",
+          physical_action: "launch_app",
+        },
+      },
+    });
+  });
+
+  it("plans only the capture parts requested by include", async () => {
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "route",
+          "capture",
+          "--params",
+          '{"include":"screenshot"}',
+          "--via",
+          "driver",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
+    expect(cap.getStderr()).toBe("");
+    const envelope = JSON.parse(cap.getStdout()) as {
+      data: {
+        status: string;
+        routes: Array<{
+          action: string;
+          status: string;
+          selection: Record<string, unknown>;
+        }>;
+      };
+    };
+    expect(envelope.data).toMatchObject({
+      status: "composite",
+      routes: [
+        {
+          action: "compute_screenshot",
+          status: "selected",
+          selection: {
+            transport: "cua-driver",
+            physical_action: "cua_get_desktop_state",
+            operator: "visual-observation",
+          },
+        },
+      ],
+    });
   });
 
   afterEach(() => {
@@ -135,7 +232,7 @@ describe("unicli compute", () => {
         cap.restore();
       }
 
-      expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+      expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
       expect(actionExecutionMock.executeComputeAction).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(77);
       const envelope = JSON.parse(cap.getStderr()) as {
@@ -152,7 +249,7 @@ describe("unicli compute", () => {
   });
 
   it("snapshot forwards normalized options and emits a desktop envelope", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({ text: '@e1 window "Calculator"' }),
     );
     const cap = captureConsole();
@@ -177,8 +274,8 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).toHaveBeenCalledTimes(1);
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute).toHaveBeenCalledTimes(1);
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_snapshot",
       params: {
         app: "Calculator",
@@ -196,8 +293,120 @@ describe("unicli compute", () => {
     validateEnvelope(env as Parameters<typeof validateEnvelope>[0]);
   });
 
+  it("parses point coordinates without converting them into element refs", async () => {
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
+      ok({ provider: "cua-driver", verified: true }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "point-click",
+          "12.5",
+          "48",
+          "--button",
+          "right",
+          "--session",
+          "agent-run",
+          "--observation",
+          `visual-observation:${"a".repeat(64)}`,
+          "--via",
+          "driver",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_point_click",
+      params: {
+        x: 12.5,
+        y: 48,
+        button: "right",
+        count: 1,
+        session: "agent-run",
+        observation: `visual-observation:${"a".repeat(64)}`,
+        via: "driver",
+      },
+    });
+    expect(cap.getStderr()).toBe("");
+  });
+
+  it("routes session lifecycle through its dedicated compute contract", async () => {
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
+      ok({ provider: "cua-driver", capture_scope: "auto" }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "session-start",
+          "agent-run",
+          "--capture-scope",
+          "auto",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_session_start",
+      params: {
+        session: "agent-run",
+        captureScope: "auto",
+        reducedMotion: "auto",
+      },
+    });
+    expect(cap.getStderr()).toBe("");
+  });
+
+  it("preserves agent-cursor motion null reset through the CLI channel", async () => {
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
+      ok({ provider: "cua-driver", session: "agent-run" }),
+    );
+    const cap = captureConsole();
+    try {
+      await newProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "compute",
+          "agent-cursor-motion",
+          "agent-run",
+          "--spring",
+          "null",
+          "--turn-radius",
+          "12.5",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
+      kind: "compute_agent_cursor_motion",
+      params: {
+        session: "agent-run",
+        spring: null,
+        turn_radius: 12.5,
+      },
+    });
+    expect(cap.getStderr()).toBe("");
+  });
+
   it("surfaces transport cleanup failure instead of printing false success", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(ok({ captured: true }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ captured: true }));
     const closeSpy = vi
       .spyOn(getBus().get("visual"), "close")
       .mockRejectedValueOnce(new Error("visual cleanup failed"));
@@ -229,7 +438,7 @@ describe("unicli compute", () => {
   });
 
   it("preserves an action error while surfacing an adjacent cleanup error", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       err({
         transport: "desktop-ax",
         step: 1,
@@ -271,7 +480,7 @@ describe("unicli compute", () => {
   });
 
   it("wait forwards the app, state, and bounded timeout contract", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({ matched: true, state: "disappear", attempts: 2 }),
     );
     const cap = captureConsole();
@@ -297,7 +506,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_wait",
       params: {
         app: "Calculator",
@@ -362,11 +571,11 @@ describe("unicli compute", () => {
     expect(() =>
       validateEnvelope(envelope as Parameters<typeof validateEnvelope>[0]),
     ).not.toThrow();
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
   });
 
   it("observe forwards explicit app scope and a bounded candidate count", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(ok({ candidates: [] }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ candidates: [] }));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -387,7 +596,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_observe",
       params: {
         goal: "save the document",
@@ -398,7 +607,7 @@ describe("unicli compute", () => {
   });
 
   it("capture combines snapshot and screenshot into one context packet", async () => {
-    cascadeMock.tryCascade
+    dispatchMock.dispatchComputeRoute
       .mockResolvedValueOnce(
         ok({
           format: "text",
@@ -445,8 +654,8 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).toHaveBeenCalledTimes(2);
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute).toHaveBeenCalledTimes(2);
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_snapshot",
       params: {
         app: "Calculator",
@@ -454,7 +663,7 @@ describe("unicli compute", () => {
         maxDepth: 4,
       },
     });
-    expect(cascadeMock.tryCascade.mock.calls[1]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[1]?.[1]).toEqual({
       kind: "compute_screenshot",
       params: {
         app: "Calculator",
@@ -533,7 +742,7 @@ describe("unicli compute", () => {
   });
 
   it("refuses a replayable combined capture without exact snapshot identity", async () => {
-    cascadeMock.tryCascade.mockResolvedValueOnce(
+    dispatchMock.dispatchComputeRoute.mockResolvedValueOnce(
       ok({
         format: "text",
         encoding: "compact",
@@ -551,7 +760,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).toHaveBeenCalledTimes(1);
+    expect(dispatchMock.dispatchComputeRoute).toHaveBeenCalledTimes(1);
     expect(cap.getStdout()).toBe("");
     const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(env).toMatchObject({
@@ -571,7 +780,7 @@ describe("unicli compute", () => {
     const onePixelPngBase64 =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
     const onePixelPng = Buffer.from(onePixelPngBase64, "base64");
-    cascadeMock.tryCascade.mockResolvedValueOnce(
+    dispatchMock.dispatchComputeRoute.mockResolvedValueOnce(
       ok({
         base64: onePixelPngBase64,
         mime: "image/png",
@@ -670,7 +879,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
     const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(env.ok).toBe(false);
@@ -692,7 +901,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
     const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(env.ok).toBe(false);
@@ -714,7 +923,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(2);
     const env = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(env.ok).toBe(false);
@@ -730,7 +939,7 @@ describe("unicli compute", () => {
     process.env.UNICLI_APP_SHOTS_ROOT = referenceRoot;
     const onePixelPngBase64 =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
-    cascadeMock.tryCascade
+    dispatchMock.dispatchComputeRoute
       .mockResolvedValueOnce(
         ok({
           encoding: "compact",
@@ -794,7 +1003,7 @@ describe("unicli compute", () => {
 
   it("capture can persist a reference under an explicit root", async () => {
     const referenceRoot = mkdtempSync(join(tmpdir(), "unicli-explicit-root-"));
-    cascadeMock.tryCascade.mockResolvedValueOnce(
+    dispatchMock.dispatchComputeRoute.mockResolvedValueOnce(
       ok({
         encoding: "compact",
         data: '@e1 window "Calculator"',
@@ -809,6 +1018,8 @@ describe("unicli compute", () => {
           "json",
           "compute",
           "capture",
+          "--app",
+          "Calculator",
           "--include",
           "snapshot",
           "--reference-root",
@@ -832,14 +1043,14 @@ describe("unicli compute", () => {
   });
 
   it("click emits a structured error and preserves the transport exit code", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       err({
         transport: "visual",
         step: 0,
         action: "compute_click",
         reason: "all transports failed: visual unavailable",
         suggestion: "inspect each transport: unicli doctor compute",
-        minimum_capability: "compute.compute_click.no-transport-available",
+        minimum_capability: "compute.compute_click.provider_unavailable",
         exit_code: 69,
       }),
     );
@@ -867,7 +1078,7 @@ describe("unicli compute", () => {
   });
 
   it("click exposes ref provenance error codes in the CLI envelope", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       err({
         transport: "visual",
         step: 0,
@@ -950,7 +1161,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(actionExecutionMock.executeComputeAction).toHaveBeenCalledTimes(1);
     expect(actionExecutionMock.executeComputeAction.mock.calls[0]?.[1]).toEqual(
       {
@@ -979,7 +1190,7 @@ describe("unicli compute", () => {
   });
 
   it("forwards explicit background mode with non-focusing semantics", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(ok({ clicked: true }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ clicked: true }));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -990,14 +1201,14 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_click",
       params: { ref: "@e7", background: true, focus: false },
     });
   });
 
   it("attach parses the CDP port before dispatching", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({
         port: 9333,
         webSocketDebuggerUrl: "ws://127.0.0.1:9333/page-1",
@@ -1015,7 +1226,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_cdp_attach",
       params: { port: 9333 },
     });
@@ -1025,7 +1236,7 @@ describe("unicli compute", () => {
   });
 
   it("attach forwards explicit relaunch confirmation", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({
         app: "notion",
         port: 9230,
@@ -1052,7 +1263,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_cdp_attach",
       params: { app: "notion", confirmRelaunch: true },
     });
@@ -1064,7 +1275,7 @@ describe("unicli compute", () => {
       directory,
       "session.json",
     );
-    cascadeMock.tryCascade
+    dispatchMock.dispatchComputeRoute
       .mockResolvedValueOnce(
         ok({
           port: 9333,
@@ -1106,11 +1317,11 @@ describe("unicli compute", () => {
       rmSync(directory, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_cdp_attach",
       params: { port: 9333, targetId: "page-b" },
     });
-    expect(cascadeMock.tryCascade.mock.calls[1]?.[1]).toMatchObject({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[1]?.[1]).toMatchObject({
       kind: "compute_evaluate",
       params: {
         script: "document.title",
@@ -1122,7 +1333,7 @@ describe("unicli compute", () => {
   });
 
   it("launch parses the Electron debug port before dispatching", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(ok({ launched: true }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ launched: true }));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -1141,7 +1352,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_launch",
       params: { app: "Visual Studio Code", debugPort: 9230 },
     });
@@ -1151,7 +1362,7 @@ describe("unicli compute", () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-cdp-"));
     const file = join(dir, "cdp-session.json");
     process.env.UNICLI_COMPUTE_CDP_SESSION_PATH = file;
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({
         app: "vscode",
         port: 9240,
@@ -1182,7 +1393,7 @@ describe("unicli compute", () => {
   });
 
   it("eval forwards JavaScript as the CDP script param", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(ok("Calculator"));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok("Calculator"));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -1193,7 +1404,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_evaluate",
       params: { script: "document.title" },
     });
@@ -1216,7 +1427,7 @@ describe("unicli compute", () => {
         savedAt: 123,
       }),
     );
-    cascadeMock.tryCascade.mockResolvedValue(ok("Editor"));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok("Editor"));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -1228,7 +1439,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_evaluate",
       params: {
         script: "document.title",
@@ -1255,7 +1466,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(cap.getStdout()).toBe("");
     const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(envelope).toMatchObject({
@@ -1285,7 +1496,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(cap.getStdout()).toBe("");
     const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(envelope).toMatchObject({
@@ -1316,7 +1527,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade).not.toHaveBeenCalled();
+    expect(dispatchMock.dispatchComputeRoute).not.toHaveBeenCalled();
     expect(cap.getStdout()).toBe("");
     const envelope = JSON.parse(cap.getStderr()) as Record<string, unknown>;
     expect(envelope).toMatchObject({
@@ -1345,7 +1556,9 @@ describe("unicli compute", () => {
         savedAt: 123,
       }),
     );
-    cascadeMock.tryCascade.mockResolvedValue(ok({ format: "text", data: "" }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
+      ok({ format: "text", data: "" }),
+    );
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -1357,7 +1570,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_snapshot",
       params: {
         app: "Calculator",
@@ -1405,7 +1618,7 @@ describe("unicli compute", () => {
         savedAt: 123,
       }),
     );
-    cascadeMock.tryCascade.mockResolvedValue(ok({ matched: true }));
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ matched: true }));
     const cap = captureConsole();
     try {
       await newProgram().parseAsync(
@@ -1417,7 +1630,7 @@ describe("unicli compute", () => {
       rmSync(dir, { recursive: true, force: true });
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_wait",
       params: { ref: "@e1", state: "focused", timeoutMs: 10_000 },
     });
@@ -1451,7 +1664,7 @@ describe("unicli compute", () => {
         ],
       }),
     );
-    cascadeMock.tryCascade.mockImplementation(async (bus) =>
+    dispatchMock.dispatchComputeRoute.mockImplementation(async (bus) =>
       ok(bus.refs.resolve("@e1")),
     );
     const cap = captureConsole();
@@ -1486,7 +1699,7 @@ describe("unicli compute", () => {
   });
 
   it("find forwards text filters for value-based ref lookup", async () => {
-    cascadeMock.tryCascade.mockResolvedValue(
+    dispatchMock.dispatchComputeRoute.mockResolvedValue(
       ok({
         alias: "@e2",
         role: "text",
@@ -1514,7 +1727,7 @@ describe("unicli compute", () => {
       cap.restore();
     }
 
-    expect(cascadeMock.tryCascade.mock.calls[0]?.[1]).toEqual({
+    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
       kind: "compute_find",
       params: { role: "input", text: "8", first: true },
     });

@@ -22,7 +22,7 @@ describe("createBrowserInvocationContext", () => {
       metadata,
     });
     expect(context).toEqual({
-      agent_session_id: "codex-thread",
+      agent_session_id: expect.stringMatching(/^mcp:[a-f0-9]{64}$/),
       turn_id: expect.stringMatching(/^invocation:/),
       transport: "mcp-stdio",
       upstream_turn_id: "codex-turn",
@@ -51,7 +51,7 @@ describe("createBrowserInvocationContext", () => {
         },
       }),
     ).toMatchObject({
-      agent_session_id: "codex-thread",
+      agent_session_id: expect.stringMatching(/^mcp:[a-f0-9]{64}$/),
       turn_id: expect.stringMatching(/^invocation:/),
       upstream_turn_id: "codex-turn",
     });
@@ -67,9 +67,48 @@ describe("createBrowserInvocationContext", () => {
       mcpSessionId: "mcp-session",
     });
 
-    expect(first.agent_session_id).toBe("mcp-session");
-    expect(second.agent_session_id).toBe("mcp-session");
+    expect(first.agent_session_id).toMatch(/^mcp:[a-f0-9]{64}$/);
+    expect(second.agent_session_id).toBe(first.agent_session_id);
     expect(first.turn_id).not.toBe(second.turn_id);
+  });
+
+  it("partitions the same declared thread by authenticated principal", () => {
+    const metadata = {
+      "x-codex-turn-metadata": { thread_id: "shared-caller-value" },
+    };
+    const first = createBrowserInvocationContext({
+      transport: "mcp-http",
+      principalId: "principal-a",
+      mcpSessionId: "session-a",
+      metadata,
+    });
+    const second = createBrowserInvocationContext({
+      transport: "mcp-http",
+      principalId: "principal-b",
+      mcpSessionId: "session-a",
+      metadata,
+    });
+    expect(first.agent_session_id).not.toBe(second.agent_session_id);
+  });
+
+  it("keeps sessionless HTTP stable within one verified principal", () => {
+    const first = createBrowserInvocationContext({
+      transport: "mcp-http",
+      principalId: "principal-a",
+    });
+    const second = createBrowserInvocationContext({
+      transport: "mcp-http",
+      principalId: "principal-a",
+    });
+    const isolated = createBrowserInvocationContext({
+      transport: "mcp-http",
+      principalId: "principal-b",
+    });
+
+    expect(first.agent_session_id).toMatch(/^mcp:[a-f0-9]{64}$/);
+    expect(second.agent_session_id).toBe(first.agent_session_id);
+    expect(isolated.agent_session_id).not.toBe(first.agent_session_id);
+    expect(second.turn_id).not.toBe(first.turn_id);
   });
 
   it("lets an explicit CLI identity override ambient metadata", () => {

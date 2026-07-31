@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::cnipa::legal-status
  * @does        Browser-driven CNIPA legal-status lookup — scrapes the prosecution timeline + grant status from the 公众查询 detail page; emits structured envelopes for captcha / not-found / MCP-bus gaps.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cnipa/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cnipa/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.legal-status)
- * @breaks      emits PATENT_INVALID_NUMBER, PATENT_BROWSER_CAPTCHA, PATENT_API_DEPRECATED (with MCP_BUS_MISSING context); never synthesizes a status
+ * @breaks      emits PATENT_INVALID_NUMBER, PATENT_BROWSER_CAPTCHA, PATENT_API_DEPRECATED (with browser provider unavailable context); never synthesizes a status
  * @invariants  output row carries `legal_status` exactly as scraped; no normalization beyond trim
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/cnipa/search.test.ts (shared transport-error path)
@@ -15,12 +15,12 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import {
   cnipaEnvelope,
   looksLikeCaptcha,
   navigateAndExtract,
-  transportErrorToEnvelope,
 } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/cnipa/legal-status.ts";
@@ -50,9 +50,12 @@ const EXTRACTOR = `(() => {
   };
 })()`;
 
-export async function runCnipaLegalStatus(kwargs: {
-  publication_number: string;
-}): Promise<unknown[]> {
+export async function runCnipaLegalStatus(
+  page: IPage,
+  kwargs: {
+    publication_number: string;
+  },
+): Promise<unknown[]> {
   const pubNo = String(kwargs.publication_number ?? "").trim();
   if (pubNo.length === 0) {
     return [
@@ -68,31 +71,20 @@ export async function runCnipaLegalStatus(kwargs: {
   }
   const url = `${CNIPA_LEGAL_URL}?pubNo=${encodeURIComponent(pubNo)}`;
   let detail: CnipaLegalRow;
-  try {
-    const result = await navigateAndExtract<CnipaLegalRow>(url, EXTRACTOR);
-    if (!result.data) {
-      return [
-        {
-          envelope: cnipaEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "mcp-browser evaluate returned no data",
-          ),
-        },
-      ];
-    }
-    detail = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToEnvelope(err, ADAPTER_PATH, "navigate"),
-        },
-      ];
-    }
-    throw err;
+  const result = await navigateAndExtract<CnipaLegalRow>(page, url, EXTRACTOR);
+  if (!result.data) {
+    return [
+      {
+        envelope: cnipaEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "managed browser evaluate returned no data",
+        ),
+      },
+    ];
   }
+  detail = result.data;
   const fieldCount = [detail.publication_number, detail.legal_status].filter(
     Boolean,
   ).length;
@@ -145,6 +137,8 @@ cli({
     {
       name: "publication_number",
       type: "str",
+      minLength: 1,
+      pattern: "^CN-?[A-Z0-9]+-?[A-Z][0-9]?$",
       required: true,
       positional: true,
       description: "ST.16 publication number",
@@ -152,11 +146,15 @@ cli({
   ],
   columns: ["publication_number", "legal_status", "status_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.legal-status",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runCnipaLegalStatus(kwargs as { publication_number: string }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runCnipaLegalStatus(
+      requireBrowserPage(page),
+      kwargs as { publication_number: string },
+    ),
 });

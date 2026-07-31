@@ -33,7 +33,7 @@ newer snapshot.
 ## Permissions
 
 On macOS, grant Accessibility to the terminal or app that launches Claude Code.
-Grant Screen Recording if you want screenshot fallback. Windows and Linux use
+Grant Screen Recording if you want screenshot capture. Windows and Linux use
 the UIA and AT-SPI sidecars respectively.
 
 ## Verify

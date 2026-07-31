@@ -1,8 +1,8 @@
 /**
  * @owner   src/transport/adapters/visual.ts
- * @does    Provide Uni-CLI's request-contained screenshot-plus-model visual fallback transport, with explicit test mocks and fail-closed production selection.
+ * @does    Provide Uni-CLI's explicitly selected request-contained screenshot-plus-model visual transport, with test mocks and fail-closed production selection.
  * @needs   core/envelope, transport/types
- * @feeds   src/transport/bus.ts, src/engine/steps/visual.ts, compute cascade visual fallback
+ * @feeds   src/transport/bus.ts, src/engine/steps/visual.ts, explicitly selected visual compute routes
  * @breaks  A backend without explicit abort containment, or a shell that overwrites fulfillment with late cancellation, can duplicate desktop input.
  * @invariants Backend selection is deterministic and never silently chooses a mock; legacy non-cancellable backends fail closed; mutations invalidate cached screenshots; fulfilled actions are authoritative and cancellation-caused mutation rejection is outcome-ambiguous.
  * @side-effects May click, type, scroll, drag, or launch through a configured backend.
@@ -409,7 +409,7 @@ export class VisualTransport implements TransportAdapter {
     try {
       const envelope = await settleDispatchedAction(
         req.kind,
-        req.canMutate ?? !VISUAL_READ_ONLY_ACTIONS.has(req.kind),
+        !VISUAL_READ_ONLY_ACTIONS.has(req.kind) || req.canMutate === true,
         req.signal,
         () => this.dispatch<T>(req),
       );

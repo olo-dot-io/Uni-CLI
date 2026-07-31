@@ -71,6 +71,39 @@ export interface LocalProfileDiscoveryOptions {
   env?: NodeJS.ProcessEnv;
 }
 
+export type BrowserIdentitySelection =
+  | {
+      status: "selected";
+      profile: LocalBrowserProfile;
+      source: "explicit" | "preferred";
+    }
+  | { status: "unavailable"; requested_profile_id?: string }
+  | { status: "ambiguous"; profile_ids: string[] };
+
+export class LocalBrowserProfileSelectionError extends Error {
+  readonly code: "browser_profile_unavailable" | "browser_profile_ambiguous";
+
+  constructor(
+    readonly selection: Exclude<
+      BrowserIdentitySelection,
+      { status: "selected" }
+    >,
+  ) {
+    super(
+      selection.status === "ambiguous"
+        ? `Multiple local browser profiles are available and no profile was selected: ${selection.profile_ids.join(", ")}`
+        : selection.requested_profile_id
+          ? `Local browser profile not found: ${selection.requested_profile_id}`
+          : "No local browser profile is available",
+    );
+    this.name = "LocalBrowserProfileSelectionError";
+    this.code =
+      selection.status === "ambiguous"
+        ? "browser_profile_ambiguous"
+        : "browser_profile_unavailable";
+  }
+}
+
 interface CandidateInstall {
   browserName: string;
   browserPath: string;
@@ -97,21 +130,50 @@ export function resolveLocalBrowserProfile(
 export function resolvePreferredLocalBrowserProfile(
   opts: LocalProfileDiscoveryOptions & { profileId?: string } = {},
 ): LocalBrowserProfile | null {
-  const requested = opts.profileId ?? opts.env?.UNICLI_BROWSER_PROFILE_ID;
-  if (requested) return resolveLocalBrowserProfile(requested, opts);
+  const selection = selectLocalBrowserIdentity(opts);
+  return selection.status === "selected" ? selection.profile : null;
+}
 
-  const profiles = detectLocalBrowserProfiles(opts);
-  return (
-    profiles.find((profile) => profile.id === "google-chrome:Default") ??
-    profiles.find(
-      (profile) =>
-        profile.browser_name === "Google Chrome" &&
-        profile.profile_dir === "Default",
-    ) ??
-    profiles.find((profile) => profile.profile_dir === "Default") ??
-    profiles[0] ??
-    null
+export function selectLocalBrowserIdentity(
+  opts: LocalProfileDiscoveryOptions & { profileId?: string } = {},
+): BrowserIdentitySelection {
+  const requested = opts.profileId ?? opts.env?.UNICLI_BROWSER_PROFILE_ID;
+  return selectBrowserIdentityFromProfiles(
+    detectLocalBrowserProfiles(opts),
+    requested,
   );
+}
+
+export function selectBrowserIdentityFromProfiles(
+  profiles: readonly LocalBrowserProfile[],
+  requestedProfileId?: string,
+): BrowserIdentitySelection {
+  if (requestedProfileId) {
+    const profile = profiles.find(
+      (candidate) => candidate.id === requestedProfileId,
+    );
+    return profile
+      ? { status: "selected", profile, source: "explicit" }
+      : { status: "unavailable", requested_profile_id: requestedProfileId };
+  }
+  if (profiles.length === 0) return { status: "unavailable" };
+  if (profiles.length === 1) {
+    return { status: "selected", profile: profiles[0], source: "preferred" };
+  }
+  return {
+    status: "ambiguous",
+    profile_ids: profiles.map((profile) => profile.id).sort(),
+  };
+}
+
+export function requireLocalBrowserIdentity(
+  opts: LocalProfileDiscoveryOptions & { profileId?: string } = {},
+): Extract<BrowserIdentitySelection, { status: "selected" }> {
+  const selection = selectLocalBrowserIdentity(opts);
+  if (selection.status !== "selected") {
+    throw new LocalBrowserProfileSelectionError(selection);
+  }
+  return selection;
 }
 
 export function automationDefaultUserDataDir(

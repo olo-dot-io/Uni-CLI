@@ -216,6 +216,17 @@ function coerce(value: string, type: AdapterArg["type"]): unknown {
       return Number.parseFloat(value);
     case "bool":
       return value === "true" || value === "1" || value === "yes";
+    case "str-or-int": {
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) && String(parsed) === value.trim()
+        ? parsed
+        : value;
+    }
+    case "str[]":
+      return value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
     default:
       return value;
   }

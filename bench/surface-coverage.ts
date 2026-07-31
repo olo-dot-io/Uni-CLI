@@ -1,7 +1,7 @@
 /**
  * @owner   bench/surface-coverage.ts
  * @does    Compare Uni-CLI active command coverage against the synced surface reference and tracked signal cases.
- * @needs   dist/manifest.json, ref/reference/cli-manifest.json, optional src/adapters/_archived/archive.json
+ * @needs   dist/manifest.json, ref/agent-control-plane/opencli/cli-manifest.json, optional src/adapters/_archived/archive.json
  * @feeds   tests/unit/surface-coverage.test.ts, npm run bench:surface-coverage, roadmap coverage evidence
  * @breaks  Missing active commands, stale reference manifests, or untracked archive exclusions skew parity reporting.
  */
@@ -14,6 +14,11 @@ import { dirname } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = join(HERE, "..");
+const REFERENCE_REPO_PATH = ["ref", "agent-control-plane", "opencli"] as const;
+
+function referenceRepoRoot(repoRoot: string): string {
+  return join(repoRoot, ...REFERENCE_REPO_PATH);
+}
 
 export interface CommandSurface {
   source: string;
@@ -95,6 +100,13 @@ export interface SurfaceCoverageReport {
   };
   coverage: {
     site_coverage: number;
+    exact_site_coverage: number;
+    functional_site_coverage: number;
+    exact_missing_sites: number;
+    functional_missing_sites: number;
+    exact_command_coverage: number;
+    functional_command_coverage: number;
+    exact_missing_commands: number;
     command_coverage: number;
     missing_sites: number;
     missing_commands: number;
@@ -105,6 +117,7 @@ export interface SurfaceCoverageReport {
   };
   missing: {
     sites: string[];
+    functional_sites: string[];
     commands: string[];
   };
   archived: {
@@ -448,7 +461,7 @@ export function readUniSurface(repoRoot: string): CommandSurface {
 }
 
 export function readReferenceSurface(repoRoot: string): CommandSurface {
-  const manifestPath = join(repoRoot, "ref", "reference", "cli-manifest.json");
+  const manifestPath = join(referenceRepoRoot(repoRoot), "cli-manifest.json");
   if (!existsSync(manifestPath)) {
     throw new Error(`missing surface reference manifest: ${manifestPath}`);
   }
@@ -493,7 +506,7 @@ export function readArchivedSurface(repoRoot: string): CommandSurface {
 function readReferenceGit(
   repoRoot: string,
 ): SurfaceCoverageReport["reference"]["git"] {
-  const refRoot = join(repoRoot, "ref", "reference");
+  const refRoot = referenceRepoRoot(repoRoot);
   if (!existsSync(join(refRoot, ".git"))) return undefined;
   const res = spawnSync(
     "git",
@@ -595,7 +608,25 @@ export function buildCommandParityLedger(
 ): CommandParityLedger {
   const uniCommands = new Set(uni.command_keys);
   const archivedCommands = new Set(archived.command_keys);
+  const referenceCommands = new Set(reference.command_keys);
   const mappingByCommand = validateCommandParityMappings(mappings);
+  for (const mapping of mappings) {
+    if (!referenceCommands.has(mapping.reference_command)) {
+      throw new Error(
+        `command coverage mapping targets unknown reference command: ${mapping.reference_command}`,
+      );
+    }
+    if (uniCommands.has(mapping.reference_command)) {
+      throw new Error(
+        `command coverage mapping is redundant with an exact command: ${mapping.reference_command}`,
+      );
+    }
+    if (!mapping.uni_command || !uniCommands.has(mapping.uni_command)) {
+      throw new Error(
+        `command coverage mapping targets unknown Uni-CLI command: ${mapping.uni_command ?? "<missing>"}`,
+      );
+    }
+  }
   const summary: Record<CommandParityStatus, number> = {
     implemented: 0,
     equivalent: 0,
@@ -677,10 +708,23 @@ export function buildSurfaceCoverageReport(opts?: {
   const missingSites = [...referenceSites]
     .filter((site) => !uniSites.has(site))
     .sort();
+  const functionallyPresentSites = new Set(
+    ledger.commands
+      .filter((entry) => entry.status !== "missing")
+      .map((entry) => entry.reference_site),
+  );
+  const functionalMissingSites = [...referenceSites]
+    .filter(
+      (site) => !uniSites.has(site) && !functionallyPresentSites.has(site),
+    )
+    .sort();
   const missingCommands = ledger.commands
     .filter((entry) => entry.status === "missing")
     .map((entry) => entry.reference_command)
     .sort();
+  const exactMissingCommands = [...referenceCommands].filter(
+    (command) => !uniCommands.has(command),
+  );
   const archivedReferenceSites = [...referenceSites]
     .filter((site) => archivedSites.has(site))
     .sort();
@@ -721,6 +765,26 @@ export function buildSurfaceCoverageReport(opts?: {
           ? 1
           : (reference.sites - missingSites.length) / reference.sites,
       ),
+      exact_site_coverage: roundRatio(
+        reference.sites === 0
+          ? 1
+          : (reference.sites - missingSites.length) / reference.sites,
+      ),
+      functional_site_coverage: roundRatio(
+        reference.sites === 0
+          ? 1
+          : (reference.sites - functionalMissingSites.length) / reference.sites,
+      ),
+      exact_missing_sites: missingSites.length,
+      functional_missing_sites: functionalMissingSites.length,
+      exact_command_coverage: roundRatio(
+        reference.commands === 0
+          ? 1
+          : (reference.commands - exactMissingCommands.length) /
+              reference.commands,
+      ),
+      functional_command_coverage: ledger.functional_command_coverage,
+      exact_missing_commands: exactMissingCommands.length,
       command_coverage: roundRatio(
         reference.commands === 0
           ? 1
@@ -735,6 +799,7 @@ export function buildSurfaceCoverageReport(opts?: {
     },
     missing: {
       sites: missingSites,
+      functional_sites: functionalMissingSites,
       commands: missingCommands,
     },
     archived: {
@@ -798,7 +863,7 @@ function parseArgs(argv: string[]): {
         [
           "Usage: npm run bench:surface-coverage -- [--repo-root <path>] [--signals <json>] [--mappings <json>] [--fail-on-gaps]",
           "",
-          "Outputs a JSON report comparing dist/manifest.json with ref/reference/cli-manifest.json.",
+          "Outputs a JSON report comparing dist/manifest.json with ref/agent-control-plane/opencli/cli-manifest.json.",
         ].join("\n"),
       );
       process.exit(0);

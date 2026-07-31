@@ -22,7 +22,7 @@ export type ObjectiveStrategySubstrate =
   | "native-api"
   | "desktop-cdp"
   | "desktop-ax"
-  | "visual-fallback";
+  | "visual-coordinate";
 
 export type ObjectiveStrategyStatus = "executable" | "partial" | "missing";
 

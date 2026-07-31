@@ -1,6 +1,7 @@
 site: bbc
 name: top
 description: BBC top news headlines
+operation_effect: read
 domain: www.bbc.co.uk
 type: web-api
 strategy: public

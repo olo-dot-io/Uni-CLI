@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::cipo::search
  * @does        Browser-driven search of the Canadian Patents Database at cipo.ic.gc.ca/opic-cipo/cpd/eng/ — CIPO exposes no general open API for the patents corpus, so the browser route is the only programmatic surface.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cipo/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/cipo/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.search)
- * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (empty result), PATENT_API_DEPRECATED with MCP_BUS_MISSING (no outbound MCP transport)
+ * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (empty result), PATENT_API_DEPRECATED with browser provider unavailable (the declared browser provider is unavailable)
  * @invariants  rows are canonical PatentRecord; source_adapter='cipo'
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/cipo/search.test.ts
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  cipoEnvelope,
-  cipoNavigateAndExtract,
-  transportErrorToCipoEnvelope,
-} from "./_shared.js";
+import { cipoEnvelope, cipoNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/cipo/search.ts";
 const CIPO_SEARCH_URL =
@@ -60,10 +57,13 @@ function buildSearchUrl(query: string): string {
   return `${CIPO_SEARCH_URL}?${params.toString()}`;
 }
 
-export async function runCipoSearch(kwargs: {
-  query: string;
-  limit?: number;
-}): Promise<unknown[]> {
+export async function runCipoSearch(
+  page: IPage,
+  kwargs: {
+    query: string;
+    limit?: number;
+  },
+): Promise<unknown[]> {
   const limit =
     typeof kwargs.limit === "number" && Number.isFinite(kwargs.limit)
       ? Math.max(1, Math.min(100, Math.floor(kwargs.limit)))
@@ -83,34 +83,24 @@ export async function runCipoSearch(kwargs: {
   }
   const url = buildSearchUrl(query);
   let extract: { rows: CipoRow[] };
-  try {
-    const result = await cipoNavigateAndExtract<{ rows: CipoRow[] }>(
-      url,
-      EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: cipoEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "cipo evaluate returned no data; selector schema likely changed",
-          ),
-        },
-      ];
-    }
-    extract = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToCipoEnvelope(err, ADAPTER_PATH, "navigate"),
-        },
-      ];
-    }
-    throw err;
+  const result = await cipoNavigateAndExtract<{ rows: CipoRow[] }>(
+    page,
+    url,
+    EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: cipoEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "cipo evaluate returned no data; selector schema likely changed",
+        ),
+      },
+    ];
   }
+  extract = result.data;
   if (extract.rows.length === 0) {
     return [
       {
@@ -150,7 +140,7 @@ export async function runCipoSearch(kwargs: {
   if (out.length === 0) {
     out.push({
       envelope: cipoEnvelope(
-        "PATENT_NOT_FOUND",
+        "PATENT_SCHEMA_DRIFT",
         ADAPTER_PATH,
         "normalize",
         "cipo returned rows but none carried a valid publication_number",
@@ -172,6 +162,7 @@ cli({
     {
       name: "query",
       type: "str",
+      minLength: 1,
       required: true,
       positional: true,
       description: "Free-text query — matched on title/abstract/applicant",
@@ -185,11 +176,15 @@ cli({
   ],
   columns: ["publication_number", "title", "publication_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.search",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runCipoSearch(kwargs as { query: string; limit?: number }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runCipoSearch(
+      requireBrowserPage(page),
+      kwargs as { query: string; limit?: number },
+    ),
 });

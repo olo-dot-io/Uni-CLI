@@ -2,11 +2,11 @@
  * TransportBus — composition layer that routes a pipeline step to the
  * transport that can execute it on the current host.
  * @owner       src::transport::bus
- * @does        Own transport registration/routing and build request-scoped transport context for pipelines.
+ * @does        Own exact transport registration, reject ambiguous step-only selection, and build request-scoped transport context for pipelines.
  * @needs       transport adapters, capability matrix, refs, core envelopes.
  * @feeds       engine steps, compute CLI, plugin transport registration.
- * @breaks      NoTransportForStepError when capability routing cannot select an adapter.
- * @invariants  The shared adapter registry never becomes the owner of per-request cancellation or Agent identity; those arrive only through TransportContext.
+ * @breaks      NoTransportForStepError when capability routing cannot select exactly one adapter.
+ * @invariants  Step-only lookup succeeds for one provider and rejects multiple providers; the shared adapter registry never owns per-request cancellation or Agent identity.
  * @side-effects Lazily constructs process-shared adapters and reads cwd/environment when building context.
  * @perf        O(number of candidate transports) routing.
  * @concurrency Shared adapters receive independent request contexts; per-request state must not be stored globally.
@@ -48,6 +48,7 @@ import { DesktopAtspiTransport } from "./adapters/desktop-atspi.js";
 import { HttpTransport } from "./adapters/http.js";
 import { SubprocessTransport } from "./adapters/subprocess.js";
 import { CdpBrowserTransport } from "./adapters/cdp-browser.js";
+import { CuaDriverTransport } from "./adapters/cua-driver.js";
 import { RefStore } from "./refs.js";
 import type {
   TransportAdapter,
@@ -138,7 +139,7 @@ class TransportBusImpl implements TransportBus {
           step: 0,
           action: step,
           reason: `unknown step "${step}" — not present in capability matrix`,
-          suggestion: `check the 49-step matrix in src/transport/capability.ts or rename the step`,
+          suggestion: "check src/transport/capability.ts or rename the step",
           minimum_capability: `unknown.${step}`,
         }),
       );
@@ -156,18 +157,33 @@ class TransportBusImpl implements TransportBus {
           step: 0,
           action: step,
           reason: `no transport for step ${step} on platform ${hostPlatform}`,
-          suggestion: `step requires ${row.platforms.join(" | ")}; run on that host or use a fallback transport`,
+          suggestion: `step requires ${row.platforms.join(" | ")}; run on that host or select another declared operation`,
           minimum_capability: `${requiredTransport}.${step}`,
           exit_code: 69, // SERVICE_UNAVAILABLE — OS-gated
         }),
       );
     }
 
-    // Walk the matrix in declaration order; pick the first registered
-    // transport that declares support for the step.
-    for (const kind of row.transports) {
+    const candidates = row.transports.flatMap((kind) => {
       const adapter = this.adapters.get(kind);
-      if (adapter && adapter.capability.steps.includes(step)) return adapter;
+      return adapter?.capability.steps.includes(step) ? [adapter] : [];
+    });
+    if (candidates.length === 1 && candidates[0]) {
+      return candidates[0];
+    }
+    if (candidates.length > 1) {
+      const kinds = candidates.map((candidate) => candidate.kind);
+      throw new NoTransportForStepError(
+        err({
+          transport: kinds[0] ?? "http",
+          step: 0,
+          action: step,
+          reason: `ambiguous transport for step ${step}: ${kinds.join(", ")}`,
+          suggestion:
+            "select a provider from the task contract, then call bus.get(kind)",
+          minimum_capability: `route.${step}.provider_required`,
+        }),
+      );
     }
 
     const requiredTransport = row.transports[0] ?? "http";
@@ -195,13 +211,15 @@ export { stepPlatform, stepSupportedBy };
 // --- Shared bus lifecycle -------------------------------------------------
 
 let sharedBus: TransportBus | undefined;
+const namespacedBuses = new Map<string, TransportBus>();
+const MAX_REF_NAMESPACES = 512;
 
 /**
  * Process-wide shared bus used by the YAML runner and available to
  * plugins for registering additional {@link TransportAdapter}s.
  *
- * First call constructs a bus pre-populated with the seven built-in
- * transports (HTTP, CDP, subprocess, desktop AX/UIA/AT-SPI, Visual).
+ * First call constructs a bus pre-populated with the built-in transports
+ * (HTTP, CDP, subprocess, desktop AX/UIA/AT-SPI, optional Cua Driver, Visual).
  * Subsequent calls return the same instance. Calling `register()` on
  * the returned bus is the supported plugin extension point:
  *
@@ -219,9 +237,47 @@ export function getBus(): TransportBus {
   bus.register(new DesktopAxTransport());
   bus.register(new DesktopUiaTransport());
   bus.register(new DesktopAtspiTransport());
+  bus.register(new CuaDriverTransport());
   bus.register(new VisualTransport());
   sharedBus = bus;
   return bus;
+}
+
+/**
+ * Return a transport bus whose ref authority is isolated to one trusted
+ * principal/session namespace while sharing the process-wide adapter set.
+ */
+export function getNamespacedBus(namespace: string): TransportBus {
+  const normalized = namespace.trim();
+  if (!normalized || normalized.length > 512 || /\p{Cc}/u.test(normalized)) {
+    throw new TypeError("transport ref namespace must be a bounded identity");
+  }
+  const adapters = getBus().list();
+  const existing = namespacedBuses.get(normalized);
+  if (existing) {
+    for (const adapter of adapters) existing.register(adapter);
+    return existing;
+  }
+  if (namespacedBuses.size >= MAX_REF_NAMESPACES) {
+    throw new Error(
+      `transport ref namespace capacity reached (${MAX_REF_NAMESPACES}); close an inactive MCP session before admitting another namespace`,
+    );
+  }
+  const bus = createTransportBus();
+  for (const adapter of adapters) bus.register(adapter);
+  namespacedBuses.set(normalized, bus);
+  return bus;
+}
+
+export function releaseTransportBusNamespace(namespace: string): void {
+  const bus = namespacedBuses.get(namespace);
+  bus?.refs.clear();
+  namespacedBuses.delete(namespace);
+}
+
+export function releaseAllTransportBusNamespaces(): void {
+  for (const bus of namespacedBuses.values()) bus.refs.clear();
+  namespacedBuses.clear();
 }
 
 /**
@@ -231,6 +287,7 @@ export function getBus(): TransportBus {
  */
 export function _resetTransportBusForTests(): void {
   sharedBus = undefined;
+  releaseAllTransportBusNamespaces();
 }
 
 /**

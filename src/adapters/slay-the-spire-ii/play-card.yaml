@@ -2,6 +2,7 @@
 site: slay-the-spire-ii
 name: play-card
 description: Play a card from hand during combat
+operation_effect: local_app
 type: service
 strategy: public
 base: "http://localhost:15526"

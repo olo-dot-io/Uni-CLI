@@ -6,6 +6,7 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
+import { throwProviderReportedFailure } from "../_shared/actionable-error.js";
 
 cli({
   site: "jike",
@@ -13,6 +14,7 @@ cli({
   description: "Create a Jike post",
   domain: "web.okjike.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "publish_content",
   browser: true,
   args: [
     {
@@ -74,7 +76,10 @@ cli({
     })()`)) as { ok: boolean; message?: string };
 
     if (!textResult.ok) {
-      return [{ status: "failed", message: textResult.message }];
+      throwProviderReportedFailure(
+        textResult.message,
+        "Inspect the Jike composer and login state before retrying.",
+      );
     }
 
     const submitResult = (await p.evaluate(`(async () => {
@@ -94,15 +99,13 @@ cli({
       }
     })()`)) as { ok: boolean; message: string };
 
-    if (submitResult.ok) {
-      await p.wait(3);
+    if (!submitResult.ok) {
+      throwProviderReportedFailure(
+        submitResult.message,
+        "Inspect the Jike submit control and current composer state before retrying.",
+      );
     }
-
-    return [
-      {
-        status: submitResult.ok ? "success" : "failed",
-        message: submitResult.message,
-      },
-    ];
+    await p.wait(3);
+    return [{ status: "success", message: submitResult.message }];
   },
 });

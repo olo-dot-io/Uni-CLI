@@ -80,6 +80,7 @@ describe("DesktopUiaTransport", () => {
     const res = await t.action({
       kind: "uia_invoke",
       params: { ref: "@e1" },
+      canMutate: false,
     });
 
     expect(res.ok).toBe(true);
@@ -89,10 +90,40 @@ describe("DesktopUiaTransport", () => {
         stable: "desktop-uia:123:Window[0]/Button[0]",
       });
     }
+    expect(res.effect_verdict).toMatchObject({
+      status: "unverifiable",
+      evidence: "dispatch_receipt",
+      verification: "accessibility-state",
+    });
     expect(sidecar.calls).toEqual([
       { kind: "uia_invoke", params: { ref: "@e1" } },
     ]);
     expect(sidecar.deliveries).toEqual(["outcome-ambiguous"]);
+  });
+
+  it("preserves a valid sidecar postcondition verdict", async () => {
+    const sidecar = new FakeSidecar(async () => ({
+      invoked: true,
+      effect_verdict: {
+        status: "confirmed",
+        evidence: "postcondition_observation",
+        reason: "fresh UIA state matched the requested postcondition",
+      },
+    }));
+    const t = new DesktopUiaTransport({ platform: "win32", sidecar });
+    await t.open(makeCtx());
+
+    const res = await t.action({
+      kind: "uia_invoke",
+      params: { ref: "@e1" },
+    });
+
+    expect(res.effect_verdict).toEqual({
+      status: "confirmed",
+      evidence: "postcondition_observation",
+      reason: "fresh UIA state matched the requested postcondition",
+      verification: "accessibility-state",
+    });
   });
 
   it("forwards UIA assert actions to the sidecar on Windows", async () => {

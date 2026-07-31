@@ -38,22 +38,42 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
       status: "loaded",
       source: "disk",
       cookies: { a: "1" },
+      credential_identity: {
+        profile_id: "persisted-site:bilibili",
+        selection_source: "explicit",
+      },
     });
   });
 
-  it("falls through disk→browser→cdp and reports the loading source", async () => {
+  it("executes an explicit CDP plan without probing disk or browser", async () => {
+    let diskCalled = false;
+    let browserCalled = false;
     const out = await loadCookiesWithDiagnostics(
       "x",
       "x.com",
       sources({
-        readBrowser: async () => ({ kind: "none" }),
+        readDisk: () => {
+          diskCalled = true;
+          return { kind: "absent" };
+        },
+        readBrowser: async () => {
+          browserCalled = true;
+          return { kind: "none" };
+        },
         readCdp: async () => ({ s: "v" }),
       }),
+      { source: "cdp" },
     );
+    expect(diskCalled).toBe(false);
+    expect(browserCalled).toBe(false);
     expect(out).toEqual({
       status: "loaded",
       source: "cdp",
       cookies: { s: "v" },
+      credential_identity: {
+        profile_id: "cdp-domain:x.com",
+        selection_source: "explicit",
+      },
     });
   });
 
@@ -76,6 +96,10 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
       status: "loaded",
       source: "cdp",
       cookies: { clearance: "live" },
+      credential_identity: {
+        profile_id: "cdp-domain:openreview.net",
+        selection_source: "explicit",
+      },
     });
   });
 
@@ -96,48 +120,53 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
           ],
         }),
       }),
+      { source: "browser" },
     );
     expect(out.status).toBe("error");
     if (out.status !== "error") throw new Error("unreachable");
     expect(out.reasons.map((r) => r.code)).toContain("keychain_denied");
   });
 
-  it("accumulates a corrupt-disk reason together with a cdp failure", async () => {
+  it("returns a corrupt-disk reason without probing another authority", async () => {
+    let cdpCalled = false;
     const out = await loadCookiesWithDiagnostics(
       "x",
       "x.com",
       sources({
         readDisk: () => ({ kind: "corrupt", detail: "bad json" }),
         readCdp: async () => {
+          cdpCalled = true;
           throw new Error("ECONNREFUSED 9222");
         },
       }),
     );
     expect(out.status).toBe("error");
     if (out.status !== "error") throw new Error("unreachable");
-    expect(out.reasons.map((r) => r.code).sort()).toEqual([
-      "cdp_unavailable",
-      "corrupt_file",
-    ]);
+    expect(out.reasons.map((r) => r.code)).toEqual(["corrupt_file"]);
+    expect(cdpCalled).toBe(false);
   });
 
-  it("a corrupt disk file does NOT mask a successful browser load", async () => {
+  it("does not switch from a corrupt disk plan to browser credentials", async () => {
+    let browserCalled = false;
     const out = await loadCookiesWithDiagnostics(
       "x",
       "x.com",
       sources({
         readDisk: () => ({ kind: "corrupt", detail: "bad" }),
-        readBrowser: async () => ({ kind: "ok", cookies: { b: "2" } }),
+        readBrowser: async () => {
+          browserCalled = true;
+          return { kind: "ok", cookies: { b: "2" } };
+        },
       }),
     );
     expect(out).toEqual({
-      status: "loaded",
-      source: "browser",
-      cookies: { b: "2" },
+      status: "error",
+      reasons: [{ source: "disk", code: "corrupt_file", detail: "bad" }],
     });
+    expect(browserCalled).toBe(false);
   });
 
-  it("honors UNICLI_COOKIE_NO_BROWSER=1 by skipping the browser source", async () => {
+  it("fails the selected browser plan when browser acquisition is disabled", async () => {
     process.env.UNICLI_COOKIE_NO_BROWSER = "1";
     let browserCalled = false;
     const out = await loadCookiesWithDiagnostics(
@@ -148,14 +177,22 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
           browserCalled = true;
           return { kind: "ok", cookies: { skip: "me" } };
         },
-        readCdp: async () => ({ via: "cdp" }),
+        readCdp: async () => {
+          throw new Error("CDP must not be probed");
+        },
       }),
+      { source: "browser" },
     );
     expect(browserCalled).toBe(false);
     expect(out).toEqual({
-      status: "loaded",
-      source: "cdp",
-      cookies: { via: "cdp" },
+      status: "error",
+      reasons: [
+        {
+          source: "browser",
+          code: "browser_source_disabled",
+          detail: "UNICLI_COOKIE_NO_BROWSER=1",
+        },
+      ],
     });
   });
 });
@@ -206,10 +243,9 @@ describe("describeCookieFailure — distinct, actionable guidance per cause", ()
 });
 
 describe("default browser cookie source", () => {
-  it("tries the preferred local browser profile before installed-browser fallback", async () => {
+  it("reads only the selected local browser profile and carries its identity", async () => {
     vi.resetModules();
     const readCookiesAsRecord = vi.fn().mockReturnValue({ sid: "preferred" });
-    const detectInstalledBrowsers = vi.fn().mockReturnValue(["chrome"]);
     vi.doMock("../../../src/engine/chromium-cookies.js", () => {
       class ChromiumCookieError extends Error {
         readonly code = "no_profile";
@@ -217,29 +253,39 @@ describe("default browser cookie source", () => {
       return {
         ChromiumCookieError,
         readCookiesAsRecord,
-        detectInstalledBrowsers,
       };
     });
     vi.doMock("../../../src/browser/local-profiles.js", () => ({
       browserCookieIdForLocalProfile: vi.fn(() => "chrome"),
-      resolvePreferredLocalBrowserProfile: vi.fn(() => ({
-        browser_name: "Google Chrome",
-        user_data_dir: "/Users/me/Library/Application Support/Google/Chrome",
-        profile_dir: "Default",
-        display_name: "Google Chrome - Me",
+      selectLocalBrowserIdentity: vi.fn(() => ({
+        status: "selected",
+        source: "explicit",
+        profile: {
+          id: "google-chrome:Default",
+          browser_name: "Google Chrome",
+          user_data_dir: "/Users/me/Library/Application Support/Google/Chrome",
+          profile_dir: "Default",
+          display_name: "Google Chrome - Me",
+        },
       })),
     }));
 
     const mod = await import("../../../src/engine/cookie-source.js");
     const out = await mod.defaultCookieSources.readBrowser("example.com");
 
-    expect(out).toEqual({ kind: "ok", cookies: { sid: "preferred" } });
+    expect(out).toEqual({
+      kind: "ok",
+      cookies: { sid: "preferred" },
+      credential_identity: {
+        profile_id: "google-chrome:Default",
+        selection_source: "explicit",
+      },
+    });
     expect(readCookiesAsRecord).toHaveBeenCalledWith({
       browser: "chrome",
       domain: "example.com",
       profile: "Default",
       userDataDir: "/Users/me/Library/Application Support/Google/Chrome",
     });
-    expect(detectInstalledBrowsers).not.toHaveBeenCalled();
   });
 });

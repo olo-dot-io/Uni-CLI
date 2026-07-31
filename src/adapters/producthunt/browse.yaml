@@ -1,6 +1,7 @@
 site: producthunt
 name: browse
 description: Browse Product Hunt products by category
+operation_effect: read
 domain: www.producthunt.com
 type: web-api
 strategy: public

@@ -13,7 +13,7 @@
  * @since       2026-04-01
  */
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 function isLocalhostRedirect(uri: string): boolean {
@@ -32,19 +32,29 @@ interface AuthCode {
   clientId: string;
   codeChallenge: string;
   redirectUri: string;
+  resource: string;
   expiresAt: number;
 }
 interface Token {
   clientId: string;
+  resource: string;
   expiresAt: number;
+}
+interface ConsentTransaction extends AuthCode {
+  state?: string;
 }
 
 const authCodes = new Map<string, AuthCode>();
 const tokens = new Map<string, Token>();
+const consentTransactions = new Map<string, ConsentTransaction>();
 const requestPrincipals = new WeakMap<IncomingMessage, string>();
 const AUTH_CODE_TTL_MS = 60_000;
+const CONSENT_TTL_MS = 5 * 60_000;
 const TOKEN_TTL_S = 3_600;
 const TOKEN_TTL_MS = TOKEN_TTL_S * 1_000;
+const MAX_AUTH_CODES = 256;
+const MAX_CONSENT_TRANSACTIONS = 256;
+const MAX_TOKENS = 512;
 
 function generateHex(bytes: number): string {
   return randomBytes(bytes).toString("hex");
@@ -88,6 +98,29 @@ function pruneExpired(): void {
   const now = Date.now();
   for (const [k, v] of authCodes) if (v.expiresAt <= now) authCodes.delete(k);
   for (const [k, v] of tokens) if (v.expiresAt <= now) tokens.delete(k);
+  for (const [k, v] of consentTransactions) {
+    if (v.expiresAt <= now) consentTransactions.delete(k);
+  }
+}
+function admitBounded<T>(store: Map<string, T>, limit: number): void {
+  while (store.size >= limit) {
+    const oldest = store.keys().next().value as string | undefined;
+    if (oldest === undefined) break;
+    store.delete(oldest);
+  }
+}
+function tokenKey(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
+}
+function requestOrigin(req: IncomingMessage): string {
+  const host = req.headers.host;
+  if (!host || !/^[a-zA-Z0-9.[\]:-]+$/.test(host)) {
+    return "http://localhost";
+  }
+  return `http://${host}`;
+}
+function protectedResource(req: IncomingMessage): string {
+  return `${requestOrigin(req)}/mcp`;
 }
 
 // ── Authorization Endpoint ─────────────────────────────────────────────────
@@ -101,15 +134,14 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const HTML = (cid: string, ch: string, ru: string) =>
+const HTML = (cid: string, nonce: string) =>
   `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Uni-CLI MCP Auth</title>` +
   `<style>body{font-family:system-ui,sans-serif;max-width:420px;margin:80px auto;text-align:center}` +
   `button{padding:12px 32px;font-size:16px;cursor:pointer;border:none;border-radius:6px;` +
   `background:#2563eb;color:#fff}code{background:#f1f5f9;padding:2px 6px;border-radius:3px}</style>` +
   `</head><body><h2>Authorize MCP Client</h2><p>Client <code>${escapeHtml(cid)}</code> requests access.</p>` +
-  `<form method="POST" action="/oauth/authorize"><input type="hidden" name="client_id" value="${escapeHtml(cid)}">` +
-  `<input type="hidden" name="code_challenge" value="${escapeHtml(ch)}"><input type="hidden" name="redirect_uri" ` +
-  `value="${escapeHtml(ru)}"><button type="submit">Grant Access</button></form></body></html>`;
+  `<form method="POST" action="/oauth/authorize"><input type="hidden" name="consent_nonce" value="${escapeHtml(nonce)}">` +
+  `<button type="submit">Grant Access</button></form></body></html>`;
 
 function handleAuthorizeGet(req: IncomingMessage, res: ServerResponse): void {
   const p = parseQuery(req.url ?? "");
@@ -117,6 +149,7 @@ function handleAuthorizeGet(req: IncomingMessage, res: ServerResponse): void {
     challenge = p.get("code_challenge");
   const method = p.get("code_challenge_method"),
     redirect = p.get("redirect_uri");
+  const responseType = p.get("response_type");
   if (!clientId || !challenge || !redirect)
     return json(res, 400, {
       error: "invalid_request",
@@ -133,8 +166,34 @@ function handleAuthorizeGet(req: IncomingMessage, res: ServerResponse): void {
       error_description:
         "redirect_uri must be a localhost URL (http://localhost or http://127.0.0.1)",
     });
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(HTML(clientId, challenge, redirect));
+  if (responseType && responseType !== "code")
+    return json(res, 400, {
+      error: "unsupported_response_type",
+      error_description: "Only response_type=code is supported",
+    });
+  const canonicalResource = protectedResource(req);
+  const resource = p.get("resource") ?? canonicalResource;
+  if (resource !== canonicalResource)
+    return json(res, 400, {
+      error: "invalid_target",
+      error_description: `resource must be ${canonicalResource}`,
+    });
+  pruneExpired();
+  admitBounded(consentTransactions, MAX_CONSENT_TRANSACTIONS);
+  const nonce = generateHex(32);
+  consentTransactions.set(nonce, {
+    clientId,
+    codeChallenge: challenge,
+    redirectUri: redirect,
+    resource,
+    ...(p.get("state") ? { state: p.get("state")! } : {}),
+    expiresAt: Date.now() + CONSENT_TTL_MS,
+  });
+  res.writeHead(200, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  res.end(HTML(clientId, nonce));
 }
 
 async function handleAuthorizePost(
@@ -142,29 +201,34 @@ async function handleAuthorizePost(
   res: ServerResponse,
 ): Promise<void> {
   const p = new URLSearchParams(await readBody(req));
-  const clientId = p.get("client_id"),
-    challenge = p.get("code_challenge"),
-    redirect = p.get("redirect_uri");
-  if (!clientId || !challenge || !redirect)
+  const nonce = p.get("consent_nonce");
+  if (!nonce)
     return json(res, 400, {
       error: "invalid_request",
-      error_description: "Missing required parameters",
-    });
-  if (!isLocalhostRedirect(redirect))
-    return json(res, 400, {
-      error: "invalid_request",
-      error_description: "redirect_uri must be a localhost URL",
+      error_description: "Missing consent_nonce",
     });
   pruneExpired();
+  const transaction = consentTransactions.get(nonce);
+  consentTransactions.delete(nonce);
+  if (!transaction)
+    return json(res, 400, {
+      error: "invalid_grant",
+      error_description: "Consent transaction is invalid or expired",
+    });
+  admitBounded(authCodes, MAX_AUTH_CODES);
   const code = generateHex(32);
   authCodes.set(code, {
-    clientId,
-    codeChallenge: challenge,
-    redirectUri: redirect,
+    clientId: transaction.clientId,
+    codeChallenge: transaction.codeChallenge,
+    redirectUri: transaction.redirectUri,
+    resource: transaction.resource,
     expiresAt: Date.now() + AUTH_CODE_TTL_MS,
   });
+  const redirect = new URL(transaction.redirectUri);
+  redirect.searchParams.set("code", code);
+  if (transaction.state) redirect.searchParams.set("state", transaction.state);
   res.writeHead(302, {
-    Location: `${redirect}${redirect.includes("?") ? "&" : "?"}code=${code}`,
+    Location: redirect.toString(),
   });
   res.end();
 }
@@ -223,8 +287,20 @@ async function handleToken(
       error_description: "PKCE verification failed",
     });
 
+  const resource = p.get("resource") ?? entry.resource;
+  if (resource !== entry.resource)
+    return json(res, 400, {
+      error: "invalid_target",
+      error_description: "resource does not match the authorization grant",
+    });
+
   const accessToken = generateHex(32);
-  tokens.set(accessToken, { clientId, expiresAt: Date.now() + TOKEN_TTL_MS });
+  admitBounded(tokens, MAX_TOKENS);
+  tokens.set(tokenKey(accessToken), {
+    clientId,
+    resource,
+    expiresAt: Date.now() + TOKEN_TTL_MS,
+  });
   json(res, 200, {
     access_token: accessToken,
     token_type: "Bearer",
@@ -240,17 +316,9 @@ const MAX_TOKEN_LENGTH = 128;
 /**
  * Validate an Authorization: Bearer <token> header.
  *
- * Uses a constant-time scan across the token set so that timing between
- * "not a valid token" and "valid but expired" doesn't leak which prefix
- * of a token matched. V8's Map.get() is O(1) but its string equality step
- * still reveals the shared prefix length via CPU-level timing; the explicit
- * `timingSafeEqual` scan over every resident token neutralises that leak
- * at the cost of one fixed-size compare per active session — negligible
- * for the <100 sessions a local MCP server ever holds.
- *
- * Eviction: expired tokens are removed lazily when encountered, not on a
- * timer, because the set is already pruned on issuance and the active set
- * is bounded by `MAX_SESSIONS` (see streamable-http.ts).
+ * Tokens are indexed by a fixed-length SHA-256 digest, so lookup is O(1)
+ * without retaining bearer secrets as Map keys. Expired entries are deleted
+ * on lookup and all stores are pruned and capacity-bounded on issuance.
  */
 function validateBearer(req: IncomingMessage): string | undefined {
   const h = req.headers.authorization;
@@ -261,28 +329,16 @@ function validateBearer(req: IncomingMessage): string | undefined {
   if (presented.length === 0 || presented.length > MAX_TOKEN_LENGTH)
     return undefined;
 
-  const presentedBuf = Buffer.from(presented, "utf8");
-  let match: { key: string; entry: Token } | undefined;
+  const key = tokenKey(presented);
   const now = Date.now();
-  for (const [key, entry] of tokens) {
-    if (entry.expiresAt <= now) continue; // lazy eviction candidate
-    const keyBuf = Buffer.from(key, "utf8");
-    if (keyBuf.length !== presentedBuf.length) continue;
-    if (timingSafeEqual(presentedBuf, keyBuf)) {
-      match = { key, entry };
-      // Intentionally DO NOT break — iterate the remaining entries so the
-      // total compare count does not leak whether the match was early or
-      // late in the set.
-    }
-  }
-  if (!match) return undefined;
-  // The expiresAt check is redundant with the continue above, kept for
-  // defensive reading.
-  if (match.entry.expiresAt <= now) {
-    tokens.delete(match.key);
+  const entry = tokens.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= now) {
+    tokens.delete(key);
     return undefined;
   }
-  return match.entry.clientId;
+  if (entry.resource !== protectedResource(req)) return undefined;
+  return entry.clientId;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────
@@ -293,6 +349,34 @@ export function handleOAuthRoute(
   res: ServerResponse,
 ): boolean {
   const path = (req.url ?? "").split("?")[0];
+  if (
+    req.method === "GET" &&
+    path === "/.well-known/oauth-protected-resource"
+  ) {
+    const origin = requestOrigin(req);
+    json(res, 200, {
+      resource: `${origin}/mcp`,
+      authorization_servers: [origin],
+      bearer_methods_supported: ["header"],
+    });
+    return true;
+  }
+  if (
+    req.method === "GET" &&
+    path === "/.well-known/oauth-authorization-server"
+  ) {
+    const origin = requestOrigin(req);
+    json(res, 200, {
+      issuer: origin,
+      authorization_endpoint: `${origin}/oauth/authorize`,
+      token_endpoint: `${origin}/oauth/token`,
+      response_types_supported: ["code"],
+      grant_types_supported: ["authorization_code"],
+      code_challenge_methods_supported: ["S256"],
+      token_endpoint_auth_methods_supported: ["none"],
+    });
+    return true;
+  }
   if (path === "/oauth/authorize") {
     if (req.method === "GET") {
       handleAuthorizeGet(req, res);
@@ -327,7 +411,7 @@ export function createOAuthMiddleware(): (
     }
     res.writeHead(401, {
       "Content-Type": "application/json",
-      "WWW-Authenticate": 'Bearer realm="unicli-mcp"',
+      "WWW-Authenticate": `Bearer realm="unicli-mcp", resource_metadata="${requestOrigin(req)}/.well-known/oauth-protected-resource"`,
     });
     res.end(
       JSON.stringify({
@@ -353,7 +437,18 @@ export function getAuthenticatedPrincipal(
 export const _test = {
   authCodes,
   tokens,
+  consentTransactions,
   sha256Base64url,
   generateHex,
   pruneExpired,
+  tokenKey,
+  putToken(
+    token: string,
+    entry: Omit<Token, "resource"> & { resource?: string },
+  ): void {
+    tokens.set(tokenKey(token), {
+      ...entry,
+      resource: entry.resource ?? "http://localhost/mcp",
+    });
+  },
 } as const;

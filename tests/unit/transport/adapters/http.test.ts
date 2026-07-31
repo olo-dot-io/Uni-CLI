@@ -81,6 +81,63 @@ describe("HttpTransport", () => {
     if (res.ok) {
       expect(res.data).toEqual({ hello: "world" });
     }
+    expect(res.effect_verdict).toMatchObject({
+      status: "not_applicable",
+      evidence: "declared_read",
+    });
+  });
+
+  it("confirms an authoritative HTTP 201 mutation response", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      statusText: "Created",
+      json: async () => ({ id: "created-1" }),
+      headers: new Map(),
+    }) as unknown as typeof fetch;
+
+    const t = new HttpTransport();
+    await t.open(makeCtx());
+    const res = await t.action({
+      kind: "fetch",
+      params: {
+        url: "https://example.com/resources",
+        method: "POST",
+        body: { name: "created" },
+      },
+    });
+
+    expect(res.effect_verdict).toMatchObject({
+      status: "confirmed",
+      evidence: "authoritative_response",
+      verification: "protocol-result",
+    });
+  });
+
+  it("keeps a generic HTTP 200 mutation response unverifiable", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({ accepted: true }),
+      headers: new Map(),
+    }) as unknown as typeof fetch;
+
+    const t = new HttpTransport();
+    await t.open(makeCtx());
+    const res = await t.action({
+      kind: "fetch",
+      params: {
+        url: "https://example.com/resources/1",
+        method: "PATCH",
+        body: { name: "changed" },
+      },
+    });
+
+    expect(res.effect_verdict).toMatchObject({
+      status: "unverifiable",
+      evidence: "dispatch_receipt",
+    });
   });
 
   it("returns err envelope for HTTP 404 (non-retryable)", async () => {
@@ -189,6 +246,7 @@ describe("HttpTransport", () => {
           method: "POST",
           body: { value: 1 },
         },
+        canMutate: false,
         signal: controller.signal,
       });
       await accepted;

@@ -17,6 +17,10 @@ import {
   type SidecarName,
 } from "../transport/sidecar-binary.js";
 import { StdioSidecarClient } from "../transport/sidecar.js";
+import {
+  probeCuaDriverFeatures,
+  type CuaDriverFeatureProbe,
+} from "../transport/adapters/cua-driver-contract.js";
 
 const execFileP = promisify(execFile);
 
@@ -233,6 +237,7 @@ async function checkLinuxGtkOverlay(): Promise<ComputeDoctorCheck> {
 
 async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
   return [
+    await checkCuaDriver(),
     await checkConfiguredProvider({
       name: "external-provider",
       commandEnv: "UNICLI_COMPUTE_PROVIDER_COMMAND",
@@ -241,6 +246,137 @@ async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
     await checkPlatformProvider(),
     checkVisualModelProvider(),
   ];
+}
+
+async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
+  const command = process.env.UNICLI_CUA_DRIVER_COMMAND?.trim() || "cua-driver";
+  const args = parseCuaDriverArgs(process.env.UNICLI_CUA_DRIVER_ARGS);
+  if (!args.ok) {
+    return warn("cua-driver", "contract-0.2.0", args.reason, {
+      message:
+        "Set UNICLI_CUA_DRIVER_ARGS to a JSON array of literal argv entries.",
+      command: 'UNICLI_CUA_DRIVER_ARGS=\'["--socket","/path"]\'',
+      doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+    });
+  }
+  try {
+    const version = await execFileP(command, [...args.value, "--version"], {
+      timeout: 5_000,
+    });
+    let features: CuaDriverFeatureProbe;
+    try {
+      const docs = await execFileP(
+        command,
+        [...args.value, "dump-docs", "--type", "mcp"],
+        { timeout: 5_000, maxBuffer: 4 * 1024 * 1024 },
+      );
+      features = probeCuaDriverFeatures(JSON.parse(docs.stdout));
+    } catch (error) {
+      return warn(
+        "cua-driver",
+        "contract-0.2.0",
+        `Cua Driver is installed but its live tool contract could not be inspected: ${errorMessage(error)}`,
+        {
+          message:
+            "Install a Cua Driver release exposing machine-readable MCP tool schemas.",
+          command: `${command} dump-docs --type mcp`,
+          doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+        },
+      );
+    }
+    if (!features.ok) {
+      const missing = features.missingTools.join(", ");
+      const incompatible = features.incompatibleInputs
+        .map((field) => `${field.tool}.${field.field}:${field.reason}`)
+        .join(", ");
+      return warn(
+        "cua-driver",
+        "contract-0.2.0",
+        `Cua Driver does not satisfy Uni-CLI's required live tool contract (${features.requiredToolCount - features.missingTools.length}/${features.requiredToolCount} tools present${missing ? `; missing ${missing}` : ""}${incompatible ? `; incompatible ${incompatible}` : ""})`,
+        {
+          message:
+            "Upgrade Cua Driver until its feature probe contains every required tool and input field.",
+          command: `${command} dump-docs --type mcp`,
+          doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+        },
+      );
+    }
+    try {
+      const status = await execFileP(command, [...args.value, "status"], {
+        timeout: 5_000,
+      });
+      return pass(
+        "cua-driver",
+        "contract-0.2.0",
+        `${firstLine(version.stdout) || "Cua Driver installed"}; ${features.requiredToolCount}/${features.requiredToolCount} required live tools compatible; ${firstLine(status.stdout) || "daemon reachable"}`,
+      );
+    } catch (error) {
+      return warn(
+        "cua-driver",
+        "contract-0.2.0",
+        `Cua Driver is installed but its daemon is unavailable: ${errorMessage(error)}`,
+        {
+          message:
+            "Start the Cua Driver daemon and verify its permission policy before selecting --via driver.",
+          command: `${command} serve`,
+          doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+        },
+      );
+    }
+  } catch (error) {
+    if (isMissingExecutable(error)) {
+      return skip(
+        "cua-driver",
+        "contract-0.2.0",
+        `optional executable ${JSON.stringify(command)} is not installed`,
+      );
+    }
+    return warn(
+      "cua-driver",
+      "contract-0.2.0",
+      `Cua Driver version probe failed: ${errorMessage(error)}`,
+      {
+        message:
+          "Repair UNICLI_CUA_DRIVER_COMMAND or the installed Cua Driver binary.",
+        command: `${command} --version`,
+        doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+      },
+    );
+  }
+}
+
+function parseCuaDriverArgs(
+  value: string | undefined,
+): { ok: true; value: string[] } | { ok: false; reason: string } {
+  if (!value?.trim()) return { ok: true, value: [] };
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) &&
+      parsed.every((item) => typeof item === "string")
+      ? { ok: true, value: parsed }
+      : {
+          ok: false,
+          reason: "UNICLI_CUA_DRIVER_ARGS must be a JSON array of strings",
+        };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `UNICLI_CUA_DRIVER_ARGS is invalid JSON: ${errorMessage(error)}`,
+    };
+  }
+}
+
+function firstLine(value: string): string {
+  return value.trim().split(/\r?\n/, 1)[0] ?? "";
+}
+
+function isMissingExecutable(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const record = error as { code?: unknown; cause?: unknown };
+  return (
+    record.code === "ENOENT" ||
+    (record.cause !== undefined && isMissingExecutable(record.cause))
+  );
 }
 
 function escapePowerShellSingleQuoted(value: string): string {
@@ -330,7 +466,7 @@ function checkVisualModelProvider(): ComputeDoctorCheck {
   }
   return warn("provider", "visual-model", "no visual model provider selected", {
     message:
-      "Set UNICLI_VISUAL_MODEL when structured transports need a model fallback.",
+      "Set UNICLI_VISUAL_MODEL only when an explicitly selected visual route needs model perception.",
     doc: "docs/operate/troubleshooting.md#visualno_backend",
   });
 }
@@ -614,7 +750,7 @@ function checkVisualBackend(): ComputeDoctorCheck {
   }
   return warn("visual", "backend", "no visual backend configuration found", {
     message:
-      "Set VISUAL_BACKEND_ENDPOINT and VISUAL_BACKEND_API_KEY if screenshot/VLM fallback is needed.",
+      "Set VISUAL_BACKEND_ENDPOINT and VISUAL_BACKEND_API_KEY for explicitly selected visual operations.",
     doc: "docs/operate/troubleshooting.md#visualno_backend",
   });
 }

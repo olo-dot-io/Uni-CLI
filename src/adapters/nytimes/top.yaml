@@ -1,6 +1,7 @@
 site: nytimes
 name: top
 description: New York Times top stories via RSS
+operation_effect: read
 type: web-api
 domain: rss.nytimes.com
 strategy: public

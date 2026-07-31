@@ -9,6 +9,7 @@
 import { cli, Strategy } from "../../registry.js";
 
 const HN_ITEM_BASE = "https://hacker-news.firebaseio.com/v0/item";
+const ADAPTER_PATH = "src/adapters/hackernews/read.ts";
 
 interface HnItem {
   id?: unknown;
@@ -31,10 +32,37 @@ function numberField(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function hnInputError(message: string, suggestion: string): Error {
+  return hnError("invalid_input", message, suggestion, false);
+}
+
+function hnError(
+  code:
+    | "invalid_input"
+    | "not_found"
+    | "rate_limited"
+    | "permission_denied"
+    | "upstream_error",
+  message: string,
+  suggestion: string,
+  retryable: boolean,
+): Error {
+  return Object.assign(new Error(message), {
+    code,
+    suggestion,
+    retryable,
+    alternatives: [] as string[],
+    adapter_path: ADAPTER_PATH,
+  });
+}
+
 export function requireHnItemId(value: unknown): string {
   const id = String(value ?? "").trim();
   if (!/^\d+$/.test(id))
-    throw new Error(`Invalid HN item id: ${String(value)}.`);
+    throw hnInputError(
+      `Invalid HN item id: ${String(value)}.`,
+      "Pass the numeric item id from a news.ycombinator.com/item?id=<id> URL.",
+    );
   return id;
 }
 
@@ -46,7 +74,10 @@ export function requirePositiveInt(
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) {
-    throw new Error(`${label} must be a positive integer.`);
+    throw hnInputError(
+      `${label} must be a positive integer.`,
+      `Pass ${label} as an integer greater than zero.`,
+    );
   }
   return n;
 }
@@ -60,7 +91,10 @@ export function requireMinInt(
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n < min) {
-    throw new Error(`${label} must be an integer >= ${min}.`);
+    throw hnInputError(
+      `${label} must be an integer >= ${min}.`,
+      `Pass ${label} as an integer greater than or equal to ${min}.`,
+    );
   }
   return n;
 }
@@ -116,7 +150,12 @@ export async function buildHnReadRows(
   },
 ): Promise<Array<Record<string, unknown>>> {
   if (!story || story.deleted || story.dead) {
-    throw new Error("HN story not found, deleted, or dead.");
+    throw hnError(
+      "not_found",
+      "HN story not found, deleted, or dead.",
+      "Verify the numeric item id or choose a live story from `unicli hackernews top`.",
+      false,
+    );
   }
   const rows: Array<Record<string, unknown>> = [];
   const storyBody = truncate(
@@ -196,7 +235,7 @@ export async function buildHnReadRows(
   return rows;
 }
 
-async function fetchHnItem(id: number): Promise<HnItem | null> {
+export async function fetchHnItem(id: number): Promise<HnItem | null> {
   const response = await fetch(`${HN_ITEM_BASE}/${id}.json`, {
     headers: {
       "User-Agent":
@@ -204,9 +243,49 @@ async function fetchHnItem(id: number): Promise<HnItem | null> {
       Accept: "application/json",
     },
   });
-  if (!response.ok)
-    throw new Error(`HN API returned HTTP ${response.status} for item ${id}.`);
-  return (await response.json()) as HnItem | null;
+  if (!response.ok) {
+    const message = `HN API returned HTTP ${response.status} for item ${id}.`;
+    if (response.status === 404) {
+      throw hnError(
+        "not_found",
+        message,
+        "Verify the item id; the HN Firebase API has no record for it.",
+        false,
+      );
+    }
+    if (response.status === 429) {
+      throw hnError(
+        "rate_limited",
+        message,
+        "Retry after the Firebase rate-limit window.",
+        true,
+      );
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw hnError(
+        "permission_denied",
+        message,
+        "The public HN Firebase endpoint denied this request; verify upstream availability before retrying.",
+        false,
+      );
+    }
+    throw hnError(
+      "upstream_error",
+      message,
+      "Retry when the HN Firebase API is available.",
+      response.status >= 500,
+    );
+  }
+  try {
+    return (await response.json()) as HnItem | null;
+  } catch (error) {
+    throw hnError(
+      "upstream_error",
+      `HN API returned invalid JSON for item ${id}: ${error instanceof Error ? error.message : String(error)}`,
+      "Retry once; if the response remains invalid, inspect the upstream Firebase API.",
+      true,
+    );
+  }
 }
 
 cli({
@@ -215,6 +294,8 @@ cli({
   description: "Read a Hacker News story and comment tree",
   domain: "news.ycombinator.com",
   strategy: Strategy.PUBLIC,
+  operation_effect: "read",
+  adapter_path: ADAPTER_PATH,
   args: [
     {
       name: "id",

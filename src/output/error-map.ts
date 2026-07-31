@@ -34,16 +34,156 @@ type ActionableError = Error & {
   suggestion?: string;
   retryable?: boolean;
   alternatives?: string[];
+  adapter_path?: string;
+  step?: number;
+  outcome_ambiguous?: true;
+  partial_success?: true;
+  mutation_receipts?: {
+    successful_count: number;
+    failed_count: number;
+    truncated: boolean;
+    successful: unknown[];
+    failed: unknown[];
+  };
+  stage?: string;
 };
 
+export interface ErrorTaxonomyEntry {
+  exitCode: number;
+  retryable: boolean;
+}
+
+/**
+ * The single code → process-semantics table used by every error class.
+ * Message inspection may classify legacy untyped ingress, but it never
+ * independently selects an exit code or retry policy.
+ */
+export const ERROR_TAXONOMY: Readonly<Record<string, ErrorTaxonomyEntry>> =
+  Object.freeze({
+    internal_error: { exitCode: ExitCode.GENERIC_ERROR, retryable: false },
+    invalid_input: { exitCode: ExitCode.USAGE_ERROR, retryable: false },
+    empty_result: { exitCode: ExitCode.EMPTY_RESULT, retryable: false },
+    not_found: { exitCode: ExitCode.EMPTY_RESULT, retryable: false },
+    auth_required: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
+    challenge_required: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
+    permission_denied: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
+    config_error: { exitCode: ExitCode.CONFIG_ERROR, retryable: false },
+    unknown_action: { exitCode: ExitCode.CONFIG_ERROR, retryable: false },
+    network_error: { exitCode: ExitCode.TEMP_FAILURE, retryable: true },
+    timeout: { exitCode: ExitCode.TEMP_FAILURE, retryable: true },
+    rate_limited: { exitCode: ExitCode.TEMP_FAILURE, retryable: true },
+    upstream_error: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    service_unavailable: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    background_unavailable: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    cdp_unavailable: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    browser_broker_unavailable: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    remote_browser_unavailable: {
+      exitCode: ExitCode.CONFIG_ERROR,
+      retryable: false,
+    },
+    remote_browser_configuration_invalid: {
+      exitCode: ExitCode.CONFIG_ERROR,
+      retryable: false,
+    },
+    remote_browser_endpoint_unsupported: {
+      exitCode: ExitCode.CONFIG_ERROR,
+      retryable: false,
+    },
+    remote_browser_connect_failed: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    remote_browser_target_not_found: {
+      exitCode: ExitCode.EMPTY_RESULT,
+      retryable: false,
+    },
+    remote_browser_shutdown_failed: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: false,
+    },
+    operation_outcome_ambiguous: {
+      exitCode: ExitCode.GENERIC_ERROR,
+      retryable: false,
+    },
+    partial_mutation: {
+      exitCode: ExitCode.GENERIC_ERROR,
+      retryable: false,
+    },
+    PATENT_AUTH_REQUIRED: {
+      exitCode: ExitCode.AUTH_REQUIRED,
+      retryable: false,
+    },
+    PATENT_RATE_LIMIT: {
+      exitCode: ExitCode.TEMP_FAILURE,
+      retryable: true,
+    },
+    PATENT_NOT_FOUND: {
+      exitCode: ExitCode.EMPTY_RESULT,
+      retryable: false,
+    },
+    PATENT_API_DEPRECATED: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: false,
+    },
+    PATENT_REGION_BLOCKED: {
+      exitCode: ExitCode.AUTH_REQUIRED,
+      retryable: false,
+    },
+    PATENT_INVALID_NUMBER: {
+      exitCode: ExitCode.USAGE_ERROR,
+      retryable: false,
+    },
+    PATENT_FAMILY_BROKER_DOWN: {
+      exitCode: ExitCode.SERVICE_UNAVAILABLE,
+      retryable: true,
+    },
+    PATENT_BROWSER_CAPTCHA: {
+      exitCode: ExitCode.AUTH_REQUIRED,
+      retryable: false,
+    },
+    PATENT_UNSUPPORTED_QUERY: {
+      exitCode: ExitCode.USAGE_ERROR,
+      retryable: false,
+    },
+    PATENT_SCHEMA_DRIFT: {
+      exitCode: ExitCode.CONFIG_ERROR,
+      retryable: false,
+    },
+  });
+
+function taxonomyFor(code: string): ErrorTaxonomyEntry {
+  return ERROR_TAXONOMY[code] ?? ERROR_TAXONOMY.internal_error;
+}
+
 function isAuthMessage(message: string): boolean {
-  return /(?:\b(?:401|403)\b|\bunauthori[sz]ed\b|\bforbidden\b|\bnot[_ -]?authenticated\b|\bauth[_ -]?required\b|\bauth(?:entication|orization|orized)?\b|No cookies found|auth setup)/i.test(
+  return /(?:\bHTTP\s+(?:401|403)\b|\bunauthori[sz]ed\b|\bforbidden\b|\bnot[_ -]?authenticated\b|\bauth[_ -]?required\b|No cookies found|auth setup)/i.test(
     message,
   );
 }
 
-function isRetryableMessage(message: string): boolean {
-  return /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed|429|rate.?limit/i.test(
+function isNotFoundMessage(message: string): boolean {
+  return /(?:\bHTTP\s+404\b|\b404\s+Not Found\b|\bstatus(?:\s+code)?\s*[:=]?\s*404\b)/i.test(
+    message,
+  );
+}
+
+function isRateLimitMessage(message: string): boolean {
+  return /(?:\bHTTP\s+429\b|\b429\s+Too Many Requests\b|\brate[- _]?limit(?:ed|ing)?\b)/i.test(
     message,
   );
 }
@@ -87,6 +227,16 @@ export function errorTypeToCode(err: unknown): string {
     )
       return "upstream_error";
     if (REF_LOCATOR_CODES.has(errorType)) return errorType;
+    if (
+      errorType === "invalid_input" ||
+      errorType === "not_found" ||
+      errorType === "config_error" ||
+      errorType === "upstream_error" ||
+      errorType === "rate_limited" ||
+      errorType === "challenge_required"
+    ) {
+      return errorType;
+    }
     if (errorType === "permission_denied") return "permission_denied";
     if (errorType === "selector_miss") return "selector_miss";
     if (errorType === "empty_result") return "empty_result";
@@ -100,64 +250,23 @@ export function errorTypeToCode(err: unknown): string {
   const message = err instanceof Error ? err.message : String(err);
   if (isChallengeMessage(message)) return "challenge_required";
   if (
-    /timeout|timed out|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up/i.test(
+    /timeout|timed out|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
       message,
     )
   )
     return "network_error";
   if (isAuthMessage(message)) return "auth_required";
-  if (/404/i.test(message)) return "not_found";
-  if (/429|rate.?limit/i.test(message)) return "rate_limited";
+  if (isNotFoundMessage(message)) return "not_found";
+  if (isRateLimitMessage(message)) return "rate_limited";
   return "internal_error";
 }
 
 /** Map a caught error to the appropriate sysexits exit code. */
 export function mapErrorToExitCode(err: unknown): number {
-  if (isTargetError(err)) return ExitCode.GENERIC_ERROR;
-  if (err instanceof PipelineError) {
-    const { errorType, statusCode } = err.detail;
-    if (
-      errorType === "auth_required" ||
-      errorType === "challenge_required" ||
-      statusCode === 401 ||
-      statusCode === 403 ||
-      (errorType === "http_error" && isAuthMessage(err.message))
-    )
-      return ExitCode.AUTH_REQUIRED;
-    if (errorType === "empty_result") return ExitCode.EMPTY_RESULT;
-    if (errorType === "permission_denied") return ExitCode.AUTH_REQUIRED;
-    if (errorType === "unknown_action") return ExitCode.CONFIG_ERROR;
-    if (errorType === "network_error" || errorType === "timeout") {
-      return ExitCode.TEMP_FAILURE;
-    }
-    if (statusCode === 429 || errorType === "rate_limited") {
-      return ExitCode.TEMP_FAILURE;
-    }
-    return ExitCode.GENERIC_ERROR;
+  if (err instanceof BridgeConnectionError) {
+    return taxonomyFor(err.code).exitCode;
   }
-  if (err instanceof BridgeConnectionError) return ExitCode.SERVICE_UNAVAILABLE;
-  if (err instanceof Error) {
-    const code = (err as ActionableError).code;
-    if (code === "invalid_input") return ExitCode.USAGE_ERROR;
-    if (code === "empty_result") return ExitCode.EMPTY_RESULT;
-    if (code === "rate_limited") return ExitCode.TEMP_FAILURE;
-    if (
-      code === "auth_required" ||
-      code === "challenge_required" ||
-      code === "permission_denied"
-    ) {
-      return ExitCode.AUTH_REQUIRED;
-    }
-  }
-  const message = err instanceof Error ? err.message : String(err);
-  if (
-    /timeout|timed out|ETIMEDOUT|ENOTFOUND|ECONNREFUSED|ECONNRESET|socket hang up|daemon failed/i.test(
-      message,
-    )
-  )
-    return ExitCode.TEMP_FAILURE;
-  if (isChallengeMessage(message)) return ExitCode.AUTH_REQUIRED;
-  return ExitCode.GENERIC_ERROR;
+  return taxonomyFor(errorTypeToCode(err)).exitCode;
 }
 
 /**
@@ -184,14 +293,17 @@ export function errorToAgentFields(
   retryable: boolean;
   alternatives: string[];
   outcome_ambiguous?: true;
+  partial_success?: true;
+  mutation_receipts?: ActionableError["mutation_receipts"];
   target_unusable?: true;
   operation?: string;
+  stage?: string;
 } {
   const ambiguity = findOperationOutcomeAmbiguousError(err);
   if (ambiguity) {
     return {
-      adapter_path: undefined,
-      step: undefined,
+      adapter_path: adapterPath,
+      step: 0,
       suggestion: ambiguity.target_unusable
         ? "Discard the affected target, inspect external state from a fresh target, and do not replay the operation automatically."
         : "Inspect external state before deciding whether to issue a new operation; do not replay automatically.",
@@ -204,8 +316,8 @@ export function errorToAgentFields(
   }
   if (isTargetError(err)) {
     return {
-      adapter_path: undefined,
-      step: undefined,
+      adapter_path: adapterPath,
+      step: 0,
       suggestion:
         err.detail.code === "stale_ref"
           ? "Take a fresh browser state snapshot before retrying the action."
@@ -226,20 +338,19 @@ export function errorToAgentFields(
   }
   if (err instanceof BridgeConnectionError) {
     return {
-      adapter_path: undefined,
-      step: undefined,
+      adapter_path: adapterPath,
+      step: 0,
       suggestion: err.suggestion,
       retryable: err.retryable,
       alternatives: err.alternatives,
     };
   }
-  const message = err instanceof Error ? err.message : String(err);
   const actionable =
     err instanceof Error ? (err as ActionableError) : undefined;
   const code = errorTypeToCode(err);
   return {
-    adapter_path: undefined,
-    step: undefined,
+    adapter_path: actionable?.adapter_path ?? adapterPath,
+    step: actionable?.step ?? 0,
     suggestion:
       actionable?.suggestion ??
       (code === "auth_required"
@@ -249,8 +360,16 @@ export function errorToAgentFields(
           : code === "rate_limited"
             ? "Retry after the upstream rate-limit window, reduce request frequency, or select another source."
             : `Run 'unicli test ${siteName}' to diagnose, or report this error.`),
-    retryable: actionable?.retryable ?? isRetryableMessage(message),
+    retryable: actionable?.retryable ?? taxonomyFor(code).retryable,
     alternatives: actionable?.alternatives ?? [],
+    ...(actionable?.outcome_ambiguous
+      ? { outcome_ambiguous: true as const }
+      : {}),
+    ...(actionable?.partial_success ? { partial_success: true as const } : {}),
+    ...(actionable?.mutation_receipts
+      ? { mutation_receipts: actionable.mutation_receipts }
+      : {}),
+    ...(actionable?.stage ? { stage: actionable.stage } : {}),
   };
 }
 

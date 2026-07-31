@@ -4,7 +4,7 @@
  * @needs       browser invocation context/scope, step registry/barrel, transport handler tables, operation args, cookie acquisition, runtime recovery, observer
  * @feeds       adapter execution across CLI/MCP/ACP and repair verification
  * @breaks      Unknown actions and step failures become typed PipelineError instances with owning step evidence; structured runtime errors retain their exact code and recovery guidance.
- * @invariants  Every built-in non-transport action is registry-owned; pre-dispatch cancellation is exact, settled fulfillment wins, and mutating partial completion is outcome-ambiguous; retry/fallback remain bounded sibling metadata.
+ * @invariants  Every built-in non-transport action is registry-owned; pre-dispatch cancellation is exact, settled fulfillment wins, mutating partial completion is outcome-ambiguous, and retries remain bounded sibling metadata.
  * @side-effects Executes network/browser/desktop/subprocess actions, observes steps, and cleans temporary directories.
  * @perf        O(pipeline length) orchestration excluding action-owned I/O.
  * @concurrency Parallelism exists only in explicit parallel/each handlers; the main pipeline is ordered.
@@ -154,14 +154,7 @@ export class PipelineError extends Error {
   }
 }
 
-const SIBLING_KEYS = new Set([
-  "fallback",
-  "then",
-  "else",
-  "merge",
-  "retry",
-  "backoff",
-]);
+const SIBLING_KEYS = new Set(["then", "else", "merge", "retry", "backoff"]);
 
 function isVisualStep(action: string): action is VisualStepKind {
   return action in VISUAL_STEP_HANDLERS;
@@ -177,6 +170,32 @@ export function getActionEntry(step: PipelineStep): [string, unknown] {
     string,
     unknown,
   ];
+}
+
+function rejectImplicitFallback(step: PipelineStep, config: unknown): void {
+  const stepObject = step as Record<string, unknown>;
+  const configObject =
+    config && typeof config === "object" && !Array.isArray(config)
+      ? (config as Record<string, unknown>)
+      : undefined;
+  if (
+    !("fallback" in stepObject) &&
+    !(configObject && "fallback" in configObject)
+  ) {
+    return;
+  }
+  throw new PipelineError(
+    "Pipeline fallback is not supported; each operation must declare one explicit strategy",
+    {
+      step: -1,
+      action: "fallback",
+      config,
+      errorType: "invalid_input",
+      suggestion:
+        "Remove fallback and expose alternative strategies as separately ranked operations",
+      retryable: false,
+    },
+  );
 }
 
 export async function executeStep(
@@ -475,13 +494,10 @@ async function runPipelineInInvocation(
           ctx.signal?.throwIfAborted();
           const step = steps[i];
           const [action, config] = getActionEntry(step);
-          const { config: extracted, fallbacks } = rt.extractFallbacks(
-            step,
-            config,
-          );
-          const retryCount = rt.getRetryCount(step, extracted);
-          const backoffMs = rt.getBackoffMs(step, extracted);
-          const stepConfig = rt.stripRetryKeys(extracted);
+          rejectImplicitFallback(step, config);
+          const retryCount = rt.getRetryCount(step, config);
+          const backoffMs = rt.getBackoffMs(step, config);
+          const stepConfig = rt.stripRetryKeys(config);
 
           const startedAt = performance.now();
           try {
@@ -491,20 +507,12 @@ async function runPipelineInInvocation(
                     ctx,
                     action,
                     stepConfig,
-                    fallbacks,
                     retryCount,
                     backoffMs,
                     i,
                     step,
                   )
-                : await rt.runWithFallbacks(
-                    ctx,
-                    action,
-                    stepConfig,
-                    fallbacks,
-                    i,
-                    step,
-                  );
+                : await executeStep(ctx, action, stepConfig, i, step);
           } catch (err) {
             if (isOperationOutcomeAmbiguousError(err) || ctx.signal?.aborted) {
               throw err;
@@ -535,8 +543,6 @@ async function runPipelineInInvocation(
             if (ctx.signal?.aborted) throw err;
             await rt.emitDiagnosticIfEnabled(err, ctx, options?.site);
             if (ctx.signal?.aborted) throw err;
-            await rt.maybeRefreshCookies(err, options);
-
             const pipelineError = buildPipelineError(
               err,
               i,

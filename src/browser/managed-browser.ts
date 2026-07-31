@@ -31,7 +31,7 @@ import { CDPClient, CDPCommandTransportError } from "./cdp-client.js";
 import { findChrome } from "./launcher.js";
 import {
   resolveLocalBrowserProfile,
-  resolvePreferredLocalBrowserProfile,
+  selectLocalBrowserIdentity,
   type LocalBrowserProfile,
 } from "./local-profiles.js";
 import { BrowserPage } from "./page.js";
@@ -118,6 +118,7 @@ interface ManagedTargetRecord {
 type ManagedBrowserErrorCode =
   | "browser_binary_unavailable"
   | "browser_profile_unavailable"
+  | "browser_profile_ambiguous"
   | "browser_partition_conflict"
   | "browser_runtime_start_failed"
   | "browser_runtime_shutdown_failed"
@@ -669,7 +670,16 @@ function resolveRequestedProfile(
 ): LocalBrowserProfile {
   const profile = profileId
     ? resolveLocalBrowserProfile(profileId, { env })
-    : resolvePreferredLocalBrowserProfile({ env });
+    : (() => {
+        const selection = selectLocalBrowserIdentity({ env });
+        if (selection.status === "ambiguous") {
+          throw new ManagedBrowserError(
+            "browser_profile_ambiguous",
+            `Multiple local browser profiles are available; pass one explicit profile id: ${selection.profile_ids.join(", ")}`,
+          );
+        }
+        return selection.status === "selected" ? selection.profile : null;
+      })();
   if (!profile) {
     throw new ManagedBrowserError(
       "browser_profile_unavailable",
@@ -1500,6 +1510,8 @@ function managedBrowserSuggestion(code: ManagedBrowserErrorCode): string {
       return "Install Chrome for Testing/Chromium or set CHROME_PATH to an automation-capable browser binary.";
     case "browser_profile_unavailable":
       return "Open a local Chromium profile once, choose a valid --profile-id, or request an explicit ephemeral session.";
+    case "browser_profile_ambiguous":
+      return "Run `unicli browser profiles --json` and retry with one explicit --profile-id; Uni-CLI will not guess an account identity.";
     case "browser_partition_conflict":
       return "Use a new profile partition id when changing persistence or source-profile policy.";
     case "browser_runtime_start_failed":

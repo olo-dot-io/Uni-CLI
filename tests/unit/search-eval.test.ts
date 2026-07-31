@@ -11,9 +11,12 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { search, invalidateCache } from "../../src/discovery/search.js";
+import {
+  search,
+  invalidateCache,
+  runtimeSearchDocuments,
+} from "../../src/discovery/search.js";
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
-import { listCommands } from "../../src/registry.js";
 
 interface EvalCase {
   query: string;
@@ -461,8 +464,8 @@ const EVAL_CASES: EvalCase[] = [
   },
   { query: "blender export", site: "blender", command: "export" },
   { query: "blender info", site: "blender", command: "info" },
-  { query: "截图", site: "macos", command: "screenshot" },
-  { query: "screenshot", site: "macos", command: "screenshot" },
+  { query: "截图", site: "compute", command: "screenshot" },
+  { query: "screenshot", site: "compute", command: "screenshot" },
   { query: "系统信息", site: "macos", command: "system-info" },
   { query: "电池状态", site: "macos", command: "battery" },
   { query: "clipboard content", site: "macos", command: "clipboard" },
@@ -936,10 +939,12 @@ describe("Search Engine Evaluation", () => {
     expect(total).toBeGreaterThanOrEqual(500);
   });
 
-  it("every gold (site, command) exists in the live registry", () => {
+  it("every gold (site, command) exists in the live search corpus", () => {
     // Guards against gold rot: a renamed or deleted command must fail here
     // loudly instead of silently deflating accuracy forever.
-    const live = new Set(listCommands().map((c) => `${c.site}/${c.command}`));
+    const live = new Set(
+      runtimeSearchDocuments().map((c) => `${c.site}/${c.command}`),
+    );
     const stale = EVAL_CASES.flatMap((c) =>
       acceptedPairs(c).map((a) => `${a.site}/${a.command}`),
     ).filter((id) => !live.has(id));

@@ -57,7 +57,7 @@ pipeline:
 columns: [title, score, by, url]
 ```
 
-认证型 API 仍然走 `web-api`，只是 `strategy` 变成 `cookie` 或 `header`。默认从 live browser/CDP 读入本次进程内存；用户显式 import 后的 plaintext JSON 位于 `~/.unicli/cookies/SITE.json`。
+认证型 API 仍然走 `web-api`，只是 `strategy` 变成 `cookie` 或 `header`。普通 invocation 从 `~/.unicli/cookies/SITE.json` 读取站点绑定的 credential；显式 `--auth-retry` 才选择一个 local-browser profile 做本次进程内的有界刷新。
 
 ## `browser`：浏览器控制
 

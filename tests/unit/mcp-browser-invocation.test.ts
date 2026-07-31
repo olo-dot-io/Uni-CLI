@@ -94,7 +94,7 @@ describe("MCP browser invocation propagation", () => {
     expect(scopes).toEqual([
       {
         context: {
-          agent_session_id: "stdio-session",
+          agent_session_id: expect.stringMatching(/^mcp:[a-f0-9]{64}$/),
           turn_id: expect.any(String),
           transport: "mcp-stdio",
         },
@@ -106,7 +106,7 @@ describe("MCP browser invocation propagation", () => {
       },
       {
         context: {
-          agent_session_id: "http-session",
+          agent_session_id: expect.stringMatching(/^mcp:[a-f0-9]{64}$/),
           turn_id: expect.any(String),
           transport: "mcp-http",
         },
@@ -117,6 +117,14 @@ describe("MCP browser invocation propagation", () => {
         ephemeral: false,
       },
     ]);
+    const stdioScope = scopes[0];
+    const httpScope = scopes[1];
+    if (!stdioScope || !httpScope) throw new Error("missing invocation scope");
+    expect(
+      (stdioScope.context as { agent_session_id: string }).agent_session_id,
+    ).not.toBe(
+      (httpScope.context as { agent_session_id: string }).agent_session_id,
+    );
   });
 
   it("rejects an impossible trusted browser policy before serving requests", () => {
@@ -211,7 +219,7 @@ describe("MCP browser invocation propagation", () => {
       ).structuredContent.data,
     ).toEqual({
       context: {
-        agent_session_id: "codex-thread",
+        agent_session_id: expect.stringMatching(/^mcp:[a-f0-9]{64}$/),
         turn_id: expect.stringMatching(/^invocation:/),
         transport: "mcp-stdio",
         upstream_turn_id: "codex-turn",
@@ -252,8 +260,43 @@ describe("MCP browser invocation propagation", () => {
     const firstContext = readContext(first);
     const secondContext = readContext(second);
 
-    expect(firstContext.agent_session_id).toBe("http-session");
-    expect(secondContext.agent_session_id).toBe("http-session");
+    expect(firstContext.agent_session_id).toMatch(/^mcp:[a-f0-9]{64}$/);
+    expect(secondContext.agent_session_id).toBe(firstContext.agent_session_id);
     expect(firstContext.turn_id).not.toBe(secondContext.turn_id);
+  });
+
+  it("reuses sessionless HTTP browser identity only within one verified principal", async () => {
+    const handler = buildHandler([inspectionTool([])]);
+    const call = (principalId: string) =>
+      handler(
+        {
+          jsonrpc: "2.0",
+          id: principalId,
+          method: "tools/call",
+          params: { name: "inspect_invocation", arguments: {} },
+        },
+        { transport: "mcp-http", principalId },
+      );
+    const [first, second, isolated] = await Promise.all([
+      call("principal-a"),
+      call("principal-a"),
+      call("principal-b"),
+    ]);
+    const readSession = (
+      response: Awaited<ReturnType<typeof call>>,
+    ): string => {
+      if (!response?.result) throw new Error("inspection returned no result");
+      return (
+        response.result as {
+          structuredContent: {
+            data: { context: { agent_session_id: string } };
+          };
+        }
+      ).structuredContent.data.context.agent_session_id;
+    };
+    const firstSession = readSession(first);
+    expect(firstSession).toMatch(/^mcp:[a-f0-9]{64}$/);
+    expect(readSession(second)).toBe(firstSession);
+    expect(readSession(isolated)).not.toBe(firstSession);
   });
 });

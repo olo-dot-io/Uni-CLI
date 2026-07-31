@@ -1,6 +1,7 @@
 site: gh
 name: repo
 description: View GitHub repository details
+operation_effect: read
 type: bridge
 strategy: public
 binary: gh

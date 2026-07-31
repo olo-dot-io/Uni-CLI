@@ -38,6 +38,11 @@ import {
   createLocalEventStore,
   readLocalEvents,
 } from "../../../src/runtime/local-event-log.js";
+import {
+  acquireCookies,
+  refreshCookiesFromBrowser,
+} from "../../../src/engine/cookies.js";
+import type { CookieSources } from "../../../src/engine/cookie-source.js";
 
 function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
   return {
@@ -47,6 +52,7 @@ function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
       hello: {
         name: "hello",
         description: "say hello",
+        operation_effect: "read",
         adapterArgs: [
           { name: "target", type: "str", required: true },
           { name: "limit", type: "int", default: 10 },
@@ -268,6 +274,11 @@ describe("execute (end-to-end)", () => {
     expect(res.exitCode).toBe(0);
     expect(res.results).toEqual([{ greeting: "hi world", limit: undefined }]);
     expect(res.envelope.error).toBeUndefined();
+    expect(res.effectVerdict).toMatchObject({
+      status: "not_applicable",
+      evidence: "declared_read",
+    });
+    expect(res.envelope.effect_verdict).toEqual(res.effectVerdict);
     expect(res.envelope.next_actions?.length ?? 0).toBeGreaterThan(0);
     // next_actions carry the literal site name — no `${site}` placeholder
     // round-trip (R2 I2 fix).
@@ -276,6 +287,97 @@ describe("execute (end-to-end)", () => {
     expect(firstCmd).toContain("hello");
     expect(firstCmd).not.toContain("${site}");
     expect(firstCmd).not.toContain("${cmd}");
+  });
+
+  it("does not claim a mutation is confirmed without postcondition evidence", async () => {
+    const adapter = mkAdapter({
+      name: "inv-effect",
+      commands: {
+        mutate: {
+          name: "mutate",
+          operation_effect: "service_state",
+          adapterArgs: [],
+          func: async () => ({ accepted: true }),
+        },
+      },
+    });
+    registerAdapter(adapter);
+    compileAll([adapter]);
+    const inv = buildInvocation("cli", "inv-effect", "mutate", {
+      args: {},
+      source: "shell",
+    })!;
+
+    const result = await execute(inv);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.effectVerdict).toMatchObject({
+      status: "unverifiable",
+      evidence: "dispatch_receipt",
+    });
+    expect(result.envelope.effect_verdict).toEqual(result.effectVerdict);
+  });
+
+  it("binds refreshed CDP credentials to one new kernel invocation", async () => {
+    const retrySources: CookieSources = {
+      readDisk: () => ({ kind: "ok", cookies: { sid: "stale" } }),
+      readBrowser: async () => ({ kind: "none" }),
+      readCdp: async () => ({}),
+    };
+    const adapter = mkAdapter({
+      name: "inv-auth-scope",
+      domain: "example.com",
+      commands: {
+        read: {
+          name: "read",
+          operation_effect: "read",
+          adapterArgs: [],
+          func: async () =>
+            acquireCookies("inv-auth-scope", "example.com", {}, retrySources),
+        },
+      },
+    });
+    registerAdapter(adapter);
+    compileAll([adapter]);
+    const refresh = await refreshCookiesFromBrowser(
+      "inv-auth-scope",
+      "example.com",
+      { preferCdp: true },
+      {
+        ...retrySources,
+        readCdp: async () => ({ sid: "fresh-cdp" }),
+      },
+    );
+    if (!refresh.ok) throw new Error("expected refresh");
+    const invocation = buildInvocation(
+      "cli",
+      "inv-auth-scope",
+      "read",
+      { args: {}, source: "shell" },
+      { cookieInvocationOverride: refresh.invocation_override },
+    )!;
+
+    const result = await execute(invocation);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        status: "loaded",
+        source: "cdp",
+        cookies: { sid: "fresh-cdp" },
+      }),
+    ]);
+    await expect(
+      acquireCookies("inv-auth-scope", "example.com", {}, retrySources),
+    ).resolves.toMatchObject({
+      source: "disk",
+      cookies: { sid: "stale" },
+    });
+    const replay = await execute(invocation);
+    expect(replay.error).toMatchObject({
+      code: "internal_error",
+      retryable: false,
+    });
   });
 
   it("records success and failure across kernel transports without arguments", async () => {

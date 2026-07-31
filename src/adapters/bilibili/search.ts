@@ -64,6 +64,8 @@ cli({
     },
   ],
   columns: ["rank", "title", "author", "play", "published_at", "bvid", "url"],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "video",

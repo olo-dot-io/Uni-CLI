@@ -1,17 +1,24 @@
 # Compute
 
-`unicli compute` is the local computer-control surface. It routes each request
-through the fastest available structured transport first, then falls back to
-broader transports when needed.
+`unicli compute` is the local computer-control surface. Each request is
+planned against its task evidence and exact target, then dispatched through one
+provider. macOS uses AX for native-window work, Windows uses UIA, Linux uses
+AT-SPI, exact browser targets use CDP, and app launch uses a process provider.
+Desktop-coordinate control requires an explicit `--via driver` or
+`--via visual` route.
 
-Transport order is selected per verb and host platform:
+Read [Task-Directed Capability Routing](task-routing.md) for the operator model,
+selection algorithm, complexity, and recovery state graph. Inspect any compute
+selection without acting on the host:
 
-- macOS: Accessibility first for app control, CDP for browser/Electron renderers,
-  then visual fallback.
-- Windows: UIA first once the sidecar is present, CDP next where available, then
-  visual fallback.
-- Linux: AT-SPI first once the sidecar is present, CDP next where available,
-  then visual fallback.
+```bash
+unicli -f json compute route snapshot --params '{"app":"Calculator"}'
+unicli -f json compute route click --params '{"port":9222,"selector":"#submit"}'
+unicli -f json compute route screenshot --params '{}' --via visual
+unicli -f json compute route point-click \
+  --params '{"x":640,"y":480,"observation":"visual-observation:<opaque>"}' \
+  --via driver
+```
 
 ## Snapshot, Find, Click
 
@@ -38,6 +45,94 @@ refs preserve it, and `compute find --text <text>` can match that value. This is
 useful for calculator displays, address fields, editors, and status labels
 whose value is not part of the accessible name.
 
+## Explicit Coordinate and OS Driver Operations
+
+Semantic and coordinate operations have different public contracts:
+
+- `compute click/type/scroll` consume a ref owned by AX, UIA, AT-SPI, or CDP.
+- `compute point-click/drag/point-scroll/move-cursor` consume fresh,
+  provider-owned pixels through an opaque observation ref. They never accept
+  or synthesize an element ref.
+- `compute text` sends text through an explicitly selected foreground provider
+  but does not consume coordinates.
+- `--via driver` selects the optional Cua Driver service.
+- `--via visual` selects the configured visual backend.
+
+No ordinary provider failure changes that selection. A missing Cua Driver
+binary, unavailable daemon, permission refusal, schema mismatch, or failed
+verification returns directly as a structured `cua-driver` error.
+
+```bash
+unicli doctor compute --providers --json
+unicli -f json compute screenshot --via driver
+unicli compute point-click 640 480 --button left \
+  --observation 'visual-observation:<opaque>' --via driver
+unicli compute drag 640 480 840 480 \
+  --observation 'visual-observation:<opaque>' --via driver
+unicli compute text "hello" --via driver
+unicli compute point-scroll 640 480 --direction down --amount 3 --by line \
+  --observation 'visual-observation:<opaque>' --via driver
+```
+
+For an executable two-step flow, read `.data.observation.ref` from the JSON
+screenshot envelope and pass it to exactly one coordinate action:
+
+```bash
+OBSERVATION="$(
+  unicli -f json compute screenshot --via driver |
+    jq -r '.data.observation.ref'
+)"
+unicli compute point-click 640 480 \
+  --observation "$OBSERVATION" --via driver
+```
+
+Inline driver or visual screenshots issue a random 256-bit ref whose
+authoritative record is owner-only local state. The ref expires after 30
+seconds, is atomically single-use across processes, and binds provider,
+desktop scope, optional session, pixel dimensions, action dimensions, and
+pixel hash. Actions reject forged, missing, expired, replayed,
+cross-provider, cross-session, and out-of-bounds refs before opening the
+provider. Retina and other scaled captures use the recorded width ratio to
+map screenshot pixels to action coordinates. Saving a screenshot directly to
+a path produces an artifact and no coordinate authority.
+
+The evidence contract prevents stale capability reuse inside Uni-CLI. It
+cannot detect an external human or unrelated process changing the screen after
+capture; agents must keep the observe-act interval short and take a new
+screenshot whenever the visible target may have changed.
+
+The built-in adapter targets Cua Driver portable contract `0.2.0`. It invokes
+`cua-driver call <tool> <json>` with argv, never through a shell. Uni-CLI does
+not install or start the daemon and does not inherit its app/window-specific
+APIs under the coordinate route. The portable `click`, `drag`, `type_text`,
+`press_key`/`hotkey`, and `scroll` calls are always compiled with
+`scope:"desktop"`. `get_desktop_state` is the pixel source. This boundary
+follows the upstream
+[portable manifest](https://github.com/trycua/cua/blob/7e13c6437acb1e2193548d36f520b3519ceee05c/libs/cua-driver/contract/manifest.json).
+
+A named session gives concurrent agent runs separate cursor and capture-policy
+identity:
+
+```bash
+unicli compute session-start research-run-1 --capture-scope auto
+unicli compute session-state research-run-1
+unicli compute session-escalate research-run-1 \
+  --reason ax_tree_pixel_mismatch \
+  --detail "window-scoped action was checked and remained ineffective"
+unicli compute session-end research-run-1
+```
+
+`auto` begins window-scoped. Desktop escalation is a separate, one-way command
+with a bounded reason. Session operations explicitly name the driver lifecycle,
+so they select `cua-driver` without presenting an unrelated provider list.
+Ending a session releases its cursor, recording, and per-session state.
+
+When Cua Driver returns `verified:true` or `effect:"confirmed"`, Uni-CLI emits
+a `confirmed` `effect_verdict` backed by provider postcondition observation.
+`verified:false` alone remains `unverifiable`: it means delivery completed
+without read-back proof. Only `effect:"suspected_noop"` becomes
+`suspected_noop`. A dispatch receipt is never upgraded by inference.
+
 ## Capture Context
 
 `compute capture` combines a structured snapshot and screenshot evidence into
@@ -53,10 +148,11 @@ unicli compute capture --app Calculator --copy-reference
 unicli compute capture --app Calculator --reference-root /tmp/captures --save-reference
 ```
 
-The command reuses the same `compute snapshot` and `compute screenshot` cascade
-paths, so it inherits the platform transport order, ref persistence, and
-structured error envelopes. The packet succeeds when at least one requested part
-is captured and records per-part errors when the other part is unavailable.
+The command plans `compute snapshot` and `compute screenshot` independently
+against the same bound target. Each part selects one provider before execution;
+a failure in one part never changes that part's provider. The packet succeeds
+when at least one requested part is captured and records a structured per-part
+error when the other part is unavailable.
 When screenshot bytes are available, the screenshot part includes `image`
 metadata with byte count, SHA-256, dimensions, and an image-pixel coordinate
 space whose origin is the top-left corner. When a native transport also reports
@@ -107,7 +203,7 @@ the generated Python daemon and verifies the GTK/PyGObject/Cairo imports.
 Every provider implements the same JSONL HUD protocol: report `ready`, accept a
 `visual_action.pointer_plan` render request, draw a full-screen click-through
 pointer/halo/trail, report `arrived`, then let Uni-CLI dispatch the real compute
-action through the normal transport cascade. This keeps the rendered pointer
+action through the already selected provider. This keeps the rendered pointer
 target and the actual action target on the same enriched request.
 
 Successful JSON output includes both legacy `visual_timeline` and the richer
@@ -119,8 +215,11 @@ Successful JSON output includes both legacy `visual_timeline` and the richer
   `macos-appkit/arrived`.
 - `visual_action.dispatch`: transport, status, and target used for the real
   click/type/scroll action.
-- `visual_action.post_capture`: optional screenshot evidence captured after the
-  action when overlay mode is enabled.
+- `visual_action.post_capture`: same-provider screenshot metadata captured
+  after an overlay action and after every successful MCP visual-coordinate
+  action. MCP image bytes appear once as standard `ImageContent`; structured
+  content retains dimensions, SHA-256, the next single-use observation ref,
+  and exact encoded-frame change evidence.
 
 This is intentionally not implemented as a Chrome extension. A Chrome extension
 can draw over Chrome pages only; it cannot cover arbitrary macOS apps such as
@@ -150,43 +249,62 @@ unicli describe compute capture
 
 ## Commands
 
-| Command                                           | Purpose                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------ |
-| `compute apps`                                    | List running apps                                                        |
-| `compute windows --app <name>`                    | List windows                                                             |
-| `compute snapshot --app <name> --format compact`  | Capture a compact/tree/json accessibility snapshot                       |
-| `compute capture --app <name>`                    | Capture snapshot refs and screenshot evidence                            |
-| `compute capture --copy-reference`                | Save and copy `[app-shots ...]` handoff markup                           |
-| `compute find --role <role> --name/--text <text>` | Find matching refs by label or value                                     |
-| `compute click <ref> --background`                | Click a ref while explicitly preserving background mode                  |
-| `compute type <ref> <text>`                       | Set or type text                                                         |
-| `compute press <combo>`                           | Send a key combo                                                         |
-| `compute scroll <ref>`                            | Scroll a ref                                                             |
-| `compute launch <app>`                            | Launch an app                                                            |
-| `compute screenshot [path]`                       | Capture a screenshot                                                     |
-| `compute attach --app <name>`                     | Attach CDP to a renderer                                                 |
-| `compute attach --app <name> --confirm-relaunch`  | Allow risky app relaunch for CDP attach                                  |
-| `compute eval <js>`                               | Evaluate JS in an attached renderer                                      |
-| `compute wait --ref <ref>`                        | Poll one exact target for appear/disappear/focused/enabled/checked state |
-| `compute observe <goal> --app <name> --top-k <n>` | Rank up to 1-50 refs for a natural-language goal                         |
-| `compute assert --text <text> --state visible`    | Assert text or enabled/focused/checked/visible state                     |
+| Command                                                | Purpose                                                                  |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `compute route <operation> --params <json>`            | Explain one provider selection without opening it                        |
+| `compute apps`                                         | List running apps                                                        |
+| `compute windows --app <name>`                         | List windows                                                             |
+| `compute snapshot --app <name> --format compact`       | Capture a compact/tree/json accessibility snapshot                       |
+| `compute capture --app <name>`                         | Capture snapshot refs and screenshot evidence                            |
+| `compute capture --copy-reference`                     | Save and copy `[app-shots ...]` handoff markup                           |
+| `compute find --role <role> --name/--text <text>`      | Find matching refs by label or value                                     |
+| `compute click <ref> --background`                     | Click a ref while explicitly preserving background mode                  |
+| `compute point-click <x> <y> --observation <ref>`      | Click one observed point through the observation's explicit provider     |
+| `compute drag <x1> <y1> <x2> <y2> --observation <ref>` | Drag between two points from one fresh observation                       |
+| `compute type <ref> <text>`                            | Set or type text                                                         |
+| `compute text <text> --via driver`                     | Send text to the foreground desktop without claiming an element ref      |
+| `compute press <combo>`                                | Send a key combo                                                         |
+| `compute scroll <ref>`                                 | Scroll a ref                                                             |
+| `compute point-scroll <x> <y> --observation <ref>`     | Scroll at a point from one fresh driver observation                      |
+| `compute launch <app>`                                 | Launch an app                                                            |
+| `compute screenshot [path]`                            | Capture a screenshot                                                     |
+| `compute session-start/state/escalate/end`             | Control explicit Cua Driver session lifecycle                            |
+| `compute attach --app <name>`                          | Attach CDP to a renderer                                                 |
+| `compute attach --app <name> --confirm-relaunch`       | Allow risky app relaunch for CDP attach                                  |
+| `compute eval <js>`                                    | Evaluate JS in an attached renderer                                      |
+| `compute wait --ref <ref>`                             | Poll one exact target for appear/disappear/focused/enabled/checked state |
+| `compute observe <goal> --app <name> --top-k <n>`      | Rank up to 1-50 refs for a natural-language goal                         |
+| `compute assert --text <text> --state visible`         | Assert text or enabled/focused/checked/visible state                     |
 
 ## Output
 
 All commands use the normal Uni-CLI v2 envelope. Success writes to stdout; a
-failed cascade writes a structured error to stderr with the failing transport
-details and exits with the transport error code.
+failed route writes a structured error to stderr with the selected provider
+details and exits with the provider error code.
 
-`compute launch <app>` is routed through the subprocess transport first. It uses
-the host launcher command for the current OS: `open -a` on macOS,
-`Start-Process` through PowerShell on Windows, and `gtk-launch` on Linux.
-When `--debug-port <port>` is supplied, Uni-CLI passes
-`--remote-debugging-port=<port>` to the launched app for Electron CDP attach
-workflows. The native desktop fallbacks honor the same debug-port argument when
-the subprocess route is not available.
-The direct low-level UIA and AT-SPI sidecar `launch_app` actions are also
-implemented for sidecar callers: UIA uses PowerShell `Start-Process`, and
-AT-SPI uses `gtk-launch`. Cross-OS live launch smoke evidence is still pending.
+Every envelope also carries `meta.effect_verdict`. Read-only compute operations
+use `not_applicable`. Mutations without an authoritative postcondition use
+`unverifiable`, even when the provider reports successful dispatch. A native
+provider can return `confirmed` only with a fresh accessibility-state
+observation or another declared authoritative channel. Pre-dispatch route,
+target, and permission rejection uses `suspected_noop`. Agents inspect an
+`unverifiable` mutation against the same bound ref, window, or renderer before
+replay.
+
+An MCP visual-coordinate mutation captures its next frame through the provider
+that performed the action. `encoded_frame_change.status=unchanged` proves that
+the two encoded frames are byte-identical. `changed` only reports new pixel
+evidence; neither value upgrades the action's effect verdict without an
+authoritative task postcondition. A failed post-capture remains explicit under
+`post_action_capture.error` and never causes a provider switch or rewrites an
+already settled action result.
+
+`compute launch <app>` is a process operation. It uses `open -a` on macOS,
+`Start-Process` through PowerShell on Windows, and `gtk-launch` on Linux. When
+`--debug-port <port>` is supplied, Uni-CLI passes
+`--remote-debugging-port=<port>` to the launched app for a later explicit CDP
+attach. A process-provider failure returns directly; native accessibility and
+visual providers are not tried.
 
 ```bash
 unicli compute snapshot --app TextEdit -f json
@@ -204,6 +322,19 @@ Legacy refs without this identity fail closed and require a fresh snapshot.
 observation; elapsed time or a different foreground window cannot satisfy it.
 
 ## Live Smoke
+
+The read-only five-category smoke exercises one real structured adapter, native
+CLI bridge, hidden semantic browser target, native accessibility read, and the
+optional coordinate driver:
+
+```bash
+npm run smoke:capabilities
+```
+
+It reports `skip` only when an optional executable is absent. An installed
+provider that fails its declared contract is a failure. The browser case serves
+a local fixture and reads its DOM/accessibility state; it does not substitute a
+doctor probe for execution.
 
 Maintainers can generate the cross-OS smoke plan without touching the host:
 
@@ -234,10 +365,14 @@ native system HUD provider selected by the host platform.
 
 ## Provider Discovery
 
-`doctor compute --providers` adds non-blocking discovery checks for optional
-local computer-use provider commands and configured visual-model backends. These
-checks are reported as `ok`, `warn`, or `skip` and do not make the base doctor
-fail. Set `UNICLI_COMPUTE_PROVIDER_COMMAND` or the platform-specific
+`doctor compute --providers` adds a dedicated Cua Driver contract/daemon probe
+plus non-blocking discovery checks for optional local computer-use provider
+commands and configured visual-model backends. These checks are reported as
+`ok`, `warn`, or `skip` and do not make the base doctor fail. Set
+`UNICLI_CUA_DRIVER_COMMAND` to override the binary and
+`UNICLI_CUA_DRIVER_ARGS` to a JSON argv array, for example
+`["--socket","/path/to/socket"]`. Set `UNICLI_COMPUTE_PROVIDER_COMMAND` or the
+platform-specific
 `UNICLI_<PLATFORM>_COMPUTE_PROVIDER_COMMAND` environment variable when you want
 Uni-CLI to probe an installed provider.
 
@@ -248,23 +383,16 @@ unicli doctor compute --providers
 ## Focus Stealing
 
 Actuating commands prefer background mode: `compute click`, `compute type`,
-`compute press`, and `compute scroll` pass `focus: false` to structured
-transports unless `--focus` is set. The visual last-resort fallback is treated
-as focus-taking because it may move the cursor or active surface.
+`compute press`, and `compute scroll` pass `focus: false` to semantic providers
+unless `--focus` is set. Explicit driver and visual routes are desktop-scoped
+foreground capabilities.
 
-On macOS, desktop-ax now has a bounded background input session for cases where
-plain AX actions are not enough. The transport still tries semantic AX first:
-`AXPress`, `AXValue`, and AX scroll actions run without activating the app. If a
-click or text action has a target app plus ref/window coordinates and the
-semantic action fails, desktop-ax can prime that non-frontmost window, suppress
-the previous app's focus-deactivation event, and post pid/window-addressed
-`CGEvent` mouse or keyboard events. `compute press --app <name> <combo>` uses
-the same window-addressed path before visual fallback.
-
-The background path is scoped to a running app and an on-screen window. It does
-not claim support for minimized, hidden, disabled, or security-hardened windows,
-and failures are returned as structured envelopes instead of silently
-foregrounding the target.
+On macOS, desktop-ax performs semantic `AXPress`, `AXValue`, focus, and AX scroll
+actions without activating the app when the target supports them. A semantic
+failure returns directly. It does not enter coordinate click, `CGEvent`, or
+background keyboard injection under the accessibility route label. Those
+primitives have different target and replay semantics and therefore require a
+new explicit route.
 
 See [Compute Focus Behavior](focus-behavior.md) for the transport matrix and
 source links.
@@ -276,31 +404,31 @@ Wait/assert use role/name/title/app/pid filters and descendant text/value/state
 checks when the UIA tree exposes them. `compute observe` ranks top-level and
 descendant refs by goal/title/name token overlap and marks scrollable
 descendants with `action: "scroll"` and slider/spinner/range descendants with
-`action: "set_value"`. Descendant invoke, value, focus, and scroll actions
-prefer native UIA patterns before bounded fallback paths; invoke also tries
-toggle and selection item patterns for controls such as checkboxes, radio
-buttons, and selectable list rows, while numeric set-value inputs can use
-RangeValuePattern for sliders and spinners.
+`action: "set_value"`. Descendant invoke, value, focus, and scroll actions use
+native UIA patterns. Invoke also tries toggle and selection item patterns for
+controls such as
+checkboxes, radio buttons, and selectable list rows, while numeric set-value
+inputs can use RangeValuePattern for sliders and spinners.
 Every emitted UIA ref is scoped by exact HWND rather than PID-local window
 position, so window reordering cannot redirect a later action.
-The UIA sidecar also supports direct app launch through PowerShell
-`Start-Process`; the public compute launch cascade still tries subprocess first.
+UIA sidecar launch support remains an internal sidecar primitive. The public
+`compute launch` contract selects the process provider.
 
-Linux AT-SPI uses `wmctrl -lG -p` where available and falls back to AT-SPI-only
-top-level registry roots when `wmctrl` is missing or empty. Refs emitted from
+Linux AT-SPI uses `wmctrl -lG -p` where available and uses AT-SPI-only top-level
+registry roots when `wmctrl` is missing or empty. Refs emitted from
 Linux snapshot/find can target `compute click`, `compute type`, `compute
 scroll`, `compute screenshot`, `compute wait`, `compute observe`, and
-`compute assert`. Descendant click/type/focus prefer native AT-SPI
-Action/Value/EditableText/Component proxies before bounded display-server
-helpers; descendant scroll prefers native `Component.scroll_to(...)` before
-helper fallback. `compute observe` marks scrollable descendants with
+`compute assert`. Descendant click/type/focus use native AT-SPI
+Action/Value/EditableText/Component proxies; descendant scroll uses
+`Component.scroll_to(...)`.
+`compute observe` marks scrollable descendants with
 `action: "scroll"` and slider/spin-button/range descendants with
 `action: "set_value"`. Descendant screenshots capture the element rectangle
 when bounds are known. Top-level X11 screenshots use `import -window <id>` when
 a real window id exists, and Wayland/top-level bounds use `grim -g` when bounds
 are known.
-The AT-SPI sidecar also supports direct app launch through `gtk-launch`; the
-public compute launch cascade still tries subprocess first.
+AT-SPI sidecar launch support remains an internal sidecar primitive. The public
+`compute launch` contract selects the process provider.
 Every emitted AT-SPI ref is scoped by the exact native X11/AT-SPI window id;
 PID-local window indexes are no longer accepted as durable identity.
 
@@ -321,9 +449,22 @@ when relaunching the app is acceptable.
 
 See [Electron App Control](electron.md) for app caveats and registry guidance.
 
-## Fallback Semantics
+## Recovery Semantics
 
-The cascade stops on the first successful transport result. Failed transports
-are accumulated into one error envelope only when every candidate fails. This
-keeps normal operation low-latency while preserving enough evidence for
-`unicli doctor compute` and repair workflows.
+One request opens one selected provider. A normal provider failure returns that
+provider's structured envelope. A safe retry repeats the same provider; repair
+restores that provider; replanning chooses a new route from new target evidence;
+and visual escalation requires an explicit route. Ambiguous mutations are
+inspected against the exact target before any replay.
+
+Read-only observations can declare one automatic same-primitive retry. The
+provider may retire a stale CDP page, native sidecar generation, or AX warm
+session first, but the route and physical primitive stay fixed. Mutating actions
+never retry automatically. `meta.recovery_trace` reports the selected policy,
+attempt count, failures, provider, and physical action so an agent can
+distinguish a first-attempt result from a recovered read.
+
+`route_unavailable` means the operation, target, platform, and requested route
+have no declared intersection. `provider_unavailable` means selection succeeded
+and the chosen provider failed to open or dispatch. Use `compute route` to
+inspect the former and `doctor compute` to diagnose the latter.

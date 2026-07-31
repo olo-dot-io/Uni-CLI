@@ -1,6 +1,7 @@
 site: cnn
 name: top
 description: CNN top stories via RSS
+operation_effect: read
 type: web-api
 domain: rss.cnn.com
 strategy: public

@@ -15,7 +15,7 @@
 
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
-import { browserSearchTweets } from "./browser-fallback.js";
+import { browserSearchTweets } from "./browser-extraction.js";
 import type { IPage } from "../../types.js";
 
 cli({
@@ -41,6 +41,8 @@ cli({
     },
   ],
   columns: ["id", "author", "text", "likes", "retweets", "views", "url"],
+  operation_effect: "read",
+  execution_operator: "browser-protocol",
   retrieval: {
     operation: "discover",
     result_kind: "post",

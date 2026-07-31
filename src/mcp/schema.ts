@@ -17,7 +17,7 @@ import type { AdapterCommand } from "../types.js";
 // ── JSON Schema Types ───────────────────────────────────────────────────────
 
 export interface JsonSchemaProperty {
-  type: string;
+  type: string | string[];
   description?: string;
   default?: unknown;
   enum?: string[];
@@ -25,6 +25,7 @@ export interface JsonSchemaProperty {
   maximum?: number;
   minLength?: number;
   maxLength?: number;
+  pattern?: string;
   additionalProperties?: boolean;
   items?: JsonSchemaProperty;
   properties?: Record<string, JsonSchemaProperty>;
@@ -44,12 +45,18 @@ export interface JsonSchemaObject {
  * Map adapter `arg.type` to JSON Schema primitive.
  * Defaults to "string" for unknown/missing — safer than failing the build.
  */
-export function jsonTypeFor(t: string | undefined): string {
+export function jsonTypeFor(t: string | undefined): string | string[] {
   switch (t) {
+    case "str[]":
+      return "array";
     case "int":
       return "integer";
     case "float":
       return "number";
+    case "nullable-float":
+      return ["number", "null"];
+    case "str-or-int":
+      return ["string", "integer"];
     case "bool":
       return "boolean";
     case "str":
@@ -80,8 +87,14 @@ export function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
       type: jsonTypeFor(a.type),
       description: a.description,
     };
+    if (a.type === "str[]") prop.items = { type: "string" };
     if (a.default !== undefined) prop.default = a.default;
     if (a.choices) prop.enum = a.choices;
+    if (a.minLength !== undefined) prop.minLength = a.minLength;
+    if (a.maxLength !== undefined) prop.maxLength = a.maxLength;
+    if (a.minimum !== undefined) prop.minimum = a.minimum;
+    if (a.maximum !== undefined) prop.maximum = a.maximum;
+    if (a.pattern !== undefined) prop.pattern = a.pattern;
     props[a.name] = prop;
     if (a.required) required.push(a.name);
   }

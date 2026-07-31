@@ -1,6 +1,7 @@
 site: gemini
 name: deep-research
 description: Start a Gemini Deep Research run
+operation_effect: remote_transform
 domain: gemini.google.com
 strategy: intercept
 browser: true

@@ -42,8 +42,8 @@ cli({
     "source_url",
   ],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "scholar.search",
   ],
   func: async (page, kwargs) => {

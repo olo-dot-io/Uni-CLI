@@ -24,7 +24,10 @@ import {
 import { defaultErrorNextActions } from "../output/next-actions.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { ExitCode, type TargetSurface } from "../types.js";
-import type { ManifestCommand } from "./manifest.js";
+import {
+  manifestCommandUsesBrowser,
+  type ManifestCommand,
+} from "./manifest.js";
 import type { ParsedArgv } from "./parsed-argv.js";
 import { type Io, emitStderrAndExit } from "./render.js";
 
@@ -74,11 +77,12 @@ export function evaluateManifestOperationPolicy(input: {
       strategy: input.command.strategy,
       domain: input.command.domain,
       base: input.command.base,
-      browser: input.command.browser === true,
+      browser: manifestCommandUsesBrowser(input.command, input.adapterType),
       args: input.command.args,
       capabilities: input.command.capabilities,
       executables: input.command.executables,
       minimumCapability: input.command.minimum_capability,
+      effect: input.command.operation_effect,
       profile: input.parsed.permissionProfile,
       approved: input.parsed.yes,
       argumentValues: input.argumentValues,

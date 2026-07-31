@@ -1,6 +1,7 @@
 site: imdb
 name: top
 description: IMDb popular titles (via chart API)
+operation_effect: read
 type: web-api
 strategy: public
 lint_listing_detail: skip

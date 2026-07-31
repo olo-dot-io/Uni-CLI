@@ -24,7 +24,21 @@ import {
   type CoreDiscoveryArg,
   type CoreDiscoveryCommand,
 } from "../../discovery/core-catalog.js";
-import { buildCoreCommandContract } from "../../core/command-contract.js";
+import {
+  buildCoreCommandContract,
+  buildManifestCommandContract,
+} from "../../core/command-contract.js";
+import {
+  commandFeasibilityProfile,
+  evaluateFeasibilityProfile,
+  parseIntentCapabilityPlan,
+  type CapabilityRequirements,
+} from "../../discovery/feasibility.js";
+import type {
+  ExecutionOperator,
+  OperationEffect,
+  TargetSurface,
+} from "../../types.js";
 import {
   metadataAuthSetupCommand,
   metadataHasOptionalAuth,
@@ -40,14 +54,29 @@ import {
   resolveOperationAdapterPath,
   resolveOperationTargetSurface,
 } from "../../engine/operation-policy.js";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import yaml from "js-yaml";
 import { emptySearchResultError } from "../../output/error-map.js";
-import { readManifest, type Manifest } from "../manifest.js";
+import { detectFormat, format } from "../../output/formatter.js";
+import {
+  makeCtx,
+  type AgentContext,
+  type AgentError,
+  type AgentNextAction,
+} from "../../output/envelope.js";
+import {
+  formatDescribeError,
+  formatDescribePayload,
+  nearestDescribeNames,
+  summarizeDescribePayload,
+} from "../../output/describe.js";
+import {
+  manifestCommandUsesBrowser,
+  readManifest,
+  type Manifest,
+} from "../manifest.js";
 import type { ParsedArgv } from "../parsed-argv.js";
 import { evaluateManifestOperationPolicy } from "../policy.js";
+import { compileObjectivePlan } from "../../engine/objective/index.js";
+import { buildDeliveryOperatorSpecTemplate } from "../../engine/delivery/spec.js";
 import {
   argsToJsonSchema,
   buildChannels,
@@ -57,6 +86,42 @@ import {
   type Io,
   summarizeArgs,
 } from "../render.js";
+
+const EXECUTION_OPERATORS = new Set<ExecutionOperator>([
+  "structured-api",
+  "browser-protocol",
+  "native-cli",
+  "browser-semantic",
+  "desktop-accessibility",
+  "visual-observation",
+  "visual-coordinate",
+  "local-runtime",
+]);
+const TARGET_SURFACES = new Set<TargetSurface>([
+  "web",
+  "desktop",
+  "system",
+  "mobile",
+]);
+const OPERATION_EFFECTS = new Set<OperationEffect>([
+  "read",
+  "download_file",
+  "send_message",
+  "publish_content",
+  "account_state",
+  "remote_transform",
+  "remote_resource",
+  "service_state",
+  "local_app",
+  "local_file",
+  "destructive",
+  "unknown_write",
+]);
+const SUPPORTED_PLATFORMS = new Set<NodeJS.Platform>([
+  "darwin",
+  "win32",
+  "linux",
+]);
 
 export function handleList(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
@@ -190,21 +255,31 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
   let limit = 8;
   let category: string | undefined;
+  let operator: ExecutionOperator | undefined;
+  let surface: TargetSurface | undefined;
+  let effect: OperationEffect | undefined;
+  let platform: NodeJS.Platform | undefined = process.platform;
   const queryParts: string[] = [];
 
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
+    if (arg === "-h" || arg === "--help") return false;
     if (arg === "-n" || arg === "--limit") {
-      limit = parseInt(parsed.rest[i + 1] ?? "", 10) || 8;
+      const value = parsed.rest[i + 1];
+      if (!value || !/^[1-9]\d*$/.test(value)) return false;
+      limit = Number(value);
       i += 1;
       continue;
     }
     if (arg.startsWith("--limit=")) {
-      limit = parseInt(arg.slice("--limit=".length), 10) || 8;
+      const value = arg.slice("--limit=".length);
+      if (!/^[1-9]\d*$/.test(value)) return false;
+      limit = Number(value);
       continue;
     }
     if (arg === "--category") {
       category = parsed.rest[i + 1];
+      if (!category) return false;
       i += 1;
       continue;
     }
@@ -212,6 +287,59 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
       category = arg.slice("--category=".length);
       continue;
     }
+    if (arg === "--operator") {
+      const value = parsed.rest[i + 1] as ExecutionOperator | undefined;
+      if (!value || !EXECUTION_OPERATORS.has(value)) return false;
+      operator = value;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--operator=")) {
+      const value = arg.slice("--operator=".length) as ExecutionOperator;
+      if (!EXECUTION_OPERATORS.has(value)) return false;
+      operator = value;
+      continue;
+    }
+    if (arg === "--surface") {
+      const value = parsed.rest[i + 1] as TargetSurface | undefined;
+      if (!value || !TARGET_SURFACES.has(value)) return false;
+      surface = value;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--surface=")) {
+      const value = arg.slice("--surface=".length) as TargetSurface;
+      if (!TARGET_SURFACES.has(value)) return false;
+      surface = value;
+      continue;
+    }
+    if (arg === "--effect") {
+      const value = parsed.rest[i + 1] as OperationEffect | undefined;
+      if (!value || !OPERATION_EFFECTS.has(value)) return false;
+      effect = value;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--effect=")) {
+      const value = arg.slice("--effect=".length) as OperationEffect;
+      if (!OPERATION_EFFECTS.has(value)) return false;
+      effect = value;
+      continue;
+    }
+    if (arg === "--platform") {
+      const value = parsed.rest[i + 1] as NodeJS.Platform | undefined;
+      if (!value || !SUPPORTED_PLATFORMS.has(value)) return false;
+      platform = value;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith("--platform=")) {
+      const value = arg.slice("--platform=".length) as NodeJS.Platform;
+      if (!SUPPORTED_PLATFORMS.has(value)) return false;
+      platform = value;
+      continue;
+    }
+    if (arg.startsWith("-")) return false;
     queryParts.push(arg);
   }
 
@@ -225,11 +353,20 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
   }
 
   const effectiveQuery = [category, query].filter(Boolean).join(" ");
+  const requirements: CapabilityRequirements = {
+    ...(operator ? { operator } : {}),
+    ...(surface ? { target_surface: surface } : {}),
+    ...(effect ? { effect } : {}),
+    ...(platform ? { platform } : {}),
+    ...(operator
+      ? { allow_coordinate_actuation: operator === "visual-coordinate" }
+      : {}),
+  };
   const results = searchDocuments(
     manifestSearchDocuments(readManifest()),
     query,
     limit,
-    { category },
+    { category, requirements },
   );
   if (results.length === 0) {
     emitError(
@@ -248,13 +385,24 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
     description: result.description || `${result.command} for ${result.site}`,
     score: result.score,
     category: result.category,
+    ...(result.feasibility
+      ? {
+          operator: result.feasibility.operator,
+          operation_family: result.feasibility.operation_family,
+          effect: result.feasibility.effect,
+          target_surface: result.feasibility.target_surface,
+          target_scope: result.feasibility.target_scope,
+          evidence_scope: "catalog_contract",
+          runtime_readiness: "not_evaluated",
+        }
+      : {}),
     usage: result.usage,
   }));
 
   emit(
     io,
     rows,
-    ["command", "description", "score", "usage"],
+    ["command", "description", "operator", "effect", "score", "usage"],
     parsed.format,
     "core.search",
     startedAt,
@@ -262,7 +410,9 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
   return true;
 }
 
-function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
+export function manifestSearchDocuments(
+  manifest: Manifest,
+): CommandSearchDocument[] {
   const documents: CommandSearchDocument[] = [];
   const seen = new Set<string>();
 
@@ -275,6 +425,15 @@ function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
         command: command.name,
         description: command.description ?? "",
         category: info.category,
+        feasibility: commandFeasibilityProfile(
+          buildManifestCommandContract({
+            site,
+            commandName: command.name,
+            category: info.category,
+            adapterType: command.type ?? "web-api",
+            command,
+          }),
+        ),
       });
     }
   }
@@ -288,67 +447,307 @@ function manifestSearchDocuments(manifest: Manifest): CommandSearchDocument[] {
       command: command.command,
       description: command.description,
       category: command.category,
+      feasibility: commandFeasibilityProfile(
+        buildCoreCommandContract({ command }),
+      ),
     });
-  }
-
-  for (const doc of userAdapterSearchDocuments()) {
-    const id = `${doc.site}/${doc.command}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    documents.push(doc);
   }
 
   return documents;
 }
 
-const USER_ADAPTERS_DIR = join(
-  process.env.HOME ?? homedir(),
-  ".unicli",
-  "adapters",
-);
+interface FastDoMatch {
+  site: string;
+  command: string;
+  score: number;
+  description: string;
+  category: string;
+  invocation: string;
+  operator: ReturnType<typeof buildManifestCommandContract>["execution"];
+  args_schema?: Record<string, unknown>;
+  example_stdin?: Record<string, unknown>;
+  feasibility: ReturnType<typeof evaluateFeasibilityProfile>;
+  adapter_path?: string;
+  adapter_type: string;
+  target_surface?: TargetSurface;
+  uses_browser: boolean;
+}
 
-/**
- * Project user-repaired adapters (persisted under ~/.unicli/adapters by the
- * self-repair loop) into search documents. The build-time manifest only
- * covers src/adapters, so without this pass a user-repaired or user-authored
- * adapter is executable but undiscoverable on the fast-path — breaking the
- * "fixes persist" contract. Malformed YAML files are skipped, matching the
- * loader's behavior for user-authored files.
- */
-function userAdapterSearchDocuments(): CommandSearchDocument[] {
-  if (!existsSync(USER_ADAPTERS_DIR)) return [];
-
-  const documents: CommandSearchDocument[] = [];
-  for (const site of readdirSync(USER_ADAPTERS_DIR)) {
-    if (site.startsWith("_") || site.startsWith(".")) continue;
-    const siteDir = join(USER_ADAPTERS_DIR, site);
-    if (!statSync(siteDir).isDirectory()) continue;
-
-    for (const file of readdirSync(siteDir)) {
-      if (!file.endsWith(".yaml") && !file.endsWith(".yml")) continue;
-      if (file.startsWith("_")) continue;
-      try {
-        const parsed = yaml.load(readFileSync(join(siteDir, file), "utf8")) as
-          | { name?: string; description?: string }
-          | undefined;
-        if (!parsed?.name) continue;
-        documents.push({
-          site,
-          command: parsed.name,
-          description: parsed.description ?? "",
-        });
-      } catch {
-        continue;
+/** Manifest-only one-shot intent plan; complex objectives fall through. */
+export function handleDo(parsed: ParsedArgv, io: Io): boolean {
+  const startedAt = Date.now();
+  let top = 3;
+  let includeSchema = true;
+  const intentParts: string[] = [];
+  for (let index = 0; index < parsed.rest.length; index += 1) {
+    const argument = parsed.rest[index];
+    if (argument === "-h" || argument === "--help") return false;
+    if (argument === "-n" || argument === "--top") {
+      const value = parsed.rest[index + 1];
+      if (!value || !/^[1-9]\d*$/.test(value) || Number(value) > 25) {
+        return false;
       }
+      top = Number(value);
+      index += 1;
+      continue;
     }
+    if (argument.startsWith("--top=")) {
+      const value = argument.slice("--top=".length);
+      if (!/^[1-9]\d*$/.test(value) || Number(value) > 25) return false;
+      top = Number(value);
+      continue;
+    }
+    if (argument === "--no-schema") {
+      includeSchema = false;
+      continue;
+    }
+    // Explicit substrate constraints and blocked-candidate diagnostics remain
+    // at the full planner boundary.
+    if (argument.startsWith("-")) return false;
+    intentParts.push(argument);
   }
-  return documents;
+
+  const intent = intentParts.join(" ").trim();
+  if (!intent || compileObjectivePlan(intent)) return false;
+  const intentPlan = parseIntentCapabilityPlan(intent);
+  const requirements: CapabilityRequirements = {
+    ...intentPlan.requirements,
+    platform: process.platform,
+    allow_coordinate_actuation:
+      intentPlan.requirements.allow_coordinate_actuation ?? false,
+  };
+  const manifest = readManifest();
+  const results = searchDocuments(
+    manifestSearchDocuments(manifest),
+    intentPlan.task_text,
+    top,
+    { requirements },
+  ).filter((result) => result.score > 0);
+  if (results.length === 0) return false;
+
+  const matches = results
+    .map((result) =>
+      buildFastDoMatch(manifest, result, requirements, includeSchema),
+    )
+    .filter((match): match is FastDoMatch => match !== undefined);
+  const best = matches[0];
+  if (!best) return false;
+
+  const deliverySpecTemplate = buildDeliveryOperatorSpecTemplate({
+    intent,
+    site: best.site,
+    command: best.command,
+    description: best.description,
+    args: best.example_stdin,
+    adapter_path: best.adapter_path,
+    adapter_type: best.adapter_type,
+    target_surface: best.target_surface,
+    uses_browser: best.uses_browser,
+  });
+  const data = {
+    intent,
+    match: {
+      site: best.site,
+      command: best.command,
+      score: best.score,
+      category: best.category,
+      description: best.description,
+      invocation: best.invocation,
+      operator: best.operator,
+    },
+    candidates: matches.map(stripFastDoInternalFields),
+    blocked_candidates: [],
+    routing_policy: {
+      selection:
+        "BM25/intent ranking intersected with operation, operator, target, effect, platform, and interaction constraints before top-k selection",
+      requirements,
+      provider_recovery:
+        "provider failures require repair or explicit replanning; execution does not cross operators",
+    },
+    delivery_spec_template: deliverySpecTemplate,
+  };
+  const ctx: AgentContext = {
+    command: "core.do",
+    duration_ms: Date.now() - startedAt,
+    surface: "web",
+    next_actions: fastDoNextActions(intent, best, matches),
+  };
+  const fmt = detectFormat(parsed.format);
+  const output =
+    fmt === "md"
+      ? {
+          intent,
+          selected_command: `${best.site} ${best.command}`,
+          invocation: best.invocation,
+          description: best.description,
+          score: best.score,
+          operator: best.operator.operator,
+          operation_family: best.feasibility.contract?.operation_family,
+          provider: best.operator.provider,
+          target_scope: best.operator.target_scope,
+          interaction_impact: best.operator.interaction_impact,
+          contract_compatibility: best.feasibility.compatibility,
+          runtime_readiness: "not_evaluated",
+          requirements,
+          repair_command: `unicli describe ${best.site} ${best.command}`,
+          alternatives: matches
+            .slice(1)
+            .map(
+              (match) =>
+                `${match.site} ${match.command} (${match.score}, ${match.operator.operator})`,
+            ),
+        }
+      : data;
+  io.stdout(format(output, undefined, fmt, ctx));
+  return true;
+}
+
+function buildFastDoMatch(
+  manifest: Manifest,
+  result: ReturnType<typeof searchDocuments>[number],
+  requirements: CapabilityRequirements,
+  includeSchema: boolean,
+): FastDoMatch | undefined {
+  const info = manifest.sites[result.site];
+  const manifestCommand = info?.commands.find(
+    (candidate) => candidate.name === result.command,
+  );
+  if (manifestCommand) {
+    const adapterType =
+      manifestCommand.type ?? info?.commands[0]?.type ?? "web-api";
+    const contract = buildManifestCommandContract({
+      site: result.site,
+      commandName: result.command,
+      category: info?.category,
+      adapterType,
+      command: manifestCommand,
+    });
+    const args = manifestCommand.args ?? [];
+    const profile = commandFeasibilityProfile(contract);
+    return {
+      site: result.site,
+      command: result.command,
+      score: Math.round(result.score * 10_000) / 10_000,
+      description: result.description,
+      category: result.category,
+      invocation: buildChannels(result.site, result.command, args).shell,
+      operator: contract.execution,
+      ...(includeSchema
+        ? {
+            args_schema: argsToJsonSchema(args),
+            example_stdin: buildExample(args),
+          }
+        : {}),
+      feasibility: evaluateFeasibilityProfile(
+        result.site,
+        result.command,
+        profile,
+        requirements,
+      ),
+      adapter_path: manifestCommand.adapter_path,
+      adapter_type: adapterType,
+      target_surface: manifestCommand.target_surface,
+      uses_browser: manifestCommandUsesBrowser(manifestCommand, adapterType),
+    };
+  }
+
+  const coreCommand = getCoreDiscoveryCommand(result.site, result.command);
+  if (!coreCommand) return undefined;
+  const contract = buildCoreCommandContract({ command: coreCommand });
+  const args = [...(coreCommand.args ?? [])];
+  return {
+    site: result.site,
+    command: result.command,
+    score: Math.round(result.score * 10_000) / 10_000,
+    description: result.description,
+    category: result.category,
+    invocation:
+      coreCommand.channels?.shell ??
+      buildChannels(result.site, result.command, args).shell,
+    operator: contract.execution,
+    ...(includeSchema
+      ? {
+          args_schema: argsToJsonSchema(args),
+          example_stdin: buildExample(args),
+        }
+      : {}),
+    feasibility: evaluateFeasibilityProfile(
+      result.site,
+      result.command,
+      commandFeasibilityProfile(contract),
+      requirements,
+    ),
+    adapter_type: coreCommand.type,
+    target_surface: contract.effect.target_surface,
+    uses_browser:
+      contract.execution.operator === "browser-protocol" ||
+      contract.execution.operator === "browser-semantic",
+  };
+}
+
+function stripFastDoInternalFields(
+  match: FastDoMatch,
+): Record<string, unknown> {
+  const {
+    adapter_path: _adapterPath,
+    adapter_type: _adapterType,
+    target_surface: _targetSurface,
+    uses_browser: _usesBrowser,
+    ...publicMatch
+  } = match;
+  return publicMatch;
+}
+
+function fastDoNextActions(
+  intent: string,
+  best: FastDoMatch,
+  matches: FastDoMatch[],
+): AgentNextAction[] {
+  const actions: AgentNextAction[] = [
+    {
+      command: "unicli delivery run <delivery-spec.json>",
+      description:
+        "Execute the included delivery_spec_template before claiming success",
+    },
+    {
+      command: best.invocation,
+      description: `Invoke the top-scored match (${best.score})`,
+    },
+    {
+      command: `unicli describe ${best.site} ${best.command}`,
+      description: "Read the command schema, channels, and example payload",
+    },
+  ];
+  const runner = matches[1];
+  if (runner && runner.score >= best.score * 0.7) {
+    actions.push({
+      command: runner.invocation,
+      description: `Runner-up (score ${runner.score}) — consider if top match misreads intent`,
+    });
+  }
+  actions.push({
+    command: `unicli search "${intent}"`,
+    description: "List all matching candidates with scores",
+  });
+  return actions;
 }
 
 export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   const startedAt = Date.now();
   const manifest = readManifest();
-  const [site, cmdName] = parsed.rest;
+  let full = false;
+  const positionals: string[] = [];
+  for (const argument of parsed.rest) {
+    if (argument === "--full") {
+      full = true;
+      continue;
+    }
+    if (argument === "-h" || argument === "--help") return false;
+    if (argument.startsWith("-")) return false;
+    positionals.push(argument);
+  }
+  if (positionals.length > 2) return false;
+  const [site, cmdName] = positionals;
 
   if (!site) {
     const adapterSites = Object.entries(manifest.sites).map(([name, info]) => ({
@@ -371,7 +770,13 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         })),
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-    io.stdout(JSON.stringify({ sites, total: sites.length }, null, 2));
+    emitDescribePayload(
+      io,
+      { sites, total: sites.length },
+      parsed,
+      startedAt,
+      full,
+    );
     return true;
   }
 
@@ -381,38 +786,73 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
       (candidate) => candidate.site === site,
     );
     if (coreSite && !cmdName) {
-      io.stdout(
-        JSON.stringify(
-          {
-            site,
-            display_name: site,
-            type: coreSite.type,
+      emitDescribePayload(
+        io,
+        {
+          site,
+          display_name: site,
+          type: coreSite.type,
+          strategy: "public",
+          commands: coreSite.commands.map((command) => ({
+            name: command.command,
+            description: command.description,
+            quarantined: false,
             strategy: "public",
-            commands: coreSite.commands.map((command) => ({
-              name: command.command,
-              description: command.description,
-              quarantined: false,
-              strategy: "public",
-              auth: false,
-              browser: command.type === "browser",
-              args: summarizeArgs([...(command.args ?? [])]),
-            })),
-          },
-          null,
-          2,
-        ),
+            auth: false,
+            browser: command.type === "browser",
+            args: summarizeArgs([...(command.args ?? [])]),
+          })),
+        },
+        parsed,
+        startedAt,
+        full,
       );
       return true;
     }
     if (cmdName) {
       const coreCommand = getCoreDiscoveryCommand(site, cmdName);
       if (coreCommand) {
-        io.stdout(JSON.stringify(describeCoreCommand(coreCommand), null, 2));
+        emitDescribePayload(
+          io,
+          describeCoreCommand(coreCommand),
+          parsed,
+          startedAt,
+          full,
+        );
         return true;
       }
     }
-    io.stdout(JSON.stringify({ error: `unknown site: ${site}` }, null, 2));
-    process.exitCode = 64;
+    const alternatives = nearestDescribeNames(site, [
+      ...Object.keys(manifest.sites),
+      ...listCoreDiscoverySites().map((candidate) => candidate.site),
+    ]).map((candidate) => {
+      const candidateCommands = [
+        ...(manifest.sites[candidate]?.commands.map(
+          (command) => command.name,
+        ) ?? []),
+        ...(listCoreDiscoverySites()
+          .find((core) => core.site === candidate)
+          ?.commands.map((command) => command.command) ?? []),
+      ];
+      return `unicli describe ${candidate}${cmdName && candidateCommands.includes(cmdName) ? ` ${cmdName}` : ""}`;
+    });
+    emitDescribeFailure(
+      io,
+      {
+        code: "not_found",
+        message: `unknown site: ${site}`,
+        suggestion:
+          alternatives.length > 0
+            ? "Use the closest registered site below."
+            : "Run `unicli search <intent>` to resolve a registered command.",
+        retryable: false,
+        alternatives:
+          alternatives.length > 0 ? alternatives : ["unicli search <intent>"],
+      },
+      parsed,
+      startedAt,
+      64,
+    );
     return true;
   }
 
@@ -438,32 +878,52 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         ),
         ...(authOptional ? { auth_optional: true } : {}),
         ...(authSetup ? { auth_setup: authSetup } : {}),
-        browser: command.browser === true,
+        browser: manifestCommandUsesBrowser(
+          command,
+          command.type ?? info.commands[0]?.type ?? "web-api",
+        ),
         args: summarizeArgs(command.args),
       };
     });
-    io.stdout(
-      JSON.stringify(
-        {
-          site,
-          display_name: site,
-          type: info.commands[0]?.type ?? "web-api",
-          strategy: info.commands[0]?.strategy ?? "public",
-          commands,
-        },
-        null,
-        2,
-      ),
+    emitDescribePayload(
+      io,
+      {
+        site,
+        display_name: site,
+        type: info.commands[0]?.type ?? "web-api",
+        strategy: info.commands[0]?.strategy ?? "public",
+        commands,
+      },
+      parsed,
+      startedAt,
+      full,
     );
     return true;
   }
 
   const command = info.commands.find((candidate) => candidate.name === cmdName);
   if (!command) {
-    io.stdout(
-      JSON.stringify({ error: `unknown command: ${site} ${cmdName}` }, null, 2),
+    const alternatives = nearestDescribeNames(
+      cmdName,
+      info.commands.map((candidate) => candidate.name),
+    ).map((candidate) => `unicli describe ${site} ${candidate}`);
+    emitDescribeFailure(
+      io,
+      {
+        code: "not_found",
+        message: `unknown command: ${site} ${cmdName}`,
+        suggestion:
+          alternatives.length > 0
+            ? "Use the closest command below."
+            : `Run \`unicli describe ${site}\` to inspect this site's commands.`,
+        retryable: false,
+        alternatives:
+          alternatives.length > 0 ? alternatives : [`unicli describe ${site}`],
+      },
+      parsed,
+      startedAt,
+      64,
     );
-    process.exitCode = 64;
     return true;
   }
   const adapterType = command.type ?? info.commands[0]?.type ?? "web-api";
@@ -497,54 +957,94 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     command.auth_requirement,
   );
   const authOptional = metadataHasOptionalAuth(command.auth_requirement);
+  const contract = buildManifestCommandContract({
+    site,
+    commandName: cmdName,
+    category: info.category,
+    adapterType,
+    command,
+  });
 
-  io.stdout(
-    JSON.stringify(
-      {
-        command: `unicli ${site} ${cmdName}`,
-        description: command.description ?? "",
-        quarantined: command.quarantined === true,
+  emitDescribePayload(
+    io,
+    {
+      command: `unicli ${site} ${cmdName}`,
+      description: command.description ?? "",
+      quarantined: command.quarantined === true,
+      strategy,
+      auth: metadataRequiresAuth(
         strategy,
-        auth: metadataRequiresAuth(
-          strategy,
-          command.capabilities,
-          command.auth_requirement,
-        ),
-        ...(authOptional ? { auth_optional: true } : {}),
-        ...(authSetup ? { auth_setup: authSetup } : {}),
-        browser: command.browser === true,
-        target_surface: targetSurface,
-        adapter_path: adapterPath,
-        operation_policy: operationPolicy,
-        args_schema: argsToJsonSchema(command.args ?? []),
-        example_stdin: buildExample(command.args ?? []),
-        channels: buildChannels(site, cmdName, command.args ?? []),
-        next_actions: [
-          {
-            command: `unicli ${site} ${cmdName} --dry-run`,
-            description: "Preview the resolved argument bag and pipeline plan",
-          },
-          {
-            command: `unicli ${site} ${cmdName}`,
-            description: "Run the command (shell channel)",
-            params: {
-              note: {
-                description:
-                  "For payloads with quotes/emoji/JSON, pipe stdin-JSON instead.",
-              },
+        command.capabilities,
+        command.auth_requirement,
+      ),
+      ...(authOptional ? { auth_optional: true } : {}),
+      ...(authSetup ? { auth_setup: authSetup } : {}),
+      browser: manifestCommandUsesBrowser(command, adapterType),
+      target_surface: targetSurface,
+      adapter_path: adapterPath,
+      operation_policy: operationPolicy,
+      args_schema: argsToJsonSchema(command.args ?? []),
+      example_stdin: buildExample(command.args ?? []),
+      channels: buildChannels(site, cmdName, command.args ?? []),
+      contract,
+      next_actions: [
+        {
+          command: `unicli ${site} ${cmdName} --dry-run`,
+          description: "Preview the resolved argument bag and pipeline plan",
+        },
+        {
+          command: `unicli ${site} ${cmdName}`,
+          description: "Run the command (shell channel)",
+          params: {
+            note: {
+              description:
+                "For payloads with quotes/emoji/JSON, pipe stdin-JSON instead.",
             },
           },
-          {
-            command: `unicli repair ${site} ${cmdName}`,
-            description: "If the command fails due to upstream drift",
-          },
-        ],
-      },
-      null,
-      2,
-    ),
+        },
+        {
+          command: `unicli repair ${site} ${cmdName}`,
+          description: "If the command fails due to upstream drift",
+        },
+      ],
+    },
+    parsed,
+    startedAt,
+    full,
   );
   return true;
+}
+
+function emitDescribePayload(
+  io: Io,
+  payload: Record<string, unknown>,
+  parsed: ParsedArgv,
+  startedAt: number,
+  full: boolean,
+): void {
+  const ctx = makeCtx("core.describe", startedAt);
+  ctx.duration_ms = Date.now() - startedAt;
+  const fmt = detectFormat(parsed.format);
+  io.stdout(
+    formatDescribePayload(
+      full ? payload : summarizeDescribePayload(payload),
+      fmt,
+      ctx,
+    ),
+  );
+}
+
+function emitDescribeFailure(
+  io: Io,
+  error: AgentError,
+  parsed: ParsedArgv,
+  startedAt: number,
+  exitCode: number,
+): void {
+  process.exitCode = exitCode;
+  const ctx = makeCtx("core.describe", startedAt);
+  ctx.duration_ms = Date.now() - startedAt;
+  io.stderr(formatDescribeError(error, detectFormat(parsed.format), ctx));
 }
 
 function describeCoreCommand(

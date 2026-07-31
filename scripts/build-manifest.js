@@ -8,19 +8,17 @@
 
 import {
   readFileSync,
-  readdirSync,
   writeFileSync,
-  existsSync,
-  statSync,
   mkdirSync,
+  mkdtempSync,
+  rmSync,
 } from "node:fs";
-import { join, extname, basename, dirname } from "node:path";
+import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
-import { dedupeCommands, extractTsRegistrations } from "./manifest-ts-scan.js";
+import { SITE_CATEGORIES } from "../src/discovery/aliases.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ADAPTERS_DIR = join(__dirname, "..", "src", "adapters");
 const DIST_DIR = join(__dirname, "..", "dist");
 
 mkdirSync(DIST_DIR, { recursive: true });
@@ -28,434 +26,96 @@ const PKG = JSON.parse(
   readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
 );
 
-const SKIP_FILES = new Set(["client", "wbi", "innertube", "index"]);
-
-// ── Category mapping (mirrors discovery/aliases.ts SITE_CATEGORIES) ─────────
-
-const CATEGORIES = {
-  social: [
-    "twitter",
-    "weibo",
-    "zhihu",
-    "douban",
-    "jike",
-    "xiaohongshu",
-    "tieba",
-    "v2ex",
-    "linux-do",
-    "reddit",
-    "bluesky",
-    "mastodon",
-    "facebook",
-    "instagram",
-    "band",
-    "lobsters",
-    "hupu",
-    "slack",
-    "discord-app",
-    "signal",
-    "whatsapp",
-    "teams",
-    "dingtalk",
-    "lark",
-    "feishu",
-    "wechat-work",
-    "weixin",
-    "threads",
-    "rednote",
-    "1point3acres",
-    "imessage",
-    "zoom-app",
-    "zoom",
-  ],
-  video: [
-    "bilibili",
-    "youtube",
-    "douyin",
-    "tiktok",
-    "twitch",
-    "kuaishou",
-    "douyu",
-    "yt-dlp",
-  ],
-  news: [
-    "hackernews",
-    "bbc",
-    "cnn",
-    "nytimes",
-    "reuters",
-    "36kr",
-    "techcrunch",
-    "theverge",
-    "infoq",
-    "ithome",
-    "bloomberg",
-  ],
-  finance: [
-    "xueqiu",
-    "eastmoney",
-    "sinafinance",
-    "yahoo-finance",
-    "barchart",
-    "binance",
-    "futu",
-    "coinbase",
-    "coingecko",
-    "defillama",
-  ],
-  shopping: [
-    "amazon",
-    "jd",
-    "taobao",
-    "pinduoduo",
-    "1688",
-    "smzdm",
-    "meituan",
-    "coupang",
-    "xianyu",
-    "dianping",
-    "dangdang",
-    "ele",
-    "maoyan",
-  ],
-  travel: ["ctrip"],
-  dev: [
-    "github-trending",
-    "gitlab",
-    "gitee",
-    "npm",
-    "pypi",
-    "crates-io",
-    "maven",
-    "nuget",
-    "rubygems",
-    "packagist",
-    "pub-dev",
-    "cocoapods",
-    "docker-hub",
-    "npm-trends",
-    "homebrew",
-    "stackoverflow",
-    "devto",
-    "producthunt",
-    "cursor",
-    "codex",
-    "codex-cli",
-    "claude-code",
-    "opencode",
-    "vscode",
-    "postman",
-    "insomnia",
-    "github-desktop",
-    "gitkraken",
-    "docker-desktop",
-    "gh",
-    "crates",
-    "dockerhub",
-    "goproxy",
-    "wiremock",
-    "juejin",
-    "osv",
-    "openharness",
-  ],
-  ai: [
-    "ai",
-    "ollama",
-    "openrouter",
-    "hf",
-    "replicate",
-    "deepseek",
-    "perplexity",
-    "grok",
-    "gemini",
-    "minimax",
-    "doubao",
-    "doubao-web",
-    "doubao-app",
-    "novita",
-    "notebooklm",
-    "chatgpt",
-    "chatwise",
-    "antigravity",
-    "claude",
-    "lm-studio",
-    "yuanbao",
-    "qwen",
-    "chatgpt-app",
-    "yollomi",
-    "jimeng",
-  ],
-  scholarly: [
-    "arxiv",
-    "semantic-scholar",
-    "crossref",
-    "unpaywall",
-    "openalex",
-    "openreview",
-    "dblp",
-    "pubmed",
-    "biorxiv",
-    "medrxiv",
-    "acl-anthology",
-    "pmlr",
-    "cvf",
-    "neurips",
-    "cnki",
-    "wanfang",
-    "google-scholar",
-    "baidu-scholar",
-    "huggingface-papers",
-    "scholar-artifacts",
-    "paperreview",
-    "zotero",
-  ],
-  patent: [
-    "epo",
-    "espacenet",
-    "cipo",
-    "cnipa",
-    "uspto",
-    "dpma",
-    "fips",
-    "freepatentsonline-web",
-    "google-patents-bq",
-    "google-patents-web",
-    "inpi-br",
-    "inpi-fr",
-    "ipaustralia",
-    "jpo",
-    "kipris",
-    "patsnap",
-    "pqai",
-  ],
-  reference: [
-    "google",
-    "wikipedia",
-    "marxists-cn",
-    "moegirl",
-    "anilist",
-    "jikan",
-    "bangumi",
-    "kitsu",
-    "mangadex",
-    "dictionary",
-    "chaoxing",
-    "imdb",
-  ],
-  audio: ["spotify", "netease-music", "apple-podcasts", "xiaoyuzhou"],
-  content: [
-    "medium",
-    "substack",
-    "lesswrong",
-    "sinablog",
-    "toutiao",
-    "sspai",
-    "weread",
-    "zsxq",
-    "pixiv",
-    "danbooru",
-    "ehentai",
-    "dlsite",
-    "vndb",
-    "yandere",
-    "konachan",
-    "safebooru",
-  ],
-  productivity: [
-    "notion",
-    "notion-app",
-    "obsidian",
-    "logseq",
-    "typora",
-    "evernote-app",
-    "mubu",
-    "apple-notes",
-    "ones",
-    "quark",
-  ],
-  jobs: ["boss", "linkedin", "nowcoder", "51job", "indeed", "maimai"],
-  desktop: [
-    "macos",
-    "ffmpeg",
-    "imagemagick",
-    "blender",
-    "gimp",
-    "freecad",
-    "inkscape",
-    "pandoc",
-    "libreoffice",
-    "word",
-    "excel",
-    "powerpoint",
-    "mermaid",
-    "musescore",
-    "drawio",
-    "docker",
-    "comfyui",
-    "figma",
-    "audacity",
-    "obs",
-    "cloudcompare",
-    "krita",
-    "kdenlive",
-    "shotcut",
-    "renderdoc",
-  ],
-  games: ["steam"],
-  utility: [
-    "exchangerate",
-    "ip-info",
-    "qweather",
-    "web",
-    "bitwarden",
-    "linear",
-    "todoist",
-  ],
-};
-
 function getCategory(site) {
-  for (const [cat, sites] of Object.entries(CATEGORIES)) {
-    if (sites.includes(site)) return cat;
+  return SITE_CATEGORIES.get(site) ?? "other";
+}
+
+// ── Capture the authoritative live registry ────────────────────────────────
+
+// Manifest generation executes the same registration code as the runtime.
+// A disposable HOME prevents local user overlays from contaminating the
+// packaged artifact, and dynamic host discovery is disabled for reproducible
+// builds.
+const originalHome = process.env.HOME;
+const originalDynamicMacos = process.env.UNICLI_DYNAMIC_MACOS;
+const buildHome = mkdtempSync(join(tmpdir(), "unicli-manifest-home-"));
+process.env.HOME = buildHome;
+process.env.UNICLI_DYNAMIC_MACOS = "0";
+
+let liveAdapters;
+let commandUsesBrowser;
+let buildCommandContract;
+try {
+  const loader = await import("../src/discovery/loader.ts");
+  const registry = await import("../src/registry.ts");
+  const contracts = await import("../src/core/command-contract.ts");
+  loader.loadAllAdapters({ strict: true });
+  await loader.loadTsAdapters({ strict: true });
+  liveAdapters = registry.getAllAdapters();
+  commandUsesBrowser = registry.commandUsesBrowser;
+  buildCommandContract = contracts.buildCommandContract;
+} finally {
+  if (originalHome === undefined) delete process.env.HOME;
+  else process.env.HOME = originalHome;
+  if (originalDynamicMacos === undefined) {
+    delete process.env.UNICLI_DYNAMIC_MACOS;
+  } else {
+    process.env.UNICLI_DYNAMIC_MACOS = originalDynamicMacos;
   }
-  return "other";
+  rmSync(buildHome, { recursive: true, force: true });
 }
 
-function serializeArgs(args) {
-  if (!args || typeof args !== "object" || Array.isArray(args)) return [];
-  return Object.entries(args).map(([name, raw]) => {
-    const def = raw && typeof raw === "object" ? raw : {};
-    const arg = {
-      name,
-      type: def.type ?? "str",
-      required: def.required === true,
-      positional: def.positional === true,
-    };
-    if (def.default !== undefined) arg.default = def.default;
-    if (Array.isArray(def.choices)) arg.choices = def.choices;
-    if (def.description) arg.description = def.description;
-    if (def.format) arg.format = def.format;
-    if (def["x-unicli-kind"]) arg["x-unicli-kind"] = def["x-unicli-kind"];
-    if (def["x-unicli-accepts"]) {
-      arg["x-unicli-accepts"] = def["x-unicli-accepts"];
-    }
-    if (def["x-unicli-uri-origins"]) {
-      arg["x-unicli-uri-origins"] = def["x-unicli-uri-origins"];
-    }
-    if (def["x-unicli-uri-path-pattern"]) {
-      arg["x-unicli-uri-path-pattern"] = def["x-unicli-uri-path-pattern"];
-    }
-    return arg;
-  });
-}
-
-function serializeColumns(columns) {
-  return Array.isArray(columns)
-    ? columns.filter((column) => typeof column === "string")
-    : [];
-}
-
-// ── Scan Adapters ───────────────────────────────────────────────────────────
-
-const manifest = { version: PKG.version, sites: {} };
-const extraCommandsBySite = new Map();
-
-function addExtraCommands(site, commands) {
-  const existing = extraCommandsBySite.get(site) ?? [];
-  existing.push(...commands);
-  extraCommandsBySite.set(site, existing);
-}
-
-if (existsSync(ADAPTERS_DIR)) {
-  for (const site of readdirSync(ADAPTERS_DIR)) {
-    if (site.startsWith("_") || site.startsWith(".")) continue;
-    const siteDir = join(ADAPTERS_DIR, site);
-    if (!statSync(siteDir).isDirectory()) continue;
-
-    const commands = [];
-
-    for (const file of readdirSync(siteDir)) {
-      const ext = extname(file);
-      const cmdName = basename(file, ext);
-
-      if (ext === ".yaml" || ext === ".yml") {
-        try {
-          const raw = readFileSync(join(siteDir, file), "utf-8");
-          const parsed = yaml.load(raw);
-          commands.push({
-            name: cmdName,
-            description: parsed.description || "",
-            strategy: parsed.strategy || "public",
-            type: parsed.type || "web-api",
-            domain: parsed.domain,
-            base: parsed.base,
-            browser: parsed.browser === true,
-            quarantined: parsed.quarantine === true,
-            args: serializeArgs(parsed.args),
-            columns: serializeColumns(parsed.columns),
-            defaultFormat: parsed.defaultFormat,
-            capabilities: Array.isArray(parsed.capabilities)
-              ? parsed.capabilities.filter(
-                  (capability) => typeof capability === "string",
-                )
-              : undefined,
-            auth_requirement: parsed.auth_requirement,
-            executables: Array.isArray(parsed.executables)
-              ? parsed.executables.filter(
-                  (executable) => typeof executable === "string",
-                )
-              : undefined,
-            minimum_capability: parsed.minimum_capability,
-            pipeline_steps: Array.isArray(parsed.pipeline)
-              ? parsed.pipeline.length
-              : 0,
-            adapter_path: `src/adapters/${site}/${file}`,
-            target_surface: parsed.target_surface,
-          });
-        } catch {
-          // Skip malformed YAML
-        }
-      } else if (ext === ".ts" && !SKIP_FILES.has(cmdName)) {
-        try {
-          const adapterPath = join(siteDir, file);
-          const source = readFileSync(adapterPath, "utf-8");
-          for (const reg of extractTsRegistrations(source, site, cmdName, {
-            sourcePath: adapterPath,
-          })) {
-            if (reg.site === site) {
-              commands.push(...reg.commands);
-            } else {
-              addExtraCommands(reg.site, reg.commands);
-            }
-          }
-        } catch {
-          // Skip unreadable TS files
-        }
-      }
-    }
-
-    if (commands.length > 0) {
-      manifest.sites[site] = {
-        commands: dedupeCommands(commands),
-        category: getCategory(site),
+const manifest = { version: PKG.version, sites: Object.create(null) };
+for (const adapter of liveAdapters) {
+  const commands = Object.entries(adapter.commands)
+    .map(([name, command]) => {
+      const contract = buildCommandContract({
+        adapter,
+        commandName: name,
+        command,
+      });
+      return {
+        name,
+        description: command.description ?? "",
+        strategy: command.strategy ?? adapter.strategy ?? "public",
+        type: adapter.type,
+        domain: command.domain ?? adapter.domain,
+        base: command.base ?? adapter.base,
+        browser: commandUsesBrowser(adapter, command),
+        browserSession: command.browserSession,
+        quarantined: command.quarantine === true,
+        args: command.adapterArgs ?? [],
+        columns: command.columns ?? [],
+        defaultFormat: command.defaultFormat,
+        capabilities: command.capabilities,
+        auth_requirement: command.auth_requirement,
+        executables: command.executables,
+        minimum_capability: command.minimum_capability,
+        pipeline_steps: command.pipeline?.length ?? 0,
+        paginated: command.paginated,
+        retrieval: command.retrieval,
+        output: command.output,
+        stream: command.stream,
+        adapter_path: command.adapter_path,
+        target_surface: command.target_surface,
+        operation_effect: command.operation_effect,
+        execution_operator: command.execution_operator,
+        operation_family: command.operation_family,
+        idempotency: command.idempotency,
+        effect_projection: {
+          operation_effect: contract.effect.operation_effect,
+          effect_source: contract.effect.effect_source,
+          effect_confidence: contract.effect.effect_confidence,
+        },
+        source_tier: "packaged",
       };
-    }
-  }
-}
-
-for (const [site, extraCommands] of extraCommandsBySite) {
-  const current = manifest.sites[site] ?? {
-    commands: [],
-    category: getCategory(site),
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+  if (commands.length === 0) continue;
+  manifest.sites[adapter.name] = {
+    commands,
+    category: adapter.category ?? getCategory(adapter.name),
   };
-  const seen = new Set(current.commands.map((cmd) => cmd.name));
-  for (const cmd of dedupeCommands(extraCommands)) {
-    if (!seen.has(cmd.name)) {
-      current.commands.push(cmd);
-      seen.add(cmd.name);
-    }
-  }
-  current.commands.sort((a, b) => a.name.localeCompare(b.name));
-  manifest.sites[site] = current;
 }
 
 // ── Output 1: Full manifest ─────────────────────────────────────────────────

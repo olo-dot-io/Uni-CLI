@@ -1,8 +1,9 @@
 /**
  * self-discovery.ts — measure agent self-discovery and dry-run self-call flow.
  *
- * The flow is intentionally close to how an agent should use Uni-CLI:
- *   intent -> search -> describe -> dry-run plan
+ * Compares the legacy three-process flow with the one-shot intent planner:
+ *   legacy:   intent -> search -> describe -> dry-run plan
+ *   one-shot: intent -> do (rank + schema + invocation in one envelope)
  *
  * It is network-free. The dry-run stage validates routing, schema discovery,
  * argument binding, and command planning without calling upstream services.
@@ -122,6 +123,10 @@ function percentile(values: number[], pct: number): number {
   return sorted[idx] ?? 0;
 }
 
+function outputBytes(run: RunResult): number {
+  return Buffer.byteLength(run.stdout) + Buffer.byteLength(run.stderr);
+}
+
 export function runSelfDiscoverySuite(): Record<string, unknown> {
   if (!existsSync(CLI_ENTRY)) {
     throw new Error(
@@ -149,16 +154,25 @@ export function runSelfDiscoverySuite(): Record<string, unknown> {
     const rank = candidates.findIndex((row) => row.command === expectedText);
 
     const describeRun = runCli([
+      "-f",
+      "json",
       "describe",
       testCase.expected.site,
       testCase.expected.command,
     ]);
-    const describePayload = parseJson<{
+    const describeWire = parseJson<{
+      data?: {
+        args_schema?: {
+          required?: string[];
+          properties?: Record<string, unknown>;
+        };
+      };
       args_schema?: {
         required?: string[];
         properties?: Record<string, unknown>;
       };
     }>(describeRun.stdout);
+    const describePayload = describeWire?.data ?? describeWire;
     const describeOk =
       describeRun.status === 0 &&
       Boolean(describePayload?.args_schema?.properties);
@@ -179,7 +193,44 @@ export function runSelfDiscoverySuite(): Record<string, unknown> {
         `${testCase.expected.site}.${testCase.expected.command}` &&
       Boolean(plan.args);
 
+    const oneShotRun = runCli([
+      "-f",
+      "json",
+      "do",
+      testCase.intent,
+      "--top",
+      String(Math.max(1, testCase.topK)),
+    ]);
+    const oneShotEnv = parseJson<{
+      data?: {
+        match?: { site?: string; command?: string; invocation?: string };
+        candidates?: Array<{
+          site?: string;
+          command?: string;
+          invocation?: string;
+          args_schema?: { properties?: Record<string, unknown> };
+        }>;
+      };
+    }>(oneShotRun.stdout);
+    const oneShotCandidates = oneShotEnv?.data?.candidates ?? [];
+    const oneShotRank = oneShotCandidates.findIndex(
+      (candidate) =>
+        candidate.site === testCase.expected.site &&
+        candidate.command === testCase.expected.command,
+    );
+    const oneShotExpected =
+      oneShotRank >= 0 ? oneShotCandidates[oneShotRank] : undefined;
+    const oneShotOk =
+      oneShotRun.status === 0 &&
+      oneShotRank >= 0 &&
+      oneShotRank < testCase.topK &&
+      Boolean(oneShotExpected?.args_schema?.properties) &&
+      typeof oneShotExpected?.invocation === "string" &&
+      typeof oneShotEnv?.data?.match?.invocation === "string";
+
     const hit = rank >= 0 && rank < testCase.topK;
+    const legacyBytes =
+      outputBytes(searchRun) + outputBytes(describeRun) + outputBytes(dryRun);
     return {
       id: testCase.id,
       intent: testCase.intent,
@@ -190,11 +241,18 @@ export function runSelfDiscoverySuite(): Record<string, unknown> {
       hit,
       describe_ok: describeOk,
       dry_run_ok: dryRunOk,
+      one_shot_ok: oneShotOk,
+      calls: { legacy: 3, one_shot: 1 },
+      output_bytes: {
+        legacy: legacyBytes,
+        one_shot: outputBytes(oneShotRun),
+      },
       wall_ms: {
         search: searchRun.wall_ms,
         describe: describeRun.wall_ms,
         dry_run: dryRun.wall_ms,
         total: searchRun.wall_ms + describeRun.wall_ms + dryRun.wall_ms,
+        one_shot: oneShotRun.wall_ms,
       },
     };
   });
@@ -203,8 +261,15 @@ export function runSelfDiscoverySuite(): Record<string, unknown> {
   const search = results.map((result) => result.wall_ms.search);
   const describe = results.map((result) => result.wall_ms.describe);
   const dryRun = results.map((result) => result.wall_ms.dry_run);
+  const oneShot = results.map((result) => result.wall_ms.one_shot);
+  const legacyBytes = results.map((result) => result.output_bytes.legacy);
+  const oneShotBytes = results.map((result) => result.output_bytes.one_shot);
   const passed = results.filter(
-    (result) => result.hit && result.describe_ok && result.dry_run_ok,
+    (result) =>
+      result.hit &&
+      result.describe_ok &&
+      result.dry_run_ok &&
+      result.one_shot_ok,
   ).length;
 
   return {
@@ -216,12 +281,22 @@ export function runSelfDiscoverySuite(): Record<string, unknown> {
       results.filter((result) => result.rank === 1).length / results.length,
     topK_accuracy:
       results.filter((result) => result.hit).length / results.length,
+    calls_per_case: { legacy: 3, one_shot: 1 },
+    output_bytes: {
+      legacy_p50: percentile(legacyBytes, 50),
+      one_shot_p50: percentile(oneShotBytes, 50),
+      reduction_ratio:
+        1 - percentile(oneShotBytes, 50) / percentile(legacyBytes, 50),
+    },
     latency_ms: {
       search_p50: percentile(search, 50),
       describe_p50: percentile(describe, 50),
       dry_run_p50: percentile(dryRun, 50),
       total_p50: percentile(totals, 50),
       total_p95: percentile(totals, 95),
+      one_shot_p50: percentile(oneShot, 50),
+      one_shot_p95: percentile(oneShot, 95),
+      reduction_ratio: 1 - percentile(oneShot, 50) / percentile(totals, 50),
     },
     results,
   };

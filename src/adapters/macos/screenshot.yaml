@@ -24,19 +24,28 @@ pipeline:
           command: screencapture
           args: ["-x", "-c"]
           timeout: 10000
-      - evaluate: "JSON.stringify([{output: 'clipboard', message: 'Screenshot copied to clipboard'}])"
+      - map:
+          output: clipboard
+          message: Screenshot copied to clipboard
     else:
       - exec:
           command: screencapture
           args: ["-x", "${{ args.file }}"]
           timeout: 10000
-      - evaluate: "JSON.stringify([{output: '${{ args.file }}', message: 'Screenshot saved'}])"
+      - map:
+          output: "${{ args.file }}"
+          message: Screenshot saved
 
 columns: [output, message]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: []
-minimum_capability: http.fetch
+capabilities: ["subprocess.exec"]
+minimum_capability: subprocess.exec
+target_surface: system
+operation_effect: local_file
+operation_family: capture
+execution_operator: native-cli
+idempotency: conditional
 trust: user
 confidentiality: public
 quarantine: false

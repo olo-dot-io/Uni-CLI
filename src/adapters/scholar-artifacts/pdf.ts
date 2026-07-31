@@ -85,6 +85,8 @@ cli({
   description: "Download a scholarly PDF URL and extract text with pdftotext",
   domain: "scholarly-pdf",
   strategy: Strategy.PUBLIC,
+  operation_family: "download",
+  operation_effect: "local_file",
   args: [
     {
       name: "pdf_url",

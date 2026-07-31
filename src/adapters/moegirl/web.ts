@@ -253,6 +253,8 @@ cli({
   domain: "zh.moegirl.org.cn",
   strategy: Strategy.PUBLIC,
   browser: false,
+  operation_effect: "read",
+  operation_family: "search",
   args: [
     { name: "query", type: "str", required: true, positional: true },
     { name: "limit", type: "int", default: 10 },
@@ -281,6 +283,8 @@ cli({
   domain: "zh.moegirl.org.cn",
   strategy: Strategy.PUBLIC,
   browser: false,
+  operation_effect: "read",
+  operation_family: "get",
   args: [
     { name: "title", type: "str", required: true, positional: true },
     {

@@ -2,9 +2,9 @@
  * @owner       src::transport::adapters::desktop-ax
  * @does        Execute macOS Accessibility, AppleScript, clipboard, launch, and screenshot actions through request-contained native processes.
  * @needs       Swift AX generators, app control policy, cancellable shell, transactional file publication
- * @feeds       compute cascade and direct desktop-ax transport callers
+ * @feeds       selected compute dispatch and direct desktop-ax transport callers
  * @breaks      Returning cancellation before native children exit, losing post-dispatch ambiguity, or overwriting fulfilled native mutations permits unsafe replay.
- * @invariants  Native mutation settlement is authoritative; cancellation-caused rejection after dispatch is outcome-ambiguous; app-targeted screenshots bind one AX window to one exact CoreGraphics window id instead of sampling an occluded screen region; screenshot destinations change only at atomic commit.
+ * @invariants  Native mutation settlement is authoritative; cancellation-caused rejection after dispatch is outcome-ambiguous; semantic AX failures never switch to coordinate or background-input actuation; app-targeted screenshots bind one AX window to one exact CoreGraphics window id instead of sampling an occluded screen region; screenshot destinations change only at atomic commit.
  * @side-effects Can focus apps, mutate accessibility elements, post input, use the clipboard, launch apps, and create screenshot artifacts.
  * @perf        Swift compilation is content-addressed and cached; each action uses at most one native child after warmup.
  * @concurrency AbortSignal is request-local; detached process groups prevent descendants from escaping cancellation.
@@ -289,7 +289,7 @@ export class DesktopAxTransport implements TransportAdapter {
       }
       const envelope = await settleDispatchedAction(
         req.kind,
-        req.canMutate ?? !AX_READ_ONLY_ACTIONS.has(req.kind),
+        !AX_READ_ONLY_ACTIONS.has(req.kind) || req.canMutate === true,
         req.signal,
         () => this.dispatch<T>(req),
       );
@@ -313,6 +313,10 @@ export class DesktopAxTransport implements TransportAdapter {
   async close(): Promise<void> {
     this.lastClip = undefined;
     this.lastAxSnapshot = undefined;
+    this.warmSessions.clear();
+  }
+
+  async recover(): Promise<void> {
     this.warmSessions.clear();
   }
 
@@ -696,20 +700,7 @@ export class DesktopAxTransport implements TransportAdapter {
       buildAxSetValueScript(target, query),
       signal,
     );
-    if (
-      semantic.ok ||
-      params.focus === true ||
-      (typeof params.text !== "string" && typeof params.value !== "string") ||
-      typeof params.x !== "number" ||
-      typeof params.y !== "number"
-    ) {
-      return semantic;
-    }
-    return this.backgroundFallback<T>(
-      semantic,
-      await this.doAxBackgroundType<T>({ ...params, text: value }, signal),
-      "ax_set_value",
-    );
+    return semantic;
   }
 
   private async doAxPress<T>(
@@ -747,19 +738,7 @@ export class DesktopAxTransport implements TransportAdapter {
       buildAxPressScript(target, query),
       signal,
     );
-    if (
-      semantic.ok ||
-      params.focus === true ||
-      typeof params.x !== "number" ||
-      typeof params.y !== "number"
-    ) {
-      return semantic;
-    }
-    return this.backgroundFallback<T>(
-      semantic,
-      await this.doAxBackgroundClick<T>(params, signal),
-      "ax_press",
-    );
+    return semantic;
   }
 
   private async doAxScroll<T>(
@@ -1076,21 +1055,6 @@ export class DesktopAxTransport implements TransportAdapter {
       signal?.throwIfAborted();
       return this.envelopeFromShellError(action, e);
     }
-  }
-
-  private backgroundFallback<T>(
-    semantic: Envelope<T>,
-    fallback: Envelope<T>,
-    semanticAction: string,
-  ): Envelope<T> {
-    if (semantic.ok || !fallback.ok || !isRecord(fallback.data)) {
-      return fallback;
-    }
-    return ok({
-      ...fallback.data,
-      semanticFallback: semanticAction,
-      semanticError: semantic.error.reason,
-    } as unknown as T);
   }
 
   private envelopeFromShellError<T>(action: string, e: unknown): Envelope<T> {

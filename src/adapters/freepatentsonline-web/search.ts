@@ -16,7 +16,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import { buildPatentEnvelope } from "../../engine/normalizer/patent-envelope.js";
+import { throwPatentAdapterError } from "../../engine/normalizer/patent-envelope.js";
 import {
   FpoHttpError,
   buildFpoSearchUrl,
@@ -44,7 +44,7 @@ export async function runFreePatentsOnlineSearch(
   if (query.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_UNSUPPORTED_QUERY",
           adapter_path: ADAPTER_PATH,
           step: "validate",
@@ -63,7 +63,7 @@ export async function runFreePatentsOnlineSearch(
     if (err instanceof FpoHttpError) {
       return [
         {
-          envelope: buildPatentEnvelope({
+          envelope: throwPatentAdapterError({
             code:
               err.status === 429
                 ? "PATENT_RATE_LIMIT"
@@ -84,7 +84,7 @@ export async function runFreePatentsOnlineSearch(
   if (rows.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: html.includes('class="listing_table"')
             ? "PATENT_NOT_FOUND"
             : "PATENT_SCHEMA_DRIFT",
@@ -126,8 +126,8 @@ export async function runFreePatentsOnlineSearch(
   if (out.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
-          code: "PATENT_NOT_FOUND",
+        envelope: throwPatentAdapterError({
+          code: "PATENT_SCHEMA_DRIFT",
           adapter_path: ADAPTER_PATH,
           step: "normalize",
           suggestion: `freepatentsonline-web returned ${rows.length} listing rows but none had a structurally decodable kind code; run \`unicli freepatentsonline-web get <pub_no>\` against an individual hit to retrieve its kind code from the detail page`,
@@ -163,6 +163,8 @@ cli({
     },
   ],
   columns: ["publication_number", "title", "abstract", "source_url"],
+  operation_effect: "read",
+  execution_operator: "structured-api",
   retrieval: {
     operation: "discover",
     result_kind: "patent",

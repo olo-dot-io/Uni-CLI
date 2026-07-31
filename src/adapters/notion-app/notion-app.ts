@@ -2,7 +2,7 @@
  * Notion desktop app adapter -- workspace navigation + page read/write.
  *
  * Notion doesn't follow the AI chat pattern, so commands are registered manually.
- * Note: site name is "notion" (matching electron-apps.ts), directory is notion-app/.
+ * Note: catalog site is "notion-app"; the runtime app key remains "notion" in electron-apps.ts.
  *
  * Commands: search, read, write, new, status, sidebar, favorites, export, screenshot
  */
@@ -19,7 +19,7 @@ const NOTION_COMMAND_META = electronAppCommandMeta(
 
 // search -- Quick-find via Cmd+K
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "search",
   description: "Search in Notion (Cmd+K)",
   strategy: Strategy.PUBLIC,
@@ -54,7 +54,7 @@ cli({
 
 // read -- Read current page content
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "read",
   description: "Read current Notion page content",
   strategy: Strategy.PUBLIC,
@@ -71,7 +71,7 @@ cli({
 
 // write -- Append text to current page
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "write",
   description: "Append text to current Notion page",
   strategy: Strategy.PUBLIC,
@@ -103,11 +103,12 @@ cli({
 
 // new -- Create new page
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "new",
   description: "Create new Notion page",
   strategy: Strategy.PUBLIC,
   ...NOTION_COMMAND_META,
+  operation_family: "create",
   args: [
     {
       name: "title",
@@ -128,7 +129,7 @@ cli({
 
 // status -- Workspace status
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "status",
   description: "Notion workspace status",
   strategy: Strategy.PUBLIC,
@@ -142,7 +143,7 @@ cli({
 
 // sidebar -- Read sidebar navigation
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "sidebar",
   description: "Read Notion sidebar navigation",
   strategy: Strategy.PUBLIC,
@@ -165,7 +166,7 @@ cli({
 
 // favorites -- List favorites
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "favorites",
   description: "List Notion favorites",
   strategy: Strategy.PUBLIC,
@@ -190,7 +191,7 @@ cli({
 
 // export -- Export current page as markdown
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "export",
   description: "Export current Notion page as markdown",
   strategy: Strategy.PUBLIC,
@@ -206,7 +207,7 @@ cli({
 
 // screenshot -- Capture current page
 cli({
-  site: "notion",
+  site: "notion-app",
   name: "screenshot",
   description: "Screenshot current Notion page",
   strategy: Strategy.PUBLIC,

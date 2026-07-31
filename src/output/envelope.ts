@@ -10,6 +10,9 @@
 export const SCHEMA_VERSION = "2" as const;
 export type SchemaVersion = "2";
 
+import type { EffectVerdict } from "../core/effect-verdict.js";
+import type { RecoveryTrace } from "../core/recovery.js";
+
 export type Surface = "web" | "desktop" | "system" | "mobile";
 
 /** Default surface when a command does not provide more specific metadata. */
@@ -57,6 +60,8 @@ export interface AgentMeta {
   adapter_version?: string;
   surface?: Surface;
   operator?: string;
+  effect_verdict?: EffectVerdict;
+  recovery_trace?: RecoveryTrace;
   pagination?: {
     next_cursor?: string;
     has_more?: boolean;
@@ -100,6 +105,7 @@ export interface AgentError {
   message: string;
   adapter_path?: string;
   step?: number;
+  stage?: string;
   suggestion?: string;
   remedy?: {
     message: string;
@@ -111,7 +117,16 @@ export interface AgentError {
   exit_code?: number;
   retryable?: boolean;
   alternatives?: string[];
+  details?: Record<string, unknown>;
   outcome_ambiguous?: true;
+  partial_success?: true;
+  mutation_receipts?: {
+    successful_count: number;
+    failed_count: number;
+    truncated: boolean;
+    successful: unknown[];
+    failed: unknown[];
+  };
   target_unusable?: true;
   operation?: string;
 }
@@ -123,6 +138,8 @@ export interface AgentContext {
   adapter_version?: string;
   surface?: Surface;
   operator?: string;
+  effect_verdict?: EffectVerdict;
+  recovery_trace?: RecoveryTrace;
   pagination?: AgentMeta["pagination"];
   /** Set on the error path in format() — makeEnvelope ignores this field. */
   error?: AgentError;
@@ -213,6 +230,12 @@ export function makeEnvelope(
         : {}),
       ...(ctx.surface !== undefined ? { surface: ctx.surface } : {}),
       ...(ctx.operator !== undefined ? { operator: ctx.operator } : {}),
+      ...(ctx.effect_verdict !== undefined
+        ? { effect_verdict: ctx.effect_verdict }
+        : {}),
+      ...(ctx.recovery_trace !== undefined
+        ? { recovery_trace: ctx.recovery_trace }
+        : {}),
       ...(ctx.pagination !== undefined &&
       (ctx.pagination.next_cursor !== undefined ||
         ctx.pagination.has_more !== undefined)
@@ -244,6 +267,12 @@ export function makeError(
         : {}),
       ...(ctx.surface !== undefined ? { surface: ctx.surface } : {}),
       ...(ctx.operator !== undefined ? { operator: ctx.operator } : {}),
+      ...(ctx.effect_verdict !== undefined
+        ? { effect_verdict: ctx.effect_verdict }
+        : {}),
+      ...(ctx.recovery_trace !== undefined
+        ? { recovery_trace: ctx.recovery_trace }
+        : {}),
     },
     data: null,
     error: err,

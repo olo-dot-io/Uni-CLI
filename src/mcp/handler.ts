@@ -1,10 +1,10 @@
 /**
  * @owner       src/mcp/handler.ts
- * @does        Dispatch and correlate MCP JSON-RPC tools/Tasks, expose callable-surface metadata, and run each tool call inside its browser invocation scope.
+ * @does        Dispatch dual-era MCP JSON-RPC, expose stateless 2026 discovery/results, retain legacy Tasks, and run each tool call inside its browser invocation scope.
  * @needs       registry/discovery, MCP tools/tasks/dispatch/elicitation/local observation, browser invocation context/scope/runtime probe, generate permission, constants
  * @feeds       MCP stdio, simple HTTP, and Streamable HTTP transports
  * @breaks      Invalid methods/arguments return JSON-RPC errors; fixed-core unicli_run attempts return an explicit native-CLI route; tool and browser-finalization failures propagate to the owning transport.
- * @invariants  Discovery identifies callable adapters; every tools/call receives browser and diagnostic identities; mutations require session-scoped Tasks; transport close settles Tasks and browser sessions; raw unknown names never enter diagnostics.
+ * @invariants  Modern requests carry version/capabilities per call and receive resultType/server identity; legacy mutations require session-scoped Tasks; every tools/call receives browser and diagnostic identities; transport close settles retained legacy Tasks and browser sessions; raw unknown names never enter diagnostics.
  * @side-effects Executes registered tools, adapters, elicitation resolution, browser finalizers, transport cleanup, and bounded terminal diagnostic appends.
  * @perf        Tool lookup is linear in the selected profile; observation is linear in response bytes; browser scope setup is O(1).
  * @concurrency Request-local observations and async-local browser scopes isolate calls; transport cleanup is serialized.
@@ -26,9 +26,18 @@ import {
   type McpToolResult,
 } from "./dispatch.js";
 import { expandedRegistry, type McpPrompt, type McpTool } from "./tools.js";
-import { MCP_PROTOCOL_VERSION, VERSION } from "../constants.js";
+import {
+  MCP_MODERN_PROTOCOL_VERSION,
+  MCP_PROTOCOL_VERSION,
+  MCP_SUPPORTED_PROTOCOL_VERSIONS,
+  VERSION,
+} from "../constants.js";
 import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
 import { createBrowserInvocationContext } from "../browser/invocation-context.js";
+import {
+  releaseAllTransportBusNamespaces,
+  releaseTransportBusNamespace,
+} from "../transport/bus.js";
 import {
   createBrowserInvocationScope,
   runBrowserInvocation,
@@ -43,11 +52,18 @@ import type {
   JsonRpcResponse,
   McpRequestContext,
 } from "./jsonrpc.js";
+import { jsonRpcError } from "./jsonrpc.js";
 import {
   authorizeGenerateOperation,
   resolveGenerateOperation,
 } from "../commands/generate-permission.js";
 import { McpTaskManager } from "./tasks.js";
+import {
+  MCP_TASKS_CAPABILITY_REQUIRED,
+  MCP_TASKS_EXTENSION_ID,
+  ModernMcpTaskManager,
+} from "./modern-tasks.js";
+import { McpSubscriptionManager } from "./subscriptions.js";
 import { localLoggingDisabledChildEnv } from "../runtime/child-process-env.js";
 import {
   completeMcpCallObservation,
@@ -55,8 +71,43 @@ import {
   createMcpErrorObservation,
   recordThrownMcpCall,
 } from "./local-observation.js";
+import { enforceJsonRpcResultBudget } from "./result-budget.js";
 
 export type { JsonRpcRequest, JsonRpcResponse };
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+const MCP_TOOL_LIST_PAGE_SIZE = 256;
+const MCP_CATALOG_DEFAULT_PAGE_SIZE = 200;
+const MCP_CATALOG_MAX_PAGE_SIZE = 256;
+
+function parseCursor(
+  value: unknown,
+  prefix: string,
+  itemCount: number,
+): number | Error {
+  if (value === undefined) return 0;
+  if (typeof value !== "string") return new Error("cursor must be a string");
+  const match = new RegExp(`^${prefix}:(0|[1-9][0-9]*)$`).exec(value);
+  if (!match) return new Error("cursor is invalid or belongs to another list");
+  const offset = Number(match[1]);
+  return Number.isSafeInteger(offset) && offset <= itemCount
+    ? offset
+    : new Error("cursor is outside the current list");
+}
+
+function toolInputError(message: string): McpToolResult {
+  const data = { code: "invalid_input", error: message, retryable: false };
+  return {
+    content: [{ type: "text", text: JSON.stringify(data) }],
+    structuredContent: { type: "json", data },
+    isError: true,
+  };
+}
 
 export interface McpBrowserPolicyInput {
   provider?: BrowserProvider;
@@ -78,6 +129,7 @@ export interface McpBrowserPolicy {
 
 export interface McpHandlerOptions {
   browserPolicy?: McpBrowserPolicyInput;
+  modernTaskStoreDirectory?: string;
 }
 
 export function createMcpBrowserPolicy(
@@ -134,6 +186,24 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
       a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
   );
 
+  const totalCommands = commands.length;
+  const totalSites = new Set(commands.map((command) => command.site)).size;
+  const cursor = parseCursor(params.cursor, "catalog", totalCommands);
+  if (cursor instanceof Error) return toolInputError(cursor.message);
+  const requestedLimit = params.limit ?? MCP_CATALOG_DEFAULT_PAGE_SIZE;
+  if (
+    typeof requestedLimit !== "number" ||
+    !Number.isInteger(requestedLimit) ||
+    requestedLimit < 1 ||
+    requestedLimit > MCP_CATALOG_MAX_PAGE_SIZE
+  ) {
+    return toolInputError(
+      `limit must be an integer from 1 to ${MCP_CATALOG_MAX_PAGE_SIZE}`,
+    );
+  }
+  const pageEnd = Math.min(totalCommands, cursor + requestedLimit);
+  const pageCommands = commands.slice(cursor, pageEnd);
+
   const adapters = getAllAdapters();
   const siteMap = new Map<
     string,
@@ -150,7 +220,7 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
     }
   >();
 
-  for (const cmd of commands) {
+  for (const cmd of pageCommands) {
     let entry = siteMap.get(cmd.site);
     if (!entry) {
       const adapter = adapters.find((a) => a.name === cmd.site);
@@ -183,8 +253,10 @@ function handleListAdapters(params: Record<string, unknown>): McpToolResult {
     .sort((a, b) => a.site.localeCompare(b.site));
 
   const data = {
-    total_sites: result.length,
-    total_commands: commands.length,
+    total_sites: totalSites,
+    total_commands: totalCommands,
+    returned_commands: pageCommands.length,
+    ...(pageEnd < totalCommands ? { next_cursor: `catalog:${pageEnd}` } : {}),
     adapters: result,
   };
 
@@ -301,7 +373,7 @@ function expandedToolArgs(
 
 function initializeResponse(
   id: JsonRpcResponse["id"],
-  prompts: readonly McpPrompt[],
+  _prompts: readonly McpPrompt[],
 ): JsonRpcResponse {
   return {
     jsonrpc: "2.0",
@@ -310,7 +382,7 @@ function initializeResponse(
       protocolVersion: MCP_PROTOCOL_VERSION,
       capabilities: {
         tools: { listChanged: false },
-        ...(prompts.length > 0 ? { prompts: { listChanged: false } } : {}),
+        prompts: { listChanged: false },
         elicitation: { supported: true },
         tasks: {
           list: {},
@@ -321,6 +393,173 @@ function initializeResponse(
       serverInfo: { name: "unicli", version: VERSION },
     },
   };
+}
+
+const MCP_LIST_TTL_MS = 300_000;
+const MCP_DISCOVERY_TTL_MS = 3_600_000;
+
+type McpProtocolEra = "legacy" | "modern";
+
+type McpProtocolClassification =
+  | { era: McpProtocolEra }
+  | { error: JsonRpcResponse };
+
+function classifyProtocolRequest(
+  req: JsonRpcRequest,
+): McpProtocolClassification {
+  const meta = readRecord(req.params?._meta);
+  const requestedVersion = meta?.["io.modelcontextprotocol/protocolVersion"];
+  const modern =
+    req.method === "server/discover" || requestedVersion !== undefined;
+  if (!modern) return { era: "legacy" };
+
+  if (typeof requestedVersion !== "string") {
+    return {
+      error: jsonRpcError(
+        req.id ?? null,
+        -32_602,
+        "Missing required _meta field: io.modelcontextprotocol/protocolVersion",
+      ),
+    };
+  }
+  const clientCapabilities =
+    meta?.["io.modelcontextprotocol/clientCapabilities"];
+  if (!readRecord(clientCapabilities)) {
+    return {
+      error: jsonRpcError(
+        req.id ?? null,
+        -32_602,
+        "Missing required _meta field: io.modelcontextprotocol/clientCapabilities",
+      ),
+    };
+  }
+  if (requestedVersion !== MCP_MODERN_PROTOCOL_VERSION) {
+    return {
+      error: jsonRpcError(
+        req.id ?? null,
+        -32_022,
+        "Unsupported protocol version",
+        {
+          supported: [...MCP_SUPPORTED_PROTOCOL_VERSIONS],
+          requested: requestedVersion,
+        },
+      ),
+    };
+  }
+  if (Object.hasOwn(req, "id") && req.id === null) {
+    return {
+      error: jsonRpcError(
+        null,
+        -32_600,
+        "Modern MCP request ids must not be null",
+      ),
+    };
+  }
+  return { era: "modern" };
+}
+
+function serverDiscoverResponse(
+  id: JsonRpcResponse["id"],
+  _prompts: readonly McpPrompt[],
+): JsonRpcResponse {
+  return {
+    jsonrpc: "2.0",
+    id,
+    result: {
+      resultType: "complete",
+      supportedVersions: [...MCP_SUPPORTED_PROTOCOL_VERSIONS],
+      capabilities: {
+        tools: {},
+        prompts: {},
+        extensions: {
+          [MCP_TASKS_EXTENSION_ID]: {},
+        },
+      },
+      instructions:
+        "Discover an operation first; execute through its declared operator. Visual computer control requires an explicit route.",
+      ttlMs: MCP_DISCOVERY_TTL_MS,
+      cacheScope: "public",
+    },
+  };
+}
+
+function modernToolList(tools: readonly McpTool[]): object[] {
+  return tools.map(({ execution: _legacyExecution, ...tool }) => tool);
+}
+
+function toolsListResponse(
+  id: JsonRpcResponse["id"],
+  req: JsonRpcRequest,
+  tools: readonly McpTool[],
+  era: McpProtocolEra,
+): JsonRpcResponse {
+  const visibleTools = era === "modern" ? modernToolList(tools) : tools;
+  const cursor = parseCursor(req.params?.cursor, "tools", visibleTools.length);
+  if (cursor instanceof Error) {
+    return jsonRpcError(
+      id,
+      -32_602,
+      `Invalid tools/list cursor: ${cursor.message}`,
+    );
+  }
+  const pageEnd = Math.min(
+    visibleTools.length,
+    cursor + MCP_TOOL_LIST_PAGE_SIZE,
+  );
+  return {
+    jsonrpc: "2.0",
+    id,
+    result: {
+      tools: visibleTools.slice(cursor, pageEnd),
+      ...(pageEnd < visibleTools.length
+        ? { nextCursor: `tools:${pageEnd}` }
+        : {}),
+      ...(era === "modern"
+        ? { ttlMs: MCP_LIST_TTL_MS, cacheScope: "public" }
+        : {}),
+    },
+  };
+}
+
+function decorateModernResponse(
+  response: JsonRpcResponse | undefined,
+): JsonRpcResponse | undefined {
+  if (!response?.result) return response;
+  const result = readRecord(response.result);
+  if (!result) return response;
+  return {
+    ...response,
+    result: {
+      resultType:
+        typeof result.resultType === "string" ? result.resultType : "complete",
+      ...result,
+      _meta: {
+        ...readRecord(result._meta),
+        "io.modelcontextprotocol/serverInfo": {
+          name: "unicli",
+          version: VERSION,
+        },
+      },
+    },
+  };
+}
+
+function protocolMethodNotFound(
+  id: JsonRpcResponse["id"],
+  method: string,
+): JsonRpcResponse {
+  return jsonRpcError(id, -32_601, `Method not found: ${method}`);
+}
+
+function isPromiseLike(
+  value: unknown,
+): value is PromiseLike<JsonRpcResponse | undefined> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
 }
 
 function handlePromptsList(
@@ -414,6 +653,19 @@ async function dispatchSearch(
   const searchQuery = toolArgs.query as string;
   const searchLimit = (toolArgs.limit as number) || 5;
   const searchCategory = toolArgs.category as string | undefined;
+  const searchOperator = toolArgs.operator as
+    | import("../types.js").ExecutionOperator
+    | undefined;
+  const targetSurface = toolArgs.target_surface as
+    | import("../types.js").TargetSurface
+    | undefined;
+  const searchEffect = toolArgs.effect as
+    | import("../types.js").OperationEffect
+    | undefined;
+  const maxInteractionImpact = toolArgs.max_interaction_impact as
+    | import("../discovery/feasibility.js").InteractionImpact
+    | undefined;
+  const searchPlatform = toolArgs.platform as NodeJS.Platform | undefined;
   if (!searchQuery) {
     return {
       jsonrpc: "2.0",
@@ -422,12 +674,27 @@ async function dispatchSearch(
     };
   }
   const { search: searchFn } = await import("../discovery/search.js");
+  const requirements: import("../discovery/feasibility.js").CapabilityRequirements =
+    {
+      ...(searchOperator ? { operator: searchOperator } : {}),
+      ...(targetSurface ? { target_surface: targetSurface } : {}),
+      ...(searchEffect ? { effect: searchEffect } : {}),
+      ...(maxInteractionImpact
+        ? { max_interaction_impact: maxInteractionImpact }
+        : {}),
+      platform: searchPlatform ?? process.platform,
+      allow_coordinate_actuation:
+        toolArgs.allow_coordinate_actuation === true ||
+        searchOperator === "visual-coordinate",
+    };
   const results = searchFn(searchQuery, searchLimit, {
     category: searchCategory,
+    requirements,
   });
   const data = {
     query: searchQuery,
     category: searchCategory,
+    requirements,
     count: results.length,
     results: results.map((r) => {
       const isCore =
@@ -441,6 +708,15 @@ async function dispatchSearch(
         score: r.score,
         category: r.category,
         usage: r.usage,
+        ...(r.feasibility
+          ? {
+              operator: r.feasibility.operator,
+              effect: r.feasibility.effect,
+              target_surface: r.feasibility.target_surface,
+              target_scope: r.feasibility.target_scope,
+              interaction_impact: r.feasibility.interaction_impact,
+            }
+          : {}),
         source_kind: isCore ? "core" : "adapter",
         mcp_run_supported: !isCore,
       };
@@ -539,7 +815,7 @@ async function dispatchExplore(
 async function handleToolsCall(
   id: JsonRpcResponse["id"],
   req: JsonRpcRequest,
-  tools: McpTool[],
+  toolsByName: ReadonlyMap<string, McpTool>,
   browserPolicy: McpBrowserPolicy,
   requestContext?: McpRequestContext,
   onBrowserInvocation?: (agentSessionId: string) => void,
@@ -558,6 +834,7 @@ async function handleToolsCall(
   const invocationContext = createBrowserInvocationContext({
     transport: requestContext?.transport ?? "mcp-stdio",
     mcpSessionId: requestContext?.mcpSessionId,
+    principalId: requestContext?.principalId,
     metadata: req.params?._meta,
   });
   onBrowserInvocation?.(invocationContext.agent_session_id);
@@ -569,10 +846,14 @@ async function handleToolsCall(
   try {
     const response = await runBrowserInvocation(scope, async () => {
       const toolArgs = params.arguments ?? {};
-      const directTool = tools.find((tool) => tool.name === params.name);
+      const directTool = resolveAdvertisedTool(toolsByName, params.name);
       if (directTool?.handler) {
         const result = await directTool.handler(toolArgs, {
           signal: requestContext?.signal,
+          task: requestContext?.task,
+          principalId: requestContext?.principalId,
+          mcpSessionId: requestContext?.mcpSessionId,
+          agentSessionId: invocationContext.agent_session_id,
         });
         return { jsonrpc: "2.0" as const, id, result: annotateIfLarge(result) };
       }
@@ -643,7 +924,24 @@ export function buildHandler(
 ): JsonRpcHandler {
   const browserPolicy = createMcpBrowserPolicy(options.browserPolicy);
   const taskManager = new McpTaskManager();
-  const advertisedTools = tools.map(withDefaultTaskSupport);
+  const modernTaskManager = new ModernMcpTaskManager(
+    options.modernTaskStoreDirectory
+      ? { directory: options.modernTaskStoreDirectory }
+      : {},
+  );
+  const subscriptionManager = new McpSubscriptionManager(modernTaskManager);
+  const modernTaskSelectors = new Map(
+    tools.flatMap((tool) =>
+      tool.selectModernTask
+        ? [[tool.name, tool.selectModernTask] as const]
+        : [],
+    ),
+  );
+  const advertisedTools = tools.map(
+    ({ selectModernTask: _internalTaskSelector, ...tool }) =>
+      withDefaultTaskSupport(tool),
+  );
+  const advertisedToolsByName = indexAdvertisedTools(advertisedTools);
   const browserSessionsByTransport = new Map<string, Set<string>>();
   let browserCleanupTail = Promise.resolve();
   const serializeBrowserCleanup = (
@@ -664,25 +962,30 @@ export function buildHandler(
     }
     sessions.add(agentSessionId);
   };
-  const handleRequest: JsonRpcHandler = function handleRequest(
+  function dispatchProtocolRequest(
     req: JsonRpcRequest,
-    requestContext?: McpRequestContext,
+    requestContext: McpRequestContext | undefined,
+    era: McpProtocolEra,
   ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
     const id = req.id ?? null;
     const sessionId = requestContext?.mcpSessionId ?? "mcp:default";
     const startedAt = Date.now();
 
     switch (req.method) {
+      case "server/discover":
+        return serverDiscoverResponse(id, prompts);
       case "initialize":
-        return initializeResponse(id, prompts);
+        return era === "legacy"
+          ? initializeResponse(id, prompts)
+          : protocolMethodNotFound(id, req.method);
       case "notifications/initialized":
         // Notifications have no response — transports already guard `if (response)`.
         return undefined;
       case "tools/list":
-        return { jsonrpc: "2.0", id, result: { tools: advertisedTools } };
+        return toolsListResponse(id, req, advertisedTools, era);
       case "tools/call": {
         const params = req.params;
-        const tool = resolveAdvertisedTool(advertisedTools, params?.name);
+        const tool = resolveAdvertisedTool(advertisedToolsByName, params?.name);
         if (!tool) {
           return completeMcpCallObservation(
             createMcpErrorObservation("unknown_tool", startedAt),
@@ -694,6 +997,54 @@ export function buildHandler(
                 message: `Unknown tool: ${String(params?.name ?? "")}. Use unicli_list to see available commands.`,
               },
             },
+          );
+        }
+        if (era === "modern") {
+          const taskSupport = tool.execution?.taskSupport ?? "forbidden";
+          const supportsTasks = hasModernTasksCapability(req);
+          if (taskSupport === "required" && !supportsTasks) {
+            return completeMcpCallObservation(
+              createMcpCallObservation(tool.name, startedAt),
+              missingTasksCapability(id),
+            );
+          }
+          const selector = modernTaskSelectors.get(tool.name);
+          const selectedMode =
+            taskSupport === "required"
+              ? "task"
+              : taskSupport === "optional" && supportsTasks && selector
+                ? selector(readRecord(params?.arguments) ?? {}, {
+                    transport: requestContext?.transport ?? "mcp-stdio",
+                    ...(requestContext?.principalId
+                      ? { principalId: requestContext.principalId }
+                      : {}),
+                  })
+                : "sync";
+          if (selectedMode === "task") {
+            return modernTaskManager.create({
+              requestId: id,
+              principalId: requestContext?.principalId,
+              transport: requestContext?.transport ?? "mcp-stdio",
+              execute: (taskId, taskContext) =>
+                handleToolsCall(
+                  id,
+                  withRelatedTaskRequest(req, taskId),
+                  advertisedToolsByName,
+                  browserPolicy,
+                  taskContext,
+                  (agentSessionId) =>
+                    rememberBrowserInvocation(sessionId, agentSessionId),
+                ),
+            });
+          }
+          return handleToolsCall(
+            id,
+            req,
+            advertisedToolsByName,
+            browserPolicy,
+            requestContext,
+            (agentSessionId) =>
+              rememberBrowserInvocation(sessionId, agentSessionId),
           );
         }
         const requestedTask = parseTaskRequest(params);
@@ -730,7 +1081,7 @@ export function buildHandler(
               handleToolsCall(
                 id,
                 withRelatedTaskRequest(req, taskId),
-                advertisedTools,
+                advertisedToolsByName,
                 browserPolicy,
                 taskContext,
                 (agentSessionId) =>
@@ -741,7 +1092,7 @@ export function buildHandler(
         return handleToolsCall(
           id,
           req,
-          advertisedTools,
+          advertisedToolsByName,
           browserPolicy,
           requestContext,
           (agentSessionId) =>
@@ -749,8 +1100,19 @@ export function buildHandler(
         );
       }
       case "tasks/get":
+        if (era === "modern") {
+          if (!hasModernTasksCapability(req)) {
+            return missingTasksCapability(id);
+          }
+          return modernTaskManager.get(
+            id,
+            requestContext?.principalId,
+            req.params?.taskId,
+          );
+        }
         return taskManager.get(id, sessionId, req.params?.taskId);
       case "tasks/result":
+        if (era === "modern") return protocolMethodNotFound(id, req.method);
         return taskManager.result(
           id,
           sessionId,
@@ -758,17 +1120,61 @@ export function buildHandler(
           requestContext?.signal,
         );
       case "tasks/list":
+        if (era === "modern") return protocolMethodNotFound(id, req.method);
         return taskManager.list(id, sessionId, req.params?.cursor);
       case "tasks/cancel":
+        if (era === "modern") {
+          if (!hasModernTasksCapability(req)) {
+            return missingTasksCapability(id);
+          }
+          return modernTaskManager.cancel(
+            id,
+            requestContext?.principalId,
+            req.params?.taskId,
+          );
+        }
         return taskManager.cancel(id, sessionId, req.params?.taskId);
+      case "tasks/update":
+        if (era === "legacy") return protocolMethodNotFound(id, req.method);
+        if (!hasModernTasksCapability(req)) {
+          return missingTasksCapability(id);
+        }
+        return modernTaskManager.update(
+          id,
+          requestContext?.principalId,
+          req.params?.taskId,
+          req.params?.inputResponses,
+        );
+      case "subscriptions/listen":
+        if (era === "legacy") return protocolMethodNotFound(id, req.method);
+        return subscriptionManager.listen({
+          request: req,
+          principalId: requestContext?.principalId,
+          signal: requestContext?.signal,
+          emit: requestContext?.emit,
+          tasksExtensionEnabled: hasModernTasksCapability(req),
+        });
       case "prompts/list":
-        return handlePromptsList(id, prompts);
+        if (era === "legacy") return handlePromptsList(id, prompts);
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            ...readRecord(handlePromptsList(id, prompts).result),
+            ttlMs: MCP_LIST_TTL_MS,
+            cacheScope: "public",
+          },
+        };
       case "prompts/get":
         return handlePromptsGet(id, req, prompts);
       case "elicitation/response":
-        return handleElicitationResponse(id, req);
+        return era === "legacy"
+          ? handleElicitationResponse(id, req)
+          : protocolMethodNotFound(id, req.method);
       case "ping":
-        return { jsonrpc: "2.0", id, result: {} };
+        return era === "legacy"
+          ? { jsonrpc: "2.0", id, result: {} }
+          : protocolMethodNotFound(id, req.method);
       default:
         if (id !== null && id !== undefined) {
           return completeMcpCallObservation(
@@ -785,6 +1191,32 @@ export function buildHandler(
         }
         return undefined;
     }
+  }
+  const handleRequest: JsonRpcHandler = function handleRequest(
+    req: JsonRpcRequest,
+    requestContext?: McpRequestContext,
+  ): JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined> {
+    const classification = classifyProtocolRequest(req);
+    if ("error" in classification) return classification.error;
+    const response = dispatchProtocolRequest(
+      req,
+      requestContext,
+      classification.era,
+    );
+    if (isPromiseLike(response)) {
+      return Promise.resolve(response).then((settled) =>
+        enforceJsonRpcResultBudget(
+          classification.era === "modern"
+            ? decorateModernResponse(settled)
+            : settled,
+        ),
+      );
+    }
+    return enforceJsonRpcResultBudget(
+      classification.era === "modern"
+        ? decorateModernResponse(response)
+        : response,
+    );
   };
   handleRequest.closeSession = async (sessionId, reason) => {
     await taskManager.closeSession(sessionId, reason);
@@ -794,11 +1226,21 @@ export function buildHandler(
         sessionId,
       );
       await endBrowserAgentSessions(agentSessionIds);
+      for (const agentSessionId of agentSessionIds) {
+        releaseTransportBusNamespace(agentSessionId);
+      }
       browserSessionsByTransport.delete(sessionId);
     });
   };
+  handleRequest.closeSubscriptions = async () => {
+    await subscriptionManager.closeAll();
+  };
   handleRequest.closeAll = async (reason) => {
-    await taskManager.closeAll(reason);
+    await subscriptionManager.closeAll();
+    await Promise.all([
+      taskManager.closeAll(reason),
+      modernTaskManager.closeAll(reason),
+    ]);
     await serializeBrowserCleanup(async () => {
       const agentSessionIds = new Set(
         [...browserSessionsByTransport.values()].flatMap((sessions) => [
@@ -806,8 +1248,10 @@ export function buildHandler(
         ]),
       );
       await endBrowserAgentSessions([...agentSessionIds]);
+      releaseAllTransportBusNamespaces();
       browserSessionsByTransport.clear();
     });
+    subscriptionManager.dispose();
   };
   return handleRequest;
 }
@@ -872,7 +1316,7 @@ function withDefaultTaskSupport(tool: McpTool): McpTool {
 }
 
 function resolveAdvertisedTool(
-  tools: readonly McpTool[],
+  toolsByName: ReadonlyMap<string, McpTool>,
   name: unknown,
 ): McpTool | undefined {
   if (typeof name !== "string") return undefined;
@@ -884,7 +1328,18 @@ function resolveAdvertisedTool(
         : name === "unicli_discover"
           ? "unicli_explore"
           : name;
-  return tools.find((tool) => tool.name === canonical);
+  return toolsByName.get(canonical);
+}
+
+function indexAdvertisedTools(tools: readonly McpTool[]): Map<string, McpTool> {
+  const index = new Map<string, McpTool>();
+  for (const tool of tools) {
+    if (index.has(tool.name)) {
+      throw new Error(`Duplicate MCP tool name: ${tool.name}`);
+    }
+    index.set(tool.name, tool);
+  }
+  return index;
 }
 
 function parseTaskRequest(
@@ -912,6 +1367,30 @@ function taskSupportError(
     id,
     error: { code: -32602, message: `Tool ${toolName} ${reason}` },
   };
+}
+
+function hasModernTasksCapability(request: JsonRpcRequest): boolean {
+  const meta = readRecord(request.params?._meta);
+  const clientCapabilities = readRecord(
+    meta?.["io.modelcontextprotocol/clientCapabilities"],
+  );
+  const extensions = readRecord(clientCapabilities?.extensions);
+  return readRecord(extensions?.[MCP_TASKS_EXTENSION_ID]) !== undefined;
+}
+
+function missingTasksCapability(id: JsonRpcResponse["id"]): JsonRpcResponse {
+  return jsonRpcError(
+    id,
+    MCP_TASKS_CAPABILITY_REQUIRED,
+    "Missing required client capability",
+    {
+      requiredCapabilities: {
+        extensions: {
+          [MCP_TASKS_EXTENSION_ID]: {},
+        },
+      },
+    },
+  );
 }
 
 function withRelatedTaskRequest(

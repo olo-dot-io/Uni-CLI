@@ -1,15 +1,15 @@
 /**
  * @owner       src::mcp::streamable-http::request-registry
- * @does        Track bounded in-flight Streamable HTTP requests across connections for explicit MCP cancellation and awaited session/server containment.
+ * @does        Track bounded modern stateless and legacy session-owned HTTP requests for stream cancellation and awaited containment.
  * @needs       node:crypto, MCP JSON-RPC ids
  * @feeds       Streamable HTTP POST, DELETE, expiry, and shutdown lifecycle
  * @breaks      Treating socket loss as cancellation or losing cross-connection request identity violates MCP semantics and can orphan external work.
- * @invariants  Typed request ids are unique only while active within one session; initialize is never explicitly cancellable; cancellation aborts the addressed generation only; closeSession/closeAll await actual handler settlement; capacity is released only on settlement.
+ * @invariants  Typed request ids are unique while active within one legacy session; independent stateless requests use internal ids; initialize is never explicitly cancellable; cancellation aborts the addressed generation only; closeSession/closeAll await actual handler settlement; capacity is released only on settlement.
  * @side-effects Owns request AbortControllers and bounded in-memory active records.
  * @perf        O(1) register/cancel and O(active request count) teardown with a hard maximum.
  * @concurrency One lease owns one terminal finish; JavaScript event-loop ordering defines registration and cancellation order.
  * @test        tests/unit/streamable-http.test.ts
- * @stability   experimental MCP 2025-11-25
+ * @stability   experimental dual-era MCP
  * @since       2026-07-15
  */
 
@@ -27,6 +27,7 @@ interface ActiveRequest {
 
 export interface StreamableRequestLease {
   readonly signal: AbortSignal;
+  abort(reason: unknown): void;
   finish(): void;
 }
 
@@ -44,7 +45,7 @@ export class StreamableRequestRegistry {
       return new Error("Server at capacity: too many active requests");
     }
     const addressable =
-      method !== "initialize" && id !== undefined
+      sessionId !== undefined && method !== "initialize" && id !== undefined
         ? requestKey(sessionId, id)
         : undefined;
     if (addressable && this.active.has(addressable)) {
@@ -66,6 +67,11 @@ export class StreamableRequestRegistry {
     let finished = false;
     return {
       signal: record.controller.signal,
+      abort: (reason: unknown): void => {
+        if (!record.controller.signal.aborted) {
+          record.controller.abort(reason);
+        }
+      },
       finish: (): void => {
         if (finished) return;
         finished = true;
@@ -101,6 +107,14 @@ export class StreamableRequestRegistry {
       settlements.push(request.settlement);
     }
     await Promise.all(settlements);
+  }
+
+  async waitForMethodSettlements(method: string): Promise<void> {
+    await Promise.all(
+      [...this.active.values()]
+        .filter((request) => request.method === method)
+        .map((request) => request.settlement),
+    );
   }
 
   activeCount(): number {

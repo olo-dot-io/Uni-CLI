@@ -152,7 +152,6 @@ describe("DesktopAxTransport", () => {
       "background-click",
       "visual",
     ]);
-    expect(policy.axEmptyTreeFallback).toBe("cdp-dom");
     expect(policy.backgroundClick.enabled).toBe(true);
     expect(policy.backgroundClick.flagsWhenBackgrounded).toBe("command");
   });
@@ -1055,8 +1054,10 @@ describe("DesktopAxTransport", () => {
         y: 80,
         coordinateSpace: "window",
       },
+      canMutate: false,
     });
     expect(res.ok).toBe(true);
+    expect(res.effect_verdict?.evidence).not.toBe("declared_read");
     if (res.ok) {
       expect(res.data.posted).toBe(true);
       expect(res.data.windowNumber).toBe(42);
@@ -1130,7 +1131,7 @@ describe("DesktopAxTransport", () => {
     expect(script).toContain("KeyCombination.parse");
   });
 
-  it("falls back from failed AXValue set to background text when scoped to an app", async () => {
+  it("preserves a failed AXValue result without changing actuation modality", async () => {
     const shell = new FakeShell();
     shell.respondMatch(
       "swift",
@@ -1142,25 +1143,10 @@ describe("DesktopAxTransport", () => {
         result: -25205,
       }),
     );
-    shell.respondMatch(
-      "swift",
-      `let requestedAction = "type_text"`,
-      JSON.stringify({
-        found: true,
-        posted: true,
-        action: "type_text",
-        typedCharacters: 5,
-        pid: 48133,
-        windowNumber: 42,
-      }),
-    );
     const t = new DesktopAxTransport({ shell, platform: "darwin" });
     await t.open(makeCtx());
 
-    const res = await t.action<{
-      typedCharacters: number;
-      semanticFallback: string;
-    }>({
+    const res = await t.action({
       kind: "ax_set_value",
       params: {
         app: "TextEdit",
@@ -1172,12 +1158,13 @@ describe("DesktopAxTransport", () => {
       },
     });
 
-    expect(res.ok).toBe(true);
-    if (res.ok) {
-      expect(res.data.typedCharacters).toBe(5);
-      expect(res.data.semanticFallback).toBe("ax_set_value");
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.reason).toContain(
+        "ax_set_value failed with AXError code -25205",
+      );
     }
-    expect(shell.calls).toHaveLength(2);
+    expect(shell.calls).toHaveLength(1);
   });
 
   it("does not background-type after failed AXValue set without coordinates", async () => {

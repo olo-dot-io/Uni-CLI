@@ -37,6 +37,8 @@ import { evaluateOperationPolicyWithApprovals } from "../permission-runtime.js";
 import { PermissionRulesConfigError } from "../permission-rules.js";
 import { settleDispatchedAction } from "../../transport/action-settlement.js";
 import { findOperationOutcomeAmbiguousError } from "../../transport/contained-process.js";
+import { defaultEffectVerdict } from "../../core/effect-verdict.js";
+import { inferOperationEffect } from "../operation-policy.js";
 
 import { getCompiled } from "./compile.js";
 import { KernelLookupError } from "./errors.js";
@@ -179,8 +181,24 @@ function errorResult(input: {
   exitCode: number;
   nextActionCode?: string;
   diagnostics?: InvocationDiagnostic[];
+  effectPhase?: "pre_dispatch" | "dispatched_failure";
 }): InvocationResult {
   const durationMs = Date.now() - input.startedAt;
+  const effect = inferOperationEffect({
+    site: input.inv.adapter.name,
+    command: input.inv.cmdName,
+    description: input.inv.command.description,
+    adapterType: input.inv.adapter.type,
+    targetSurface: input.ctx.targetSurface,
+    strategy: input.ctx.strategy,
+    browser:
+      input.inv.adapter.browser === true || input.inv.command.browser === true,
+    effect: input.inv.command.operation_effect,
+  });
+  const effectVerdict = defaultEffectVerdict({
+    canMutate: effect !== "read",
+    phase: input.effectPhase ?? "pre_dispatch",
+  });
   return {
     results: [],
     envelope: {
@@ -188,6 +206,7 @@ function errorResult(input: {
       duration_ms: durationMs,
       adapter_version: input.inv.adapter.version,
       surface: input.ctx.targetSurface,
+      effect_verdict: effectVerdict,
       error: input.error,
       ...(input.nextActionCode
         ? {
@@ -210,6 +229,7 @@ function errorResult(input: {
     durationMs,
     exitCode: input.exitCode,
     warnings: input.warnings,
+    effectVerdict,
     error: input.error,
     ...(input.diagnostics ? { diagnostics: input.diagnostics } : {}),
   };
@@ -232,6 +252,7 @@ export function validateKernelInput(
     message: `arg "${name}" ${first.message ?? "invalid"}`,
     adapter_path: ctx.adapterPath,
     step: 0,
+    stage: "validate",
     suggestion: `match the JSON Schema at \`unicli describe ${inv.adapter.name} ${inv.cmdName}\``,
     retryable: false,
   };
@@ -267,6 +288,7 @@ export function hardenKernelInput(
       message: err.message,
       adapter_path: ctx.adapterPath,
       step: 0,
+      stage: "harden",
       suggestion: err.suggestion,
       retryable: false,
     };
@@ -306,6 +328,7 @@ export async function authorizeKernelInvocation(
       capabilities: inv.command.capabilities,
       executables: inv.command.executables,
       minimumCapability: inv.command.minimum_capability,
+      effect: inv.command.operation_effect,
       profile: inv.permissionProfile,
       approved: inv.approved,
       argumentValues: inv.bag.args,
@@ -319,6 +342,7 @@ export async function authorizeKernelInvocation(
         message: `permission rule "${ruleId}" denies ${policy.effect}: ${ruleReason}`,
         adapter_path: ctx.adapterPath,
         step: 0,
+        stage: "authorize",
         suggestion:
           policy.approval_hint ?? "edit or remove the matching permission rule",
         retryable: false,
@@ -350,6 +374,7 @@ export async function authorizeKernelInvocation(
         message: `permission profile "${policy.profile}" requires approval for ${policy.effect}`,
         adapter_path: ctx.adapterPath,
         step: 0,
+        stage: "authorize",
         suggestion:
           policy.approval_hint ??
           "rerun with --yes or use --permission-profile open",
@@ -385,6 +410,7 @@ export async function authorizeKernelInvocation(
         message: err.message,
         adapter_path: ctx.adapterPath,
         step: 0,
+        stage: "authorize",
         suggestion: "use one of: open, confirm, locked",
         retryable: false,
       };
@@ -410,6 +436,7 @@ export async function authorizeKernelInvocation(
         message: err.message,
         adapter_path: ctx.adapterPath,
         step: 0,
+        stage: "authorize",
         suggestion: err.suggestion,
         retryable: false,
       };
@@ -454,6 +481,7 @@ export async function executeKernelCommand(
   inv: Invocation,
   ctx: KernelCommandContext,
   canMutate: boolean,
+  warnings: string[],
 ): Promise<unknown[]> {
   const browserSession = resolveBrowserSessionPreference(
     inv.command,
@@ -504,10 +532,20 @@ export async function executeKernelCommand(
       return Array.isArray(raw) ? raw : [raw];
     } finally {
       if (page && typeof page === "object" && "close" in page) {
-        // REASON: Browser close is post-result cleanup; a close failure must not replace the command result.
-        await Promise.resolve((page as { close: () => unknown }).close()).catch(
-          () => undefined,
-        );
+        try {
+          await Promise.resolve((page as { close: () => unknown }).close());
+        } catch (error) {
+          const errorCode =
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            typeof error.code === "string"
+              ? ` (${error.code.slice(0, 64)})`
+              : "";
+          warnings.push(
+            `browser cleanup failed for ${ctx.key}${errorCode}; the target or lease may remain active, so inspect \`unicli browser status --json\` before the next browser action`,
+          );
+        }
       }
     }
   }
@@ -540,6 +578,7 @@ export function malformedCommandResult(
     message: `command ${ctx.key} has neither pipeline nor func`,
     adapter_path: ctx.adapterPath,
     step: 0,
+    stage: "execute",
     suggestion:
       "the adapter manifest is broken; run `unicli repair` to regenerate",
     retryable: false,
@@ -592,6 +631,7 @@ export function executionErrorResult(
       error,
       exitCode: mapErrorToExitCode(err),
       nextActionCode: error.code,
+      effectPhase: "dispatched_failure",
       ...(diagnostics.length > 0 ? { diagnostics } : {}),
     }),
   };
@@ -603,6 +643,20 @@ export function successKernelResult(
   startedAt: number,
   warnings: string[],
   results: unknown[],
+  effectVerdict = defaultEffectVerdict({
+    canMutate:
+      inferOperationEffect({
+        site: inv.adapter.name,
+        command: inv.cmdName,
+        description: inv.command.description,
+        adapterType: inv.adapter.type,
+        targetSurface: ctx.targetSurface,
+        strategy: ctx.strategy,
+        browser: inv.adapter.browser === true || inv.command.browser === true,
+        effect: inv.command.operation_effect,
+      }) !== "read",
+    phase: "success",
+  }),
 ): InvocationResult {
   const durationMs = Date.now() - startedAt;
   const diagnostics = browserDiagnostics(inv, ctx);
@@ -613,6 +667,7 @@ export function successKernelResult(
       duration_ms: durationMs,
       adapter_version: inv.adapter.version,
       surface: ctx.targetSurface,
+      effect_verdict: effectVerdict,
       next_actions: defaultSuccessNextActions(inv.adapter.name, inv.cmdName, {
         supportsPagination: inv.command.paginated === true,
       }),
@@ -620,6 +675,7 @@ export function successKernelResult(
     durationMs,
     exitCode: ExitCode.SUCCESS,
     warnings,
+    effectVerdict,
     ...(diagnostics ? { diagnostics } : {}),
   };
 }

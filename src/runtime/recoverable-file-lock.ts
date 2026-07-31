@@ -22,6 +22,7 @@ import {
   fsyncSync,
   linkSync,
   lstatSync,
+  mkdirSync,
   openSync,
   readFileSync,
   readdirSync,
@@ -117,31 +118,91 @@ export function withRecoverableFileStoreLock<T>(
   return output as T;
 }
 
+export async function withRecoverableFileStoreLockAsync<T>(
+  rootDir: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const lockPath = join(rootDir, LOCK_FILE);
+  const lock = await acquireStoreLockAsync(lockPath);
+  let operationFailure: unknown;
+  let output: T | undefined;
+  try {
+    output = await operation();
+  } catch (error) {
+    operationFailure = error;
+  }
+
+  let releaseFailure: unknown;
+  try {
+    releaseStoreLock(lock, lockPath);
+  } catch (error) {
+    releaseFailure = error;
+  }
+  if (operationFailure !== undefined && releaseFailure !== undefined) {
+    throw new AggregateError(
+      [operationFailure, releaseFailure],
+      "async file-store operation and lock release both failed",
+    );
+  }
+  if (operationFailure !== undefined) throw operationFailure;
+  if (releaseFailure !== undefined) throw releaseFailure;
+  return output as T;
+}
+
 function acquireStoreLock(lockPath: string): StoreLock {
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
   while (true) {
     try {
-      const lock = publishCompleteStoreLock(lockPath);
-      try {
-        removeAbandonedCandidates(dirname(lockPath), lock.candidatePath);
-      } catch (error) {
-        try {
-          releaseStoreLock(lock, lockPath);
-        } catch (releaseError) {
-          throw new AggregateError(
-            [error, releaseError],
-            "file-store candidate cleanup and lock release both failed",
-          );
-        }
-        throw error;
-      }
-      return lock;
+      return acquireStoreLockOnce(lockPath);
     } catch (error) {
+      if (isErrno(error, "ENOENT")) {
+        mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
+        continue;
+      }
       if (!isErrno(error, "EEXIST")) throw error;
       if (reclaimDeadStoreLock(lockPath)) continue;
     }
     waitForStoreLock(deadline, lockPath);
   }
+}
+
+async function acquireStoreLockAsync(lockPath: string): Promise<StoreLock> {
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+  while (true) {
+    try {
+      return acquireStoreLockOnce(lockPath);
+    } catch (error) {
+      if (isErrno(error, "ENOENT")) {
+        mkdirSync(dirname(lockPath), { recursive: true, mode: 0o700 });
+        continue;
+      }
+      if (!isErrno(error, "EEXIST")) throw error;
+      if (reclaimDeadStoreLock(lockPath)) continue;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw lockTimeout(lockPath);
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, Math.min(LOCK_RETRY_MS, remaining));
+    });
+  }
+}
+
+function acquireStoreLockOnce(lockPath: string): StoreLock {
+  const lock = publishCompleteStoreLock(lockPath);
+  try {
+    removeAbandonedCandidates(dirname(lockPath), lock.candidatePath);
+  } catch (error) {
+    try {
+      releaseStoreLock(lock, lockPath);
+    } catch (releaseError) {
+      throw new AggregateError(
+        [error, releaseError],
+        "file-store candidate cleanup and lock release both failed",
+      );
+    }
+    throw error;
+  }
+  return lock;
 }
 
 function publishCompleteStoreLock(lockPath: string): StoreLock {
@@ -421,13 +482,17 @@ function processIsAlive(pid: number): boolean {
 
 function waitForStoreLock(deadline: number, lockPath: string): void {
   if (Date.now() >= deadline) {
-    throw new RecoverableFileLockError(
-      "lock_timeout",
-      "timed out waiting for file-store lock: " + lockPath,
-      lockPath,
-    );
+    throw lockTimeout(lockPath);
   }
   Atomics.wait(WAIT_BUFFER, 0, 0, LOCK_RETRY_MS);
+}
+
+function lockTimeout(lockPath: string): RecoverableFileLockError {
+  return new RecoverableFileLockError(
+    "lock_timeout",
+    "timed out waiting for file-store lock: " + lockPath,
+    lockPath,
+  );
 }
 
 function releaseStoreLock(lock: StoreLock, lockPath: string): void {

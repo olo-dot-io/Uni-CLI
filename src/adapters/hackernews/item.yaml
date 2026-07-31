@@ -4,6 +4,7 @@ description: Get a Hacker News item (story, comment, job, poll)
 domain: news.ycombinator.com
 type: web-api
 strategy: public
+operation_effect: read
 
 args:
   id:

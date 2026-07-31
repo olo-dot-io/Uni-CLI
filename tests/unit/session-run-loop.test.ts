@@ -115,7 +115,16 @@ describe("recorded run wrapper", () => {
     });
 
     expect(result.exitCode).toBe(0);
-    expect(result.results).toEqual([{ ok: true }]);
+    expect(result.results).toEqual([
+      {
+        ok: true,
+        effect_verdict: {
+          status: "not_applicable",
+          evidence: "declared_read",
+          reason: "the operation contract is read-only",
+        },
+      },
+    ]);
 
     const events = await readRunEvents(store, "run-success");
     expect(events.map((event) => event.name)).toEqual([
@@ -357,7 +366,16 @@ describe("recorded run wrapper", () => {
 
     const results = await runCommand(fixture, fixture.commands.read, {});
 
-    expect(results).toEqual([{ ok: true }]);
+    expect(results).toEqual([
+      {
+        ok: true,
+        effect_verdict: {
+          status: "not_applicable",
+          evidence: "declared_read",
+          reason: "the operation contract is read-only",
+        },
+      },
+    ]);
     const [runId] = readdirSync(runRoot);
     expect(runId).toMatch(/^run-/);
     const events = await readRunEvents(

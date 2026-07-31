@@ -1,6 +1,7 @@
 site: lesswrong
 name: top-week
 description: Top posts this week
+operation_effect: read
 domain: www.lesswrong.com
 strategy: public
 

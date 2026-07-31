@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -16,7 +16,7 @@ import {
   getCookieDir,
   refreshCookiesFromBrowser,
   acquireCookies,
-  forgetTransientCookies,
+  runWithCookieInvocationOverride,
 } from "../../src/engine/cookies.js";
 import type { CookieSources } from "../../src/engine/cookie-source.js";
 
@@ -112,10 +112,6 @@ describe("getCookieDir", () => {
 });
 
 describe("refreshCookiesFromBrowser", () => {
-  afterEach(() => {
-    forgetTransientCookies("example", "example.com");
-  });
-
   it("rejects invalid site names before touching browser state", async () => {
     const result = await refreshCookiesFromBrowser("../bad", "example.com");
     expect(result).toMatchObject({
@@ -126,12 +122,17 @@ describe("refreshCookiesFromBrowser", () => {
     expect(result.suggestion).toContain("Site names");
   });
 
-  it("hands fresh browser cookies to the immediate retry instead of stale disk state", async () => {
+  it("hands fresh browser cookies only to the one invocation that consumes the opaque override", async () => {
+    const credentialIdentity = {
+      profile_id: "google-chrome:Default",
+      selection_source: "explicit" as const,
+    };
     const refreshSources: CookieSources = {
       readDisk: () => ({ kind: "ok", cookies: { sid: "stale" } }),
       readBrowser: async () => ({
         kind: "ok",
         cookies: { sid: "fresh" },
+        credential_identity: credentialIdentity,
       }),
       readCdp: async () => ({}),
     };
@@ -147,24 +148,78 @@ describe("refreshCookiesFromBrowser", () => {
       {},
       refreshSources,
     );
-    const retry = await acquireCookies(
-      "example",
-      "example.com",
-      {},
-      retrySources,
-    );
-
     expect(refresh).toMatchObject({ ok: true, source: "browser" });
-    expect(retry).toEqual({
+    if (!refresh.ok) throw new Error("unreachable");
+    expect(JSON.stringify(refresh)).not.toContain("fresh");
+    await expect(
+      runWithCookieInvocationOverride(refresh.invocation_override, async () =>
+        acquireCookies("example", "example.com", {}, retrySources),
+      ),
+    ).resolves.toEqual({
       status: "loaded",
       source: "browser",
       cookies: { sid: "fresh" },
+      credential_identity: credentialIdentity,
+    });
+    await expect(
+      runWithCookieInvocationOverride(refresh.invocation_override, async () =>
+        acquireCookies("example", "example.com", {}, retrySources),
+      ),
+    ).rejects.toThrow(/already been consumed/);
+    await expect(
+      acquireCookies("example", "example.com", {}, retrySources),
+    ).resolves.toMatchObject({
+      status: "loaded",
+      source: "disk",
+      cookies: { sid: "stale" },
+    });
+  });
+
+  it("binds a live CDP value to the explicit retry without changing the default disk authority", async () => {
+    const refreshSources: CookieSources = {
+      readDisk: () => ({ kind: "absent" }),
+      readBrowser: async () => ({ kind: "none" }),
+      readCdp: async () => ({ sid: "live-target-only" }),
+    };
+    const retrySources: CookieSources = {
+      readDisk: () => ({ kind: "ok", cookies: { sid: "persisted" } }),
+      readBrowser: async () => ({ kind: "none" }),
+      readCdp: async () => ({}),
+    };
+
+    const refresh = await refreshCookiesFromBrowser(
+      "example",
+      "example.com",
+      { preferCdp: true },
+      refreshSources,
+    );
+    expect(refresh).toMatchObject({ ok: true, source: "cdp" });
+    if (!refresh.ok) throw new Error("unreachable");
+    await expect(
+      runWithCookieInvocationOverride(refresh.invocation_override, async () =>
+        acquireCookies("example", "example.com", {}, retrySources),
+      ),
+    ).resolves.toMatchObject({
+      status: "loaded",
+      source: "cdp",
+      cookies: { sid: "live-target-only" },
+    });
+    await expect(
+      acquireCookies("example", "example.com", {}, retrySources),
+    ).resolves.toEqual({
+      status: "loaded",
+      source: "disk",
+      cookies: { sid: "persisted" },
+      credential_identity: {
+        profile_id: "persisted-site:example",
+        selection_source: "explicit",
+      },
     });
   });
 });
 
 describe("live cookie acquisition", () => {
-  it("keeps browser cookies in memory unless the user explicitly imports", async () => {
+  it("reads browser cookies only when the acquisition plan selects browser", async () => {
     const sources: CookieSources = {
       readDisk: () => ({ kind: "absent" }),
       readBrowser: async () => ({
@@ -177,7 +232,7 @@ describe("live cookie acquisition", () => {
     const outcome = await acquireCookies(
       "memory-only",
       "example.com",
-      {},
+      { skipDisk: true },
       sources,
     );
 
@@ -185,6 +240,10 @@ describe("live cookie acquisition", () => {
       status: "loaded",
       source: "browser",
       cookies: { sid: "memory-only" },
+      credential_identity: {
+        profile_id: "browser-profile:example.com",
+        selection_source: "explicit",
+      },
     });
     expect(existsSync(join(TEST_COOKIE_DIR, "memory-only.json"))).toBe(false);
   });

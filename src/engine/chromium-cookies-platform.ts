@@ -21,7 +21,8 @@
  *             32-byte SHA256 integrity prefix on plaintext
  *             v20 (Chrome 127+ App-Bound Encryption) is BLOCKED for external
  *             processes by design; we surface encryption_unsupported and
- *             suggest CDP fallback rather than ship a brittle bypass.
+ *             suggest an explicit CDP source selection rather than ship a
+ *             brittle bypass or switch credential authorities implicitly.
  *
  * All three platforms validate the prefix bytes to detect format drift early.
  */
@@ -43,7 +44,7 @@ export function currentPlatform(): Platform {
   throw new ChromiumCookieError(
     "encryption_unsupported",
     `unsupported platform: ${p}`,
-    "Direct cookie reads work on macOS, Linux, and Windows. Use CDP fallback elsewhere.",
+    "Direct cookie reads work on macOS, Linux, and Windows. Explicitly select the CDP cookie source on another platform.",
   );
 }
 

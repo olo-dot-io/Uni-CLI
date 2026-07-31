@@ -74,7 +74,7 @@ export function buildObjectiveNextActions(
   actions.push({
     command: `unicli search "${intent}"`,
     description:
-      "Inspect command-level fallbacks if the objective plan is wrong",
+      "Inspect the ranked operation and repair or re-plan if the objective plan is wrong",
   });
   return actions;
 }

@@ -1,20 +1,22 @@
 /**
  * @owner       src::engine::cookies
  * @does        Cookie front door for adapters — structured acquisition, header formatting,
- *              and bounded process-memory handoff after an auth refresh.
+ *              and one-shot invocation-scoped handoff after an explicit auth refresh.
  * @needs       ./cookie-source and ./cookie-storage
  * @feeds       adapters (loadCookiesWithCDP/formatCookieHeader), executor,
  *              dispatch/social (refreshCookiesFromBrowser), commands/auth
  * @breaks      loadCookies/loadCookiesWithCDP return null on miss (back-compat);
  *              acquireCookies returns a typed CookieLoadOutcome that names the
  *              real cause — callers that need the cause use acquireCookies
- * @invariants  Refreshed values override stale disk state for at most five minutes; live acquisition never persists.
- * @side-effects Reads explicitly persisted files or browser/CDP cookies and retains bounded refresh handoffs in process memory; never writes.
- * @concurrency The latest refresh for one site/domain wins; the handoff cache is capped at 32 entries.
+ * @invariants  Refreshed values are held behind an opaque one-shot capability, consumed by exactly one kernel invocation, and available only to matching site/domain acquisition in that async context; live acquisition never persists.
+ * @side-effects Reads explicitly persisted files or browser/CDP cookies and holds an unconsumed refresh capability in process memory; never writes.
+ * @concurrency AsyncLocalStorage isolates concurrent invocations; WeakMap-backed capabilities expose no cookie values and are atomically consumed before execution.
  * @test        tests/unit/engine/cookie-source.test.ts, tests/unit/cookies.test.ts
  * @stability   stable
  * @since       2026-05-30
  */
+
+import { AsyncLocalStorage } from "node:async_hooks";
 
 import {
   cookieDir,
@@ -23,68 +25,70 @@ import {
   loadCookiesWithDiagnostics,
   readDiskCookies,
   resolveCookieDomain,
+  type CookieCredentialIdentity,
   type CookieLoadOutcome,
   type CookieSources,
 } from "./cookie-source.js";
 
-const TRANSIENT_COOKIE_TTL_MS = 5 * 60 * 1000;
-const MAX_TRANSIENT_COOKIE_SESSIONS = 32;
-
-interface TransientCookies {
+interface CookieInvocationCredential {
+  site: string;
+  domain: string;
   source: "browser" | "cdp";
+  credentialIdentity?: CookieCredentialIdentity;
   cookies: Record<string, string>;
-  expiresAt: number;
 }
 
-const transientCookies = new Map<string, TransientCookies>();
-
-function transientCookieKey(site: string, domain?: string): string {
-  return `${site}\u0000${resolveCookieDomain(site, domain)}`;
+declare const cookieInvocationOverrideBrand: unique symbol;
+export interface CookieInvocationOverride {
+  readonly site: string;
+  readonly domain: string;
+  readonly source: "browser" | "cdp";
+  readonly [cookieInvocationOverrideBrand]: true;
 }
 
-function readTransientCookies(
-  site: string,
-  domain?: string,
-): TransientCookies | undefined {
-  const key = transientCookieKey(site, domain);
-  const entry = transientCookies.get(key);
-  if (!entry) return undefined;
-  if (entry.expiresAt <= Date.now()) {
-    transientCookies.delete(key);
-    return undefined;
-  }
-  return entry;
-}
+const unconsumedCookieOverrides = new WeakMap<
+  CookieInvocationOverride,
+  CookieInvocationCredential
+>();
+const invocationCookieStorage =
+  new AsyncLocalStorage<CookieInvocationCredential>();
 
-export function rememberTransientCookies(
+function createCookieInvocationOverride(
   site: string,
   domain: string | undefined,
   source: "browser" | "cdp",
   cookies: Record<string, string>,
-): void {
-  const key = transientCookieKey(site, domain);
-  transientCookies.delete(key);
-  while (transientCookies.size >= MAX_TRANSIENT_COOKIE_SESSIONS) {
-    const oldest = transientCookies.keys().next().value as string | undefined;
-    if (oldest === undefined) break;
-    transientCookies.delete(oldest);
-  }
-  transientCookies.set(key, {
+  credentialIdentity?: CookieCredentialIdentity,
+): CookieInvocationOverride {
+  const resolvedDomain = resolveCookieDomain(site, domain);
+  const handle = Object.freeze({
+    site,
+    domain: resolvedDomain,
     source,
+  }) as CookieInvocationOverride;
+  unconsumedCookieOverrides.set(handle, {
+    site,
+    domain: resolvedDomain,
+    source,
+    ...(credentialIdentity ? { credentialIdentity } : {}),
     cookies: { ...cookies },
-    expiresAt: Date.now() + TRANSIENT_COOKIE_TTL_MS,
   });
+  return handle;
 }
 
-export function forgetTransientCookies(site: string, domain?: string): void {
-  if (domain !== undefined) {
-    transientCookies.delete(transientCookieKey(site, domain));
-    return;
+export async function runWithCookieInvocationOverride<T>(
+  override: CookieInvocationOverride,
+  callback: () => Promise<T>,
+): Promise<T> {
+  const credential = unconsumedCookieOverrides.get(override);
+  if (!credential) {
+    throw new Error(
+      "cookie invocation override is invalid or has already been consumed",
+    );
   }
-  const prefix = `${site}\u0000`;
-  for (const key of transientCookies.keys()) {
-    if (key.startsWith(prefix)) transientCookies.delete(key);
-  }
+  // Delete before any await: concurrent consumers cannot both acquire it.
+  unconsumedCookieOverrides.delete(override);
+  return invocationCookieStorage.run(credential, callback);
 }
 
 /**
@@ -123,31 +127,37 @@ export function getCookieDir(): string {
 }
 
 /**
- * Acquire cookies across disk → browser → CDP, returning the structured outcome
- * (loaded / absent / error+reasons). Browser/CDP values remain in process memory
- * for this invocation; only explicit auth/browser export commands persist.
+ * Execute one source-bound cookie acquisition plan. Normal invocation reads
+ * persisted site credentials; refresh explicitly selects browser or CDP.
  */
 export async function acquireCookies(
   site: string,
   domain?: string,
-  opts: { skipDisk?: boolean; preferCdp?: boolean } = {},
+  opts: {
+    skipDisk?: boolean;
+    preferCdp?: boolean;
+  } = {},
   sources: CookieSources = defaultCookieSources,
 ): Promise<CookieLoadOutcome> {
-  const transient = readTransientCookies(site, domain);
-  if (transient) {
+  const invocationCredential = invocationCookieStorage.getStore();
+  if (
+    invocationCredential?.site === site &&
+    invocationCredential.domain === resolveCookieDomain(site, domain)
+  ) {
     return {
       status: "loaded",
-      source: transient.source,
-      cookies: { ...transient.cookies },
+      source: invocationCredential.source,
+      cookies: { ...invocationCredential.cookies },
+      ...(invocationCredential.credentialIdentity
+        ? { credential_identity: invocationCredential.credentialIdentity }
+        : {}),
     };
   }
   return loadCookiesWithDiagnostics(site, domain, sources, opts);
 }
 
 /**
- * Load cookies with multi-source fallback (disk → browser DB → CDP). Returns
- * null on any miss. Behavior-compatible with every existing adapter consumer;
- * the structured cause is available via `acquireCookies`.
+ * Load persisted cookies. A miss does not change credential authority.
  */
 export async function loadCookiesWithCDP(
   site: string,
@@ -157,15 +167,24 @@ export async function loadCookiesWithCDP(
   return outcome.status === "loaded" ? outcome.cookies : null;
 }
 
-export interface CookieRefreshResult {
-  ok: boolean;
-  site: string;
-  domain: string;
-  source?: "browser" | "cdp";
-  cookieCount?: number;
-  cookies?: string[];
-  suggestion?: string;
-}
+export type CookieRefreshResult =
+  | {
+      ok: true;
+      site: string;
+      domain: string;
+      source: "browser" | "cdp";
+      credential_identity?: CookieCredentialIdentity;
+      invocation_override: CookieInvocationOverride;
+      cookieCount: number;
+      /** Names only, never values. */
+      cookies: string[];
+    }
+  | {
+      ok: false;
+      site: string;
+      domain: string;
+      suggestion: string;
+    };
 
 /**
  * Re-acquire cookies from the live browser / CDP after an auth failure. Skips
@@ -196,12 +215,22 @@ export async function refreshCookiesFromBrowser(
 
   if (outcome.status === "loaded") {
     const source = outcome.source === "cdp" ? "cdp" : "browser";
-    rememberTransientCookies(site, cookieDomain, source, outcome.cookies);
+    const invocationOverride = createCookieInvocationOverride(
+      site,
+      cookieDomain,
+      source,
+      outcome.cookies,
+      outcome.credential_identity,
+    );
     return {
       ok: true,
       site,
       domain: cookieDomain,
       source,
+      ...(outcome.credential_identity
+        ? { credential_identity: outcome.credential_identity }
+        : {}),
+      invocation_override: invocationOverride,
       cookieCount: Object.keys(outcome.cookies).length,
       cookies: Object.keys(outcome.cookies),
     };

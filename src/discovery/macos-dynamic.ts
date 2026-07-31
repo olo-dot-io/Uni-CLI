@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { getAdapter, registerAdapter } from "../registry.js";
+import { replaceAdapterCommands } from "../registry.js";
 import { AdapterType, type AdapterCommand } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -621,25 +621,13 @@ export function registerMacosDynamicCommands(): number {
   const data = discoverMacosDynamicData();
   const dynamicCommands = buildMacosDynamicCommands(data);
 
-  let adapter = getAdapter("macos");
-  if (!adapter) {
-    adapter = {
-      name: "macos",
-      type: AdapterType.DESKTOP,
-      commands: {},
-    };
-    registerAdapter(adapter);
-  }
-
-  for (const [name, command] of Object.entries(adapter.commands)) {
-    if (
+  replaceAdapterCommands(
+    "macos",
+    (_name, command) =>
       command.adapter_path === DYNAMIC_SHORTCUTS_ADAPTER_PATH ||
-      command.adapter_path === DYNAMIC_APP_ACTIONS_ADAPTER_PATH
-    ) {
-      delete adapter.commands[name];
-    }
-  }
-
-  Object.assign(adapter.commands, dynamicCommands);
+      command.adapter_path === DYNAMIC_APP_ACTIONS_ADAPTER_PATH,
+    dynamicCommands,
+    { type: AdapterType.DESKTOP },
+  );
   return Object.keys(dynamicCommands).length;
 }

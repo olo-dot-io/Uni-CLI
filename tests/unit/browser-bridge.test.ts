@@ -327,12 +327,13 @@ describe("broker-backed browser bridge", () => {
       }
       return responseFor(request, runtimeId);
     });
+    const context = createBrowserInvocationContext({
+      transport: "mcp-http",
+      agentSessionId: "mcp-session",
+      turnId: "mcp-turn",
+    });
     const scope = createBrowserInvocationScope({
-      context: createBrowserInvocationContext({
-        transport: "mcp-http",
-        agentSessionId: "mcp-session",
-        turnId: "mcp-turn",
-      }),
+      context,
       profilePartitionId: "login-partition",
     });
 
@@ -372,10 +373,11 @@ describe("broker-backed browser bridge", () => {
         .filter((request) => request.action === "target.command")
         .every(
           (request) =>
-            request.context.agent_session_id === "mcp-session" &&
+            request.context.agent_session_id === context.agent_session_id &&
             request.context.turn_id === "mcp-turn",
         ),
     ).toBe(true);
+    expect(context.agent_session_id).toMatch(/^mcp:[a-f0-9]{64}$/);
   });
 
   it("cancels a browser wait immediately and finalizes its turn", async () => {

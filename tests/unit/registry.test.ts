@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   cli,
+  commandUsesBrowser,
   getAdapter,
   listCommands,
   registerAdapter,
@@ -15,6 +16,110 @@ import {
 import { AdapterType } from "../../src/types.js";
 
 describe("TypeScript adapter registry", () => {
+  it("stores immutable canonical descriptors so contract caches cannot go stale", () => {
+    const source = {
+      name: "unit-immutable-registry",
+      type: AdapterType.WEB_API,
+      commands: {
+        read: {
+          name: "read",
+          execution_operator: "structured-api" as const,
+          capabilities: ["http.fetch"],
+        },
+      },
+    };
+    registerAdapter(source);
+    source.commands.read.capabilities.push("visual.click");
+    const stored = getAdapter("unit-immutable-registry")!;
+
+    expect(stored.commands.read.capabilities).toEqual(["http.fetch"]);
+    expect(() => {
+      stored.commands.read.execution_operator = "visual-coordinate";
+    }).toThrow(TypeError);
+    expect(stored.commands.read.execution_operator).toBe("structured-api");
+  });
+
+  it("lets an explicit command strategy avoid inheriting a browser site lifecycle", () => {
+    const adapter = {
+      name: "unit-browser-command-precedence",
+      type: AdapterType.BROWSER,
+      browser: true,
+      strategy: Strategy.UI,
+      commands: {},
+    };
+    expect(
+      commandUsesBrowser(adapter, {
+        name: "direct",
+        strategy: Strategy.PUBLIC,
+        minimum_capability: "http.fetch",
+        capabilities: ["http.fetch"],
+      }),
+    ).toBe(false);
+    expect(
+      commandUsesBrowser(adapter, {
+        name: "renderer",
+        strategy: Strategy.PUBLIC,
+        minimum_capability: "cdp-browser.evaluate",
+      }),
+    ).toBe(true);
+  });
+
+  it("merges sites by command and lets user commands shadow only their packaged peer", () => {
+    registerAdapter({
+      name: "unit-tiered-registry",
+      type: AdapterType.WEB_API,
+      commands: {
+        keep: {
+          name: "keep",
+          adapter_path: "src/adapters/unit-tiered-registry/keep.yaml",
+          source_tier: "packaged",
+        },
+        replace: {
+          name: "replace",
+          description: "packaged",
+          adapter_path: "src/adapters/unit-tiered-registry/replace.yaml",
+          source_tier: "packaged",
+        },
+      },
+    });
+    registerAdapter({
+      name: "unit-tiered-registry",
+      type: AdapterType.WEB_API,
+      commands: {
+        replace: {
+          name: "replace",
+          description: "user",
+          adapter_path:
+            "/tmp/home/.unicli/adapters/unit-tiered-registry/replace.yaml",
+          source_tier: "user",
+        },
+      },
+    });
+    registerAdapter({
+      name: "unit-tiered-registry",
+      type: AdapterType.WEB_API,
+      commands: {
+        replace: {
+          name: "replace",
+          description: "late packaged",
+          adapter_path: "src/adapters/unit-tiered-registry/replace.yaml",
+          source_tier: "packaged",
+        },
+      },
+    });
+
+    const adapter = getAdapter("unit-tiered-registry");
+    expect(Object.keys(adapter?.commands ?? {}).sort()).toEqual([
+      "keep",
+      "replace",
+    ]);
+    expect(adapter?.commands.replace).toMatchObject({
+      description: "user",
+      source_tier: "user",
+      shadowed_adapter_path: "src/adapters/unit-tiered-registry/replace.yaml",
+    });
+  });
+
   it("preserves declared args for describe and invocation surfaces", async () => {
     cli({
       site: "unit-ts-registry",

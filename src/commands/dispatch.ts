@@ -297,6 +297,7 @@ export function registerAdapterDispatch(program: Command): void {
               strategy,
               browser: adapter.browser === true || cmd.browser === true,
               args: adapterArgs,
+              effect: cmd.operation_effect,
               profile: rootOpts.permissionProfile,
               approved: rootOpts.yes === true,
               argumentValues: mergedArgs,
@@ -345,14 +346,14 @@ export function registerAdapterDispatch(program: Command): void {
           process.exit(ExitCode.SUCCESS);
         }
 
-        const runInvocation = () =>
+        const runInvocation = (invocation: typeof inv) =>
           rootOpts.record === true || process.env.UNICLI_RECORD_RUN === "1"
-            ? executeWithRunRecording(inv, {
+            ? executeWithRunRecording(invocation, {
                 enabled: rootOpts.record === true ? true : undefined,
               })
-            : execute(inv);
+            : execute(invocation);
 
-        let result = await runInvocation();
+        let result = await runInvocation(inv);
         if (
           rootOpts.authRetry === true &&
           shouldRefreshAuthError(result.error?.code)
@@ -363,12 +364,30 @@ export function registerAdapterDispatch(program: Command): void {
             { preferCdp: result.error?.code === "challenge_required" },
           );
           if (refresh.ok) {
+            const retryInvocation = buildInvocation(
+              "cli",
+              adapter.name,
+              cmdName,
+              inv.bag,
+              {
+                permissionProfile: rootOpts.permissionProfile,
+                approved: rootOpts.yes === true,
+                rememberApproval: rootOpts.rememberApproval === true,
+                operationRole: "direct",
+                cookieInvocationOverride: refresh.invocation_override,
+              },
+            );
+            if (!retryInvocation) {
+              throw new Error(
+                `adapter ${adapter.name}.${cmdName} disappeared before auth retry`,
+              );
+            }
             process.stderr.write(
               chalk.yellow(
-                `[auth] refreshed ${refresh.cookieCount ?? 0} cookie(s) from ${refresh.source}; retrying ${adapter.name}.${cmdName}\n`,
+                `[auth] refreshed ${refresh.cookieCount} cookie(s) from ${refresh.source}; retrying ${adapter.name}.${cmdName}\n`,
               ),
             );
-            result = await runInvocation();
+            result = await runInvocation(retryInvocation);
           } else {
             annotateAuthRetryFailure(result, refresh.suggestion, adapter.name);
           }

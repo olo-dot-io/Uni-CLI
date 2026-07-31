@@ -4,7 +4,7 @@
  * @needs   browser bridge/page/invocation scope, transactional file publication, Electron app launcher, refs/snapshot encoder/types
  * @feeds   bus-driven browser steps, adapter execution, tests/unit/transport adapters
  * @breaks  CDP attach, app launch, and ordinary browser action failures return structured envelopes; outcome-ambiguous delivery throws unchanged and retires an unusable page.
- * @invariants Default page acquisition requires a trusted invocation scope and delegates process/target ownership to the browser broker; target-aware snapshots attach to their exact renderer WebSocket, probing a port-only target before ref allocation; endpoint-bound ref scopes are renderer-unique and contain no raw endpoint material; contradictory port/WebSocket targets fail closed; only explicit port/app attachment uses direct CDP; a directly launched app remains pending-owned until CDP readiness and is contained on failure/cancellation; one explicit endpoint is cached per Agent turn/provider/profile identity and endpoint changes replace rather than silently reuse it; request cancellation reaches CDP discovery/connection; any structural outcome_ambiguous error escapes the envelope/cascade path without fallback replay.
+ * @invariants Default page acquisition requires a trusted invocation scope and delegates process/target ownership to the browser broker; target-aware snapshots attach to their exact renderer WebSocket, probing a port-only target before ref allocation; endpoint-bound ref scopes are renderer-unique and contain no raw endpoint material; contradictory port/WebSocket targets fail closed; only explicit port/app attachment uses direct CDP; a directly launched app remains pending-owned until CDP readiness and is contained on failure/cancellation; one explicit endpoint is cached per Agent turn/provider/profile identity and endpoint changes replace rather than silently reuse it; request cancellation reaches CDP discovery/connection; any structural outcome_ambiguous error escapes normal envelope handling without replay.
  * @side-effects May launch explicitly requested Electron apps, mutate broker-owned or explicitly attached pages, and atomically publish requested screenshots; never implicitly launches Chrome.
  * @perf    CDP target probing and post-launch polling are bounded.
  * @concurrency Browser profile/target concurrency is broker-owned; explicit attachment caches are isolated per ambient Agent scope and released by its turn finalizer even on the process-shared transport bus.
@@ -290,7 +290,7 @@ export class CdpBrowserTransport implements TransportAdapter {
           : await this.ensurePage(req.params, req.signal);
       const envelope = await settleDispatchedAction(
         req.kind,
-        req.canMutate ?? !CDP_READ_ONLY_ACTIONS.has(req.kind),
+        !CDP_READ_ONLY_ACTIONS.has(req.kind) || req.canMutate === true,
         req.signal,
         () => this.dispatch<T>(page, req),
       );
@@ -341,6 +341,16 @@ export class CdpBrowserTransport implements TransportAdapter {
     if (errors.length > 1) {
       throw new AggregateError(errors, "CDP transport page cleanup failed");
     }
+  }
+
+  async recover(req: ActionRequest): Promise<void> {
+    const endpoint = readCdpEndpoint(req.params);
+    const page = this.cachedPage(endpoint);
+    if (!page) return;
+    for (const [key, cached] of this.pages) {
+      if (cached.page === page) this.pages.delete(key);
+    }
+    await page.close();
   }
 
   // ── dispatch ─────────────────────────────────────────────────────

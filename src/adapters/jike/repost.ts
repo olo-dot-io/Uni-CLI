@@ -6,6 +6,7 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
+import { throwProviderReportedFailure } from "../_shared/actionable-error.js";
 
 cli({
   site: "jike",
@@ -13,6 +14,7 @@ cli({
   description: "Repost a Jike post",
   domain: "web.okjike.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "publish_content",
   browser: true,
   args: [
     {
@@ -52,7 +54,10 @@ cli({
     })()`)) as { ok: boolean; message?: string };
 
     if (!clickResult.ok) {
-      return [{ status: "failed", message: clickResult.message ?? "" }];
+      throwProviderReportedFailure(
+        clickResult.message,
+        "Inspect the Jike post action bar before retrying.",
+      );
     }
 
     await p.wait(1);
@@ -72,7 +77,10 @@ cli({
     })()`)) as { ok: boolean; message?: string };
 
     if (!menuResult.ok) {
-      return [{ status: "failed", message: menuResult.message ?? "" }];
+      throwProviderReportedFailure(
+        menuResult.message,
+        "Inspect the Jike repost menu before retrying.",
+      );
     }
 
     await p.wait(2);
@@ -97,7 +105,10 @@ cli({
       })()`)) as { ok: boolean; message?: string };
 
       if (!textResult.ok) {
-        return [{ status: "failed", message: textResult.message ?? "" }];
+        throwProviderReportedFailure(
+          textResult.message,
+          "Inspect the Jike repost composer before retrying.",
+        );
       }
     }
 
@@ -117,13 +128,13 @@ cli({
       }
     })()`)) as { ok: boolean; message: string };
 
-    if (confirmResult.ok) await p.wait(3);
-
-    return [
-      {
-        status: confirmResult.ok ? "success" : "failed",
-        message: confirmResult.message,
-      },
-    ];
+    if (!confirmResult.ok) {
+      throwProviderReportedFailure(
+        confirmResult.message,
+        "Inspect the Jike repost submit control before retrying.",
+      );
+    }
+    await p.wait(3);
+    return [{ status: "success", message: confirmResult.message }];
   },
 });

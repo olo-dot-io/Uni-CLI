@@ -13,7 +13,9 @@ import {
   requireCrossrefDoi,
 } from "../../../src/adapters/crossref/works.js";
 import {
+  mapSemanticScholarRecommendations,
   mapSemanticScholarPaper,
+  requireSemanticScholarBoundedInt,
   requireSemanticScholarPaperRef,
 } from "../../../src/adapters/semantic-scholar/papers.js";
 import {
@@ -209,6 +211,57 @@ describe("Semantic Scholar adapter mapping", () => {
         "649def34f8be52c8b66281af98ae884c09aef38b",
       ),
     ).toBe("649def34f8be52c8b66281af98ae884c09aef38b");
+    expect(
+      requireSemanticScholarPaperRef(
+        "https://www.semanticscholar.org/paper/Attention-Is-All-You-Need/649def34f8be52c8b66281af98ae884c09aef38b",
+      ),
+    ).toBe("649def34f8be52c8b66281af98ae884c09aef38b");
+    expect(requireSemanticScholarPaperRef("PMID:12345")).toBe("PMID:12345");
+  });
+
+  it("rejects limits instead of silently clamping them", () => {
+    expect(
+      requireSemanticScholarBoundedInt(undefined, 20, 1, 100, "limit"),
+    ).toBe(20);
+    expect(() =>
+      requireSemanticScholarBoundedInt(101, 20, 1, 100, "limit"),
+    ).toThrow("must be an integer in [1, 100]");
+    expect(() =>
+      requireSemanticScholarBoundedInt(-1, 0, 0, 1000, "offset"),
+    ).toThrow("must be an integer in [0, 1000]");
+  });
+
+  it("maps ranked recommendation rows and rejects malformed payloads", () => {
+    expect(
+      mapSemanticScholarRecommendations(
+        {
+          recommendedPapers: [
+            {
+              paperId: "649def34f8be52c8b66281af98ae884c09aef38b",
+              title: "Attention Is All You Need",
+              year: 2017,
+              authors: [{ name: "Ashish Vaswani" }],
+              externalIds: { ArXiv: "1706.03762" },
+            },
+          ],
+        },
+        1,
+      ),
+    ).toMatchObject([
+      {
+        rank: 1,
+        id: "649def34f8be52c8b66281af98ae884c09aef38b",
+        title: "Attention Is All You Need",
+        arxiv_id: "1706.03762",
+        source_adapter: "semantic-scholar-recommendations",
+      },
+    ]);
+    expect(() => mapSemanticScholarRecommendations({}, 1)).toThrow(
+      "omitted recommendedPapers",
+    );
+    expect(() =>
+      mapSemanticScholarRecommendations({ recommendedPapers: [] }, 1),
+    ).toThrow("no recommendations");
   });
 });
 

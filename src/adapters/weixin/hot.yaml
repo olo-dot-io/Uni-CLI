@@ -1,6 +1,7 @@
 site: weixin
 name: hot
 description: WeChat/Weixin hot articles trending
+operation_effect: read
 domain: mp.weixin.qq.com
 type: web-api
 strategy: public

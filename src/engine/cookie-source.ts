@@ -1,18 +1,16 @@
 /**
  * @owner       src::engine::cookie-source
- * @does        Multi-source cookie acquisition that surfaces the REAL cause of a
- *              miss (keychain denied / corrupt file / v20 encryption / CDP
- *              unavailable) as a typed outcome, instead of collapsing every
- *              failure to null.
+ * @does        Execute one immutable credential acquisition plan and surface
+ *              its exact miss or failure without changing source identity.
  * @needs       ./cookie-storage, ./chromium-cookies (lazy), ./cookie-extractor (lazy), ../browser/local-profiles (lazy)
  * @feeds       src::engine::cookies (loadCookies/loadCookiesWithCDP/acquireCookies
  *              projections), src::engine::executor (auth error detail)
  * @breaks      never throws from loadCookiesWithDiagnostics — failures become
  *              CookieLoadOutcome {status:"error", reasons}; readDiskCookies is total
- * @invariants  exactly one of loaded|absent|error; "absent" ⇒ no source errored
- *              (genuinely not logged in); "error" ⇒ ≥1 source had a real failure
+ * @invariants  exactly one source is read per call; misses and errors never
+ *              trigger a different credential authority.
  * @side-effects disk reads tighten legacy permissions; default sources read browser DB / CDP into memory
- * @perf        disk O(file); browser tries installed browsers in order, stops on hit
+ * @perf        disk O(file); browser reads one explicitly or unambiguously selected profile
  * @concurrency stateless; sources own their own IO
  * @test        tests/unit/engine/cookie-source.test.ts
  * @stability   experimental
@@ -23,6 +21,17 @@ import { readDiskCookies, type DiskRead } from "./cookie-storage.js";
 export { cookieDir, readDiskCookies } from "./cookie-storage.js";
 export type { DiskRead } from "./cookie-storage.js";
 export type CookieSourceName = "disk" | "browser" | "cdp";
+export interface CookieCredentialIdentity {
+  profile_id: string;
+  selection_source: "explicit" | "preferred";
+}
+
+export interface CookieAcquisitionPlan {
+  source: CookieSourceName;
+  site: string;
+  domain: string;
+  credential_identity: CookieCredentialIdentity;
+}
 
 /** A typed failure cause from one acquisition source. */
 export interface CookieReason {
@@ -33,7 +42,7 @@ export interface CookieReason {
 }
 
 /**
- * Result of trying every cookie source for a site. Discriminated so callers
+ * Result of executing one cookie plan for a site. Discriminated so callers
  * cannot confuse "genuinely not logged in" (absent) with "Keychain denied /
  * file corrupt / Chrome v20" (error) — the distinction the old null collapse
  * destroyed.
@@ -43,13 +52,18 @@ export type CookieLoadOutcome =
       status: "loaded";
       source: CookieSourceName;
       cookies: Record<string, string>;
+      credential_identity?: CookieCredentialIdentity;
     }
   | { status: "absent" }
   | { status: "error"; reasons: CookieReason[] };
 
-/** Browser read across installed browsers: a hit, a clean miss, or real errors. */
+/** Browser read from one selected profile: a hit, a clean miss, or real errors. */
 export type BrowserAttempt =
-  | { kind: "ok"; cookies: Record<string, string> }
+  | {
+      kind: "ok";
+      cookies: Record<string, string>;
+      credential_identity?: CookieCredentialIdentity;
+    }
   | { kind: "none" }
   | { kind: "error"; reasons: CookieReason[] };
 
@@ -91,55 +105,65 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       ],
     };
   }
-  const reasons: CookieReason[] = [];
-  const preferred = localProfiles.resolvePreferredLocalBrowserProfile();
-  if (preferred) {
-    const preferredBrowser =
-      localProfiles.browserCookieIdForLocalProfile(preferred);
-    if (preferredBrowser) {
-      try {
-        const record = mod.readCookiesAsRecord({
-          browser: preferredBrowser,
-          domain,
-          profile: preferred.profile_dir,
-          userDataDir: preferred.user_data_dir,
-        });
-        if (Object.keys(record).length > 0) {
-          return { kind: "ok", cookies: record };
+  const selection = localProfiles.selectLocalBrowserIdentity();
+  if (selection.status === "ambiguous") {
+    return {
+      kind: "error",
+      reasons: [
+        {
+          source: "browser",
+          code: "profile_ambiguous",
+          detail: `Select one browser profile explicitly: ${selection.profile_ids.join(", ")}`,
+        },
+      ],
+    };
+  }
+  if (selection.status === "unavailable") return { kind: "none" };
+  const profile = selection.profile;
+  const browser = localProfiles.browserCookieIdForLocalProfile(profile);
+  if (!browser) {
+    return {
+      kind: "error",
+      reasons: [
+        {
+          source: "browser",
+          code: "unsupported_browser",
+          detail: profile.display_name,
+        },
+      ],
+    };
+  }
+  try {
+    const record = mod.readCookiesAsRecord({
+      browser,
+      domain,
+      profile: profile.profile_dir,
+      userDataDir: profile.user_data_dir,
+    });
+    return Object.keys(record).length > 0
+      ? {
+          kind: "ok",
+          cookies: record,
+          credential_identity: {
+            profile_id: profile.id,
+            selection_source: selection.source,
+          },
         }
-      } catch (err) {
-        const code =
-          err instanceof mod.ChromiumCookieError
-            ? err.code
-            : "browser_read_failed";
-        reasons.push({
+      : { kind: "none" };
+  } catch (err) {
+    const code =
+      err instanceof mod.ChromiumCookieError ? err.code : "browser_read_failed";
+    return {
+      kind: "error",
+      reasons: [
+        {
           source: "browser",
           code,
-          detail: `${preferred.display_name}: ${err instanceof Error ? err.message : String(err)}`,
-        });
-      }
-    }
+          detail: `${profile.display_name}: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      ],
+    };
   }
-  const installed = mod.detectInstalledBrowsers();
-  if (installed.length === 0) return { kind: "none" };
-  for (const browser of installed) {
-    try {
-      const record = mod.readCookiesAsRecord({ browser, domain });
-      if (Object.keys(record).length > 0)
-        return { kind: "ok", cookies: record };
-    } catch (err) {
-      const code =
-        err instanceof mod.ChromiumCookieError
-          ? err.code
-          : "browser_read_failed";
-      reasons.push({
-        source: "browser",
-        code,
-        detail: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-  return reasons.length > 0 ? { kind: "error", reasons } : { kind: "none" };
 }
 
 async function defaultReadCdp(domain: string): Promise<Record<string, string>> {
@@ -154,76 +178,124 @@ export const defaultCookieSources: CookieSources = {
 };
 
 /**
- * Acquire cookies across disk, local browser storage, and live CDP, collecting
- * the real cause of each source's failure. Challenge recovery can prefer CDP
- * because the shared browser is where verification was just completed; normal
- * auth acquisition preserves the legacy browser-before-CDP order.
- *
- * Domain precedence and the default disk / browser / CDP order match the
- * legacy loadCookiesWithCDP behavior.
+ * Resolve a single credential source before acquisition. Legacy skip/prefer
+ * flags map to one source for API compatibility; they never define an order.
  */
+export function resolveCookieAcquisitionPlan(
+  site: string,
+  domain?: string,
+  opts: {
+    source?: CookieSourceName;
+    skipDisk?: boolean;
+    preferCdp?: boolean;
+  } = {},
+): CookieAcquisitionPlan {
+  const resolvedDomain = resolveCookieDomain(site, domain);
+  const source =
+    opts.source ??
+    (opts.preferCdp ? "cdp" : opts.skipDisk ? "browser" : "disk");
+  return {
+    source,
+    site,
+    domain: resolvedDomain,
+    credential_identity: {
+      profile_id:
+        source === "disk"
+          ? `persisted-site:${site}`
+          : source === "cdp"
+            ? `cdp-domain:${resolvedDomain}`
+            : `browser-profile:${resolvedDomain}`,
+      selection_source: "explicit",
+    },
+  };
+}
+
 export async function loadCookiesWithDiagnostics(
   site: string,
   domain?: string,
   sources: CookieSources = defaultCookieSources,
-  opts: { skipDisk?: boolean; preferCdp?: boolean } = {},
+  opts: {
+    source?: CookieSourceName;
+    skipDisk?: boolean;
+    preferCdp?: boolean;
+  } = {},
 ): Promise<CookieLoadOutcome> {
-  const reasons: CookieReason[] = [];
-
-  // Refresh-after-401 skips disk: the on-disk cookies are exactly the stale
-  // ones that just failed, so re-acquisition must go straight to the live
-  // browser / CDP sources.
-  if (!opts.skipDisk) {
+  const plan = resolveCookieAcquisitionPlan(site, domain, opts);
+  if (plan.source === "disk") {
     const disk = sources.readDisk(site);
     if (disk.kind === "ok") {
-      return { status: "loaded", source: "disk", cookies: disk.cookies };
+      return {
+        status: "loaded",
+        source: "disk",
+        cookies: disk.cookies,
+        credential_identity: plan.credential_identity,
+      };
     }
     if (disk.kind === "corrupt") {
-      reasons.push({
-        source: "disk",
-        code: "corrupt_file",
-        detail: disk.detail,
-      });
+      return {
+        status: "error",
+        reasons: [
+          {
+            source: "disk",
+            code: "corrupt_file",
+            detail: disk.detail,
+          },
+        ],
+      };
     }
+    return { status: "absent" };
   }
 
-  const cookieDomain = resolveCookieDomain(site, domain);
+  if (plan.source === "browser") {
+    if (process.env.UNICLI_COOKIE_NO_BROWSER === "1") {
+      return {
+        status: "error",
+        reasons: [
+          {
+            source: "browser",
+            code: "browser_source_disabled",
+            detail: "UNICLI_COOKIE_NO_BROWSER=1",
+          },
+        ],
+      };
+    }
+    const browser = await sources.readBrowser(plan.domain);
+    if (browser.kind === "ok" && Object.keys(browser.cookies).length > 0) {
+      return {
+        status: "loaded",
+        source: "browser",
+        cookies: browser.cookies,
+        credential_identity:
+          browser.credential_identity ?? plan.credential_identity,
+      };
+    }
+    return browser.kind === "error"
+      ? { status: "error", reasons: browser.reasons }
+      : { status: "absent" };
+  }
 
-  const order: CookieSourceName[] = opts.preferCdp
-    ? ["cdp", "browser"]
-    : ["browser", "cdp"];
-  for (const source of order) {
-    if (source === "browser") {
-      if (process.env.UNICLI_COOKIE_NO_BROWSER === "1") continue;
-      const browser = await sources.readBrowser(cookieDomain);
-      if (browser.kind === "ok" && Object.keys(browser.cookies).length > 0) {
-        return {
+  try {
+    const cdp = await sources.readCdp(plan.domain);
+    return Object.keys(cdp).length > 0
+      ? {
           status: "loaded",
-          source: "browser",
-          cookies: browser.cookies,
-        };
-      }
-      if (browser.kind === "error") reasons.push(...browser.reasons);
-      continue;
-    }
-
-    try {
-      const cdp = await sources.readCdp(cookieDomain);
-      if (Object.keys(cdp).length > 0) {
-        return { status: "loaded", source: "cdp", cookies: cdp };
-      }
-    } catch (err) {
-      reasons.push({
-        source: "cdp",
-        code: "cdp_unavailable",
-        detail: err instanceof Error ? err.message : String(err),
-      });
-    }
+          source: "cdp",
+          cookies: cdp,
+          credential_identity: plan.credential_identity,
+        }
+      : { status: "absent" };
+  } catch (err) {
+    return {
+      status: "error",
+      reasons: [
+        {
+          source: "cdp",
+          code: "cdp_unavailable",
+          detail: err instanceof Error ? err.message : String(err),
+        },
+      ],
+    };
   }
-
-  return reasons.length > 0
-    ? { status: "error", reasons }
-    : { status: "absent" };
 }
 
 /**

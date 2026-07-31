@@ -13,6 +13,7 @@
 site: apple-notes
 name: read
 description: Read a note's plaintext body by title (first match wins)
+operation_effect: read
 type: desktop
 
 # schema-v2 fields

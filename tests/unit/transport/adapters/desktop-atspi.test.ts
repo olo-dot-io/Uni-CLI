@@ -80,6 +80,7 @@ describe("DesktopAtspiTransport", () => {
     const res = await t.action({
       kind: "atspi_invoke",
       params: { ref: "@e1" },
+      canMutate: false,
     });
 
     expect(res.ok).toBe(true);

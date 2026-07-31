@@ -10,6 +10,23 @@ const cookieBoundary = vi.hoisted(() => ({
 
 // REASON: Local browser profile discovery and encrypted cookie storage are operating-system boundaries; broker/auth-sync behavior stays real.
 vi.mock("../../src/browser/local-profiles.js", () => ({
+  selectLocalBrowserIdentity: () => ({
+    status: "selected",
+    source: "preferred",
+    profile: {
+      id: "google-chrome:Default",
+      browser_name: "Google Chrome",
+      browser_path: "/Applications/Chrome",
+      browser_path_exists: true,
+      user_data_dir: "/Users/example/Library/Application Support/Google/Chrome",
+      profile_dir: "Default",
+      profile_name: "Personal",
+      profile_path:
+        "/Users/example/Library/Application Support/Google/Chrome/Default",
+      display_name: "Google Chrome - Personal",
+      debug_port: { state: "not-recorded" },
+    },
+  }),
   resolvePreferredLocalBrowserProfile: () => ({
     id: "google-chrome:Default",
     browser_name: "Google Chrome",

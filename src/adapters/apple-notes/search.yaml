@@ -12,6 +12,7 @@
 site: apple-notes
 name: search
 description: Full-text search across all notes (titles of matches)
+operation_effect: read
 type: desktop
 
 # schema-v2 fields

@@ -16,7 +16,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import { buildPatentEnvelope } from "../../engine/normalizer/patent-envelope.js";
+import { throwPatentAdapterError } from "../../engine/normalizer/patent-envelope.js";
 import {
   FpoHttpError,
   buildFpoDetailUrl,
@@ -38,7 +38,7 @@ export async function runFreePatentsOnlineGet(
   if (raw.length === 0) {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_INVALID_NUMBER",
           adapter_path: ADAPTER_PATH,
           step: "validate",
@@ -55,7 +55,7 @@ export async function runFreePatentsOnlineGet(
     if (err instanceof FpoHttpError) {
       return [
         {
-          envelope: buildPatentEnvelope({
+          envelope: throwPatentAdapterError({
             code:
               err.status === 404 ? "PATENT_NOT_FOUND" : "PATENT_API_DEPRECATED",
             adapter_path: ADAPTER_PATH,
@@ -72,7 +72,7 @@ export async function runFreePatentsOnlineGet(
   if (!detail.title) {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_NOT_FOUND",
           adapter_path: ADAPTER_PATH,
           step: "select",
@@ -101,7 +101,7 @@ export async function runFreePatentsOnlineGet(
   } catch {
     return [
       {
-        envelope: buildPatentEnvelope({
+        envelope: throwPatentAdapterError({
           code: "PATENT_SCHEMA_DRIFT",
           adapter_path: ADAPTER_PATH,
           step: "normalize",

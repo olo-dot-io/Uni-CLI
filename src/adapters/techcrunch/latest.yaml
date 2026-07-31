@@ -1,6 +1,7 @@
 site: techcrunch
 name: latest
 description: Latest TechCrunch articles via RSS
+operation_effect: read
 type: web-api
 domain: techcrunch.com
 strategy: public

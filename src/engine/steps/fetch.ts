@@ -4,7 +4,7 @@
  * @needs       node fs/path/os/crypto, constants, registry/executor, validated fetch/template/cookies/download/resource guard
  * @feeds       step registry action "fetch", fetch_text shared request helpers
  * @breaks      PipelineError preserves network, HTTP, policy, and response-shape failure semantics.
- * @invariants  Initial and redirected request URLs pass request-policy and runtime-resource validation before cache access or network I/O; cross-origin redirects cannot retain caller credentials; caller cancellation remains the exact abort reason instead of a retryable network failure.
+ * @invariants  Initial and redirected request URLs pass request-policy and runtime-resource validation before cache access or network I/O; cross-origin redirects cannot retain caller credentials; an HTTP auth failure never acquires undeclared browser credentials; caller cancellation remains the exact abort reason instead of a retryable network failure.
  * @side-effects Network I/O, optional cache writes, cookie acquisition, and response-cookie capture.
  * @perf        Retry count and fan-out are explicitly bounded by adapter configuration.
  * @concurrency Multi-URL requests use the shared bounded concurrency mapper.
@@ -23,7 +23,6 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
 import { assertSafeRequestUrl, UnsafeRequestUrlError } from "../ssrf.js";
 import { evalTemplate, resolveTemplateDeep } from "../template.js";
-import { formatCookieHeader, loadCookiesWithCDP } from "../cookies.js";
 import { mapConcurrent } from "../download.js";
 import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
@@ -143,49 +142,13 @@ export async function stepFetch(
       }
     : { ...config, headers: resolveHeaderTemplates(config.headers, ctx) };
 
-  try {
-    const data = await fetchJson(url, resolvedConfig, {
-      cookieHeader: ctx.cookieHeader,
-      stepIndex,
-      signal: ctx.signal,
-      validateRequest,
-    });
-    return { ...ctx, data };
-  } catch (err) {
-    ctx.signal?.throwIfAborted();
-    if (
-      err instanceof PipelineError &&
-      (err.detail.statusCode === 401 || err.detail.statusCode === 403) &&
-      !ctx.cookieHeader
-    ) {
-      try {
-        ctx.signal?.throwIfAborted();
-        const hostname = new URL(url).hostname;
-        const siteName = hostname
-          .replace(/^www\./, "")
-          .split(".")
-          .slice(0, -1)
-          .join("-");
-        const cookies = await loadCookiesWithCDP(siteName);
-        ctx.signal?.throwIfAborted();
-        if (cookies) {
-          const fallbackCookie = formatCookieHeader(cookies);
-          const data = await fetchJson(url, resolvedConfig, {
-            cookieHeader: fallbackCookie,
-            stepIndex,
-            signal: ctx.signal,
-            validateRequest,
-          });
-          return { ...ctx, data, cookieHeader: fallbackCookie };
-        }
-      } catch {
-        ctx.signal?.throwIfAborted();
-        // Cookie fallback also failed — throw original
-      }
-    }
-    ctx.signal?.throwIfAborted();
-    throw err;
-  }
+  const data = await fetchJson(url, resolvedConfig, {
+    cookieHeader: ctx.cookieHeader,
+    stepIndex,
+    signal: ctx.signal,
+    validateRequest,
+  });
+  return { ...ctx, data };
 }
 
 export function networkAccessForMethod(method = "GET"): "read" | "write" {

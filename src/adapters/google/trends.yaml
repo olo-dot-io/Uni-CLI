@@ -1,6 +1,7 @@
 site: google
 name: trends
 description: Google Trends daily trending searches
+operation_effect: read
 type: web-api
 strategy: public
 

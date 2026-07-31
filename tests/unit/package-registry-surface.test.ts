@@ -1,7 +1,7 @@
 /**
  * @owner   tests/unit/package-registry-surface.test.ts
  * @does    Assert Feature 3.3 package registry adapters stay active in the real registry.
- * @needs   src/adapters package-registry YAML files, src/discovery/loader.ts, src/registry.ts
+ * @needs   src/adapters package-registry YAML and TypeScript commands, src/discovery/loader.ts, src/registry.ts
  * @feeds   Feature 3.3 site expansion gate, npm run test
  * @breaks  Missing, quarantined, or auth-gated package registries shrink agent package discovery.
  */
@@ -12,7 +12,7 @@ import { join } from "node:path";
 import yaml from "js-yaml";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SITE_CATEGORIES } from "../../src/discovery/aliases.js";
-import { loadAllAdapters } from "../../src/discovery/loader.js";
+import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 import { runPipeline } from "../../src/engine/executor.js";
 import "../../src/engine/steps/index.js";
 import { listCommands } from "../../src/registry.js";
@@ -35,6 +35,9 @@ let server: Server;
 let baseUrl: string;
 
 beforeAll(async () => {
+  loadAllAdapters();
+  await loadTsAdapters();
+
   server = createServer((req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
 
@@ -110,7 +113,6 @@ function pipelineWithFixture(
 
 describe("package registry expansion surfaces", () => {
   it("registers five active public package registry sites", () => {
-    loadAllAdapters();
     const commands = listCommands();
 
     for (const [site, expectedCommands] of Object.entries(

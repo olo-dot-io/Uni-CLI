@@ -1,6 +1,6 @@
 /**
  * @owner       src::mcp::http-transport
- * @does        Preserve the `--http` entry point as a compatibility name for the single MCP 2025-11-25 Streamable HTTP implementation.
+ * @does        Preserve the `--http` entry point as a compatibility name for the dual-era Streamable HTTP implementation.
  * @needs       shared JSON-RPC handler and Streamable HTTP runtime
  * @feeds       src/mcp/server.ts and legacy programmatic callers
  * @breaks      A second stateless HTTP implementation cannot preserve standard Tasks identity and creates protocol/security drift.

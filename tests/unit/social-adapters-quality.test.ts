@@ -1,12 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 import { getAdapter } from "../../src/registry.js";
 import { buildSocialAudit } from "../../src/social/capabilities.js";
-import { extractTsRegistrations } from "../../scripts/manifest-ts-scan.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..", "..");
@@ -30,6 +29,11 @@ const TWITTER_USER_TIMELINE_TS_COMMANDS = [
 ];
 
 describe("high-value social adapter quality gates", () => {
+  beforeAll(async () => {
+    loadAllAdapters();
+    await loadTsAdapters();
+  });
+
   it("uses a browser-backed Reddit search command instead of blocked public JSON", async () => {
     loadAllAdapters();
     await loadTsAdapters();
@@ -64,20 +68,8 @@ describe("high-value social adapter quality gates", () => {
     ]);
   });
 
-  it("keeps every browser-backed Reddit TS command visible to the generated manifest", () => {
-    const source = readFileSync(
-      join(ROOT, "src", "adapters", "reddit", "listings.ts"),
-      "utf-8",
-    );
-    const commandNames = extractTsRegistrations(
-      source,
-      "reddit",
-      "listings",
-    ).flatMap((registration) =>
-      registration.site === "reddit"
-        ? registration.commands.map((command) => command.name)
-        : [],
-    );
+  it("keeps every browser-backed Reddit TS command in the authoritative registry", () => {
+    const commandNames = Object.keys(getAdapter("reddit")?.commands ?? {});
 
     expect(commandNames).toEqual(
       expect.arrayContaining([
@@ -103,40 +95,21 @@ describe("high-value social adapter quality gates", () => {
     }
   });
 
-  it("keeps every Twitter/X user timeline TS command visible to the generated manifest", () => {
-    const source = readFileSync(
-      join(ROOT, "src", "adapters", "twitter", "lists-extra.ts"),
-      "utf-8",
-    );
-    const commandNames = extractTsRegistrations(
-      source,
-      "twitter",
-      "lists-extra",
-    ).flatMap((registration) =>
-      registration.site === "twitter"
-        ? registration.commands.map((command) => command.name)
-        : [],
-    );
+  it("keeps every Twitter/X user timeline TS command in the authoritative registry", () => {
+    const commandNames = Object.keys(getAdapter("twitter")?.commands ?? {});
 
     expect(commandNames).toEqual(
       expect.arrayContaining(TWITTER_USER_TIMELINE_TS_COMMANDS),
     );
   });
 
-  it("keeps the Twitter/X comments command visible to the generated manifest", () => {
-    const source = readFileSync(
-      join(ROOT, "src", "adapters", "twitter", "thread.ts"),
-      "utf-8",
-    );
-    const commands = extractTsRegistrations(
-      source,
-      "twitter",
-      "thread",
-    ).flatMap((registration) =>
-      registration.site === "twitter" ? registration.commands : [],
+  it("keeps the Twitter/X comments command in the authoritative registry", () => {
+    const twitter = getAdapter("twitter");
+    const commands = ["thread", "comments"].map(
+      (name) => twitter?.commands[name],
     );
 
-    expect(commands.map((command) => command.name)).toEqual(
+    expect(commands.map((command) => command?.name)).toEqual(
       expect.arrayContaining(["thread", "comments"]),
     );
     expect(commands).toEqual(

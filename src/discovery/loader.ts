@@ -3,9 +3,9 @@
  * @does Discovers YAML and TypeScript adapters, validates adapter metadata, stamps source paths, and registers commands.
  * @needs fs, path, js-yaml, src/registry, src/core/schema-v2, src/engine/kernel/compile, src/discovery/macos-dynamic
  * @feeds src/cli.ts, src/discovery/search.ts, MCP and ACP command surfaces, tests/unit/loader.test.ts
- * @breaks Emits schema-v2/config warnings or exits with code 78 for strict adapter violations; import failures are surfaced in debug mode.
+ * @breaks Strict loads fail with typed aggregate diagnostics; non-strict runtime loads retain the same diagnostics for doctor without corrupting command output.
  * @invariants Registered file-backed commands carry repairable source paths; YAML files are size bounded before parsing.
- * @side-effects Reads adapter files, imports TS/JS adapter modules, mutates the registry, primes the invocation kernel cache, writes warnings to stderr.
+ * @side-effects Reads adapter files, imports TS/JS adapter modules, mutates the registry, and primes the invocation kernel cache.
  * @perf O(adapter files) startup scan; YAML parsing is capped by MAX_YAML_BYTES.
  * @concurrency Loader imports TS adapters sequentially so registry source-path context cannot cross-contaminate commands.
  * @test tests/unit/loader.test.ts, tests/unit/loader-parity.test.ts
@@ -22,9 +22,13 @@ import {
   registerAdapter,
   withAdapterSourcePath,
 } from "../registry.js";
-import { validateAdapterV2 } from "../core/schema-v2.js";
 import { compileAll } from "../engine/kernel/compile.js";
 import { registerMacosDynamicCommands } from "./macos-dynamic.js";
+import {
+  normalizeYamlAdapterDocument,
+  yamlSiteMetadata,
+  type YamlAdapterDocument,
+} from "../core/yaml-adapter.js";
 
 /**
  * Upper bound on YAML adapter file size. A legitimate YAML adapter is
@@ -36,15 +40,31 @@ import { registerMacosDynamicCommands } from "./macos-dynamic.js";
  */
 const MAX_YAML_BYTES = 256 * 1024;
 let tsAdapterLoadGeneration = 0;
-import type {
-  AdapterManifest,
-  AdapterCommand,
-  AdapterArg,
-  AdapterType,
-  BrowserSessionPreference,
-  PipelineStep,
-  RetrievalMetadata,
-} from "../types.js";
+let lastTsAdapterLoadFailures: AdapterLoadFailure[] = [];
+let lastYamlAdapterLoadFailures: AdapterLoadFailure[] = [];
+import type { AdapterManifest, AdapterCommand, AdapterType } from "../types.js";
+
+export class AdapterLoadError extends Error {
+  constructor(
+    readonly code: AdapterLoadFailureCode,
+    message: string,
+    readonly adapter_path: string,
+  ) {
+    super(message);
+    this.name = "AdapterLoadError";
+  }
+}
+
+export type AdapterLoadFailureCode =
+  | "adapter_schema_invalid"
+  | "adapter_metadata_invalid"
+  | "adapter_import_failed";
+
+export interface AdapterLoadFailure {
+  code: AdapterLoadFailureCode;
+  adapter_path: string;
+  message: string;
+}
 
 /**
  * Environment flag — when set to `warn`, a failed schema-v2 validation
@@ -141,263 +161,28 @@ function adapterSourcePath(absPath: string): string {
 // If a desktop adapter requires a missing binary, the exec step gives a clear
 // runtime error with install instructions.
 
-interface YamlAdapter {
-  site: string;
-  name: string;
-  description?: string;
-  domain?: string;
-  strategy?: string;
-  browser?: boolean;
-  browserSession?: BrowserSessionPreference;
-  type?: string;
-  binary?: string;
-  detect?: string;
-  base?: string;
-  health?: string;
-  auth?: string;
-  autoInstall?: string;
-  passthrough?: boolean;
-  auth_cookies?: string[];
-  args?: Record<string, YamlArg>;
-  pipeline?: PipelineStep[];
-  columns?: string[];
-  // Adapter health
-  quarantine?: boolean;
-  quarantineReason?: string;
-  // v0.213.3 Phase 4 — pagination hint emitted by the kernel's next_actions
-  // when the command surfaces `meta.pagination.next_cursor`.
-  paginated?: boolean;
-  // Desktop
-  execArgs?: string[];
-  executables?: string[];
-  // Web
-  method?: string;
-  path?: string;
-  url?: string;
-  params?: Record<string, unknown>;
-  // Browser
-  navigate?: string;
-  wait?: string;
-  extract?: string;
-  output?: string | Record<string, unknown>;
-  // schema-v2 required metadata
-  capabilities?: string[];
-  auth_requirement?: AdapterCommand["auth_requirement"];
-  retrieval?: RetrievalMetadata;
-  minimum_capability?: string;
-  trust?: string;
-  confidentiality?: string;
-  defaultFormat?: AdapterCommand["defaultFormat"];
-}
-
-interface YamlArg {
-  type?: string;
-  default?: unknown;
-  required?: boolean;
-  positional?: boolean;
-  choices?: string[];
-  description?: string;
-  // v0.213.3 Phase 4 — schema-driven hardening annotations. Propagate these
-  // untouched to AdapterArg so the kernel's ajv validator sees the declared
-  // format / x-unicli-kind dispatch tokens.
-  format?: AdapterArg["format"];
-  "x-unicli-kind"?: AdapterArg["x-unicli-kind"];
-  "x-unicli-accepts"?: AdapterArg["x-unicli-accepts"];
-  "x-unicli-uri-origins"?: AdapterArg["x-unicli-uri-origins"];
-  "x-unicli-uri-path-pattern"?: AdapterArg["x-unicli-uri-path-pattern"];
-}
-
-function extractBalancedLiteral(
-  source: string,
-  openIndex: number,
-): string | null {
-  let depth = 0;
-  let quote: string | null = null;
-  let escaped = false;
-  for (let i = openIndex; i < source.length; i++) {
-    const ch = source[i];
-    if (quote) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === "\\") {
-        escaped = true;
-      } else if (ch === quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (ch === '"' || ch === "'" || ch === "`") {
-      quote = ch;
-      continue;
-    }
-    if (ch === "{") depth++;
-    if (ch === "}") {
-      depth--;
-      if (depth === 0) return source.slice(openIndex + 1, i);
-    }
-  }
-  return null;
-}
-
-function objectStringProp(body: string, prop: string): string | undefined {
-  for (const segment of topLevelObjectSegments(body)) {
-    const re = new RegExp(`^\\s*${prop}\\s*:\\s*["'\`]([^"'\`]+)["'\`]`);
-    const match = re.exec(segment);
-    if (match) return match[1];
-  }
-  return undefined;
-}
-
-function topLevelObjectSegments(body: string): string[] {
-  const segments: string[] = [];
-  let depth = 0;
-  let quote: string | null = null;
-  let escaped = false;
-  let start = 0;
-
-  for (let i = 0; i < body.length; i++) {
-    const ch = body[i];
-    if (quote) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === "\\") {
-        escaped = true;
-      } else if (ch === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (ch === '"' || ch === "'" || ch === "`") {
-      quote = ch;
-      continue;
-    }
-    if (ch === "{" || ch === "[" || ch === "(") {
-      depth++;
-      continue;
-    }
-    if (ch === "}" || ch === "]" || ch === ")") {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-    if (ch === "," && depth === 0) {
-      segments.push(body.slice(start, i));
-      start = i + 1;
-    }
-  }
-
-  segments.push(body.slice(start));
-  return segments;
-}
-
-function objectStrategyProp(body: string): AdapterCommand["strategy"] {
-  const literal = objectStringProp(body, "strategy");
-  if (literal) return literal as AdapterCommand["strategy"];
-  const enumMatch = /\bstrategy\s*:\s*Strategy\.([A-Z_]+)/.exec(body);
-  return enumMatch?.[1]?.toLowerCase() as AdapterCommand["strategy"];
-}
-
-function objectBoolProp(body: string, prop: string): boolean | undefined {
-  const match = new RegExp(`${prop}\\s*:\\s*(true|false)`).exec(body);
-  return match ? match[1] === "true" : undefined;
-}
-
-function objectStringArrayProp(
-  body: string,
-  prop: string,
-): string[] | undefined {
-  const match = new RegExp(`${prop}\\s*:\\s*\\[([\\s\\S]*?)\\]`).exec(body);
-  if (!match) return undefined;
-  return Array.from(match[1].matchAll(/["'`]([^"'`]+)["'`]/g)).map((m) => m[1]);
-}
-
-function objectArgsProp(body: string): AdapterArg[] | undefined {
-  const match = /\bargs\s*:\s*\[([\s\S]*?)\]\s*,\s*columns\b/.exec(body);
-  if (!match) return undefined;
-  const names = Array.from(
-    match[1].matchAll(/\bname\s*:\s*["'`]([^"'`]+)["'`]/g),
-  ).map((m) => m[1]);
-  return names.length > 0
-    ? names.map((name) => ({ name, type: "str" }))
-    : undefined;
-}
-
-function findNextCliCall(source: string, from: number): number {
-  let index = from;
-  while (true) {
-    const candidate = source.indexOf("cli(", index);
-    if (candidate < 0) return -1;
-    const prev = candidate > 0 ? source[candidate - 1] : "";
-    if (!/[A-Za-z0-9_$-]/.test(prev)) return candidate;
-    index = candidate + 4;
-  }
-}
-
-function extractTsCommandStubs(
-  site: string,
-  siteDir: string,
-): {
-  commands: Record<string, AdapterCommand>;
-  meta: Partial<AdapterManifest>;
-} {
-  const commands: Record<string, AdapterCommand> = {};
-  const meta: Partial<AdapterManifest> = {};
-  for (const file of readdirSync(siteDir)) {
-    if (!file.endsWith(".ts")) continue;
-    if (file.endsWith(".d.ts") || file.endsWith(".test.ts")) continue;
-    const sourcePath = adapterSourcePath(join(siteDir, file));
-    const source = readFileSync(join(siteDir, file), "utf-8");
-    let index = 0;
-    while (true) {
-      const callIndex = findNextCliCall(source, index);
-      if (callIndex < 0) break;
-      const openIndex = source.indexOf("{", callIndex);
-      if (openIndex < 0) break;
-      const body = extractBalancedLiteral(source, openIndex);
-      index = openIndex + Math.max(body?.length ?? 1, 1);
-      if (!body) continue;
-      const commandSite = objectStringProp(body, "site") ?? site;
-      if (commandSite !== site) continue;
-      const name = objectStringProp(body, "name");
-      if (!name) continue;
-      const strategy = objectStrategyProp(body);
-      const browser = objectBoolProp(body, "browser");
-      const browserSession = objectStringProp(body, "browserSession") as
-        | BrowserSessionPreference
-        | undefined;
-      const domain = objectStringProp(body, "domain");
-      const base = objectStringProp(body, "base");
-      if (domain) meta.domain = domain;
-      if (base) meta.base = base;
-      if (strategy) meta.strategy = strategy;
-      if (browser !== undefined) meta.browser = browser;
-      commands[name] = {
-        name,
-        description: objectStringProp(body, "description"),
-        adapter_path: objectStringProp(body, "adapter_path") ?? sourcePath,
-        target_surface: objectStringProp(
-          body,
-          "target_surface",
-        ) as AdapterCommand["target_surface"],
-        strategy,
-        browser,
-        browserSession,
-        domain,
-        base,
-        adapterArgs: objectArgsProp(body),
-        columns: objectStringArrayProp(body, "columns"),
-      };
-    }
-  }
-  return { commands, meta };
-}
-
 /** Load all adapters from a directory */
-export function loadAdaptersFromDir(dir: string): number {
-  if (!existsSync(dir)) return 0;
+export function loadAdaptersFromDir(
+  dir: string,
+  sourceTier?: AdapterCommand["source_tier"],
+  options: { strict?: boolean } = {},
+): number {
+  if (!existsSync(dir)) {
+    lastYamlAdapterLoadFailures = [];
+    return 0;
+  }
+  const resolvedSourceTier =
+    sourceTier ??
+    (dir === BUILTIN_YAML_DIR || dir === BUILTIN_TS_DIR
+      ? "packaged"
+      : dir === USER_DIR ||
+          dir.split(sep).join("/").includes("/.unicli/adapters")
+        ? "user"
+        : "runtime");
   let count = 0;
+  const failures: AdapterLoadFailure[] = [];
 
-  for (const site of readdirSync(dir)) {
+  siteLoop: for (const site of readdirSync(dir)) {
     if (site.startsWith("_") || site.startsWith(".")) continue;
     const siteDir = join(dir, site);
     if (!statSync(siteDir).isDirectory()) continue;
@@ -418,8 +203,15 @@ export function loadAdaptersFromDir(dir: string): number {
         if (meta.binary) siteMeta.binary = meta.binary;
         if (meta.detect) siteMeta.detect = meta.detect;
         if (meta.auth_cookies) siteMeta.authCookies = meta.auth_cookies;
-      } catch {
-        /* ignore malformed _site.json */
+      } catch (error) {
+        failures.push({
+          code: "adapter_metadata_invalid",
+          message: `Invalid adapter metadata ${siteJsonPath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          adapter_path: adapterSourcePath(siteJsonPath),
+        });
+        continue siteLoop;
       }
     }
 
@@ -428,7 +220,7 @@ export function loadAdaptersFromDir(dir: string): number {
       const cmdName = basename(file, ext);
 
       if (ext === ".yaml" || ext === ".yml") {
-        let parsed: YamlAdapter;
+        let parsed: YamlAdapterDocument;
         const absPath = join(siteDir, file);
         try {
           // Enforce a file-size upper bound BEFORE reading into memory so a
@@ -436,9 +228,11 @@ export function loadAdaptersFromDir(dir: string): number {
           // YAML. `statSync` is one syscall and avoids touching contents.
           const fileSize = statSync(absPath).size;
           if (fileSize > MAX_YAML_BYTES) {
-            console.error(
-              `Warning: Skipping oversized YAML ${absPath} (${fileSize} bytes > ${MAX_YAML_BYTES})`,
-            );
+            failures.push({
+              code: "adapter_schema_invalid",
+              adapter_path: adapterSourcePath(absPath),
+              message: `Adapter YAML exceeds ${MAX_YAML_BYTES} bytes (${fileSize} bytes).`,
+            });
             continue;
           }
           const raw = readFileSync(absPath, "utf-8");
@@ -452,10 +246,14 @@ export function loadAdaptersFromDir(dir: string): number {
           parsed = yaml.load(raw, {
             schema: yaml.CORE_SCHEMA,
             filename: absPath,
-          }) as YamlAdapter;
+          }) as YamlAdapterDocument;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(`Warning: Failed to parse ${absPath}: ${msg}`);
+          failures.push({
+            code: "adapter_schema_invalid",
+            adapter_path: adapterSourcePath(absPath),
+            message: `Failed to parse adapter YAML: ${msg}`,
+          });
           continue;
         }
 
@@ -463,136 +261,40 @@ export function loadAdaptersFromDir(dir: string): number {
         // but does NOT gate registration. All adapters are always visible.
         // Runtime exec step checks binary availability and gives clear errors.
 
-        if (parsed.type) siteType = parsed.type as AdapterType;
-        if (parsed.domain) siteMeta.domain = parsed.domain;
-        if (parsed.strategy)
-          siteMeta.strategy = parsed.strategy as AdapterManifest["strategy"];
-        if (parsed.browser !== undefined) siteMeta.browser = parsed.browser;
-        if (parsed.binary) siteMeta.binary = parsed.binary;
-        if (parsed.base) siteMeta.base = parsed.base;
-        if (parsed.detect) siteMeta.detect = parsed.detect;
-        if (parsed.auth) siteMeta.auth = parsed.auth as AdapterManifest["auth"];
-        if (parsed.autoInstall) siteMeta.autoInstall = parsed.autoInstall;
-        if (parsed.passthrough !== undefined)
-          siteMeta.passthrough = parsed.passthrough;
-        if (parsed.auth_cookies) siteMeta.authCookies = parsed.auth_cookies;
+        const normalizedSite = yamlSiteMetadata(parsed);
+        if (normalizedSite.type) siteType = normalizedSite.type;
+        siteMeta = {
+          ...siteMeta,
+          ...Object.fromEntries(
+            Object.entries(normalizedSite.meta).filter(
+              ([, value]) => value !== undefined,
+            ),
+          ),
+        };
 
         // Skip underscore-prefixed files (internal/metadata, not commands)
         if (cmdName.startsWith("_")) continue;
 
-        // schema-v2 hard gate: every YAML must satisfy the v2 contract
-        // before it's registered. We validate the FULL parsed object (not a
-        // five-field projection) so legacy fields like `pipeline`, `url`,
-        // `params` get type-checked too — a `pipeline:"string"` typo is a
-        // runtime crash and must fail the gate, not be silently carried
-        // through. The defaults for `capabilities`, `minimum_capability`,
-        // `trust`, `confidentiality`, `quarantine` are filled via
-        // {@link migrateToV2} for backward compatibility; if the YAML
-        // already has them, they win.
-        const v2Candidate: Record<string, unknown> = {
-          ...(parsed as unknown as Record<string, unknown>),
-          name: cmdName,
-          capabilities: Array.isArray(parsed.capabilities)
-            ? parsed.capabilities
-            : [],
-          minimum_capability:
-            typeof parsed.minimum_capability === "string"
-              ? parsed.minimum_capability
-              : "http.fetch",
-          trust: typeof parsed.trust === "string" ? parsed.trust : "public",
-          confidentiality:
-            typeof parsed.confidentiality === "string"
-              ? parsed.confidentiality
-              : "public",
-          quarantine:
-            typeof parsed.quarantine === "boolean" ? parsed.quarantine : false,
-        };
-        const v2Result = validateAdapterV2(v2Candidate);
-        if (!v2Result.ok) {
+        const normalized = normalizeYamlAdapterDocument(
+          parsed,
+          cmdName,
+          adapterSourcePath(absPath),
+          resolvedSourceTier,
+        );
+        if (!normalized.ok) {
           const rel = join(site, file);
-          const msg = `schema-v2 violation in ${rel}: ${v2Result.error}`;
-          if (SCHEMA_MODE === "strict") {
-            console.error(msg);
-            process.exit(78); // sysexits.h EX_CONFIG
-          }
-          // warn mode: ALWAYS write to stderr — the hard-gate claim in
-          // §1.7 of the FINAL plan (2026-04-14-v212-rethink) is that
-          // operators see every violation, not just those running with
-          // UNICLI_DEBUG=1. Silent warnings are what let the "gate is
-          // theatre" regression slip through the first time.
-          console.error(`Warning: ${msg}`);
+          const msg = `schema-v2 violation in ${rel}: ${normalized.error}`;
+          failures.push({
+            code: "adapter_schema_invalid",
+            adapter_path: adapterSourcePath(absPath),
+            message: msg,
+          });
+          continue;
         }
-
-        // Parse args from YAML into AdapterArg[]
-        let adapterArgs: AdapterArg[] | undefined;
-        if (parsed.args) {
-          adapterArgs = Object.entries(parsed.args).map(
-            ([argName, argDef]) => ({
-              name: argName,
-              type: (argDef.type as AdapterArg["type"]) ?? "str",
-              default: argDef.default,
-              required: argDef.required ?? false,
-              positional: argDef.positional ?? false,
-              choices: argDef.choices,
-              description: argDef.description,
-              format: argDef.format,
-              "x-unicli-kind": argDef["x-unicli-kind"],
-              "x-unicli-accepts": argDef["x-unicli-accepts"],
-              "x-unicli-uri-origins": argDef["x-unicli-uri-origins"],
-              "x-unicli-uri-path-pattern": argDef["x-unicli-uri-path-pattern"],
-            }),
-          );
-        }
-
-        commands[cmdName] = {
-          name: cmdName,
-          description: parsed.description,
-          adapter_path: adapterSourcePath(absPath),
-          pipeline: parsed.pipeline,
-          adapterArgs,
-          strategy: parsed.strategy as AdapterCommand["strategy"],
-          browser: parsed.browser,
-          browserSession: parsed.browserSession,
-          domain: parsed.domain,
-          base: parsed.base,
-          columns: parsed.columns,
-          defaultFormat: parsed.defaultFormat,
-          method: parsed.method as AdapterCommand["method"],
-          path: parsed.path,
-          url: parsed.url,
-          params: parsed.params,
-          navigate: parsed.navigate,
-          wait: parsed.wait,
-          extract: parsed.extract,
-          execArgs: parsed.execArgs,
-          executables: Array.isArray(parsed.executables)
-            ? parsed.executables.filter(
-                (executable): executable is string =>
-                  typeof executable === "string",
-              )
-            : undefined,
-          quarantine: parsed.quarantine === true ? true : undefined,
-          quarantineReason: parsed.quarantineReason,
-          minimum_capability: parsed.minimum_capability,
-          capabilities: Array.isArray(parsed.capabilities)
-            ? parsed.capabilities.filter(
-                (cap): cap is string => typeof cap === "string",
-              )
-            : undefined,
-          auth_requirement: parsed.auth_requirement,
-          retrieval: v2Result.ok ? v2Result.data.retrieval : undefined,
-          paginated: parsed.paginated === true ? true : undefined,
-        };
+        commands[cmdName] = normalized.command;
         count++;
       }
     }
-
-    const tsStubs = extractTsCommandStubs(site, siteDir);
-    for (const [name, command] of Object.entries(tsStubs.commands)) {
-      commands[name] = command;
-      count++;
-    }
-    siteMeta = { ...siteMeta, ...tsStubs.meta };
 
     if (Object.keys(commands).length > 0) {
       registerAdapter({
@@ -604,6 +306,9 @@ export function loadAdaptersFromDir(dir: string): number {
     }
   }
 
+  lastYamlAdapterLoadFailures = failures;
+  const strict = options.strict ?? SCHEMA_MODE === "strict";
+  if (strict && failures.length > 0) throw aggregateLoadError(failures);
   return count;
 }
 
@@ -656,10 +361,18 @@ function collectTsFiles(dir: string): string[] {
 }
 
 /** Load all adapters: built-in YAML → user YAML → TS adapters (async) */
-export function loadAllAdapters(): number {
+export function loadAllAdapters(options: { strict?: boolean } = {}): number {
   let total = 0;
-  total += loadAdaptersFromDir(BUILTIN_YAML_DIR);
-  total += loadAdaptersFromDir(USER_DIR);
+  const failures: AdapterLoadFailure[] = [];
+  total += loadAdaptersFromDir(BUILTIN_YAML_DIR, "packaged", {
+    strict: false,
+  });
+  failures.push(...lastYamlAdapterLoadFailures);
+  total += loadAdaptersFromDir(USER_DIR, "user", { strict: false });
+  failures.push(...lastYamlAdapterLoadFailures);
+  lastYamlAdapterLoadFailures = failures;
+  const strict = options.strict ?? SCHEMA_MODE === "strict";
+  if (strict && failures.length > 0) throw aggregateLoadError(failures);
   total += registerMacosDynamicCommands();
   // Prime the kernel cache for every registered adapter so CLI / MCP / ACP
   // surfaces look up CompiledCommand entries in O(1). Safe to run again
@@ -669,13 +382,16 @@ export function loadAllAdapters(): number {
 }
 
 /** Load TS/JS adapters that self-register via cli() */
-export async function loadTsAdapters(): Promise<number> {
+export async function loadTsAdapters(
+  options: { strict?: boolean } = {},
+): Promise<number> {
   tsAdapterLoadGeneration++;
   const files = [
     ...collectTsFiles(BUILTIN_TS_DIR),
     ...collectTsFiles(USER_DIR),
   ];
   let count = 0;
+  const failures: AdapterLoadFailure[] = [];
   for (const file of files) {
     try {
       await withAdapterSourcePath(
@@ -687,15 +403,46 @@ export async function loadTsAdapters(): Promise<number> {
       );
       count++;
     } catch (err) {
-      if (process.env.UNICLI_DEBUG) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error(`Warning: Failed to import ${file}: ${msg}`);
-      }
+      const msg = err instanceof Error ? err.message : String(err);
+      failures.push({
+        code: "adapter_import_failed",
+        adapter_path: adapterSourcePath(file),
+        message: msg,
+      });
     }
+  }
+  lastTsAdapterLoadFailures = failures;
+  if (options.strict && failures.length > 0) {
+    throw new AdapterLoadError(
+      "adapter_import_failed",
+      `Failed to import ${failures.length} adapter module(s): ${failures
+        .map((failure) => `${failure.adapter_path}: ${failure.message}`)
+        .join("; ")}`,
+      failures[0].adapter_path,
+    );
   }
   // Re-prime now that TS-registered adapters are in the registry too.
   primeKernelCache();
   return count;
+}
+
+export function getAdapterLoadFailures(): readonly AdapterLoadFailure[] {
+  return [...lastYamlAdapterLoadFailures, ...lastTsAdapterLoadFailures].map(
+    (failure) => ({ ...failure }),
+  );
+}
+
+function aggregateLoadError(
+  failures: readonly AdapterLoadFailure[],
+): AdapterLoadError {
+  const first = failures[0];
+  return new AdapterLoadError(
+    first?.code ?? "adapter_schema_invalid",
+    `Failed to load ${String(failures.length)} adapter artifact(s): ${failures
+      .map((failure) => `${failure.adapter_path}: ${failure.message}`)
+      .join("; ")}`,
+    first?.adapter_path ?? "unknown",
+  );
 }
 
 /**

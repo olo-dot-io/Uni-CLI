@@ -1,16 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect, vi } from "vitest";
 import {
   loadAdaptersFromDir,
   loadTsAdapters,
+  primeKernelCache,
 } from "../../src/discovery/loader.js";
 import { getAllAdapters, listCommands } from "../../src/registry.js";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { buildInvocation, execute } from "../../src/engine/kernel/execute.js";
+import { buildCommandContract } from "../../src/core/command-contract.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "..", "src", "adapters");
 
 describe("adapter loader", () => {
+  beforeAll(async () => {
+    loadAdaptersFromDir(ADAPTERS_DIR);
+    await loadTsAdapters({ strict: true });
+  });
+
   it("loads all built-in YAML adapters without error", () => {
     const count = loadAdaptersFromDir(ADAPTERS_DIR);
     expect(count).toBeGreaterThan(0);
@@ -30,6 +40,27 @@ describe("adapter loader", () => {
       expect(cmd.site).toBeTruthy();
       expect(cmd.command).toBeTruthy();
     }
+  });
+
+  it("keeps every resolved read-family command semantically read-only", () => {
+    const mismatches: string[] = [];
+    for (const adapter of getAllAdapters()) {
+      for (const [commandName, command] of Object.entries(adapter.commands)) {
+        const contract = buildCommandContract({
+          adapter,
+          commandName,
+          command,
+        });
+        if (
+          ["search", "get", "list"].includes(contract.operation.family) &&
+          contract.effect.operation_effect !== "read"
+        ) {
+          mismatches.push(`${adapter.name}/${commandName}`);
+        }
+      }
+    }
+
+    expect(mismatches).toEqual([]);
   });
 
   it("surfaces adapter categories in registry command rows", () => {
@@ -107,8 +138,84 @@ describe("adapter loader", () => {
     });
   });
 
-  it("stamps YAML and TypeScript commands with repairable source paths", () => {
+  it("preserves YAML bounds and rejects invalid input before acquiring HTTP", async () => {
+    const root = mkdtempSync(join(tmpdir(), "unicli-yaml-bounds-"));
+    const siteDir = join(root, "yaml-bounds-fixture");
+    mkdirSync(siteDir);
+    writeFileSync(
+      join(siteDir, "read.yaml"),
+      `site: yaml-bounds-fixture
+name: read
+description: Bounds validation fixture
+type: web-api
+strategy: public
+operation_effect: read
+args:
+  query:
+    type: str
+    required: true
+    minLength: 3
+    maxLength: 5
+    pattern: "^[a-z]+$"
+  limit:
+    type: int
+    minimum: 1
+    maximum: 3
+pipeline:
+  - fetch:
+      url: https://example.com/should-not-run
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
+`,
+    );
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      expect(loadAdaptersFromDir(root, "runtime")).toBe(1);
+      primeKernelCache();
+      const command = getAllAdapters().find(
+        (adapter) => adapter.name === "yaml-bounds-fixture",
+      )?.commands.read;
+      expect(command?.adapterArgs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: "query",
+            minLength: 3,
+            maxLength: 5,
+            pattern: "^[a-z]+$",
+          }),
+          expect.objectContaining({
+            name: "limit",
+            minimum: 1,
+            maximum: 3,
+          }),
+        ]),
+      );
+
+      const invocation = buildInvocation("cli", "yaml-bounds-fixture", "read", {
+        args: { query: "X", limit: 0 },
+        source: "shell",
+      });
+      expect(invocation).not.toBeNull();
+      const result = await execute(invocation!);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.error).toMatchObject({
+        code: "invalid_input",
+        stage: "validate",
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("stamps YAML and TypeScript commands with repairable source paths", async () => {
     loadAdaptersFromDir(ADAPTERS_DIR);
+    await loadTsAdapters({ strict: true });
 
     const adapters = getAllAdapters();
     const hackernews = adapters.find(
@@ -129,7 +236,7 @@ describe("adapter loader", () => {
 
     const adapters = getAllAdapters();
     const anilist = adapters.find((adapter) => adapter.name === "anilist");
-    const notion = adapters.find((adapter) => adapter.name === "notion");
+    const notion = adapters.find((adapter) => adapter.name === "notion-app");
 
     expect(anilist?.commands["characters"].adapter_path).toBe(
       "src/adapters/anilist/web.ts",

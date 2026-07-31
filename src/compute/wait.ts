@@ -2,20 +2,25 @@
  * @owner       src::compute::wait
  * @does        Bind and evaluate ref/text/state waits against fresh snapshots of one immutable compute target.
  * @needs       Node cancellable timers, core envelopes, transport refs/types
- * @feeds       transport cascade compute_wait execution
+ * @feeds       selected-provider compute_wait execution
  * @breaks      Treating elapsed time or an unrelated snapshot as condition evidence creates false success.
  * @invariants  A wait has one target, one deadline, and at least one predicate; success requires a fresh target observation; caller cancellation remains exact.
  * @side-effects Repeatedly invokes the caller-supplied read-only snapshot observer until match or deadline.
  * @perf        One target snapshot every 50ms, bounded to 300s.
  * @concurrency The caller signal and private deadline signal are combined without process-global state.
- * @test        tests/unit/compute-cascade.test.ts
+ * @test        tests/unit/compute-dispatch.test.ts
  * @stability   experimental
  * @since       0.400.2
  */
 
 import { setTimeout as delay } from "node:timers/promises";
 
-import { err, exitCodeFor, ok } from "../core/envelope.js";
+import {
+  err,
+  exitCodeFor,
+  ok,
+  type EnvelopeTransport,
+} from "../core/envelope.js";
 import { readCdpEndpoint } from "../transport/cdp-endpoint.js";
 import type { ElementRef, RefStore } from "../transport/refs.js";
 import type {
@@ -373,7 +378,7 @@ function visibleSnapshotText(value: unknown): string[] {
 
 function targetSummary(
   condition: BoundComputeWait,
-  transport: TransportKind,
+  transport: EnvelopeTransport,
 ): Record<string, unknown> {
   return {
     ...condition.target,
@@ -406,7 +411,7 @@ function invalid(
   return {
     ok: false,
     result: err({
-      transport: "visual",
+      transport: "local-runtime",
       step: 0,
       action: "compute_wait",
       reason,

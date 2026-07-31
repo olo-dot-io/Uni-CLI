@@ -1,6 +1,7 @@
 site: wechat-channels
 name: hot
 description: WeChat Channels (Video Accounts) trending videos
+operation_effect: read
 domain: channels.weixin.qq.com
 strategy: intercept
 lint_listing_detail: skip

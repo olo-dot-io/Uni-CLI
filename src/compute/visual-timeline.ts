@@ -15,6 +15,9 @@
 
 import type { ComputeCapturePacket } from "./capture.js";
 import { COMPUTE_CURSOR_STYLE_ID } from "./cursor-visual-style.js";
+import type { ExecutionOperator } from "../types.js";
+import type { EffectVerdict } from "../core/effect-verdict.js";
+import type { RecoveryPolicy, RecoveryTrace } from "../core/recovery.js";
 
 export type ComputeCursorState =
   | "idle"
@@ -105,6 +108,9 @@ export interface ComputeActionTimelineInput {
   params?: Record<string, unknown>;
   ok: boolean;
   transport?: string;
+  route?: ComputeVisualActionRoute;
+  effect_verdict?: EffectVerdict;
+  recovery_trace?: RecoveryTrace;
 }
 
 export type ComputeVisualActionStatus = "succeeded" | "failed";
@@ -145,13 +151,39 @@ export interface ComputeVisualOverlayStatus {
 export interface ComputeVisualActionDispatch {
   status: ComputeVisualActionStatus;
   transport?: string;
+  route?: ComputeVisualActionRoute;
   target?: ComputeVisualCursorPoint;
+  effect_verdict?: EffectVerdict;
+  recovery_trace?: RecoveryTrace;
+}
+
+export interface ComputeVisualActionRoute {
+  name: "native" | "browser" | "process" | "driver" | "visual";
+  operator: ExecutionOperator;
+  physical_action: string;
+  reason: string;
+  explicit: boolean;
+  evidence_transport?: string;
+  recovery: RecoveryPolicy;
 }
 
 export interface ComputeVisualActionPostCapture {
   ok: boolean;
   transport?: string;
   data?: unknown;
+  image?: {
+    mime_type: string;
+    bytes: number;
+    sha256: string;
+    width?: number;
+    height?: number;
+  };
+  encoded_frame_change?: {
+    status: "changed" | "unchanged";
+    method: "sha256-encoded-image";
+    before_sha256: string;
+    after_sha256: string;
+  };
   error?: {
     reason: string;
     minimum_capability?: string;
@@ -452,6 +484,13 @@ export function buildComputeActionVisualEvidence(
       dispatch: {
         status: input.ok ? "succeeded" : "failed",
         ...(input.transport ? { transport: input.transport } : {}),
+        ...(input.route ? { route: input.route } : {}),
+        ...(input.effect_verdict
+          ? { effect_verdict: input.effect_verdict }
+          : {}),
+        ...(input.recovery_trace
+          ? { recovery_trace: input.recovery_trace }
+          : {}),
         ...(point ? { target: point } : {}),
       },
     },

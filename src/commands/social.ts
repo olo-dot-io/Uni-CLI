@@ -306,10 +306,25 @@ export function registerSocialCommand(program: Command): void {
             { preferCdp: result.error?.code === "challenge_required" },
           );
           if (refresh.ok) {
-            process.stderr.write(
-              `[auth] refreshed ${refresh.cookieCount ?? 0} cookie(s) from ${refresh.source}; retrying ${site}.${commandName}\n`,
+            const retryInvocation = buildInvocation(
+              "cli",
+              site,
+              commandName,
+              inv.bag,
+              {
+                approved: true,
+                cookieInvocationOverride: refresh.invocation_override,
+              },
             );
-            finalResult = await execute(inv);
+            if (!retryInvocation) {
+              throw new Error(
+                `adapter ${site}.${commandName} disappeared before auth retry`,
+              );
+            }
+            process.stderr.write(
+              `[auth] refreshed ${refresh.cookieCount} cookie(s) from ${refresh.source}; retrying ${site}.${commandName}\n`,
+            );
+            finalResult = await execute(retryInvocation);
           } else {
             annotateAuthRetryFailure(finalResult, refresh.suggestion, site);
           }

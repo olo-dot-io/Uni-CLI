@@ -87,6 +87,53 @@ export const AdapterCommandV2Schema = z
     schema_version: AdapterSchemaVersionSchema.optional(),
     capabilities: z.array(z.string()),
     auth_requirement: z.enum(["required", "optional", "none"]).optional(),
+    operation_effect: z
+      .enum([
+        "read",
+        "download_file",
+        "send_message",
+        "publish_content",
+        "account_state",
+        "remote_transform",
+        "remote_resource",
+        "service_state",
+        "local_app",
+        "local_file",
+        "destructive",
+        "unknown_write",
+      ])
+      .optional(),
+    execution_operator: z
+      .enum([
+        "structured-api",
+        "browser-protocol",
+        "native-cli",
+        "browser-semantic",
+        "desktop-accessibility",
+        "visual-observation",
+        "visual-coordinate",
+        "local-runtime",
+      ])
+      .optional(),
+    operation_family: z
+      .enum([
+        "search",
+        "get",
+        "list",
+        "create",
+        "update",
+        "delete",
+        "invoke",
+        "capture",
+        "navigate",
+        "download",
+        "authenticate",
+        "unknown",
+      ])
+      .optional(),
+    idempotency: z
+      .enum(["guaranteed", "conditional", "none", "unknown"])
+      .optional(),
     retrieval: RetrievalMetadataSchema.optional(),
     minimum_capability: z.string().min(1),
     trust: AdapterTrustSchema,

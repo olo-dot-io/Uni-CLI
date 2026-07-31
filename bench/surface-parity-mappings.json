@@ -1,0 +1,42 @@
+[
+  {
+    "reference_command": "semanticscholar/citations",
+    "status": "equivalent",
+    "uni_command": "semantic-scholar/citations",
+    "evidence_files": [
+      "src/adapters/semantic-scholar/papers.ts",
+      "tests/unit/adapters/scholar-sources.test.ts"
+    ],
+    "rationale": "The canonical Uni-CLI command calls the same Semantic Scholar Graph citations endpoint, accepts the reference identifier forms, and exposes the same bounded limit and offset pagination contract."
+  },
+  {
+    "reference_command": "semanticscholar/paper",
+    "status": "equivalent",
+    "uni_command": "semantic-scholar/paper",
+    "evidence_files": [
+      "src/adapters/semantic-scholar/papers.ts",
+      "tests/unit/adapters/scholar-sources.test.ts"
+    ],
+    "rationale": "The canonical Uni-CLI command resolves the same Semantic Scholar paper identifiers through the Graph paper-detail endpoint and returns normalized citation, reference, author, external-id, and open-access metadata."
+  },
+  {
+    "reference_command": "semanticscholar/recommendations",
+    "status": "strict-superset",
+    "uni_command": "semantic-scholar/recommendations",
+    "evidence_files": [
+      "src/adapters/semantic-scholar/papers.ts",
+      "tests/unit/adapters/scholar-sources.test.ts"
+    ],
+    "rationale": "The Uni-CLI command calls the same Recommendations v1 forpaper endpoint with the same 1–500 bound and adds explicit recent/all-cs pool selection, structured provider errors, and stable scholarly row normalization."
+  },
+  {
+    "reference_command": "semanticscholar/search",
+    "status": "equivalent",
+    "uni_command": "semantic-scholar/search",
+    "evidence_files": [
+      "src/adapters/semantic-scholar/papers.ts",
+      "tests/unit/adapters/scholar-sources.test.ts"
+    ],
+    "rationale": "The canonical Uni-CLI command performs the same free-text Semantic Scholar Graph search with an explicit 1–100 result bound and normalized scholarly records."
+  }
+]

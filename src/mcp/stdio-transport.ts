@@ -21,7 +21,9 @@ import {
   type JsonRpcHandler,
   type JsonRpcRequest,
   type JsonRpcResponse,
+  type JsonRpcServerMessage,
 } from "./jsonrpc.js";
+import { serializeBoundedJsonRpcMessage } from "./result-budget.js";
 
 interface StdioTransportOptions {
   input?: NodeJS.ReadableStream;
@@ -41,6 +43,9 @@ export interface StdioTransport {
 }
 
 export const MCP_STDIO_MAX_FRAME_BYTES = 1_048_576;
+export const MCP_STDIO_MAX_ACTIVE_REQUESTS = 200;
+export const MCP_STDIO_MAX_PENDING_WRITES = 200;
+export const MCP_STDIO_MAX_PENDING_WRITE_BYTES = 4 * 1_048_576;
 export function startStdioTransport(
   handler: JsonRpcHandler,
   options: StdioTransportOptions = {},
@@ -58,6 +63,7 @@ export function startStdioTransport(
   let nextGeneration = 0;
   let pendingRequests = 0;
   let pendingWrites = 0;
+  let pendingWriteBytes = 0;
   let pendingSessionClose = 0;
   let inputClosed = false;
   let writeTail = Promise.resolve();
@@ -91,9 +97,20 @@ export function startStdioTransport(
       });
     exitIfDrained();
   };
-  const send = (response: JsonRpcResponse): void => {
-    const payload = `${JSON.stringify(response)}\n`;
+  const send = (message: JsonRpcServerMessage): void => {
+    const payload = `${serializeBoundedJsonRpcMessage(message)}\n`;
+    const payloadBytes = Buffer.byteLength(payload, "utf8");
+    if (
+      pendingWrites >= MCP_STDIO_MAX_PENDING_WRITES ||
+      pendingWriteBytes + payloadBytes > MCP_STDIO_MAX_PENDING_WRITE_BYTES
+    ) {
+      beginShutdown(
+        new Error("MCP stdio output queue exceeded its bounded capacity"),
+      );
+      return;
+    }
     pendingWrites += 1;
+    pendingWriteBytes += payloadBytes;
     writeTail = writeTail
       .then(() => writeWithBackpressure(output, payload))
       .catch((error: unknown) => {
@@ -103,6 +120,7 @@ export function startStdioTransport(
       })
       .finally(() => {
         pendingWrites -= 1;
+        pendingWriteBytes -= payloadBytes;
         exitIfDrained();
       });
   };
@@ -132,6 +150,27 @@ export function startStdioTransport(
           `Duplicate active request id: ${String(requestId)}`,
         ),
       );
+      return;
+    }
+    if (activeControllers.size >= MCP_STDIO_MAX_ACTIVE_REQUESTS) {
+      if (hasRequestId) {
+        send(
+          jsonRpcError(
+            requestId,
+            -32_603,
+            "Server at capacity: too many active requests",
+            {
+              code: "server_capacity",
+              max_active_requests: MCP_STDIO_MAX_ACTIVE_REQUESTS,
+              retryable: true,
+            },
+          ),
+        );
+      } else {
+        process.stderr.write(
+          `[unicli-mcp] dropped notification ${request.method}: server at capacity\n`,
+        );
+      }
       return;
     }
 
@@ -235,7 +274,7 @@ function dispatchRequest(
   requestId: JsonRpcResponse["id"],
   controller: AbortController,
   mcpSessionId: string,
-  send: (response: JsonRpcResponse) => void,
+  send: (message: JsonRpcServerMessage) => void,
 ): Promise<void> | undefined {
   const publishResponse = (response: JsonRpcResponse | undefined): void => {
     if (hasRequestId && !controller.signal.aborted && response) send(response);
@@ -255,6 +294,7 @@ function dispatchRequest(
       transport: "mcp-stdio",
       mcpSessionId,
       signal: controller.signal,
+      emit: (message) => send(message),
     });
   } catch (error) {
     publishError(error);

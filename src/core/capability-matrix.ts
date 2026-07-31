@@ -311,8 +311,7 @@ export function surfacesForCapabilityEntry(
   if (
     entry.uses_browser ||
     entry.adapter_type === "browser" ||
-    hasCapabilityPrefix(entry, "cdp-browser.") ||
-    hasCapabilityPrefix(entry, "mcp-browser.")
+    hasCapabilityPrefix(entry, "cdp-browser.")
   ) {
     surfaces.add("browser");
   }

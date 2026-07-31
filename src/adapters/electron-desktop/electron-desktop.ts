@@ -11,7 +11,10 @@ import { registerElectronDesktopCommands } from "../_electron/desktop-shared.js"
 registerElectronDesktopCommands("cursor", { displayName: "Cursor" });
 registerElectronDesktopCommands("codex", { displayName: "Codex" });
 registerElectronDesktopCommands("chatgpt", { displayName: "ChatGPT" });
-registerElectronDesktopCommands("notion", { displayName: "Notion" });
+registerElectronDesktopCommands("notion-app", {
+  displayName: "Notion",
+  appKey: "notion",
+});
 registerElectronDesktopCommands("discord-app", { displayName: "Discord" });
 registerElectronDesktopCommands("chatwise", { displayName: "ChatWise" });
 registerElectronDesktopCommands("doubao-app", { displayName: "Doubao" });

@@ -1,6 +1,7 @@
 site: infoq
 name: latest
 description: Latest InfoQ articles
+operation_effect: read
 domain: www.infoq.com
 type: web-api
 strategy: public

@@ -1,6 +1,7 @@
 site: coupang
 name: add-to-cart
 description: Add a Coupang product to cart
+operation_effect: account_state
 domain: www.coupang.com
 strategy: intercept
 browser: true

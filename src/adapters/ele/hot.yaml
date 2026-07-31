@@ -1,6 +1,7 @@
 site: ele
 name: hot
 description: Ele.me trending restaurants
+operation_effect: read
 domain: www.ele.me
 strategy: intercept
 lint_listing_detail: skip

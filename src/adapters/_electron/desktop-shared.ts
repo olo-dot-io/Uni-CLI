@@ -17,6 +17,8 @@ export interface ElectronMediaProfile {
 
 export interface ElectronDesktopCommandProfile {
   displayName?: string;
+  /** Runtime electron-apps key when the catalog site is substrate-specific. */
+  appKey?: string;
   media?: ElectronMediaProfile;
 }
 
@@ -45,11 +47,17 @@ const ELECTRON_DESKTOP_COMMAND_META = {
   minimum_capability: ELECTRON_APP_MINIMUM_CAPABILITY,
 };
 
+const ELECTRON_DESKTOP_MUTATION_META = {
+  ...ELECTRON_DESKTOP_COMMAND_META,
+  operation_effect: "local_app" as const,
+};
+
 export function registerElectronDesktopCommands(
   site: string,
   profile: ElectronDesktopCommandProfile = {},
 ): void {
-  const app = getElectronApp(site);
+  const appKey = profile.appKey ?? site;
+  const app = getElectronApp(appKey);
   const displayName = profile.displayName ?? app?.displayName ?? site;
 
   cli({
@@ -59,14 +67,14 @@ export function registerElectronDesktopCommands(
     strategy: Strategy.PUBLIC,
     ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => {
-      const endpoint = await launchElectronApp(site);
+      const endpoint = await launchElectronApp(appKey);
       return [
         {
           app: displayName,
           site,
           port: endpoint.port,
           wsUrl: endpoint.wsUrl,
-          policy: resolveAppControlPolicy(site),
+          policy: resolveAppControlPolicy(appKey),
         },
       ];
     },
@@ -78,7 +86,7 @@ export function registerElectronDesktopCommands(
     description: `Inspect current ${displayName} desktop app page, title, URL, visible controls, and text summary. 查看${displayName}桌面版当前状态和可见内容。`,
     strategy: Strategy.PUBLIC,
     ...ELECTRON_DESKTOP_COMMAND_META,
-    func: async () => [await readDesktopStatus(site, displayName)],
+    func: async () => [await readDesktopStatus(site, appKey, displayName)],
   });
 
   cli({
@@ -96,7 +104,7 @@ export function registerElectronDesktopCommands(
       },
     ],
     func: async (_page: unknown, kwargs: Record<string, unknown>) => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       const limit = readInt(kwargs.limit, 2000);
       return [await dumpVisibleText(p, displayName, limit)];
     },
@@ -109,7 +117,7 @@ export function registerElectronDesktopCommands(
     strategy: Strategy.PUBLIC,
     ...ELECTRON_DESKTOP_COMMAND_META,
     func: async () => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       return (await p.evaluate(visibleInteractivesJs())) as unknown[];
     },
   });
@@ -129,7 +137,7 @@ export function registerElectronDesktopCommands(
       },
     ],
     func: async (_page: unknown, kwargs: Record<string, unknown>) => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       return [await clickVisibleText(p, String(kwargs.text), displayName)];
     },
   });
@@ -155,7 +163,7 @@ export function registerElectronDesktopCommands(
       },
     ],
     func: async (_page: unknown, kwargs: Record<string, unknown>) => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       if (kwargs.target !== undefined) {
         await clickVisibleText(p, String(kwargs.target), displayName);
       }
@@ -185,7 +193,7 @@ export function registerElectronDesktopCommands(
       },
     ],
     func: async (_page: unknown, kwargs: Record<string, unknown>) => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       const modifiers =
         typeof kwargs.modifiers === "string"
           ? kwargs.modifiers
@@ -199,12 +207,13 @@ export function registerElectronDesktopCommands(
   });
 
   if (profile.media) {
-    registerMediaCommands(site, displayName, profile.media);
+    registerMediaCommands(site, appKey, displayName, profile.media);
   }
 }
 
 function registerMediaCommands(
   site: string,
+  appKey: string,
   displayName: string,
   media: ElectronMediaProfile,
 ): void {
@@ -213,9 +222,9 @@ function registerMediaCommands(
     name: "play-liked",
     description: `Open ${displayName} liked songs and play the liked playlist. 打开${displayName}我喜欢的音乐/喜欢的歌曲并播放。`,
     strategy: Strategy.PUBLIC,
-    ...ELECTRON_DESKTOP_COMMAND_META,
+    ...ELECTRON_DESKTOP_MUTATION_META,
     func: async () => {
-      const p = await connectElectronApp(site);
+      const p = await connectElectronApp(appKey);
       const liked = await clickVisibleText(p, media.likedText, displayName);
       await p.wait(1);
       const play = await clickVisibleText(p, media.playAllText, displayName);
@@ -230,9 +239,9 @@ function registerMediaCommands(
       name: action,
       description: `${action} playback in the ${displayName} desktop app. 控制${displayName}桌面版播放：${action}。`,
       strategy: Strategy.PUBLIC,
-      ...ELECTRON_DESKTOP_COMMAND_META,
+      ...ELECTRON_DESKTOP_MUTATION_META,
       func: async () => {
-        const p = await connectElectronApp(site);
+        const p = await connectElectronApp(appKey);
         const clicked = await clickMediaControl(p, action, displayName);
         await p.wait(0.8);
         return [
@@ -245,17 +254,18 @@ function registerMediaCommands(
 
 async function readDesktopStatus(
   site: string,
+  appKey: string,
   displayName: string,
 ): Promise<Record<string, unknown>> {
-  const endpoint = await launchElectronApp(site);
-  const p = await connectElectronApp(site);
+  const endpoint = await launchElectronApp(appKey);
+  const p = await connectElectronApp(appKey);
   return {
     app: displayName,
     site,
     port: endpoint.port,
     title: await p.title(),
     url: await p.url(),
-    policy: resolveAppControlPolicy(site),
+    policy: resolveAppControlPolicy(appKey),
     content: await dumpVisibleText(p, displayName, 700),
     controls: await p.evaluate(visibleInteractivesJs(20)),
   };

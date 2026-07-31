@@ -8,7 +8,7 @@
  * @side-effects Invokes exactly one supplied dispatch function.
  * @perf        One promise boundary and no timers or retained global state.
  * @concurrency Settlement follows JavaScript promise ordering and never consults process-global request state.
- * @test        compute cascade and transport adapter cancellation regression suites
+ * @test        compute dispatch and transport adapter cancellation regression suites
  * @stability   stable
  * @since       2026-07-15
  */
@@ -17,6 +17,7 @@ import {
   isOperationOutcomeAmbiguousError,
   OperationOutcomeAmbiguousError,
 } from "./contained-process.js";
+import { attachDefaultEffectVerdict } from "../core/effect-verdict.js";
 
 export async function settleDispatchedAction<T>(
   operation: string,
@@ -26,7 +27,9 @@ export async function settleDispatchedAction<T>(
 ): Promise<T> {
   signal?.throwIfAborted();
   try {
-    return await dispatch();
+    return attachDefaultEffectVerdict(await dispatch(), {
+      canMutate,
+    });
   } catch (error) {
     if (isOperationOutcomeAmbiguousError(error)) throw error;
     if (!signal?.aborted || !isCancellationCompletion(error, signal)) {

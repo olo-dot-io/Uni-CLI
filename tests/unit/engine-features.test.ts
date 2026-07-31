@@ -15,10 +15,6 @@ import { runPipeline } from "../../src/engine/executor.js";
 import { htmlToMarkdown } from "../../src/engine/html-to-markdown.js";
 import { isHtmlVerificationChallenge } from "../../src/engine/steps/html-to-md.js";
 import { stepFetch } from "../../src/engine/steps/fetch.js";
-import {
-  forgetTransientCookies,
-  rememberTransientCookies,
-} from "../../src/engine/cookies.js";
 import "../../src/engine/steps/index.js";
 
 // --- Echo server: returns request info as JSON ---
@@ -95,6 +91,8 @@ beforeAll(async () => {
     }
 
     if (req.url === "/cookie-fallback") {
+      requestCounts["/cookie-fallback"] =
+        (requestCounts["/cookie-fallback"] ?? 0) + 1;
       if (!req.headers.cookie) {
         res.writeHead(403, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "authentication required" }));
@@ -432,7 +430,12 @@ describe("html_to_md step", () => {
       { fetch_text: { url: `${baseUrl}/html` } },
       { html_to_md: {} },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runPipeline(
+      steps,
+      { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
+    );
     const md = String(result[0]);
     expect(md).toContain("Title");
     expect(md).toContain("**world**");
@@ -491,7 +494,12 @@ describe("retry with backoff", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runPipeline(
+      steps,
+      { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
+    );
     expect((result[0] as Record<string, unknown>).ok).toBe(true);
   });
 
@@ -506,7 +514,12 @@ describe("retry with backoff", () => {
         },
       },
     ];
-    const result = await runPipeline(steps, { args: {}, source: "internal" });
+    const result = await runPipeline(
+      steps,
+      { args: {}, source: "internal" },
+      undefined,
+      { canMutate: false },
+    );
     expect(result[0]).toBe("text ok");
     expect(requestCounts["/flaky-text"]).toBe(2);
   });
@@ -555,6 +568,8 @@ describe("retry with backoff", () => {
           },
         ],
         { args: {}, source: "internal" },
+        undefined,
+        { canMutate: false },
       ),
     ).rejects.toMatchObject({
       detail: {
@@ -590,24 +605,19 @@ describe("request cancellation", () => {
     },
   );
 
-  it("preserves caller cancellation during authenticated cookie fallback", async () => {
-    const controller = new AbortController();
-    const reason = new Error("cookie-fallback-cancelled");
-    rememberTransientCookies("127-0-0", undefined, "browser", {
-      session: "test",
+  it("does not acquire browser cookies after an undeclared HTTP auth failure", async () => {
+    requestCounts["/cookie-fallback"] = 0;
+    await expect(
+      runPipeline(
+        [{ fetch: { url: `${baseUrl}/cookie-fallback` } }],
+        { args: {}, source: "internal" },
+        undefined,
+        { canMutate: false },
+      ),
+    ).rejects.toMatchObject({
+      detail: expect.objectContaining({ statusCode: 403 }),
     });
-    const execution = runPipeline(
-      [{ fetch: { url: `${baseUrl}/cookie-fallback` } }],
-      { args: {}, source: "internal" },
-      undefined,
-      { signal: controller.signal, canMutate: false },
-    );
-    setTimeout(() => controller.abort(reason), 50);
-    try {
-      await expect(execution).rejects.toBe(reason);
-    } finally {
-      forgetTransientCookies("127-0-0");
-    }
+    expect(requestCounts["/cookie-fallback"]).toBe(1);
   });
 });
 

@@ -2,7 +2,7 @@
  * @owner       src::transport::adapters::subprocess
  * @does        Execute commands, waits, and desktop launch plans through request-contained native process groups.
  * @needs       contained process runner, transport envelopes, event queue
- * @feeds       compute launch/wait fallback and direct subprocess transport actions
+ * @feeds       compute process routes and direct subprocess transport actions
  * @breaks      Ignoring request cancellation lets launcher descendants mutate the host after the owning Agent turn ends.
  * @invariants  Abort and timeout await the owned process group; ordinary command failures become envelopes; arbitrary commands and external app delivery are outcome-ambiguous because they may daemonize outside that group.
  * @side-effects Executes arbitrary declared commands and can launch desktop applications.
@@ -16,6 +16,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
 import type { Envelope } from "../../core/envelope.js";
+import { attachDefaultEffectVerdict } from "../../core/effect-verdict.js";
 import {
   isOperationOutcomeAmbiguousError,
   runContainedProcess,
@@ -177,20 +178,25 @@ export class SubprocessTransport implements TransportAdapter {
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     const start = Date.now();
+    const canMutate = subprocessActionCanMutate(req);
+    let dispatched = false;
     try {
       req.signal?.throwIfAborted();
       let envelope: Envelope<unknown>;
       switch (req.kind) {
         case "exec":
+          dispatched = typeof req.params.command === "string";
           envelope = await this.doExec(req.params as ExecParams, req.signal);
           break;
         case "launch_app":
+          dispatched = typeof req.params.app === "string";
           envelope = await this.doLaunch(
             req.params as LaunchParams,
             req.signal,
           );
           break;
         case "wait": {
+          dispatched = true;
           const p = req.params as { seconds?: unknown; ms?: unknown };
           const ms =
             typeof p.ms === "number"
@@ -220,19 +226,34 @@ export class SubprocessTransport implements TransportAdapter {
           });
       }
       envelope.elapsedMs = Date.now() - start;
-      return envelope as ActionResult<T>;
+      return attachDefaultEffectVerdict(envelope as ActionResult<T>, {
+        canMutate,
+        phase: envelope.ok
+          ? "success"
+          : dispatched
+            ? "dispatched_failure"
+            : "pre_dispatch",
+        verification: "process-result",
+      });
     } catch (e) {
       if (isOperationOutcomeAmbiguousError(e)) throw e;
       req.signal?.throwIfAborted();
       const msg = e instanceof Error ? e.message : String(e);
-      return err({
-        transport: "subprocess",
-        step: 0,
-        action: req.kind,
-        reason: msg,
-        suggestion: "inspect the command, args, and environment",
-        retryable: false,
-      });
+      return attachDefaultEffectVerdict(
+        err({
+          transport: "subprocess",
+          step: 0,
+          action: req.kind,
+          reason: msg,
+          suggestion: "inspect the command, args, and environment",
+          retryable: false,
+        }),
+        {
+          canMutate,
+          phase: dispatched ? "dispatched_failure" : "pre_dispatch",
+          verification: "process-result",
+        },
+      );
     }
   }
 
@@ -373,4 +394,8 @@ export class SubprocessTransport implements TransportAdapter {
     }
     return ok(outcome);
   }
+}
+
+function subprocessActionCanMutate(req: ActionRequest): boolean {
+  return req.kind !== "wait" || req.canMutate === true;
 }

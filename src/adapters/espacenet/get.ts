@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::espacenet::get
  * @does        Browser-driven retrieval of a single Espacenet publication detail page; extracts bibliographic fields and emits a PatentRecord.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/espacenet/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.get)
- * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED with MCP_BUS_MISSING
+ * @breaks      PATENT_INVALID_NUMBER, PATENT_NOT_FOUND, PATENT_API_DEPRECATED with browser provider unavailable
  * @invariants  output is a single PatentRecord row when upstream answers; never returns a stub
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/espacenet/search.test.ts (transport-error path)
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  espacenetEnvelope,
-  espacenetNavigateAndExtract,
-  transportErrorToEspacenetEnvelope,
-} from "./_shared.js";
+import { espacenetEnvelope, espacenetNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/espacenet/get.ts";
 
@@ -63,9 +60,12 @@ function detailUrlFor(pubNo: string): string {
   return `https://worldwide.espacenet.com/patent/search/publication/${encodeURIComponent(pubNo)}`;
 }
 
-export async function runEspacenetGet(kwargs: {
-  publication_number: string;
-}): Promise<unknown[]> {
+export async function runEspacenetGet(
+  page: IPage,
+  kwargs: {
+    publication_number: string;
+  },
+): Promise<unknown[]> {
   const pubNo = String(kwargs.publication_number ?? "").trim();
   if (pubNo.length === 0) {
     return [
@@ -81,38 +81,24 @@ export async function runEspacenetGet(kwargs: {
   }
   const url = detailUrlFor(pubNo);
   let detail: EspacenetDetail;
-  try {
-    const result = await espacenetNavigateAndExtract<EspacenetDetail>(
-      url,
-      DETAIL_EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: espacenetEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "espacenet detail evaluate returned no data",
-          ),
-        },
-      ];
-    }
-    detail = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToEspacenetEnvelope(
-            err,
-            ADAPTER_PATH,
-            "navigate",
-          ),
-        },
-      ];
-    }
-    throw err;
+  const result = await espacenetNavigateAndExtract<EspacenetDetail>(
+    page,
+    url,
+    DETAIL_EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: espacenetEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "espacenet detail evaluate returned no data",
+        ),
+      },
+    ];
   }
+  detail = result.data;
   const fieldCount = [detail.publication_number, detail.title].filter(
     Boolean,
   ).length;
@@ -172,14 +158,20 @@ cli({
     {
       name: "publication_number",
       type: "str",
+      minLength: 1,
+      pattern: "^[A-Z]{2}-?[A-Z0-9]+-?[A-Z][0-9]?$",
       required: true,
       positional: true,
       description: "ST.16 publication number (e.g. EP4123456A1)",
     },
   ],
   columns: ["publication_number", "title", "publication_date", "source_url"],
-  capabilities: ["mcp-browser.navigate", "mcp-browser.evaluate", "patent.get"],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runEspacenetGet(kwargs as { publication_number: string }),
+  capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate", "patent.get"],
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runEspacenetGet(
+      requireBrowserPage(page),
+      kwargs as { publication_number: string },
+    ),
 });

@@ -1,6 +1,7 @@
 site: theverge
 name: latest
 description: Latest The Verge articles via RSS
+operation_effect: read
 type: web-api
 domain: theverge.com
 strategy: public

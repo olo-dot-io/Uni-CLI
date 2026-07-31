@@ -109,6 +109,7 @@ cli({
   domain: "jd.com",
   strategy: Strategy.COOKIE,
   browser: true,
+  operation_effect: "account_state",
   args: [
     { name: "sku", type: "str", required: true, positional: true },
     { name: "quantity", type: "int", default: 1 },

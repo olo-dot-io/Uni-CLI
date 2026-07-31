@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEnvelope } from "../../src/output/envelope.js";
 import { validateEnvelope } from "../../src/output/envelope.js";
+import { ExitCode } from "../../src/types.js";
 
 let server: Server;
 let port = 0;
@@ -137,14 +138,14 @@ describe("repair envelope and process truth", () => {
 
   it("propagates the target failure envelope and nonzero exit", async () => {
     const result = await runRepair("broken");
-    expect(result.exitCode).toBe(1);
+    expect(result.exitCode).toBe(ExitCode.SERVICE_UNAVAILABLE);
     const envelope = envelopeFrom(result.stderr);
     expect(envelope).toMatchObject({
       ok: false,
       command: "repair.verify",
       error: {
         code: "upstream_error",
-        exit_code: 1,
+        exit_code: ExitCode.SERVICE_UNAVAILABLE,
       },
     });
     if (!envelope.ok) {

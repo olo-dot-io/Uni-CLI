@@ -17,7 +17,7 @@ import { findChrome } from "./launcher.js";
 import {
   detectDefaultProfileDebugBlocks,
   detectLocalBrowserProfiles,
-  resolvePreferredLocalBrowserProfile,
+  selectBrowserIdentityFromProfiles,
 } from "./local-profiles.js";
 import { detectChromeRemoteDebuggingPolicy } from "./chrome-policy.js";
 import { isBrowserEphemeralRequested } from "./profile-seed.js";
@@ -95,7 +95,9 @@ export interface BrowserDoctorReport {
   sessions: BrowserBrokerStatus["sessions"];
   profiles: {
     count: number;
+    selection_status: "selected" | "unavailable" | "ambiguous";
     preferred_profile_id?: string;
+    ambiguous_profile_ids?: string[];
     browser_binary?: string;
     raw_cookie_values_returned: false;
   };
@@ -126,7 +128,11 @@ export async function runBrowserDoctor(
   const paths = browserBrokerPaths();
   const brokerProbe = await readBrokerProbe();
   const profiles = detectLocalBrowserProfiles();
-  const preferred = resolvePreferredLocalBrowserProfile();
+  const profileSelection = selectBrowserIdentityFromProfiles(profiles);
+  const preferred =
+    profileSelection.status === "selected"
+      ? profileSelection.profile
+      : undefined;
   const browserBinary = preferred?.browser_path_exists
     ? preferred.browser_path
     : (findChrome() ?? undefined);
@@ -275,7 +281,11 @@ export async function runBrowserDoctor(
     sessions,
     profiles: {
       count: profiles.length,
+      selection_status: profileSelection.status,
       ...(preferred ? { preferred_profile_id: preferred.id } : {}),
+      ...(profileSelection.status === "ambiguous"
+        ? { ambiguous_profile_ids: profileSelection.profile_ids }
+        : {}),
       ...(browserBinary ? { browser_binary: browserBinary } : {}),
       raw_cookie_values_returned: false,
     },

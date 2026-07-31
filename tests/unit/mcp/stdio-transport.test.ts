@@ -6,7 +6,9 @@ import type {
   JsonRpcHandler,
   JsonRpcResponse,
 } from "../../../src/mcp/jsonrpc.js";
+import { MCP_RESULT_NOT_SERIALIZABLE } from "../../../src/mcp/result-budget.js";
 import {
+  MCP_STDIO_MAX_ACTIVE_REQUESTS,
   MCP_STDIO_MAX_FRAME_BYTES,
   startStdioTransport,
 } from "../../../src/mcp/stdio-transport.js";
@@ -149,6 +151,56 @@ describe("MCP stdio request lifecycle", () => {
     expect(fixture.responses()).toEqual([]);
   });
 
+  it("delivers subscription notifications before client cancellation without a stale final response", async () => {
+    const cancelled = deferred<void>();
+    const handler: JsonRpcHandler = async (request, context) => {
+      await context?.emit?.({
+        jsonrpc: "2.0",
+        method: "notifications/subscriptions/acknowledged",
+        params: {
+          _meta: {
+            "io.modelcontextprotocol/subscriptionId": request.id,
+          },
+          notifications: {},
+        },
+      });
+      await new Promise<void>((resolve) => {
+        const signal = context!.signal!;
+        const abort = (): void => {
+          cancelled.resolve();
+          resolve();
+        };
+        if (signal.aborted) abort();
+        else signal.addEventListener("abort", abort, { once: true });
+      });
+      return success(request.id ?? null, "closed");
+    };
+    const fixture = startFixture(handler);
+    fixture.write({
+      jsonrpc: "2.0",
+      id: 50,
+      method: "subscriptions/listen",
+      params: {},
+    });
+    await vi.waitFor(() => expect(fixture.responses()).toHaveLength(1));
+    expect(fixture.responses()[0]).toMatchObject({
+      method: "notifications/subscriptions/acknowledged",
+      params: {
+        _meta: { "io.modelcontextprotocol/subscriptionId": 50 },
+      },
+    });
+
+    fixture.write({
+      jsonrpc: "2.0",
+      method: "notifications/cancelled",
+      params: { requestId: 50 },
+    });
+    await cancelled.promise;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fixture.responses()).toHaveLength(1);
+    await fixture.close();
+  });
+
   it("publishes synchronous fulfillment authoritatively before stdin close", async () => {
     const fixture = startFixture((rpc) => success(rpc.id ?? null, "settled"));
     fixture.write(request(9));
@@ -250,6 +302,45 @@ describe("MCP stdio request lifecycle", () => {
     await fixture.close();
   });
 
+  it("contains cyclic and BigInt results without crashing the server", async () => {
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    const fixture = startFixture((rpc) => {
+      if (rpc.id === 1) return success(1, cyclic);
+      if (rpc.id === 2) return success(2, { value: 1n });
+      return success(rpc.id ?? null, "still-alive");
+    });
+    fixture.write(request(1));
+    fixture.write(request(2));
+    fixture.write(request(3));
+
+    await vi.waitFor(() => expect(fixture.responses()).toHaveLength(3));
+    expect(fixture.responses().slice(0, 2)).toEqual([
+      expect.objectContaining({
+        id: 1,
+        error: expect.objectContaining({
+          code: MCP_RESULT_NOT_SERIALIZABLE,
+          data: expect.objectContaining({
+            code: "result_not_serializable",
+            retryable: false,
+          }),
+        }),
+      }),
+      expect.objectContaining({
+        id: 2,
+        error: expect.objectContaining({
+          code: MCP_RESULT_NOT_SERIALIZABLE,
+          data: expect.objectContaining({
+            code: "result_not_serializable",
+            retryable: false,
+          }),
+        }),
+      }),
+    ]);
+    expect(fixture.responses()[2]).toEqual(success(3, "still-alive"));
+    await fixture.close();
+  });
+
   it("bounds an oversized frame and resumes on the next newline", async () => {
     const fixture = startFixture((rpc) =>
       success(rpc.id ?? null, "still-alive"),
@@ -266,6 +357,37 @@ describe("MCP stdio request lifecycle", () => {
       },
       success(42, "still-alive"),
     ]);
+    await fixture.close();
+  });
+
+  it("admits at most the bounded number of active requests", async () => {
+    let calls = 0;
+    const handler: JsonRpcHandler = (_rpc, context) => {
+      calls += 1;
+      return new Promise((_resolve, reject) => {
+        const signal = context!.signal!;
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        });
+      });
+    };
+    const fixture = startFixture(handler);
+    for (let id = 0; id < MCP_STDIO_MAX_ACTIVE_REQUESTS + 20; id += 1) {
+      fixture.write(request(id));
+    }
+
+    await vi.waitFor(() => expect(fixture.responses()).toHaveLength(20));
+    expect(calls).toBe(MCP_STDIO_MAX_ACTIVE_REQUESTS);
+    expect(
+      fixture
+        .responses()
+        .every(
+          (response) =>
+            response.error?.data &&
+            (response.error.data as { code?: string }).code ===
+              "server_capacity",
+        ),
+    ).toBe(true);
     await fixture.close();
   });
 });

@@ -32,7 +32,7 @@ cursor. The profile exposes 16 desktop and 16 direct browser tools.
 ## Permissions
 
 On macOS, grant Accessibility to the terminal that launches Gemini CLI. Grant
-Screen Recording if screenshot fallback is needed. Windows and Linux use the
+Screen Recording if screenshot capture is needed. Windows and Linux use the
 UIA and AT-SPI sidecars respectively.
 
 ## Verify

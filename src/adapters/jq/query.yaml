@@ -1,6 +1,7 @@
 site: jq
 name: query
 description: Query JSON data using a jq filter expression
+operation_effect: read
 type: bridge
 strategy: public
 binary: jq

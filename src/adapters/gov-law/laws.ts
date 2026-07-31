@@ -47,6 +47,8 @@ cli({
     { name: "limit", type: "int", default: 20 },
   ],
   columns: ["title", "date", "url"],
+  operation_effect: "read",
+  execution_operator: "browser-semantic",
   retrieval: {
     operation: "discover",
     result_kind: "regulation",

@@ -1,6 +1,6 @@
 ---
 title: Uni-CLI Glossary
-description: Definitions for every Uni-CLI term — operation contract, action substrate, adapter, AgentEnvelope, strategy cascade, pipeline step, self-repair, and the conventions used across the project.
+description: Definitions for every Uni-CLI term — operation contract, action substrate, adapter, AgentEnvelope, declared strategy, pipeline step, self-repair, and the conventions used across the project.
 ---
 
 # Glossary
@@ -13,7 +13,10 @@ The commands an agent can issue to a computer and the feedback the computer retu
 
 ## Action substrate
 
-A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific harness. Substrates are below the Agent-Computer Interface runtime boundary.
+A concrete technical boundary Uni-CLI can use to make real software act: HTTP,
+browser CDP, desktop accessibility, subprocess, file operation, protocol
+server, explicit visual coordinates, or an app-specific harness. Substrates are
+below the Agent-Computer Interface runtime boundary.
 
 ## Adapter
 
@@ -51,13 +54,16 @@ The local index of all sites, operations, arguments, strategies, and output sche
 
 The wire protocol Uni-CLI uses to control a real Chrome instance for browser adapters. Implemented as a raw WebSocket client in `src/browser/cdp-client.ts` with no third-party browser library. Supports the full Page, Network, DOM, and Runtime domains.
 
-## Compute (Visual)
+## Compute
 
-The local computer-control and visual fallback adapter family. When structured substrates (web-api, desktop AX, browser CDP, app API, subprocess) cannot reach a target, Compute can drive the screen with screenshots, clicks, typing, and post-action evidence through a unified action verb set.
+The local computer-control family. Its route planner chooses one native
+accessibility, browser-semantic, process, or explicit visual provider from the
+operation and exact target evidence. Provider failure returns directly; a
+cross-provider change requires replanning.
 
 ## Cookie file
 
-Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Cookie/header adapters can instead read a live browser/CDP session into memory. Cookie values are sent only to the target request/browser boundary selected by the command.
+Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Normal cookie/header invocation reads that site-bound source. An explicit `--auth-retry` selects either one local-browser profile or one live CDP target from the structured failure type. Fresh values are bound to exactly one new invocation through an opaque, one-shot in-memory capability; acquisition never changes source after a miss or error. Cookie values are sent only to the matching site/domain request boundary selected by the command.
 
 ## Browser Runtime Broker
 
@@ -81,7 +87,7 @@ The process status used by CLI commands. 0 is success. Structured command failur
 
 ## Header strategy
 
-An auth strategy that reads explicit cookie storage or a live browser/CDP session into memory, auto-extracts a CSRF token, then injects both into the target request headers. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
+An auth strategy that reads the command's selected cookie source, auto-extracts a CSRF token, then injects both into the target request headers. The source identity remains fixed for the invocation. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
 
 ## Intercept strategy
 
@@ -93,7 +99,12 @@ A standardized agent-readable index file at the site root (`/llms.txt` and `/llm
 
 ## MCP (Model Context Protocol)
 
-An [open standard](https://modelcontextprotocol.io/) for connecting AI applications to tools and data through stateful servers. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) with default, deferred, and expanded profiles over adapter operations. Fixed core commands remain canonical on native CLI until protocol parity lands.
+An [open standard](https://modelcontextprotocol.io/) for connecting AI
+applications to tools and data. Uni-CLI's dual-era gateway serves stateless
+`2026-07-28` requests with per-request metadata and retains `2025-11-25`
+initialization/session behavior for legacy clients. Default, deferred,
+expanded, and computer-use profiles project adapter operations. Fixed core
+commands remain canonical on native CLI until protocol parity lands.
 
 ## Operation contract
 
@@ -101,7 +112,7 @@ The stable product primitive in Uni-CLI. An operation contract describes identit
 
 ## Pipeline
 
-The ordered list of actions an adapter runs to produce its result. The executable surface contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in names: <span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered pipeline actions and <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> low-level transport-native actions. Actions share a context object; plugins are outside this built-in budget.
+The ordered list of actions an adapter runs to produce its result. The executable surface contains <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in names: <span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> registered pipeline actions and <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> low-level transport-native actions. Actions share a context object; plugins are outside this built-in budget.
 
 ## Pipeline step
 
@@ -133,11 +144,13 @@ A DOM accessibility tree generated by the `snapshot` pipeline step in browser ad
 
 ## Strategy
 
-The auth or interaction path an adapter declares: `public`, `cookie`, `header`, `intercept`, or `ui`. These five values are not one automatic five-way cascade. Only `public`, `cookie`, and `header` participate in the bounded HTTP probe; `intercept` and `ui` are explicit browser-backed strategies.
+The auth or interaction path an adapter declares: `public`, `cookie`, `header`, `intercept`, or `ui`. The runtime executes the declared strategy and does not cross into another strategy after failure. `public`, `cookie`, and `header` are structured HTTP contracts; `intercept` and `ui` are browser-backed contracts.
 
-## Strategy cascade
+## Strategy replan
 
-The bounded HTTP probe used where a probe URL is available. It tries `public`, then `cookie`, then `header`, and caches the first valid result for the process. It never silently escalates into `intercept` or `ui`; those browser-backed strategies must be declared by the operation.
+An explicit adapter or task-plan change from one declared strategy to another.
+It is separate from retry because changing strategy can change authentication,
+session ownership, evidence, latency, and side-effect boundaries.
 
 ## Tap
 

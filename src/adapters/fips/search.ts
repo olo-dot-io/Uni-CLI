@@ -1,11 +1,11 @@
 /**
  * @owner       src::adapters::fips::search
  * @does        Browser-driven Rospatent FIPS search at www.fips.ru — Russia's federal IP office has no open API; the FIPS portal is the only programmatic surface.
- * @needs       src/engine/transport/mcp-browser.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/fips/_shared.ts, src/registry.ts
+ * @needs       src/adapters/_shared/browser-tools.ts, src/engine/normalizer/patent-envelope.ts, src/adapters/fips/_shared.ts, src/registry.ts
  * @feeds       src/commands/patent.ts (capability tag patent.search)
- * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (no rows), PATENT_API_DEPRECATED with MCP_BUS_MISSING; PATENT_REGION_BLOCKED is also possible if the browser cannot reach .ru
+ * @breaks      PATENT_UNSUPPORTED_QUERY (empty), PATENT_NOT_FOUND (no rows), PATENT_API_DEPRECATED with browser provider unavailable; PATENT_REGION_BLOCKED is also possible if the browser cannot reach .ru
  * @invariants  rows canonicalized into PatentRecord; source_adapter='fips'
- * @side-effects controls Chrome via MCP
+ * @side-effects controls the registry-owned browser page via CDP
  * @perf        single navigate + evaluate
  * @concurrency safe
  * @test        tests/unit/adapters/fips/search.test.ts
@@ -15,13 +15,10 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import { TransportError } from "../../engine/transport/mcp-browser.js";
+import type { IPage } from "../../types.js";
+import { requireBrowserPage } from "../_shared/browser-tools.js";
 import { assemblePatentRecord } from "../../engine/normalizer/patent-envelope.js";
-import {
-  fipsEnvelope,
-  fipsNavigateAndExtract,
-  transportErrorToFipsEnvelope,
-} from "./_shared.js";
+import { fipsEnvelope, fipsNavigateAndExtract } from "./_shared.js";
 
 const ADAPTER_PATH = "src/adapters/fips/search.ts";
 const FIPS_SEARCH_URL = "https://www.fips.ru/iiss/search.xhtml";
@@ -59,10 +56,13 @@ function buildSearchUrl(query: string): string {
   return `${FIPS_SEARCH_URL}?${params.toString()}`;
 }
 
-export async function runFipsSearch(kwargs: {
-  query: string;
-  limit?: number;
-}): Promise<unknown[]> {
+export async function runFipsSearch(
+  page: IPage,
+  kwargs: {
+    query: string;
+    limit?: number;
+  },
+): Promise<unknown[]> {
   const limit =
     typeof kwargs.limit === "number" && Number.isFinite(kwargs.limit)
       ? Math.max(1, Math.min(100, Math.floor(kwargs.limit)))
@@ -82,34 +82,24 @@ export async function runFipsSearch(kwargs: {
   }
   const url = buildSearchUrl(query);
   let extract: { rows: FipsRow[] };
-  try {
-    const result = await fipsNavigateAndExtract<{ rows: FipsRow[] }>(
-      url,
-      EXTRACTOR,
-    );
-    if (!result.data) {
-      return [
-        {
-          envelope: fipsEnvelope(
-            "PATENT_SCHEMA_DRIFT",
-            ADAPTER_PATH,
-            "evaluate",
-            "fips evaluate returned no data; selectors likely drifted",
-          ),
-        },
-      ];
-    }
-    extract = result.data;
-  } catch (err) {
-    if (err instanceof TransportError) {
-      return [
-        {
-          envelope: transportErrorToFipsEnvelope(err, ADAPTER_PATH, "navigate"),
-        },
-      ];
-    }
-    throw err;
+  const result = await fipsNavigateAndExtract<{ rows: FipsRow[] }>(
+    page,
+    url,
+    EXTRACTOR,
+  );
+  if (!result.data) {
+    return [
+      {
+        envelope: fipsEnvelope(
+          "PATENT_SCHEMA_DRIFT",
+          ADAPTER_PATH,
+          "evaluate",
+          "fips evaluate returned no data; selectors likely drifted",
+        ),
+      },
+    ];
   }
+  extract = result.data;
   if (extract.rows.length === 0) {
     return [
       {
@@ -149,7 +139,7 @@ export async function runFipsSearch(kwargs: {
   if (out.length === 0) {
     out.push({
       envelope: fipsEnvelope(
-        "PATENT_NOT_FOUND",
+        "PATENT_SCHEMA_DRIFT",
         ADAPTER_PATH,
         "normalize",
         "fips returned rows but none normalized to a valid publication_number",
@@ -172,6 +162,7 @@ cli({
     {
       name: "query",
       type: "str",
+      minLength: 1,
       required: true,
       positional: true,
       description: "Free-text query for FIPS Russian patent search",
@@ -185,11 +176,15 @@ cli({
   ],
   columns: ["publication_number", "title", "publication_date", "source_url"],
   capabilities: [
-    "mcp-browser.navigate",
-    "mcp-browser.evaluate",
+    "cdp-browser.navigate",
+    "cdp-browser.evaluate",
     "patent.search",
   ],
-  minimum_capability: "mcp-browser.evaluate",
-  func: async (_page, kwargs) =>
-    runFipsSearch(kwargs as { query: string; limit?: number }),
+  minimum_capability: "cdp-browser.evaluate",
+  browser: true,
+  func: async (page, kwargs) =>
+    runFipsSearch(
+      requireBrowserPage(page),
+      kwargs as { query: string; limit?: number },
+    ),
 });

@@ -705,31 +705,25 @@ async function runFamily(
     process.exit(ExitCode.USAGE_ERROR);
   }
 
-  // EPO is the canonical INPADOC family broker — try it first.
+  // This command declares one provider: EPO's INPADOC family broker.
+  // Provider changes are explicit commands/options, never error-triggered.
   const primary = await runAdapterCommand(FAMILY_BROKER, "patent.family", {
     publication_number: publicationNumber,
   });
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (primary.error || primary.records.length === 0) {
-    const fallback = await runAdapterCommand(
-      routeByPublicationPrefix(publicationNumber)!,
-      "patent.family",
-      { publication_number: publicationNumber },
-    );
-    ctx.duration_ms = Date.now() - startedAt;
-    if (fallback.error || fallback.records.length === 0) {
-      ctx.error = {
-        code: "PATENT_FAMILY_BROKER_DOWN",
-        message: `EPO Espacenet family lookup failed and home-office fallback returned empty for ${publicationNumber}`,
-        suggestion: "Retry with --sources all or check unicli patent doctor.",
-        retryable: true,
-      };
-      console.error(format(null, undefined, fmt, ctx));
-      process.exit(ExitCode.SERVICE_UNAVAILABLE);
-    }
-    console.log(format(fallback.records, undefined, fmt, ctx));
-    return;
+    ctx.error = {
+      code: "PATENT_FAMILY_BROKER_DOWN",
+      message:
+        primary.error?.message ??
+        `EPO Espacenet returned no family members for ${publicationNumber}`,
+      suggestion:
+        "Inspect `unicli patent doctor`; choose a different provider explicitly with its adapter command if needed.",
+      retryable: true,
+    };
+    console.error(format(null, undefined, fmt, ctx));
+    process.exit(ExitCode.SERVICE_UNAVAILABLE);
   }
   console.log(format(primary.records, undefined, fmt, ctx));
 }

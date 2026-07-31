@@ -234,6 +234,7 @@ cli({
   description: "Set Spotify playback volume",
   domain: "api.spotify.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "service_state",
   args: [{ name: "percent", type: "int", required: true, positional: true }],
   columns: ["ok", "volume"],
   func: async (_page, kwargs) => {
@@ -251,6 +252,7 @@ cli({
   description: "Add a Spotify track to the playback queue",
   domain: "api.spotify.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "service_state",
   args: [{ name: "query", type: "str", required: true, positional: true }],
   columns: ["ok", "uri"],
   func: async (_page, kwargs) => {
@@ -268,6 +270,7 @@ cli({
   description: "Search Spotify for a track query and start playback",
   domain: "api.spotify.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "service_state",
   args: [{ name: "query", type: "str", required: true, positional: true }],
   columns: ["ok", "query", "track", "artist", "uri"],
   func: async (_page, kwargs) => {
@@ -295,6 +298,7 @@ cli({
   description: "Toggle Spotify shuffle mode",
   domain: "api.spotify.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "service_state",
   args: [
     {
       name: "state",
@@ -318,6 +322,7 @@ cli({
   description: "Set Spotify repeat mode",
   domain: "api.spotify.com",
   strategy: Strategy.COOKIE,
+  operation_effect: "service_state",
   args: [
     {
       name: "state",

@@ -1,6 +1,7 @@
 site: markdown-new
 name: read
 description: Convert a public URL to Markdown through markdown.new
+operation_effect: read
 type: web-api
 domain: markdown.new
 strategy: public

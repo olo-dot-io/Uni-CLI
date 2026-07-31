@@ -2,9 +2,9 @@
  * @owner       src::transport::adapters::desktop-uia
  * @does        Route Windows UI Automation snapshots and actions through one process-contained native sidecar.
  * @needs       sidecar lifecycle, UIA binary resolution, desktop snapshot normalization
- * @feeds       compute cascade and direct desktop-uia transport callers
+ * @feeds       selected compute dispatch and direct desktop-uia transport callers
  * @breaks      Omitting mutation delivery metadata can turn post-frame sidecar cancellation into a replayable ordinary failure; encoding snapshot failures as data or broadening malformed targets makes a failed observation look successful.
- * @invariants  Compute contract mutability and typed app/pid/window target params reach the same sidecar call as their encoding; explicit targets resolve exactly or fail closed; post-frame mutation cancellation remains outcome-ambiguous; snapshot failures throw for cascade fallback; action failures become structured envelopes; close is idempotent.
+ * @invariants  Compute contract mutability and typed app/pid/window target params reach the same sidecar call as their encoding; explicit targets resolve exactly or fail closed; post-frame mutation cancellation remains outcome-ambiguous; snapshot failures preserve the selected provider; action failures become structured envelopes; close is idempotent.
  * @side-effects Starts and terminates the UIA sidecar and can mutate the Windows desktop.
  * @perf        One serialized sidecar round trip per action or snapshot.
  * @concurrency The sidecar owns FIFO serialization and process containment for each active request.
@@ -15,6 +15,10 @@
 
 import { err, exitCodeFor } from "../../core/envelope.js";
 import { ok } from "../../core/envelope.js";
+import {
+  attachDefaultEffectVerdict,
+  readEffectVerdict,
+} from "../../core/effect-verdict.js";
 import { resolveSidecarBinary } from "../sidecar-binary.js";
 import {
   isSidecarError,
@@ -75,7 +79,7 @@ export interface DesktopUiaTransportOptions {
 }
 
 const WINDOWS_ONLY_SUGGESTION =
-  "run on Windows with the native UIA backend available, or fall back to Visual";
+  "run on Windows with the native UIA backend available, or explicitly replan the operation";
 
 export class DesktopUiaTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-uia";
@@ -83,6 +87,7 @@ export class DesktopUiaTransport implements TransportAdapter {
 
   private readonly platform: NodeJS.Platform;
   private readonly sidecarCommand: string;
+  private readonly injectedSidecar: boolean;
   private sidecar: SidecarClient | undefined;
   private refs: TransportContext["refs"] | undefined;
   private closed = false;
@@ -90,6 +95,7 @@ export class DesktopUiaTransport implements TransportAdapter {
   constructor(opts: DesktopUiaTransportOptions = {}) {
     this.platform = opts.platform ?? process.platform;
     this.sidecar = opts.sidecar;
+    this.injectedSidecar = opts.sidecar !== undefined;
     this.sidecarCommand =
       opts.sidecarCommand ??
       resolveSidecarBinary("unicli-uia", {
@@ -127,7 +133,14 @@ export class DesktopUiaTransport implements TransportAdapter {
 
   async action<T = unknown>(req: ActionRequest): Promise<ActionResult<T>> {
     req.signal?.throwIfAborted();
-    if (this.platform !== "win32") return this.unavailable(req.kind);
+    const canMutate = desktopUiaActionCanMutate(req);
+    if (this.platform !== "win32") {
+      return attachDefaultEffectVerdict(this.unavailable(req.kind), {
+        canMutate,
+        phase: "pre_dispatch",
+        verification: "accessibility-state",
+      });
+    }
     try {
       const screenshot =
         req.kind === "uia_screenshot"
@@ -138,18 +151,39 @@ export class DesktopUiaTransport implements TransportAdapter {
         screenshot?.params ?? req.params,
         {
           signal: req.signal,
-          cancellationDelivery:
-            req.canMutate === false ? "contained" : "outcome-ambiguous",
+          cancellationDelivery: canMutate ? "outcome-ambiguous" : "contained",
         },
       );
       const normalized = screenshot
         ? await normalizeSidecarScreenshot(data, screenshot.path, req.signal)
         : data;
-      return ok(normalized as T);
+      const providerVerdict =
+        normalized &&
+        typeof normalized === "object" &&
+        !Array.isArray(normalized) &&
+        "effect_verdict" in normalized
+          ? readEffectVerdict(
+              (normalized as { effect_verdict?: unknown }).effect_verdict,
+            )
+          : undefined;
+      return attachDefaultEffectVerdict(
+        ok(
+          normalized as T,
+          providerVerdict ? { effect_verdict: providerVerdict } : undefined,
+        ),
+        { canMutate, verification: "accessibility-state" },
+      );
     } catch (error) {
       if (isOperationOutcomeAmbiguousError(error)) throw error;
       req.signal?.throwIfAborted();
-      return this.errorFromSidecar<T>(req.kind, error);
+      return attachDefaultEffectVerdict(
+        this.errorFromSidecar<T>(req.kind, error),
+        {
+          canMutate,
+          phase: "dispatched_failure",
+          verification: "accessibility-state",
+        },
+      );
     }
   }
 
@@ -157,6 +191,13 @@ export class DesktopUiaTransport implements TransportAdapter {
     if (this.closed) return;
     this.closed = true;
     await this.sidecar?.close();
+  }
+
+  async recover(): Promise<void> {
+    if (this.injectedSidecar) return;
+    const failedGeneration = this.sidecar;
+    this.sidecar = undefined;
+    await failedGeneration?.close();
   }
 
   private requireSidecar(): SidecarClient {
@@ -239,4 +280,19 @@ export class DesktopUiaTransport implements TransportAdapter {
 
 function isSidecarProcessCrash(message: string): boolean {
   return /sidecar (?:exited|closed)|EPIPE|ECONNRESET/i.test(message);
+}
+
+const UIA_READ_ONLY_ACTIONS = new Set<string>([
+  "uia_apps",
+  "uia_windows",
+  "uia_snapshot",
+  "uia_find",
+  "uia_screenshot",
+  "uia_wait",
+  "uia_observe",
+  "uia_assert",
+]);
+
+function desktopUiaActionCanMutate(req: ActionRequest): boolean {
+  return !UIA_READ_ONLY_ACTIONS.has(req.kind) || req.canMutate === true;
 }

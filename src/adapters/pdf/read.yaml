@@ -1,6 +1,7 @@
 site: pdf
 name: read
 description: Extract text from a local PDF file
+operation_effect: read
 type: desktop
 strategy: public
 binary: pdftotext

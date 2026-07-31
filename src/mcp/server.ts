@@ -20,7 +20,7 @@
  *   - `./dispatch.ts`       — kernel-backed tool-call dispatcher
  *   - `./handler.ts`        — JSON-RPC method dispatch
  *   - `./http-transport.ts` — POST /mcp transport
- *   - `./streamable-http/`  — Streamable HTTP transport (MCP spec 2025-11-25)
+ *   - `./streamable-http/`  — dual-era Streamable HTTP (MCP 2026-07-28 + 2025-11-25)
  *
  * Three modes:
  *   - default   — 4 meta-tools only

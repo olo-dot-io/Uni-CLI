@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   OperationOutcomeAmbiguousError,
+  ProcessOutputLimitError,
   runContainedProcess,
 } from "../../../src/transport/contained-process.js";
 
@@ -84,6 +85,42 @@ describe("runContainedProcess", () => {
       name: "OperationOutcomeAmbiguousError",
       outcome_ambiguous: true,
       cancellationReason: expect.objectContaining({ name: "TimeoutError" }),
+    });
+  });
+
+  it("terminates a child when buffered output reaches its hard limit", async () => {
+    const execution = runContainedProcess(
+      process.execPath,
+      ["-e", 'process.stdout.write(Buffer.alloc(1024 * 1024, "x"))'],
+      { maxStdoutBytes: 8 * 1024 },
+    );
+
+    await expect(execution).rejects.toMatchObject({
+      name: "ProcessOutputLimitError",
+      code: "output_limit_exceeded",
+      stream: "stdout",
+      maximumBytes: 8 * 1024,
+    });
+    await expect(execution).rejects.toBeInstanceOf(ProcessOutputLimitError);
+  });
+
+  it("marks output-limit containment as outcome-ambiguous for mutating delivery", async () => {
+    const execution = runContainedProcess(
+      process.execPath,
+      ["-e", 'process.stdout.write(Buffer.alloc(1024 * 1024, "x"))'],
+      {
+        maxStdoutBytes: 8 * 1024,
+        cancellationDelivery: "outcome-ambiguous",
+      },
+    );
+
+    await expect(execution).rejects.toMatchObject({
+      name: "OperationOutcomeAmbiguousError",
+      outcome_ambiguous: true,
+      cancellationReason: expect.objectContaining({
+        name: "ProcessOutputLimitError",
+        code: "output_limit_exceeded",
+      }),
     });
   });
 

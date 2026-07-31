@@ -73,7 +73,9 @@ export function registerArchitectureCommand(
 
   architecture
     .command("audit")
-    .description("Audit Agent-Computer Interface architecture readiness")
+    .description(
+      "Audit Agent-Computer Interface catalog contracts without claiming runtime readiness",
+    )
     .action(() => {
       const startedAt = Date.now();
       const audit = auditArchitectureTree({

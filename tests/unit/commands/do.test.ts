@@ -101,6 +101,41 @@ afterEach(() => {
 });
 
 describe("unicli do — happy path", () => {
+  it.each([
+    ["read GitHub repository issues", "gh", "issue"],
+    ["fetch a GitHub issue thread", "gh", "issue-thread"],
+    ["read latest GitHub releases", "gh", "release"],
+    ["get GitHub release", "gh", "release"],
+    ["read https://x.com/jack/status/20", "twitter", "thread"],
+    ["list HN top posts", "hackernews", "top"],
+    ["read browser console using browser protocol", "browser", "console"],
+    ["list open browser tabs using browser protocol", "browser", "tabs"],
+    ["capture screenshot", "compute", "screenshot"],
+  ])(
+    "routes the compositional task frame %s",
+    async (intent, site, command) => {
+      const cap = captureStdout();
+      try {
+        const program = newProgram();
+        await program.parseAsync([
+          "node",
+          "unicli",
+          "do",
+          ...intent.split(" "),
+          "-f",
+          "json",
+        ]);
+      } finally {
+        cap.restore();
+      }
+      const env = JSON.parse(cap.getStdout());
+      expect(env).toMatchObject({
+        ok: true,
+        data: { match: { site, command } },
+      });
+    },
+  );
+
   it("returns a valid envelope for a recognizable intent", async () => {
     const cap = captureStdout();
     try {
@@ -123,8 +158,78 @@ describe("unicli do — happy path", () => {
     expect(env.command).toBe("core.do");
     expect(env.data.intent).toBe("browser click");
     expect(env.data.match).not.toBeNull();
-    expect(env.data.match.invocation).toMatch(/^unicli \S+ \S+$/);
+    expect(env.data.match.invocation).toBe("unicli browser click <ref>");
+    expect(env.data.candidates[0].args_schema.required).toEqual(["ref"]);
+    expect(env.data.candidates[0].example_stdin).toEqual({ ref: "<ref>" });
     expect(env.data.candidates.length).toBeGreaterThan(0);
+  });
+
+  it("intersects ranking with explicit capability requirements before top-k", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync([
+        "node",
+        "unicli",
+        "do",
+        "papers",
+        "research",
+        "--operator",
+        "structured-api",
+        "--surface",
+        "web",
+        "--effect",
+        "read",
+        "-f",
+        "json",
+      ]);
+    } finally {
+      cap.restore();
+    }
+    const env = JSON.parse(cap.getStdout());
+    expect(env.ok).toBe(true);
+    expect(env.data.routing_policy.requirements).toMatchObject({
+      operator: "structured-api",
+      target_surface: "web",
+      effect: "read",
+      allow_coordinate_actuation: false,
+    });
+    for (const candidate of env.data.candidates) {
+      expect(candidate.operator.operator).toBe("structured-api");
+      expect(candidate.feasibility).toMatchObject({
+        contract_compatible: true,
+        evidence_scope: "catalog_contract",
+        runtime_readiness: "not_evaluated",
+        rejected_by: [],
+      });
+    }
+  });
+
+  it("infers a hard operator only from explicit substrate language", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync([
+        "node",
+        "unicli",
+        "do",
+        "browser",
+        "semantic",
+        "click",
+        "-f",
+        "json",
+      ]);
+    } finally {
+      cap.restore();
+    }
+    const env = JSON.parse(cap.getStdout());
+    expect(env.ok).toBe(true);
+    expect(env.data.routing_policy.requirements.operator).toBe(
+      "browser-semantic",
+    );
+    for (const candidate of env.data.candidates) {
+      expect(candidate.operator.operator).toBe("browser-semantic");
+    }
   });
 
   it("includes args_schema by default and omits it under --no-schema", async () => {
@@ -219,11 +324,9 @@ describe("unicli do — happy path", () => {
       a.command.startsWith("unicli describe "),
     );
     expect(hasDescribe).toBe(true);
-    const hasStdin = actions.some(
-      (a) =>
-        /\bunicli \S+ \S+\b/.test(a.command) && a.command.startsWith("echo"),
+    expect(actions.some((action) => action.command.includes("echo '{}'"))).toBe(
+      false,
     );
-    expect(hasStdin).toBe(true);
   });
 
   it("includes a delivery spec template for an executable top match without running it", async () => {
@@ -248,7 +351,7 @@ describe("unicli do — happy path", () => {
     expect(env.data.match).toMatchObject({
       site: "do-delivery-fixture",
       command: "deliver",
-      invocation: "unicli do-delivery-fixture deliver",
+      invocation: "unicli do-delivery-fixture deliver [--topic <str>]",
     });
     expect(env.data.delivery_spec_template).toMatchObject({
       objective: {
@@ -351,6 +454,49 @@ describe("unicli do — happy path", () => {
 });
 
 describe("unicli do — empty path", () => {
+  it("emits route_unavailable when hard constraints block semantic matches", async () => {
+    const cap = captureStdout();
+    try {
+      const program = newProgram();
+      await program.parseAsync([
+        "node",
+        "unicli",
+        "do",
+        "search",
+        "Linux.do",
+        "using",
+        "direct",
+        "HTTP",
+        "without",
+        "browser",
+        "-f",
+        "json",
+      ]);
+    } finally {
+      cap.restore();
+    }
+    expect(cap.getStdout()).toBe("");
+    const env = JSON.parse(cap.getStderr());
+    validateEnvelope(env);
+    expect(env).toMatchObject({
+      ok: false,
+      error: {
+        code: "route_unavailable",
+        retryable: false,
+        details: {
+          requirements: {
+            required_sites: ["linux-do"],
+            operation_family: "search",
+            operator: "structured-api",
+            allow_browser: false,
+          },
+          blocked_candidates: expect.any(Array),
+        },
+      },
+    });
+    expect(process.exitCode).toBe(66);
+  });
+
   it("emits empty_result envelope on a no-signal query", async () => {
     const cap = captureStdout();
     try {

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -15,13 +15,14 @@ describe("surface coverage benchmark", () => {
   const referenceManifestPath = join(
     process.cwd(),
     "ref",
-    "reference",
+    "agent-control-plane",
+    "opencli",
     "cli-manifest.json",
   );
   const referenceCoverageIt = existsSync(referenceManifestPath) ? it : it.skip;
 
   referenceCoverageIt(
-    "classifies every synced reference command into the coverage ledger",
+    "classifies every current OpenCLI command without hiding gaps",
     () => {
       const report = buildSurfaceCoverageReport({
         repoRoot: process.cwd(),
@@ -45,26 +46,26 @@ describe("surface coverage benchmark", () => {
       expect(report.coverage.command_coverage).toBe(
         report.ledger.functional_command_coverage,
       );
-      expect(report.coverage.command_coverage).toBe(1);
-      expect(report.missing.sites).toEqual([]);
-      expect(report.missing.commands).toEqual([]);
+      expect(report.coverage.exact_command_coverage).toBe(
+        report.coverage.functional_command_coverage,
+      );
+      expect(report.coverage.exact_missing_commands).toBe(
+        report.coverage.missing_commands,
+      );
+      expect(report.coverage.exact_site_coverage).toBe(
+        report.coverage.functional_site_coverage,
+      );
+      expect(report.coverage.exact_missing_sites).toBe(
+        report.coverage.functional_missing_sites,
+      );
+      expect(report.reference.source).toBe(referenceManifestPath);
+      expect(report.reference.git?.commit).toMatch(/^[0-9a-f]{40}$/);
       expect(
-        report.missing.commands.filter((command) =>
-          command.startsWith("rednote/"),
-        ),
-      ).toEqual([]);
-      expect(
-        report.missing.commands.filter((command) =>
-          /^(aibase|arxiv|bbc|codex|coingecko|crates|dblp|defillama|devto|dockerhub|endoflife|flathub|goproxy|hackernews|hf|homebrew|lichess|lobsters|maven|mdn|medium|npm|nuget|nvd|oeis|openalex|openfda|openreview|osv|packagist|pubmed|pypi|reddit|rest-countries|reuters|rfc|rubygems|stackoverflow|steam|tvmaze|uisdc|wikidata|wikipedia|wttr|zhihu)\//.test(
-            command,
-          ),
-        ),
-      ).toEqual([]);
-      expect(
-        report.missing.commands.filter((command) =>
-          command.startsWith("ctrip/"),
-        ),
-      ).toEqual([]);
+        report.ledger.commands
+          .filter((entry) => entry.status === "missing")
+          .map((entry) => entry.reference_command)
+          .sort(),
+      ).toEqual(report.missing.commands);
       expect(report.archived.commands).toContain("ctrip/search");
       expect(
         report.ledger.commands.find(
@@ -265,5 +266,58 @@ describe("surface coverage benchmark", () => {
       unclassified_commands: [],
       functional_command_coverage: 1,
     });
+
+    expect(() =>
+      buildCommandParityLedger(reference, uni, archived, [
+        {
+          reference_command: "github/repo",
+          status: "equivalent",
+          uni_command: "github/missing",
+          rationale: "A non-existent command cannot establish parity.",
+        },
+      ]),
+    ).toThrow("targets unknown Uni-CLI command");
   });
+
+  referenceCoverageIt(
+    "keeps exact and evidence-backed functional coverage distinct",
+    () => {
+      const commandMappings = JSON.parse(
+        readFileSync(
+          join(process.cwd(), "bench", "surface-parity-mappings.json"),
+          "utf8",
+        ),
+      );
+      const report = buildSurfaceCoverageReport({
+        repoRoot: process.cwd(),
+        commandMappings,
+      });
+
+      expect(report.coverage.functional_command_coverage).toBeGreaterThan(
+        report.coverage.exact_command_coverage,
+      );
+      expect(report.coverage.exact_missing_commands).toBe(
+        report.coverage.missing_commands + 4,
+      );
+      expect(report.coverage.functional_missing_sites).toBe(
+        report.coverage.exact_missing_sites - 1,
+      );
+      expect(report.missing.sites).toContain("semanticscholar");
+      expect(report.missing.functional_sites).not.toContain("semanticscholar");
+      expect(
+        report.ledger.commands.find(
+          (entry) =>
+            entry.reference_command === "semanticscholar/recommendations",
+        ),
+      ).toMatchObject({
+        status: "strict-superset",
+        evidence: expect.arrayContaining([
+          expect.objectContaining({
+            kind: "mapping",
+            command: "semantic-scholar/recommendations",
+          }),
+        ]),
+      });
+    },
+  );
 });

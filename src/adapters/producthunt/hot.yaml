@@ -1,6 +1,7 @@
 site: producthunt
 name: hot
 description: ProductHunt trending products (RSS)
+operation_effect: read
 domain: www.producthunt.com
 type: web-api
 strategy: public

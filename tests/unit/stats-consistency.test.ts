@@ -81,7 +81,7 @@ describe("stats SSOT", () => {
         stats.adapter_count_yaml + stats.adapter_count_ts,
       );
       expect(stats.pipeline_step_count).toBeGreaterThan(0);
-      expect(stats.pipeline_registered_step_count).toBe(50);
+      expect(stats.pipeline_registered_step_count).toBe(58);
       expect(stats.pipeline_transport_step_count).toBe(55);
       expect(stats.pipeline_step_count).toBe(
         stats.pipeline_registered_step_count +

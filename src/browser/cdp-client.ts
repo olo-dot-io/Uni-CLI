@@ -149,8 +149,8 @@ function debugLog(message: string): void {
  * validated and THROWS on a malformed value (a bad port is a configuration error
  * the agent must see, not a silent fall-back to 9222), else the default.
  *
- * This replaces four divergent inline parsers (cookie-extractor threw, while
- * cookie-refresh / browser-helpers / launcher silently kept 9222 on garbage).
+ * This replaces divergent inline parsers (cookie-extractor threw, while
+ * browser helpers and launcher silently kept 9222 on garbage).
  */
 export function resolveCdpPort(explicit?: number): number {
   if (explicit !== undefined) return explicit;

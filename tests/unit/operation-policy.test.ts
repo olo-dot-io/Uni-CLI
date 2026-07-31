@@ -39,6 +39,8 @@ describe("operation policy", () => {
     expect(policy).toMatchObject({
       profile: "open",
       effect: "send_message",
+      effect_source: "heuristic",
+      effect_confidence: "medium",
       risk: "high",
       approval_required: false,
       enforcement: "allow",
@@ -52,6 +54,50 @@ describe("operation policy", () => {
         persistence: "not_persisted",
         decision: "not_approved",
       },
+    });
+  });
+
+  it("defaults unproven commands to unknown_write instead of read", () => {
+    const policy = evaluateOperationPolicy({
+      site: "new-provider",
+      command: "frobnicate",
+      description: "Perform the provider operation",
+    });
+
+    expect(policy).toMatchObject({
+      effect: "unknown_write",
+      effect_source: "default",
+      effect_confidence: "low",
+      risk: "high",
+    });
+  });
+
+  it("requires confirmation for an undeclared effect in confirm profile", () => {
+    const policy = evaluateOperationPolicy({
+      site: "new-provider",
+      command: "frobnicate",
+      description: "Perform the provider operation",
+      profile: "confirm",
+    });
+
+    expect(policy).toMatchObject({
+      effect: "unknown_write",
+      risk: "high",
+      approval_required: true,
+      enforcement: "needs_approval",
+    });
+  });
+
+  it("reports explicit effects as high-confidence declared truth", () => {
+    const policy = evaluateOperationPolicy({
+      site: "fixture",
+      command: "frobnicate",
+      effect: "read",
+    });
+    expect(policy).toMatchObject({
+      effect: "read",
+      effect_source: "declared",
+      effect_confidence: "high",
     });
   });
 
@@ -92,7 +138,7 @@ describe("operation policy", () => {
     });
   });
 
-  it("does not classify read-style post detail commands as publishing", () => {
+  it("does not infer read from an ambiguous post-detail description", () => {
     const effect = inferOperationEffect({
       site: "jike",
       command: "post",
@@ -100,7 +146,54 @@ describe("operation policy", () => {
       args: [{ name: "id", required: true }],
     });
 
-    expect(effect).toBe("read");
+    expect(effect).toBe("unknown_write");
+  });
+
+  it("infers a conservative read from a read-family GET pipeline with no mutation primitive", () => {
+    const policy = evaluateOperationPolicy({
+      site: "news",
+      command: "hot",
+      description: "Current hot stories",
+      operationFamily: "list",
+      pipeline: [
+        { fetch: { url: "https://example.test/hot", method: "GET" } },
+        { map: { title: "${{ item.title }}" } },
+      ],
+    });
+
+    expect(policy).toMatchObject({
+      effect: "read",
+      effect_source: "heuristic",
+      effect_confidence: "medium",
+      risk: "low",
+    });
+  });
+
+  it("does not infer read when a nominal read family contains a mutation", () => {
+    const policy = evaluateOperationPolicy({
+      site: "fixture",
+      command: "list",
+      operationFamily: "list",
+      pipeline: [
+        { fetch: { url: "https://example.test/items", method: "POST" } },
+      ],
+    });
+    expect(policy.effect).toBe("unknown_write");
+  });
+
+  it("keeps opaque evaluate pipelines below high-confidence read", () => {
+    const policy = evaluateOperationPolicy({
+      site: "fixture",
+      command: "list",
+      operationFamily: "list",
+      pipeline: [{ evaluate: { expression: "document.title" } }],
+    });
+
+    expect(policy).toMatchObject({
+      effect: "read",
+      effect_source: "heuristic",
+      effect_confidence: "medium",
+    });
   });
 
   it("keeps read-only desktop inspection commands open in locked profile", () => {

@@ -102,12 +102,39 @@ function httpRequest(
   });
 }
 
+function consentNonce(html: string): string {
+  const match = html.match(/name="consent_nonce" value="([a-f0-9]+)"/);
+  if (!match) throw new Error("authorization response did not contain nonce");
+  return match[1];
+}
+
+async function grantAuthorization(
+  port: number,
+  clientId: string,
+  challenge: string,
+  redirectUri: string,
+): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+  const authorization = await httpRequest(
+    port,
+    "GET",
+    `/oauth/authorize?response_type=code&client_id=${clientId}&code_challenge=${challenge}&code_challenge_method=S256&redirect_uri=${encodeURIComponent(redirectUri)}`,
+  );
+  return httpRequest(
+    port,
+    "POST",
+    "/oauth/authorize",
+    `consent_nonce=${consentNonce(authorization.body)}`,
+    { "Content-Type": "application/x-www-form-urlencoded" },
+  );
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 describe("OAuth 2.1 PKCE — unit tests", () => {
   beforeEach(() => {
     _test.authCodes.clear();
     _test.tokens.clear();
+    _test.consentTransactions.clear();
   });
 
   describe("sha256Base64url", () => {
@@ -199,7 +226,7 @@ describe("OAuth 2.1 PKCE — unit tests", () => {
     it("allows requests with valid token", () => {
       const middleware = createOAuthMiddleware();
       const token = _test.generateHex(32);
-      _test.tokens.set(token, {
+      _test.putToken(token, {
         clientId: "test",
         expiresAt: Date.now() + 3_600_000,
       });
@@ -214,7 +241,7 @@ describe("OAuth 2.1 PKCE — unit tests", () => {
     it("blocks expired tokens", () => {
       const middleware = createOAuthMiddleware();
       const token = _test.generateHex(32);
-      _test.tokens.set(token, {
+      _test.putToken(token, {
         clientId: "test",
         expiresAt: Date.now() - 1000,
       });
@@ -233,9 +260,10 @@ describe("OAuth 2.1 PKCE — unit tests", () => {
         clientId: "x",
         codeChallenge: "y",
         redirectUri: "http://localhost",
+        resource: "http://localhost/mcp",
         expiresAt: Date.now() - 1000,
       });
-      _test.tokens.set("expired-token", {
+      _test.putToken("expired-token", {
         clientId: "x",
         expiresAt: Date.now() - 1000,
       });
@@ -243,12 +271,42 @@ describe("OAuth 2.1 PKCE — unit tests", () => {
         clientId: "x",
         codeChallenge: "y",
         redirectUri: "http://localhost",
+        resource: "http://localhost/mcp",
         expiresAt: Date.now() + 60_000,
       });
       _test.pruneExpired();
       expect(_test.authCodes.has("expired-code")).toBe(false);
       expect(_test.tokens.has("expired-token")).toBe(false);
       expect(_test.authCodes.has("valid-code")).toBe(true);
+    });
+  });
+
+  it("publishes protected-resource and authorization-server metadata", () => {
+    const protectedReq = mockReq(
+      "GET",
+      "/.well-known/oauth-protected-resource",
+      { host: "localhost:8765" },
+    );
+    const protectedRes = mockRes();
+    expect(handleOAuthRoute(protectedReq, protectedRes)).toBe(true);
+    expect(JSON.parse(protectedRes._mock.body)).toEqual({
+      resource: "http://localhost:8765/mcp",
+      authorization_servers: ["http://localhost:8765"],
+      bearer_methods_supported: ["header"],
+    });
+
+    const serverReq = mockReq(
+      "GET",
+      "/.well-known/oauth-authorization-server",
+      { host: "localhost:8765" },
+    );
+    const serverRes = mockRes();
+    expect(handleOAuthRoute(serverReq, serverRes)).toBe(true);
+    expect(JSON.parse(serverRes._mock.body)).toMatchObject({
+      issuer: "http://localhost:8765",
+      authorization_endpoint: "http://localhost:8765/oauth/authorize",
+      token_endpoint: "http://localhost:8765/oauth/token",
+      code_challenge_methods_supported: ["S256"],
     });
   });
 });
@@ -261,6 +319,7 @@ describe("OAuth 2.1 PKCE — integration (HTTP server)", () => {
   beforeEach(async () => {
     _test.authCodes.clear();
     _test.tokens.clear();
+    _test.consentTransactions.clear();
 
     server = createServer((req: IncomingMessage, res: ServerResponse) => {
       if (handleOAuthRoute(req, res)) return;
@@ -308,7 +367,7 @@ describe("OAuth 2.1 PKCE — integration (HTTP server)", () => {
       port,
       "POST",
       "/oauth/authorize",
-      `client_id=${clientId}&code_challenge=${challenge}&redirect_uri=${encodeURIComponent(redirectUri)}`,
+      `consent_nonce=${consentNonce(authRes.body)}`,
       { "Content-Type": "application/x-www-form-urlencoded" },
     );
     expect(grantRes.status).toBe(302);
@@ -353,12 +412,11 @@ describe("OAuth 2.1 PKCE — integration (HTTP server)", () => {
     const redirectUri = "http://localhost:9999/callback";
 
     // Grant
-    const grantRes = await httpRequest(
+    const grantRes = await grantAuthorization(
       port,
-      "POST",
-      "/oauth/authorize",
-      `client_id=${clientId}&code_challenge=${challenge}&redirect_uri=${encodeURIComponent(redirectUri)}`,
-      { "Content-Type": "application/x-www-form-urlencoded" },
+      clientId,
+      challenge,
+      redirectUri,
     );
     const code = grantRes.headers.location.match(/code=([a-f0-9]+)/)![1];
 
@@ -390,12 +448,11 @@ describe("OAuth 2.1 PKCE — integration (HTTP server)", () => {
     const redirectUri = "http://localhost:9999/callback";
 
     // Grant
-    const grantRes = await httpRequest(
+    const grantRes = await grantAuthorization(
       port,
-      "POST",
-      "/oauth/authorize",
-      `client_id=${clientId}&code_challenge=${challenge}&redirect_uri=${encodeURIComponent(redirectUri)}`,
-      { "Content-Type": "application/x-www-form-urlencoded" },
+      clientId,
+      challenge,
+      redirectUri,
     );
     const code = grantRes.headers.location.match(/code=([a-f0-9]+)/)![1];
 

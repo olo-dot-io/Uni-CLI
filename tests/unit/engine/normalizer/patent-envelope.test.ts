@@ -118,7 +118,7 @@ describe("buildPatentEnvelope", () => {
     ).toBe(69);
   });
 
-  it("maps PATENT_INVALID_NUMBER to exit 65", () => {
+  it("maps PATENT_INVALID_NUMBER to usage exit 2", () => {
     expect(
       buildPatentEnvelope({
         code: "PATENT_INVALID_NUMBER",
@@ -126,10 +126,10 @@ describe("buildPatentEnvelope", () => {
         step: "s",
         suggestion: "fix",
       }).exit_code,
-    ).toBe(65);
+    ).toBe(2);
   });
 
-  it("maps unknown taxonomy codes (browser captcha) to default 1", () => {
+  it("maps browser captcha to auth-required exit 77", () => {
     expect(
       buildPatentEnvelope({
         code: "PATENT_BROWSER_CAPTCHA",
@@ -137,7 +137,7 @@ describe("buildPatentEnvelope", () => {
         step: "s",
         suggestion: "open the browser",
       }).exit_code,
-    ).toBe(1);
+    ).toBe(77);
   });
 
   it("preserves retryable and alternatives when supplied", () => {

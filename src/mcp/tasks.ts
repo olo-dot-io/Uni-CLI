@@ -1,8 +1,8 @@
 /**
  * @owner       src::mcp::tasks
- * @does        Own the transport-independent MCP 2025-11-25 durable task state machine, session isolation, cancellation settlement, pagination, and exact result retrieval.
+ * @does        Own the legacy MCP 2025-11-25 durable task state machine, session isolation, cancellation settlement, pagination, and exact result retrieval.
  * @needs       node:crypto, shared JSON-RPC contracts, structural outcome-ambiguity errors
- * @feeds       MCP handler across stdio and Streamable HTTP transports
+ * @feeds       Legacy-era MCP handler paths across stdio and Streamable HTTP transports
  * @breaks      Losing a task or releasing active capacity before its operation settles can hide or replay an external mutation.
  * @invariants  Tasks begin working; task ids are receiver-generated/session-scoped; terminal status never changes; cancellation responds only after settlement; tasks/result blocks until settlement and returns the exact underlying result/error; isError tool results fail the task; active and retained state are bounded.
  * @side-effects Owns request-scoped AbortControllers and an in-memory bounded task registry.

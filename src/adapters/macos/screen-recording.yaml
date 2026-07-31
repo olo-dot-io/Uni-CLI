@@ -28,13 +28,21 @@ pipeline:
       parse: text
       timeout: "${{ ((args.duration || 10) + 5) * 1000 }}"
 
-  - evaluate: "JSON.stringify([{ file: ${{ (args.file || '/tmp/recording.mov') | json }}, duration: ${{ args.duration || 10 }}, status: 'recorded' }])"
+  - map:
+      file: "${{ args.file || '/tmp/recording.mov' }}"
+      duration: "${{ args.duration || 10 }}"
+      status: recorded
 
 columns: [file, duration, status]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["cdp-browser.evaluate", "subprocess.exec"]
+capabilities: ["subprocess.exec"]
 minimum_capability: subprocess.exec
+target_surface: system
+operation_effect: local_file
+operation_family: capture
+execution_operator: native-cli
+idempotency: conditional
 trust: user
 confidentiality: public
 quarantine: false

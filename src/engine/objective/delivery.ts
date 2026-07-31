@@ -72,7 +72,7 @@ function deliveryStrategyKind(
     case "desktop-ax":
     case "desktop-cdp":
       return "desktop";
-    case "visual-fallback":
+    case "visual-coordinate":
       return "manual";
     case "native-api":
       return "adapter";

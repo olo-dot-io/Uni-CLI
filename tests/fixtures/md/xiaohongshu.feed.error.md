@@ -11,7 +11,7 @@ operator: cdp-native
 
 - **code**: selector_miss
 - **message**: Pinia store action fetchFeeds not intercepted within 8000ms timeout on xiaohongshu.com/explore
-- **adapter_path**: src/adapters/xiaohongshu/feed.yaml
+- **adapter_path**: src/adapters/xiaohongshu/feed.ts
 - **step**: 2
 - **retryable**: true
 

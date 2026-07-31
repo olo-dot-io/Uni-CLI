@@ -1,10 +1,10 @@
 /**
  * @owner       src::mcp::streamable-http
- * @does        Serve one MCP 2025-11-25 Streamable HTTP runtime with authenticated session ownership, cross-connection cancellation, and awaited teardown.
+ * @does        Serve dual-era Streamable HTTP: stateless MCP 2026-07-28 requests and session-owned MCP 2025-11-25 compatibility.
  * @needs       node:http, OAuth middleware, POST dispatcher, shared session state
  * @feeds       Uni-CLI MCP HTTP server and tests
  * @breaks      Returning from DELETE/server close before handler containment can discard a committed task result or let a detached mutation continue.
- * @invariants  Every route validates Origin; GET /mcp is 405 when no server stream exists; DELETE validates protocol/principal and removes authority before containment; explicit cancellation is session/id scoped; socket loss is not cancellation; server close stops intake and awaits requests plus tasks; no transport-private task protocol exists.
+ * @invariants  Every route validates Origin; modern POSTs validate mirrored headers and mint no session; legacy DELETE validates protocol/principal and removes authority before containment; modern stream loss cancels its request while legacy socket loss preserves durable work; server close stops intake and awaits requests plus tasks; no transport-private task protocol exists.
  * @side-effects Listens on loopback HTTP, owns one pruning timer/session registry, and awaits handler lifecycle hooks.
  * @perf        One HTTP server and one unref'd bounded pruning timer.
  * @concurrency Requests overlap on the event loop; shutdown is idempotent and represented by one shared Promise.
@@ -20,7 +20,12 @@ import {
   type ServerResponse,
 } from "node:http";
 
-import { MCP_PROTOCOL_VERSION, VERSION } from "../../constants.js";
+import {
+  MCP_MODERN_PROTOCOL_VERSION,
+  MCP_PROTOCOL_VERSION,
+  MCP_SUPPORTED_PROTOCOL_VERSIONS,
+  VERSION,
+} from "../../constants.js";
 import {
   createOAuthMiddleware,
   getAuthenticatedPrincipal,
@@ -126,7 +131,7 @@ function handleOptions(req: IncomingMessage, res: ServerResponse): void {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Authorization, Accept",
+      "Content-Type, MCP-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Authorization, Accept",
     "Access-Control-Expose-Headers": "MCP-Session-Id, MCP-Protocol-Version",
     "Access-Control-Max-Age": "86400",
   });
@@ -174,6 +179,7 @@ function route(
         version: VERSION,
         sessions: sessions.size,
         protocolVersion: MCP_PROTOCOL_VERSION,
+        supportedProtocolVersions: [...MCP_SUPPORTED_PROTOCOL_VERSIONS],
       },
       undefined,
       req,
@@ -287,14 +293,21 @@ export async function startStreamableHttp(
         clearInterval(pruneTimer);
         const stopped = closeNodeServer(server);
         sessions.clear();
-        const containment = Promise.all([
-          activeRequests.closeAll(reason),
-          handler.closeAll?.(reason) ?? Promise.resolve(),
-        ]);
-        const [stopResult, containmentResult] = await Promise.allSettled([
-          stopped,
-          containment,
-        ]);
+        const containment = (async () => {
+          await handler.closeSubscriptions?.(reason);
+          await activeRequests.waitForMethodSettlements("subscriptions/listen");
+          await Promise.all([
+            activeRequests.closeAll(reason),
+            handler.closeAll?.(reason) ?? Promise.resolve(),
+          ]);
+        })();
+        const containmentResult = await Promise.allSettled([containment]).then(
+          ([result]) => result!,
+        );
+        server.closeIdleConnections();
+        const stopResult = await Promise.allSettled([stopped]).then(
+          ([result]) => result!,
+        );
         if (activeServer === runtime) activeServer = undefined;
         if (stopResult.status === "rejected") throw stopResult.reason;
         if (containmentResult.status === "rejected") {
@@ -310,7 +323,7 @@ export async function startStreamableHttp(
     `unicli MCP server v${VERSION} — Streamable HTTP transport on http://127.0.0.1:${boundPort}\n` +
       `  MCP endpoint: GET/POST/DELETE http://127.0.0.1:${boundPort}/mcp\n` +
       `  Health check: GET             http://127.0.0.1:${boundPort}/health\n` +
-      `  Protocol:     ${MCP_PROTOCOL_VERSION}\n`,
+      `  Protocols:    ${MCP_MODERN_PROTOCOL_VERSION}, ${MCP_PROTOCOL_VERSION}\n`,
   );
   return runtime.port;
 }
@@ -358,4 +371,5 @@ export const _test = {
   SESSION_TTL_MS,
   HEARTBEAT_MS,
   MCP_PROTOCOL_VERSION,
+  MCP_MODERN_PROTOCOL_VERSION,
 } as const;

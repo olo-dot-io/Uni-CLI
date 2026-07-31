@@ -29,13 +29,19 @@
  * @since        2026-05-18
  */
 
-import { Command } from "commander";
-import { search } from "../discovery/search.js";
+import { Command, Option } from "commander";
+import { search, type SearchResult } from "../discovery/search.js";
 import { commandUsesBrowser, getAdapter, resolveCommand } from "../registry.js";
 import { describeCommand } from "./describe.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
 import { buildDeliveryOperatorSpecTemplate } from "../engine/delivery/spec.js";
+import {
+  buildCommandContract,
+  buildCoreCommandContract,
+} from "../core/command-contract.js";
+import { buildArgumentExample } from "../core/argument-schema.js";
+import { getCoreDiscoveryCommand } from "../discovery/core-catalog.js";
 import {
   buildObjectiveDoPayload,
   buildObjectiveNextActions,
@@ -47,7 +53,21 @@ import type {
   AgentNextActionParam,
 } from "../output/envelope.js";
 import type { DeliveryOperatorSpec } from "../engine/delivery/spec.js";
-import type { OutputFormat } from "../types.js";
+import type { CommandOperatorProfile } from "../core/operator-model.js";
+import {
+  evaluateCommandFeasibility,
+  mergeCapabilityRequirements,
+  parseIntentCapabilityPlan,
+  type CapabilityRequirements,
+  type CommandFeasibility,
+} from "../discovery/feasibility.js";
+import type {
+  ExecutionOperator,
+  OperationEffect,
+  OperatorTargetScope,
+  OutputFormat,
+  TargetSurface,
+} from "../types.js";
 
 const DEFAULT_TOP = 3;
 const SCORE_FLOOR = 0.0;
@@ -55,6 +75,13 @@ const SCORE_FLOOR = 0.0;
 interface DoOpts {
   top: string;
   schema: boolean;
+  operator?: ExecutionOperator;
+  surface?: TargetSurface;
+  scope?: OperatorTargetScope;
+  effect?: OperationEffect;
+  maxImpact?: "background" | "target-scoped" | "foreground";
+  platform?: NodeJS.Platform;
+  allowCoordinateActuation?: boolean;
 }
 
 interface MatchPayload {
@@ -65,6 +92,9 @@ interface MatchPayload {
   category: string;
   args_schema?: Record<string, unknown> | string;
   example_stdin?: Record<string, unknown> | string;
+  invocation?: string;
+  operator?: CommandOperatorProfile;
+  feasibility?: CommandFeasibility;
 }
 
 export function registerDoCommand(program: Command): void {
@@ -81,6 +111,77 @@ export function registerDoCommand(program: Command): void {
     .option(
       "--no-schema",
       "Omit args_schema and example_stdin from each match payload",
+    )
+    .addOption(
+      new Option(
+        "--operator <operator>",
+        "require one execution operator",
+      ).choices([
+        "structured-api",
+        "browser-protocol",
+        "native-cli",
+        "browser-semantic",
+        "desktop-accessibility",
+        "visual-observation",
+        "visual-coordinate",
+        "local-runtime",
+      ]),
+    )
+    .addOption(
+      new Option("--surface <surface>", "require one target surface").choices([
+        "web",
+        "desktop",
+        "system",
+        "mobile",
+      ]),
+    )
+    .addOption(
+      new Option(
+        "--scope <scope>",
+        "require one exact operator target scope",
+      ).choices([
+        "service",
+        "host-process",
+        "browser-renderer",
+        "native-window",
+        "desktop",
+        "local-runtime",
+      ]),
+    )
+    .addOption(
+      new Option("--effect <effect>", "require one operation effect").choices([
+        "read",
+        "download_file",
+        "send_message",
+        "publish_content",
+        "account_state",
+        "remote_transform",
+        "remote_resource",
+        "service_state",
+        "local_app",
+        "local_file",
+        "destructive",
+        "unknown_write",
+      ]),
+    )
+    .addOption(
+      new Option(
+        "--max-impact <impact>",
+        "reject candidates exceeding this interaction impact",
+      ).choices(["background", "target-scoped", "foreground"]),
+    )
+    .addOption(
+      new Option(
+        "--platform <platform>",
+        "require a statically compatible host platform",
+      )
+        .choices(["darwin", "win32", "linux"])
+        .default(process.platform),
+    )
+    .option(
+      "--allow-coordinate-actuation",
+      "authorize visual-coordinate candidates when no coordinate operator is explicitly required",
+      false,
     )
     .action((intentParts: string[], opts: DoOpts) => {
       const startedAt = Date.now();
@@ -110,46 +211,45 @@ export function registerDoCommand(program: Command): void {
       }
 
       const objectivePlan = compileObjectivePlan(intent);
-      const results = search(intent, top);
+      const intentPlan = parseIntentCapabilityPlan(intent);
+      const requirements = doRequirements(intentPlan.requirements, opts);
+      const results = search(intentPlan.task_text, top, { requirements });
       const filtered = results.filter((r) => r.score > SCORE_FLOOR);
+      const hardRequirements = hasHardRequirements(requirements);
+      const semanticResults = search(
+        intentPlan.task_text,
+        Math.min(TOP_HARD_LIMIT, Math.max(top * 3, 10)),
+      ).filter((result) => result.score > SCORE_FLOOR);
 
       if (!objectivePlan && filtered.length === 0) {
-        emitEmpty(startedAt, fmt, intent, "no adapter scored above the floor");
-        return;
+        if (!hardRequirements || semanticResults.length === 0) {
+          emitEmpty(
+            startedAt,
+            fmt,
+            intent,
+            "no adapter scored above the floor",
+          );
+          return;
+        }
       }
 
-      const matches: MatchPayload[] = filtered.map((r) => {
-        const m: MatchPayload = {
-          site: r.site,
-          command: r.command,
-          score: round(r.score, 4),
-          description: r.description,
-          category: r.category,
-        };
-        if (includeSchema) {
-          const resolved = resolveCommand(r.site, r.command);
-          if (resolved) {
-            const adapter = getAdapter(r.site);
-            const desc = describeCommand(
-              r.site,
-              r.command,
-              resolved.command,
-              adapter,
-            );
-            const argsSchema = desc.args_schema as
-              | Record<string, unknown>
-              | string
-              | undefined;
-            const example = desc.example_stdin as
-              | Record<string, unknown>
-              | string
-              | undefined;
-            if (argsSchema !== undefined) m.args_schema = argsSchema;
-            if (example !== undefined) m.example_stdin = example;
-          }
-        }
-        return m;
-      });
+      const matches = filtered.map((result) =>
+        enrichMatch(result, requirements, includeSchema),
+      );
+      const selectedIds = new Set(
+        matches.map((match) => `${match.site}/${match.command}`),
+      );
+      const blockedMatches = semanticResults
+        .filter(
+          (result) => !selectedIds.has(`${result.site}/${result.command}`),
+        )
+        .map((result) => enrichMatch(result, requirements, false))
+        .filter(
+          (match) =>
+            match.feasibility?.compatibility !== "compatible" &&
+            matchesRequestedIdentity(match, requirements),
+        )
+        .slice(0, top);
 
       if (objectivePlan) {
         const ctx: AgentContext = {
@@ -169,24 +269,43 @@ export function registerDoCommand(program: Command): void {
         return;
       }
 
-      const best = matches[0];
+      const best = hardRequirements
+        ? matches.find(
+            (match) => match.feasibility?.compatibility === "compatible",
+          )
+        : matches[0];
+      if (!best) {
+        emitRouteUnavailable(
+          startedAt,
+          fmt,
+          intent,
+          requirements,
+          blockedMatches,
+        );
+        return;
+      }
       const data: Record<string, unknown> = {
         intent,
-        match: best
-          ? {
-              site: best.site,
-              command: best.command,
-              score: best.score,
-              category: best.category,
-              description: best.description,
-              invocation: `unicli ${best.site} ${best.command}`,
-            }
-          : null,
+        match: {
+          site: best.site,
+          command: best.command,
+          score: best.score,
+          category: best.category,
+          description: best.description,
+          invocation: commandInvocation(best),
+          ...(best.operator ? { operator: best.operator } : {}),
+        },
         candidates: matches,
+        blocked_candidates: blockedMatches,
+        routing_policy: {
+          selection:
+            "BM25/intent ranking intersected with operation, operator, target, effect, platform, and interaction constraints before top-k selection",
+          requirements,
+          provider_recovery:
+            "provider failures require repair or explicit replanning; execution does not cross operators",
+        },
       };
-      const deliverySpecTemplate = best
-        ? deliverySpecTemplateForMatch(intent, best)
-        : undefined;
+      const deliverySpecTemplate = deliverySpecTemplateForMatch(intent, best);
       if (deliverySpecTemplate) {
         data.delivery_spec_template = deliverySpecTemplate;
       }
@@ -195,22 +314,211 @@ export function registerDoCommand(program: Command): void {
         command: "core.do",
         duration_ms: Date.now() - startedAt,
         surface: "web",
-        next_actions: best
-          ? successNextActions(
+        next_actions: successNextActions(
+          intent,
+          best,
+          matches,
+          Boolean(deliverySpecTemplate),
+        ),
+      };
+      const outputData =
+        fmt === "md"
+          ? markdownDoProjection(
               intent,
               best,
               matches,
-              Boolean(deliverySpecTemplate),
+              blockedMatches,
+              requirements,
             )
-          : [],
-      };
-      console.log(format(data, undefined, fmt, ctx));
+          : data;
+      console.log(format(outputData, undefined, fmt, ctx));
     });
+}
+
+function markdownDoProjection(
+  intent: string,
+  best: MatchPayload | undefined,
+  matches: MatchPayload[],
+  blockedMatches: MatchPayload[],
+  requirements: CapabilityRequirements,
+): Record<string, unknown> {
+  if (!best) {
+    return {
+      intent,
+      selected_command: null,
+      requirements,
+      blocked_candidates: blockedMatches.map((match) => ({
+        command: `${match.site} ${match.command}`,
+        operator: match.operator?.operator ?? "unknown",
+        operation_family:
+          match.feasibility?.contract?.operation_family ?? "unknown",
+        compatibility: match.feasibility?.compatibility ?? "unknown",
+        rejected_by: match.feasibility?.rejected_by ?? [],
+        uncertain_by: match.feasibility?.uncertain_by ?? [],
+      })),
+    };
+  }
+  return {
+    intent,
+    selected_command: `${best.site} ${best.command}`,
+    invocation: commandInvocation(best),
+    description: best.description,
+    score: best.score,
+    operator: best.operator?.operator ?? "unknown",
+    operation_family: best.feasibility?.contract?.operation_family ?? "unknown",
+    operator_source: best.operator?.operator_source ?? "unknown",
+    operator_confidence: best.operator?.operator_confidence ?? "unknown",
+    provider: best.operator?.provider ?? "unknown",
+    target_scope: best.operator?.target_scope ?? "unknown",
+    interaction_impact: best.operator?.interaction_impact ?? "unknown",
+    contract_compatibility: best.feasibility?.compatibility ?? "unknown",
+    runtime_readiness: "not_evaluated",
+    selection_reason: best.operator?.selection_reason ?? "no operator profile",
+    requirements,
+    repair_command: `unicli describe ${best.site} ${best.command}`,
+    alternatives: matches
+      .slice(1)
+      .map(
+        (match) =>
+          `${match.site} ${match.command} (${match.score}, ${match.operator?.operator ?? "unknown"})`,
+      ),
+  };
+}
+
+function doRequirements(
+  inferred: CapabilityRequirements,
+  opts: DoOpts,
+): CapabilityRequirements {
+  const explicit: CapabilityRequirements = {
+    operator: opts.operator,
+    target_surface: opts.surface,
+    target_scope: opts.scope,
+    effect: opts.effect,
+    max_interaction_impact: opts.maxImpact,
+    platform: opts.platform,
+    allow_coordinate_actuation:
+      opts.allowCoordinateActuation === true ||
+      opts.operator === "visual-coordinate",
+  };
+  const merged = mergeCapabilityRequirements(inferred, explicit);
+  return merged;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const TOP_HARD_LIMIT = 25;
+
+function enrichMatch(
+  result: SearchResult,
+  requirements: CapabilityRequirements,
+  includeSchema: boolean,
+): MatchPayload {
+  const match: MatchPayload = {
+    site: result.site,
+    command: result.command,
+    score: round(result.score, 4),
+    description: result.description,
+    category: result.category,
+  };
+  const resolved = resolveCommand(result.site, result.command);
+  if (resolved) {
+    match.operator = buildCommandContract({
+      adapter: resolved.adapter,
+      commandName: result.command,
+      command: resolved.command,
+    }).execution;
+    if (includeSchema) {
+      const adapter = getAdapter(result.site);
+      const description = describeCommand(
+        result.site,
+        result.command,
+        resolved.command,
+        adapter,
+      );
+      const argsSchema = description.args_schema as
+        | Record<string, unknown>
+        | string
+        | undefined;
+      const example = description.example_stdin as
+        | Record<string, unknown>
+        | string
+        | undefined;
+      const channels = description.channels as
+        | Record<string, unknown>
+        | undefined;
+      if (argsSchema !== undefined) match.args_schema = argsSchema;
+      if (example !== undefined) match.example_stdin = example;
+      if (typeof channels?.shell === "string") {
+        match.invocation = channels.shell;
+      }
+    }
+  }
+  if (!match.operator) {
+    const coreCommand = getCoreDiscoveryCommand(result.site, result.command);
+    if (coreCommand) {
+      const contract = buildCoreCommandContract({
+        command: coreCommand,
+      });
+      match.operator = contract.execution;
+      match.invocation =
+        coreCommand.channels?.shell ??
+        `unicli ${coreCommand.site} ${coreCommand.command}`;
+      if (includeSchema) {
+        match.args_schema = { ...contract.schemas.input };
+        match.example_stdin = buildArgumentExample(coreCommand.args ?? []);
+      }
+    }
+  }
+  match.feasibility = evaluateCommandFeasibility(
+    result.site,
+    result.command,
+    requirements,
+  );
+  return match;
+}
+
+function hasHardRequirements(requirements: CapabilityRequirements): boolean {
+  return (
+    (requirements.required_sites?.length ?? 0) > 0 ||
+    requirements.operation_family !== undefined ||
+    requirements.operator !== undefined ||
+    requirements.target_surface !== undefined ||
+    requirements.target_scope !== undefined ||
+    requirements.effect !== undefined ||
+    requirements.allow_browser === false ||
+    (requirements.forbidden_operators?.length ?? 0) > 0
+  );
+}
+
+function matchesRequestedIdentity(
+  match: MatchPayload,
+  requirements: CapabilityRequirements,
+): boolean {
+  const profile = match.feasibility?.contract;
+  return (
+    (!requirements.required_sites ||
+      requirements.required_sites.includes(match.site)) &&
+    (!requirements.operation_family ||
+      profile?.operation_family === requirements.operation_family)
+  );
+}
+
+function blockedNextActions(blockedMatches: MatchPayload[]): AgentNextAction[] {
+  const blocked = blockedMatches[0];
+  if (!blocked) return [];
+  return [
+    {
+      command: `unicli describe ${blocked.site} ${blocked.command}`,
+      description:
+        "Inspect the closest semantic command and its incompatible operator contract",
+    },
+    {
+      command: `unicli search "${blocked.site} ${blocked.command}"`,
+      description:
+        "Replan explicitly by relaxing either the provider or substrate constraint",
+    },
+  ];
+}
 
 /**
  * Parse `--top`. Throws on invalid input — caller converts to an
@@ -233,6 +541,16 @@ function round(n: number, digits: number): number {
   return Math.round(n * m) / m;
 }
 
+function commandInvocation(match: MatchPayload): string {
+  return match.invocation ?? `unicli ${match.site} ${match.command}`;
+}
+
+function stdinJsonInvocation(match: MatchPayload): string {
+  const payload = JSON.stringify(recordValue(match.example_stdin) ?? {});
+  const quoted = payload.replaceAll("'", "'\\''");
+  return `printf '%s\\n' '${quoted}' | unicli ${match.site} ${match.command}`;
+}
+
 function successNextActions(
   intent: string,
   best: MatchPayload,
@@ -253,7 +571,7 @@ function successNextActions(
   // delivery evidence collection for an inspect-only or manually supervised run.
   const params = argsSchemaToParams(best.args_schema);
   actions.push({
-    command: `unicli ${best.site} ${best.command}`,
+    command: commandInvocation(best),
     description: `Invoke the top-scored match (${best.score})`,
     ...(params ? { params } : {}),
   });
@@ -265,11 +583,13 @@ function successNextActions(
   });
 
   // Stdin-JSON channel for payloads with quoting hazards
-  actions.push({
-    command: `echo '{}' | unicli ${best.site} ${best.command}`,
-    description:
-      "Stdin-JSON channel — use when params contain quotes/emoji/JSON",
-  });
+  if (!best.invocation) {
+    actions.push({
+      command: stdinJsonInvocation(best),
+      description:
+        "Stdin-JSON channel — use when params contain quotes/emoji/JSON",
+    });
+  }
 
   // Surface a runner-up if it scored close to the top
   if (
@@ -279,7 +599,7 @@ function successNextActions(
   ) {
     const runner = matches[1];
     actions.push({
-      command: `unicli ${runner.site} ${runner.command}`,
+      command: commandInvocation(runner),
       description: `Runner-up (score ${runner.score}) — consider if top match misreads intent`,
     });
   }
@@ -390,6 +710,49 @@ function emitEmpty(
       retryable: false,
       suggestion:
         "Use simpler keywords or run `unicli describe` to see the full catalogue",
+    },
+  };
+  printErrorEnvelope({ fmt, exitCode: 66, ctx });
+}
+
+function emitRouteUnavailable(
+  startedAt: number,
+  fmt: OutputFormat,
+  intent: string,
+  requirements: CapabilityRequirements,
+  blockedMatches: MatchPayload[],
+): void {
+  const blockedCandidates = blockedMatches.map((match) => ({
+    site: match.site,
+    command: match.command,
+    score: match.score,
+    operator: match.operator?.operator ?? "unknown",
+    operation_family:
+      match.feasibility?.contract?.operation_family ?? "unknown",
+    effect: match.feasibility?.contract?.effect ?? "unknown_write",
+    rejected_by: match.feasibility?.rejected_by ?? [],
+    uncertain_by: match.feasibility?.uncertain_by ?? [],
+  }));
+  const ctx: AgentContext = {
+    command: "core.do",
+    duration_ms: Date.now() - startedAt,
+    surface: "web",
+    next_actions: blockedNextActions(blockedMatches),
+    error: {
+      code: "route_unavailable",
+      message:
+        "No command satisfies the requested site, operation, and execution constraints.",
+      retryable: false,
+      suggestion:
+        "Inspect the blocked candidate contract, repair that capability, or explicitly replan one constraint.",
+      alternatives: blockedMatches.map(
+        (match) => `unicli describe ${match.site} ${match.command}`,
+      ),
+      details: {
+        intent,
+        requirements,
+        blocked_candidates: blockedCandidates,
+      },
     },
   };
   printErrorEnvelope({ fmt, exitCode: 66, ctx });

@@ -66,6 +66,8 @@ cli({
     },
   ],
   columns: ["title", "subreddit", "author", "score", "comments", "url"],
+  operation_effect: "read",
+  execution_operator: "browser-protocol",
   retrieval: {
     operation: "discover",
     result_kind: "post",
