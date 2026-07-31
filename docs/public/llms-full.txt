@@ -4,11 +4,11 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Static adapter sites: 324
-- Registered adapter commands: 1817
+- Static adapter sites: 326
+- Registered adapter commands: 1829
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1237
-- Built-in actions: 105 (50 registered + 55 transport-native)
+- Adapters: 1226
+- Built-in actions: 113 (58 registered + 55 transport-native)
 
 ---
 
@@ -66,10 +66,10 @@ Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, bro
 
 ## Coverage
 
-- Static adapter sites: 324
-- Registered adapter operations: 1817
-- Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9816
+- Static adapter sites: 326
+- Registered adapter operations: 1829
+- Built-in actions: 113 (58 registered + 55 transport-native)
+- Tests: 9983
 
 Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
@@ -82,7 +82,7 @@ Site and operation totals describe the static adapter catalog; fixed core and ho
 
 ## Current Version
 
-Latest: v0.400.2 · Apollo · Duke.
+Local release: v1.0.0 · Artemis · Glover.
 
 ## Agent Index
 
@@ -439,14 +439,14 @@ page-native tools, and per-app harnesses are useful, but they are not Uni-CLI's
 category. They are concrete technical boundaries that the Agent-Computer
 Interface can execute through or expose.
 
-| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                              |
-| ----------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, structured results          |
-| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | declared strategies, recordings, diagnostics             |
-| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions and platform diagnostics                |
-| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability               |
-| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | adapter projection today; broader parity on the roadmap  |
-| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: only claim paths that can see and act |
+| Substrate          | What it contributes                                               | What Uni-CLI keeps above it                             |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Web/API            | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, structured results         |
+| Browser            | CDP control, DOM/accessibility refs, screenshots, network capture | declared strategies, recordings, diagnostics            |
+| Desktop/OS         | installed apps, accessibility trees, screenshots, local state     | governed actions and platform diagnostics               |
+| Local tools/files  | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability              |
+| Protocols          | MCP, ACP, Streamable HTTP, JSON streams                           | adapter projection today; broader parity on the roadmap |
+| Visual coordinates | explicit pixel-only screen interaction                            | route gate, exact evidence, foreground impact           |
 
 ## Where it sits in the protocol stack
 
@@ -519,9 +519,9 @@ Five fields define the authoring unit: `site` (the integration name), `name` (th
 
 ## Internal pipeline registry
 
-The runtime exposes <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+The runtime exposes <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span>
 built-in action names, but they are not one flat programming language:
-<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> are
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> are
 registered pipeline actions and
 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> are
 low-level transport-native Visual/AX/UIA/AT-SPI actions. The budgets are
@@ -546,34 +546,39 @@ external state; the documentation does not call those effects deterministic.
 
 The pipeline runs top to bottom with a shared context object. Each step reads `ctx.data` and writes back. Templates (`${{ item.field }}`) interpolate from prior step outputs.
 
-## The strategy cascade
+## Declared web strategies
 
 Authentication is the messiest part of touching the modern web. An operation
-can declare one of five strategies, but they are not one automatic five-way
-cascade.
+declares one of five strategies. The runtime executes that declared path; it
+does not probe other strategies after failure.
 
-| Strategy    | Auth source                              | Typical cost                               |
-| ----------- | ---------------------------------------- | ------------------------------------------ |
-| `public`    | None                                     | Direct fetch                               |
-| `cookie`    | Explicit file or live browser/CDP memory | Inject into target request headers         |
-| `header`    | Cookie + auto-extracted CSRF             | Read CSRF, inject into target request      |
-| `intercept` | Live browser session                     | Navigate page, capture XHR/fetch responses |
-| `ui`        | Live browser session                     | Click, type, snapshot                      |
+| Strategy    | Auth source                               | Typical cost                               |
+| ----------- | ----------------------------------------- | ------------------------------------------ |
+| `public`    | None                                      | Direct fetch                               |
+| `cookie`    | One declared site-bound credential source | Inject into target request headers         |
+| `header`    | Cookie + auto-extracted CSRF              | Read CSRF, inject into target request      |
+| `intercept` | Live browser session                      | Navigate page, capture XHR/fetch responses |
+| `ui`        | Live browser session                      | Click, type, snapshot                      |
 
-Where a probe URL is available, the bounded HTTP probe tries `public → cookie →
-header` and caches the first valid result for the process. It never silently
-escalates into `intercept` or `ui`; those browser-backed strategies must be
-declared by the operation.
+`public`, `cookie`, and `header` are separate structured HTTP authentication
+contracts. `intercept` and `ui` are browser-backed contracts. Switching between
+them is an adapter repair or explicit replan because the session, evidence,
+cost, and side-effect boundaries differ.
 
-Live browser/CDP acquisition remains in process memory. Only explicit
-`auth import` or `browser cookies` commands persist plaintext JSON under
-`~/.unicli/cookies/`.
+Normal invocation reads persisted site credentials. `--auth-retry` explicitly
+selects one source from the structured failure: the selected local-browser
+profile for `auth_required`, or the live CDP target for
+`challenge_required`. Fresh cookie values stay behind an opaque capability
+that can be consumed by exactly one new invocation and only for the matching
+site and domain. A miss or source failure ends the refresh without changing
+authority. Only explicit `auth import` or `browser cookies` commands persist
+plaintext JSON under `~/.unicli/cookies/`.
 
 ## The v2 AgentEnvelope
 
 Every registered adapter command rendered by the CLI formatter returns a v2
 AgentEnvelope with success and failure arms. Agents parse one schema across the static adapter
-catalog of <span><!-- STATS:command_count -->1817<!-- /STATS --></span>
+catalog of <span><!-- STATS:command_count -->1829<!-- /STATS --></span>
 commands; fixed core and host-discovered commands are listed separately at
 runtime.
 
@@ -697,8 +702,8 @@ $ unicli hackernews top -n 10 -f json \
 That is the canonical full exposure path. Adapter operation contracts can also
 run through MCP profiles; ACP, HTTP, skills, and CI expose documented subsets.
 One command shape covers the static catalog of
-<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites and
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter
+<span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites and
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
 commands; fixed core and host-discovered commands join the native CLI at
 runtime. Rendered calls share the v2 success/error envelope shape; optional
 evidence and repair fields depend on the operation and failure class.
@@ -1333,7 +1338,7 @@ Quick answers to the questions agents and developers ask most often. Each answer
 
 ## What is Uni-CLI?
 
-Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, accessibility, and visual control. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under available policy, returns a stable success/error envelope, and keeps supported failure paths repairable. Its static adapter catalog covers <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join the native CLI at runtime.
+Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across websites, logged-in browsers, desktop apps, local tools, files, operating-system capabilities, MCP servers, accessibility, and visual control. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under available policy, returns a stable success/error envelope, and keeps supported failure paths repairable. Its static adapter catalog covers <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites; fixed core and host-discovered surfaces join the native CLI at runtime.
 
 ## Why call it an Agent-Computer Interface runtime?
 
@@ -1349,7 +1354,13 @@ A computer-use sandbox provides an isolated environment, screen, mouse, keyboard
 
 ## Why a CLI instead of an MCP server?
 
-CLI is Uni-CLI's native, inspectable, full command surface: it composes with files, pipes, exit codes, CI, and local tools without a resident server. MCP is a first-class protocol/exposure substrate when a host needs stateful sessions or protocol-native discovery, and current clients can defer tool schemas. Compact, deferred, and expanded profiles project adapter operations. Fixed core commands remain canonical on native CLI until command-level parity lands.
+CLI is Uni-CLI's native, inspectable, full command surface: it composes with
+files, pipes, exit codes, CI, and local tools without a resident server. MCP is
+a first-class protocol/exposure substrate. Modern MCP requests are stateless
+and carry protocol metadata per call; legacy clients retain initialization and
+session-owned Tasks. Compact, deferred, and expanded profiles project adapter
+operations. Fixed core commands remain canonical on native CLI until
+command-level parity lands.
 
 ## How does self-repair work in Uni-CLI?
 
@@ -1361,7 +1372,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v0.400.2 ships a generated static adapter catalog with <span><!-- STATS:site_count -->324<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9816<!-- /STATS --></span> tests. The headline is not the count; it is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.
+v1.0.0 ships a generated static adapter catalog with <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests. The headline is not the count; it is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -1377,7 +1388,7 @@ Yes. The preferred contribution format is a short YAML adapter that names the si
 
 ## Does Uni-CLI handle authenticated sites?
 
-Yes. An operation explicitly declares one of `public`, `cookie`, `header`, `intercept`, or `ui`. Where a probe URL is available, the bounded HTTP probe tries only `public → cookie → header` and caches the first valid result in process; it does not auto-escalate into browser-backed `intercept` or `ui`. Cookie/header commands use an explicitly persisted file when present or read a live local browser/CDP source into process memory without writing it. `auth import` and `browser cookies` are the explicit persistence commands.
+Yes. An operation explicitly declares one of `public`, `cookie`, `header`, `intercept`, or `ui`. A bounded HTTP probe may compare `public`, `cookie`, and `header` for diagnostics, but command execution runs only the declared strategy. Cookie/header invocation reads its persisted site credential. `--auth-retry` explicitly selects one source: the selected local-browser profile for `auth_required`, or the live CDP target for `challenge_required`. Fresh values are hidden behind a one-shot capability consumed by exactly one new invocation. A miss or read failure never changes source. `auth import` and `browser cookies` are the explicit persistence commands.
 
 ## How does Uni-CLI compare to MCP for token cost?
 
@@ -1419,7 +1430,10 @@ The commands an agent can issue to a computer and the feedback the computer retu
 
 ## Action substrate
 
-A concrete technical boundary Uni-CLI can use to make real software act: HTTP, browser CDP, desktop accessibility, subprocess, file operation, protocol server, visual fallback, or app-specific harness. Substrates are below the Agent-Computer Interface runtime boundary.
+A concrete technical boundary Uni-CLI can use to make real software act: HTTP,
+browser CDP, desktop accessibility, subprocess, file operation, protocol
+server, explicit visual coordinates, or an app-specific harness. Substrates are
+below the Agent-Computer Interface runtime boundary.
 
 ## Adapter
 
@@ -1457,13 +1471,16 @@ The local index of all sites, operations, arguments, strategies, and output sche
 
 The wire protocol Uni-CLI uses to control a real Chrome instance for browser adapters. Implemented as a raw WebSocket client in `src/browser/cdp-client.ts` with no third-party browser library. Supports the full Page, Network, DOM, and Runtime domains.
 
-## Compute (Visual)
+## Compute
 
-The local computer-control and visual fallback adapter family. When structured substrates (web-api, desktop AX, browser CDP, app API, subprocess) cannot reach a target, Compute can drive the screen with screenshots, clicks, typing, and post-action evidence through a unified action verb set.
+The local computer-control family. Its route planner chooses one native
+accessibility, browser-semantic, process, or explicit visual provider from the
+operation and exact target evidence. Provider failure returns directly; a
+cross-provider change requires replanning.
 
 ## Cookie file
 
-Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Cookie/header adapters can instead read a live browser/CDP session into memory. Cookie values are sent only to the target request/browser boundary selected by the command.
+Optional per-site authentication state explicitly persisted as plaintext JSON at `~/.unicli/cookies/<site>.json`. Normal cookie/header invocation reads that site-bound source. An explicit `--auth-retry` selects either one local-browser profile or one live CDP target from the structured failure type. Fresh values are bound to exactly one new invocation through an opaque, one-shot in-memory capability; acquisition never changes source after a miss or error. Cookie values are sent only to the matching site/domain request boundary selected by the command.
 
 ## Browser Runtime Broker
 
@@ -1487,7 +1504,7 @@ The process status used by CLI commands. 0 is success. Structured command failur
 
 ## Header strategy
 
-An auth strategy that reads explicit cookie storage or a live browser/CDP session into memory, auto-extracts a CSRF token, then injects both into the target request headers. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
+An auth strategy that reads the command's selected cookie source, auto-extracts a CSRF token, then injects both into the target request headers. The source identity remains fixed for the invocation. Used by sites that require CSRF on state-changing requests (e.g., Reddit `vote`, Twitter `like`).
 
 ## Intercept strategy
 
@@ -1499,7 +1516,12 @@ A standardized agent-readable index file at the site root (`/llms.txt` and `/llm
 
 ## MCP (Model Context Protocol)
 
-An [open standard](https://modelcontextprotocol.io/) for connecting AI applications to tools and data through stateful servers. Uni-CLI ships an optional MCP gateway (`unicli mcp serve`) with default, deferred, and expanded profiles over adapter operations. Fixed core commands remain canonical on native CLI until protocol parity lands.
+An [open standard](https://modelcontextprotocol.io/) for connecting AI
+applications to tools and data. Uni-CLI's dual-era gateway serves stateless
+`2026-07-28` requests with per-request metadata and retains `2025-11-25`
+initialization/session behavior for legacy clients. Default, deferred,
+expanded, and computer-use profiles project adapter operations. Fixed core
+commands remain canonical on native CLI until protocol parity lands.
 
 ## Operation contract
 
@@ -1507,7 +1529,7 @@ The stable product primitive in Uni-CLI. An operation contract describes identit
 
 ## Pipeline
 
-The ordered list of actions an adapter runs to produce its result. The executable surface contains <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in names: <span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> registered pipeline actions and <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> low-level transport-native actions. Actions share a context object; plugins are outside this built-in budget.
+The ordered list of actions an adapter runs to produce its result. The executable surface contains <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in names: <span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> registered pipeline actions and <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> low-level transport-native actions. Actions share a context object; plugins are outside this built-in budget.
 
 ## Pipeline step
 
@@ -1539,11 +1561,13 @@ A DOM accessibility tree generated by the `snapshot` pipeline step in browser ad
 
 ## Strategy
 
-The auth or interaction path an adapter declares: `public`, `cookie`, `header`, `intercept`, or `ui`. These five values are not one automatic five-way cascade. Only `public`, `cookie`, and `header` participate in the bounded HTTP probe; `intercept` and `ui` are explicit browser-backed strategies.
+The auth or interaction path an adapter declares: `public`, `cookie`, `header`, `intercept`, or `ui`. The runtime executes the declared strategy and does not cross into another strategy after failure. `public`, `cookie`, and `header` are structured HTTP contracts; `intercept` and `ui` are browser-backed contracts.
 
-## Strategy cascade
+## Strategy replan
 
-The bounded HTTP probe used where a probe URL is available. It tries `public`, then `cookie`, then `header`, and caches the first valid result for the process. It never silently escalates into `intercept` or `ui`; those browser-backed strategies must be declared by the operation.
+An explicit adapter or task-plan change from one declared strategy to another.
+It is separate from retry because changing strategy can change authentication,
+session ownership, evidence, latency, and side-effect boundaries.
 
 ## Tap
 
@@ -2183,22 +2207,15 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
+This catalog is generated from the adapter manifest: 326 sites, 1829 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
 | 12306 | web-api | 3 | no | unicli 12306 price<br>unicli 12306 stations<br>unicli 12306 trains |
 | 1688 | web-api | 5 | yes | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
-| 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | no | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
-| 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
-| acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | no | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
-| ai | web-api | 6 | no | unicli ai search<br>unicli ai pulse<br>unicli ai read |
-| aibase | web-api | 1 | no | unicli aibase news |
 | amazon | web-api | 8 | yes | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
-| anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
-| antigravity | web-api | 16 | no | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
 | apple-notes | desktop | 3 | no | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | no | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
 | arxiv | web-api | 7 | no | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv trending |
@@ -2206,84 +2223,56 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | autoagent | bridge | 1 | no | unicli autoagent eval-run |
 | aws | bridge | 1 | no | unicli aws s3-ls |
 | baidu | web-api | 2 | yes | unicli baidu hot<br>unicli baidu search |
-| baidu-scholar | web-api | 1 | no | unicli baidu-scholar search |
 | band | web-api | 4 | yes | unicli band bands<br>unicli band mentions<br>unicli band post |
-| bangumi | web-api | 5 | no | unicli bangumi characters<br>unicli bangumi subject<br>unicli bangumi anime |
 | barchart | web-api | 4 | yes | unicli barchart flow<br>unicli barchart greeks<br>unicli barchart options |
 | bbc | web-api | 5 | no | unicli bbc news<br>unicli bbc technology<br>unicli bbc top |
 | bilibili | web-api | 20 | yes | unicli bilibili coin<br>unicli bilibili dynamic<br>unicli bilibili favorites |
 | binance | web-api | 13 | no | unicli binance asks<br>unicli binance depth<br>unicli binance gainers |
-| biorxiv | web-api | 5 | no | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
 | blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
 | bluesky | web-api | 13 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
-| chatgpt | web-api | 17 | yes | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
-| chatwise | web-api | 16 | no | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
 | chrome | desktop | 2 | no | unicli chrome bookmarks<br>unicli chrome tabs |
-| cipo | web-api | 3 | no | unicli cipo get<br>unicli cipo legal-status<br>unicli cipo search |
-| claude | web-api | 14 | yes | unicli claude ask<br>unicli claude send<br>unicli claude new |
 | claude-code | bridge | 1 | no | unicli claude-code version |
 | cloudcompare | desktop | 4 | no | unicli cloudcompare compare<br>unicli cloudcompare convert<br>unicli cloudcompare info |
-| cnipa | web-api | 3 | no | unicli cnipa get<br>unicli cnipa legal-status<br>unicli cnipa search |
-| cnki | web-api | 1 | no | unicli cnki search |
 | cnn | web-api | 2 | no | unicli cnn technology<br>unicli cnn top |
 | cocoapods | web-api | 2 | no | unicli cocoapods info<br>unicli cocoapods search |
-| codex | web-api | 18 | no | unicli codex extract-diff<br>unicli codex history<br>unicli codex export |
 | codex-cli | bridge | 1 | no | unicli codex-cli version |
 | coinbase | web-api | 2 | no | unicli coinbase prices<br>unicli coinbase rates |
-| coingecko | web-api | 7 | no | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
 | comfyui | service | 4 | no | unicli comfyui generate<br>unicli comfyui history<br>unicli comfyui nodes |
 | coupang | web-api | 4 | yes | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
-| crates | web-api | 2 | no | unicli crates search<br>unicli crates crate |
 | crates-io | web-api | 3 | no | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
-| crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
-| ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
-| cursor | web-api | 18 | no | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
-| cvf | web-api | 3 | no | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
 | danbooru | web-api | 8 | no | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
 | dangdang | web-api | 2 | yes | unicli dangdang hot<br>unicli dangdang search |
-| dblp | web-api | 4 | no | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
 | deepseek | web-api | 9 | yes | unicli deepseek chat<br>unicli deepseek models<br>unicli deepseek ask |
-| defillama | web-api | 2 | no | unicli defillama protocols<br>unicli defillama protocol |
 | defuddle | web-api | 1 | no | unicli defuddle read |
 | devto | web-api | 6 | no | unicli devto latest<br>unicli devto search<br>unicli devto tag |
 | dianping | web-api | 3 | yes | unicli dianping hot<br>unicli dianping search<br>unicli dianping shop |
 | dictionary | web-api | 3 | no | unicli dictionary examples<br>unicli dictionary search<br>unicli dictionary synonyms |
 | dingtalk | bridge | 8 | no | unicli dingtalk version<br>unicli dingtalk open-app<br>unicli dingtalk status-app |
-| discord-app | web-api | 15 | no | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
-| dlsite | web-api | 8 | no | unicli dlsite search<br>unicli dlsite manga<br>unicli dlsite cg |
 | docker | desktop | 7 | no | unicli docker build<br>unicli docker images<br>unicli docker logs |
 | docker-hub | web-api | 3 | no | unicli docker-hub info<br>unicli docker-hub search<br>unicli docker-hub tags |
-| dockerhub | web-api | 2 | no | unicli dockerhub search<br>unicli dockerhub image |
 | doctl | bridge | 1 | no | unicli doctl droplets |
 | douban | web-api | 12 | yes | unicli douban book-hot<br>unicli douban download<br>unicli douban group-hot |
 | doubao | web-api | 9 | yes | unicli doubao ask<br>unicli doubao new<br>unicli doubao status |
 | doubao-web | web-api | 9 | yes | unicli doubao-web ask<br>unicli doubao-web detail<br>unicli doubao-web history |
-| douyin | web-api | 13 | yes | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
 | douyu | web-api | 2 | yes | unicli douyu hot<br>unicli douyu search |
 | dpma | web-api | 2 | no | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | no | unicli drawio export |
 | duckduckgo | web-api | 2 | no | unicli duckduckgo search<br>unicli duckduckgo suggest |
 | eastmoney | web-api | 18 | no | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
-| ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | yes | unicli ele hot<br>unicli ele search |
-| endoflife | web-api | 1 | no | unicli endoflife product |
 | epo | web-api | 4 | no | unicli epo family<br>unicli epo get<br>unicli epo legal-status |
-| espacenet | web-api | 4 | no | unicli espacenet family<br>unicli espacenet get<br>unicli espacenet legal-status |
 | excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | no | unicli exchangerate convert<br>unicli exchangerate list |
 | facebook | web-api | 15 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
 | feishu | bridge | 4 | no | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | no | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | yes | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
-| fips | web-api | 2 | no | unicli fips get<br>unicli fips search |
-| flathub | web-api | 2 | no | unicli flathub search<br>unicli flathub app |
 | flyctl | bridge | 1 | no | unicli flyctl apps |
 | freecad | desktop | 15 | no | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
-| freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | yes | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | yes | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
 | gh | bridge | 11 | yes | unicli gh discussions<br>unicli gh issue-thread<br>unicli gh issue |
@@ -2294,11 +2283,6 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | godot | desktop | 2 | no | unicli godot project-run<br>unicli godot scene-export |
 | google | web-api | 4 | no | unicli google news<br>unicli google search<br>unicli google suggest |
 | google-patents-bq | web-api | 2 | yes | unicli google-patents-bq prior-art<br>unicli google-patents-bq search |
-| google-patents-web | web-api | 2 | no | unicli google-patents-web get<br>unicli google-patents-web search |
-| google-scholar | web-api | 3 | no | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
-| goproxy | web-api | 2 | no | unicli goproxy module<br>unicli goproxy versions |
-| gov-law | web-api | 2 | no | unicli gov-law search<br>unicli gov-law recent |
-| gov-policy | web-api | 2 | no | unicli gov-policy search<br>unicli gov-policy recent |
 | grok | web-api | 8 | yes | unicli grok ask<br>unicli grok read<br>unicli grok history |
 | hackernews | web-api | 11 | no | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
 | hermes | desktop | 3 | no | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
@@ -2309,10 +2293,8 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | imagemagick | desktop | 6 | no | unicli imagemagick compare<br>unicli imagemagick composite<br>unicli imagemagick convert |
 | imdb | web-api | 7 | no | unicli imdb box-office<br>unicli imdb person<br>unicli imdb reviews |
 | imessage | desktop | 3 | no | unicli imessage contact<br>unicli imessage recent<br>unicli imessage search |
-| indeed | web-api | 2 | yes | unicli indeed search<br>unicli indeed job |
 | infoq | web-api | 2 | no | unicli infoq articles<br>unicli infoq latest |
 | inkscape | desktop | 3 | no | unicli inkscape convert<br>unicli inkscape export<br>unicli inkscape optimize |
-| inpi-br | web-api | 2 | no | unicli inpi-br get<br>unicli inpi-br search |
 | inpi-fr | web-api | 2 | no | unicli inpi-fr get<br>unicli inpi-fr search |
 | instagram | web-api | 29 | yes | unicli instagram activity<br>unicli instagram comment<br>unicli instagram explore |
 | ip-info | web-api | 1 | no | unicli ip-info lookup |
@@ -2338,57 +2320,42 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | lens | web-api | 2 | yes | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
-| lichess | web-api | 2 | no | unicli lichess top<br>unicli lichess user |
 | linear | web-api | 10 | no | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
 | linkedin | web-api | 4 | yes | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
-| linux-do | web-api | 11 | yes | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
 | lobsters | web-api | 7 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
 | macos | desktop | 60 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | yes | unicli maimai search<br>unicli maimai search-talents |
-| mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | yes | unicli maoyan hot<br>unicli maoyan search |
 | markdown-new | web-api | 1 | no | unicli markdown-new read |
-| marxists-cn | web-api | 7 | no | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
 | mastodon | web-api | 5 | no | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | no | unicli maven info<br>unicli maven search<br>unicli maven artifact |
-| mdn | web-api | 1 | no | unicli mdn search |
 | medium | web-api | 6 | no | unicli medium article<br>unicli medium feed<br>unicli medium search |
-| medrxiv | web-api | 5 | no | unicli medrxiv recent<br>unicli medrxiv search<br>unicli medrxiv paper |
 | meituan | web-api | 1 | yes | unicli meituan search |
 | mermaid | desktop | 1 | no | unicli mermaid render |
 | minimax | web-api | 3 | yes | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
 | modelscope | web-api | 2 | no | unicli modelscope datasets<br>unicli modelscope models |
-| moegirl | web-api | 3 | no | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | no | unicli motion-studio component-get |
 | mubu | web-api | 6 | yes | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
 | musescore | desktop | 5 | no | unicli musescore convert<br>unicli musescore export<br>unicli musescore info |
 | neonctl | bridge | 1 | no | unicli neonctl projects |
 | netease-music | web-api | 17 | no | unicli netease-music hot<br>unicli netease-music playlist<br>unicli netease-music search |
 | netlify | bridge | 1 | no | unicli netlify sites |
-| neurips | web-api | 3 | no | unicli neurips search<br>unicli neurips paper<br>unicli neurips read |
 | notebooklm | web-api | 15 | yes | unicli notebooklm current<br>unicli notebooklm get<br>unicli notebooklm history |
-| notion | web-api | 18 | yes | unicli notion databases<br>unicli notion pages<br>unicli notion search |
+| notion | web-api | 3 | yes | unicli notion databases<br>unicli notion pages<br>unicli notion search |
 | novita | service | 3 | no | unicli novita generate<br>unicli novita models<br>unicli novita status |
-| nowcoder | web-api | 16 | yes | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
 | npm | web-api | 5 | no | unicli npm downloads<br>unicli npm info<br>unicli npm search |
 | npm-trends | web-api | 2 | no | unicli npm-trends compare<br>unicli npm-trends trending |
 | nuget | web-api | 3 | no | unicli nuget info<br>unicli nuget search<br>unicli nuget package |
-| nvd | web-api | 1 | no | unicli nvd cve |
 | nytimes | web-api | 2 | no | unicli nytimes search<br>unicli nytimes top |
 | obs | service | 8 | no | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | no | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
-| oeis | web-api | 2 | no | unicli oeis search<br>unicli oeis sequence |
 | ollama | service | 4 | no | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
 | ollama-cloud | web-api | 2 | no | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
 | ones | web-api | 11 | yes | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
-| openalex | web-api | 3 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | opencode | bridge | 1 | no | unicli opencode version |
 | opencsg | web-api | 2 | no | unicli opencsg datasets<br>unicli opencsg models |
-| openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openharness | desktop | 2 | no | unicli openharness memory-read<br>unicli openharness skills-list |
-| openreview | web-api | 7 | no | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
 | openrouter | web-api | 2 | no | unicli openrouter models<br>unicli openrouter search |
-| osv | web-api | 2 | no | unicli osv query<br>unicli osv vulnerability |
 | packagist | web-api | 3 | no | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -2398,31 +2365,21 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | pexels | web-api | 2 | yes | unicli pexels curated<br>unicli pexels search |
 | pinduoduo | web-api | 2 | yes | unicli pinduoduo hot<br>unicli pinduoduo search |
 | pixiv | web-api | 6 | yes | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
-| pmlr | web-api | 3 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
-| powerchina | web-api | 1 | yes | unicli powerchina search |
 | powerpoint | desktop | 7 | no | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | pqai | web-api | 2 | no | unicli pqai prior-art<br>unicli pqai search |
 | producthunt | web-api | 5 | no | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
 | pscale | bridge | 1 | no | unicli pscale databases |
 | pub-dev | web-api | 2 | no | unicli pub-dev info<br>unicli pub-dev search |
-| pubmed | web-api | 7 | no | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
 | pypi | web-api | 5 | no | unicli pypi info<br>unicli pypi search<br>unicli pypi versions |
 | quark | web-api | 8 | yes | unicli quark ls<br>unicli quark search<br>unicli quark mkdir |
 | qweather | web-api | 2 | no | unicli qweather forecast<br>unicli qweather now |
-| qwen | web-api | 8 | yes | unicli qwen ask<br>unicli qwen read<br>unicli qwen send |
 | railway | bridge | 1 | no | unicli railway deploy |
-| reddit | web-api | 24 | yes | unicli reddit comment<br>unicli reddit comments<br>unicli reddit read |
-| rednote | web-api | 7 | yes | unicli rednote note<br>unicli rednote search<br>unicli rednote user |
+| reddit | web-api | 24 | yes | unicli reddit comment<br>unicli reddit read<br>unicli reddit save |
 | renderdoc | desktop | 2 | no | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | yes | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
-| rest-countries | web-api | 2 | no | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | no | unicli retrieval search<br>unicli retrieval sources |
 | reuters | web-api | 5 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
-| rfc | web-api | 1 | no | unicli rfc rfc |
 | rubygems | web-api | 3 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
-| scholar-artifacts | web-api | 2 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
-| semantic-scholar | web-api | 5 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
 | shotcut | desktop | 3 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -2439,43 +2396,33 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | substack | web-api | 4 | no | unicli substack feed<br>unicli substack publication<br>unicli substack search |
 | supabase | bridge | 1 | no | unicli supabase projects |
 | taobao | browser | 6 | yes | unicli taobao hot<br>unicli taobao search<br>unicli taobao detail |
-| tdx | web-api | 1 | yes | unicli tdx hot-rank |
 | techcrunch | web-api | 2 | no | unicli techcrunch latest<br>unicli techcrunch search |
 | theverge | web-api | 2 | no | unicli theverge latest<br>unicli theverge search |
 | threads | web-api | 6 | yes | unicli threads hot<br>unicli threads search<br>unicli threads user |
-| ths | web-api | 1 | yes | unicli ths hot-rank |
 | tieba | web-api | 4 | no | unicli tieba hot<br>unicli tieba posts<br>unicli tieba read |
 | tiktok | web-api | 18 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
-| tvmaze | web-api | 2 | no | unicli tvmaze search<br>unicli tvmaze show |
 | twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
 | twitter | web-api | 47 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
-| uisdc | web-api | 1 | no | unicli uisdc news |
-| uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | no | unicli ukipo info |
-| unpaywall | web-api | 2 | no | unicli unpaywall oa<br>unicli unpaywall read |
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
 | v2ex | web-api | 12 | yes | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |
 | vercel | bridge | 1 | no | unicli vercel list |
-| vndb | web-api | 7 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | vscode | desktop | 10 | no | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| wanfang | web-api | 1 | no | unicli wanfang search |
 | web | web-api | 1 | no | unicli web read |
 | wechat-channels | web-api | 2 | yes | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | yes | unicli weibo comments<br>unicli weibo feed<br>unicli weibo hot |
 | weixin | browser | 6 | yes | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
 | weread | web-api | 8 | yes | unicli weread book<br>unicli weread highlights<br>unicli weread notebooks |
-| wikidata | web-api | 2 | no | unicli wikidata search<br>unicli wikidata entity |
 | wikipedia | web-api | 6 | no | unicli wikipedia random<br>unicli wikipedia search<br>unicli wikipedia summary |
 | wipo-patentscope | web-api | 1 | no | unicli wipo-patentscope info |
 | wiremock | service | 5 | no | unicli wiremock create-stub<br>unicli wiremock delete-stub<br>unicli wiremock reset |
 | word | desktop | 7 | no | unicli word insert-image<br>unicli word insert-link<br>unicli word insert-text |
 | wrangler | bridge | 1 | no | unicli wrangler list |
-| wttr | web-api | 2 | no | unicli wttr current<br>unicli wttr forecast |
 | xianyu | web-api | 4 | yes | unicli xianyu chat<br>unicli xianyu item<br>unicli xianyu search |
 | xiaoe | web-api | 5 | yes | unicli xiaoe catalog<br>unicli xiaoe content<br>unicli xiaoe courses |
-| xiaohongshu | web-api | 22 | yes | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
+| xiaohongshu | web-api | 22 | yes | unicli xiaohongshu follow<br>unicli xiaohongshu hashtag<br>unicli xiaohongshu hot |
 | xiaoyuzhou | web-api | 5 | yes | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | yes | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
 | yahoo | web-api | 1 | no | unicli yahoo search |
@@ -2487,12 +2434,43 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | yt-dlp | bridge | 5 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
 | zhihu | web-api | 27 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
-| zlibrary | web-api | 2 | yes | unicli zlibrary search<br>unicli zlibrary info |
 | zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
 | zsxq | web-api | 5 | yes | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
+| 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
+| 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
+| ai | web-api | 6 | no | unicli ai search<br>unicli ai pulse<br>unicli ai read |
+| aibase | web-api | 1 | no | unicli aibase news |
+| anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
+| antigravity | web-api | 17 | no | unicli antigravity ask<br>unicli antigravity send<br>unicli antigravity read |
+| archive | web-api | 4 | no | unicli archive item<br>unicli archive search<br>unicli archive snapshots |
+| baidu-scholar | web-api | 1 | no | unicli baidu-scholar search |
+| bangumi | web-api | 5 | no | unicli bangumi anime<br>unicli bangumi book<br>unicli bangumi game |
+| biorxiv | web-api | 5 | no | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
+| chatgpt | web-api | 18 | yes | unicli chatgpt ask<br>unicli chatgpt send<br>unicli chatgpt read |
 | chatgpt-app | web-api | 8 | no | unicli chatgpt-app ask<br>unicli chatgpt-app send<br>unicli chatgpt-app read |
-| doubao-app | web-api | 13 | no | unicli doubao-app ask<br>unicli doubao-app send<br>unicli doubao-app read |
+| chatwise | web-api | 17 | no | unicli chatwise ask<br>unicli chatwise send<br>unicli chatwise read |
+| cipo | web-api | 3 | no | unicli cipo get<br>unicli cipo legal-status<br>unicli cipo search |
+| claude | web-api | 14 | yes | unicli claude ask<br>unicli claude send<br>unicli claude new |
+| cnipa | web-api | 3 | no | unicli cnipa get<br>unicli cnipa legal-status<br>unicli cnipa search |
+| cnki | web-api | 1 | no | unicli cnki search |
+| codex | web-api | 19 | no | unicli codex ask<br>unicli codex send<br>unicli codex read |
+| coingecko | web-api | 7 | no | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
+| crates | web-api | 2 | no | unicli crates search<br>unicli crates crate |
+| crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
+| ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
+| cursor | web-api | 19 | no | unicli cursor ask<br>unicli cursor send<br>unicli cursor read |
+| cvf | web-api | 3 | no | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
+| dblp | web-api | 4 | no | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
+| defillama | web-api | 2 | no | unicli defillama protocols<br>unicli defillama protocol |
+| discord-app | web-api | 15 | no | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
+| dlsite | web-api | 8 | no | unicli dlsite search<br>unicli dlsite manga<br>unicli dlsite cg |
+| dockerhub | web-api | 2 | no | unicli dockerhub search<br>unicli dockerhub image |
+| doubao-app | web-api | 14 | no | unicli doubao-app ask<br>unicli doubao-app send<br>unicli doubao-app read |
+| douyin | web-api | 13 | yes | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
+| ehentai | web-api | 6 | no | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
+| notion-app | web-api | 16 | no | unicli notion-app open-app<br>unicli notion-app status-app<br>unicli notion-app dump |
 | logseq | web-api | 7 | no | unicli logseq open-app<br>unicli logseq status-app<br>unicli logseq dump |
 | typora | web-api | 7 | no | unicli typora open-app<br>unicli typora status-app<br>unicli typora dump |
 | postman | web-api | 7 | no | unicli postman open-app<br>unicli postman status-app<br>unicli postman dump |
@@ -2509,8 +2487,56 @@ This catalog is generated from the adapter manifest: 324 sites, 1817 commands.
 | wechat-work | web-api | 7 | no | unicli wechat-work open-app<br>unicli wechat-work status-app<br>unicli wechat-work dump |
 | zoom-app | web-api | 7 | no | unicli zoom-app open-app<br>unicli zoom-app status-app<br>unicli zoom-app dump |
 | evernote-app | web-api | 7 | no | unicli evernote-app open-app<br>unicli evernote-app status-app<br>unicli evernote-app dump |
+| endoflife | web-api | 1 | no | unicli endoflife product |
+| espacenet | web-api | 4 | no | unicli espacenet family<br>unicli espacenet get<br>unicli espacenet legal-status |
+| fips | web-api | 2 | no | unicli fips get<br>unicli fips search |
+| flathub | web-api | 2 | no | unicli flathub search<br>unicli flathub app |
+| freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
+| google-patents-web | web-api | 2 | no | unicli google-patents-web get<br>unicli google-patents-web search |
+| google-scholar | web-api | 3 | no | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
+| goproxy | web-api | 2 | no | unicli goproxy module<br>unicli goproxy versions |
+| gov-law | web-api | 2 | no | unicli gov-law search<br>unicli gov-law recent |
+| gov-policy | web-api | 2 | no | unicli gov-policy search<br>unicli gov-policy recent |
+| indeed | web-api | 2 | yes | unicli indeed search<br>unicli indeed job |
+| inpi-br | web-api | 2 | no | unicli inpi-br get<br>unicli inpi-br search |
 | jikan | web-api | 4 | no | unicli jikan anime<br>unicli jikan manga<br>unicli jikan characters |
 | kitsu | web-api | 2 | no | unicli kitsu anime<br>unicli kitsu manga |
+| lichess | web-api | 2 | no | unicli lichess top<br>unicli lichess user |
+| linux-do | browser | 11 | yes | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
+| mangadex | web-api | 2 | no | unicli mangadex manga<br>unicli mangadex authors |
+| marxists-cn | web-api | 7 | no | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
+| mdn | web-api | 1 | no | unicli mdn search |
+| medrxiv | web-api | 5 | no | unicli medrxiv recent<br>unicli medrxiv search<br>unicli medrxiv paper |
+| moegirl | web-api | 3 | no | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
+| neurips | web-api | 3 | no | unicli neurips search<br>unicli neurips paper<br>unicli neurips read |
+| nowcoder | web-api | 16 | yes | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
+| nvd | web-api | 1 | no | unicli nvd cve |
+| oeis | web-api | 2 | no | unicli oeis search<br>unicli oeis sequence |
+| openalex | web-api | 3 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
+| openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
+| openreview | web-api | 7 | no | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
+| osv | web-api | 2 | no | unicli osv query<br>unicli osv vulnerability |
+| pmlr | web-api | 3 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
+| powerchina | web-api | 1 | yes | unicli powerchina search |
+| pubmed | web-api | 7 | no | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
+| qwen | web-api | 8 | yes | unicli qwen ask<br>unicli qwen read<br>unicli qwen send |
+| rednote | web-api | 7 | yes | unicli rednote note<br>unicli rednote search<br>unicli rednote user |
+| rest-countries | web-api | 2 | no | unicli rest-countries country<br>unicli rest-countries region |
+| retrieval | web-api | 2 | no | unicli retrieval search<br>unicli retrieval sources |
+| rfc | web-api | 1 | no | unicli rfc rfc |
+| scholar-artifacts | web-api | 2 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
+| semantic-scholar | web-api | 6 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
+| tdx | web-api | 1 | yes | unicli tdx hot-rank |
+| ths | web-api | 1 | yes | unicli ths hot-rank |
+| tvmaze | web-api | 2 | no | unicli tvmaze search<br>unicli tvmaze show |
+| uisdc | web-api | 1 | no | unicli uisdc news |
+| uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
+| unpaywall | web-api | 2 | no | unicli unpaywall oa<br>unicli unpaywall read |
+| vndb | web-api | 7 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
+| wanfang | web-api | 1 | no | unicli wanfang search |
+| wikidata | web-api | 2 | no | unicli wikidata search<br>unicli wikidata entity |
+| wttr | web-api | 2 | no | unicli wttr current<br>unicli wttr forecast |
+| zlibrary | web-api | 2 | yes | unicli zlibrary search<br>unicli zlibrary info |
 
 ---
 
@@ -2967,7 +2993,7 @@ command could have been expressed as intercept.
 | `Strategy 'legacy-xyz' unknown`                           | Typo or dropped strategy                                                    | Consult the Strategy migration table; `legacy-xyz` is probably replaced by a named transport.                                  |
 | `HTTP 403 Forbidden` on cookie strategy                   | Authentication is stale or insufficient                                     | `unicli auth setup SITE`, then rerun the original command; do not edit the adapter unless fresh auth disproves this diagnosis. |
 | `Interception timed out after 8000ms`                     | Selector/URL pattern changed upstream                                       | Inspect page network panel, update the `pattern` in `intercept` step, re-run.                                                  |
-| `visual_backend: remote not configured`                   | Visual backend endpoint or API key is missing                               | Set `VISUAL_BACKEND_ENDPOINT` and `VISUAL_BACKEND_API_KEY`, or disable visual fallback.                                        |
+| `visual_backend: remote not configured`                   | Visual backend endpoint or API key is missing                               | Configure the backend for explicitly selected visual operations, or use a structured route.                                    |
 | `quarantine: true` blocks execution                       | The adapter is intentionally gated                                          | Inspect the recorded reason, repair the exact source, verify with `unicli repair SITE CMD`, then explicitly remove the flag.   |
 | `trust: user` adapter refuses to run                      | CI safety gate rejects user-trust adapters when `UNICLI_TRUST_FLOOR=public` | Set `trust: public` and get the file reviewed, or run with `UNICLI_TRUST_FLOOR=user` locally.                                  |
 
@@ -3004,8 +3030,8 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
 
 Uni-CLI adapters execute a sequence of actions: fetch data, transform it,
 interact with a browser, or control execution flow. The built-in executable
-surface has <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
-names: <span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
+surface has <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span>
+names: <span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span>
 registered pipeline actions documented here and
 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
 low-level transport-native Visual/AX/UIA/AT-SPI actions. The latter belong to
@@ -4349,6 +4375,7 @@ Current program map:
 | `0.1xx`       | Sputnik |
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
+| `1.x`         | Artemis |
 
 Rules:
 
@@ -4368,6 +4395,12 @@ npm run release:check -- --strict-codename
 
 For the 0.400 line, the release label format is unchanged. The published
 release label is `Apollo · Duke`.
+
+The 1.x line starts with `Artemis · Glover`. Version `1.0.0` establishes the
+stable operation-first compatibility contract: discovery declares one feasible
+provider and its substrate before execution; targets, effects, evidence, errors,
+and recovery remain machine-readable across CLI and MCP boundaries. Future 1.x
+releases preserve those public contracts unless semver requires another major.
 
 Candidate delivery uses the default `local` status, so generated docs cannot
 turn an unobserved npm or GitHub Release event into a publication claim. Only
@@ -4541,15 +4574,31 @@ visual cursor, or generated tool list. It is the executable boundary that lets
 an agent discover and select operations, govern supported effects, act across
 software substrates, inspect results, and repair supported failures.
 
-The current generated static adapter catalog is the source of truth for:
-**<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites**,
-**<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter commands**,
-**<span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> adapters**,
-**<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions**
-(<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
-registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
-transport-native),
-and **<span><!-- STATS:test_count -->9816<!-- /STATS --></span> tests** in v0.400.2.
+Normalized live command descriptors are the source of truth. The generated
+manifest is a reproducible, parity-tested projection for cold discovery. It contains
+<span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites.
+
+Those sites expose
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
+commands.
+
+The catalog implements them across
+<span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters.
+
+The pipeline surface contains
+<span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in
+actions.
+
+Of these,
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> are
+registered steps.
+
+The remaining
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> are
+transport-native.
+
+Version 0.400.2 includes
+<span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests in v1.0.0.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 
@@ -4590,19 +4639,19 @@ feature has shipped.
 These roots define the intended product semantics. The current-support column
 above and the roadmap determine which runtime surfaces implement each root now.
 
-| Priority | Layer                    | Contract                                                                                   |
-| -------- | ------------------------ | ------------------------------------------------------------------------------------------ |
-| P0       | Agent-Computer Interface | Discovery, selection, governance, action, observation, repair, and exposure                |
-| P0       | Operation contract       | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
-| P0       | Adapter control kernel   | Validate, harden, authorize, invoke an adapter substrate, observe, and envelope            |
-| P0       | Action substrates        | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
-| P0       | Result and delivery loop | AgentEnvelope v2 plus optional run traces, post-state checks, objective gates, and repair  |
-| P1       | Discovery                | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
-| P1       | Governance               | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
-| P1       | Authoring                | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
-| P1       | Runtime exposure         | Native CLI; MCP adapter projection; documented ACP/HTTP/agent-pack/skills subsets          |
-| P2       | Broad coverage           | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
-| P2       | Public docs UI           | Homepage, operation catalog, architecture, compute evidence demo                           |
+| Priority | Layer                    | Contract                                                                                                                                               |
+| -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P0       | Agent-Computer Interface | Discovery, selection, governance, action, observation, repair, and exposure                                                                            |
+| P0       | Operation contract       | Args, output, auth posture, effect, safety, capability, source path, and repair path                                                                   |
+| P0       | Adapter control kernel   | Validate, harden, authorize, invoke an adapter substrate, observe, and envelope                                                                        |
+| P0       | Execution operators      | Structured API, browser protocol, native CLI, browser semantics, desktop accessibility, visual observation, explicit visual coordinates, local runtime |
+| P0       | Result and delivery loop | AgentEnvelope v2 plus optional run traces, post-state checks, objective gates, and repair                                                              |
+| P1       | Discovery                | `search`, `list`, `describe`, `do`, generated catalog, docs index                                                                                      |
+| P1       | Governance               | Permission profiles, deny rules, approvals, effect/risk/capability metadata                                                                            |
+| P1       | Authoring                | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                                                                               |
+| P1       | Runtime exposure         | Native CLI; MCP adapter projection; documented ACP/HTTP/agent-pack/skills subsets                                                                      |
+| P2       | Broad coverage           | Hundreds of site commands, vertical meta-commands, external CLI hub                                                                                    |
+| P2       | Public docs UI           | Homepage, operation catalog, architecture, compute evidence demo                                                                                       |
 
 ## Substrate Boundary
 
@@ -4620,6 +4669,39 @@ boundary.
   operation contracts.
 - Generated public files under `docs/public/` are build artifacts, not
   hand-edited architecture sources.
+
+## Task-Directed Operator Boundary
+
+Discovery and execution routing are separate boundaries. Search retrieves
+operation contracts by intent. The selected contract projects one execution
+operator, effect, verification channel, and target scope. Compute routing then
+binds an exact target and selects one provider before any provider is opened.
+
+The operator classes are structured API, browser protocol, native CLI, browser
+semantics, desktop accessibility, visual observation, explicit visual
+coordinates, and local runtime. A website label does not imply browser control,
+and an application label does not imply desktop input. The command contract
+and target evidence make that choice.
+
+Compute provider declarations compile into an exact provider hash index and
+per-action posting lists. Exact refs, renderer endpoints, window ids, and
+intrinsic operation constraints are hard constraints. Coordinate control is
+split into explicit OS-driver and visual providers; neither is an implicit
+semantic fallback. Ordinary failures stay on the selected provider; retry,
+repair, replan, outcome inspection, session escalation, and privilege
+escalation are separate transitions.
+
+Inline driver and visual screenshots issue opaque, 256-bit observation refs.
+Coordinate actions atomically claim one ref and require the same provider,
+desktop scope, named session, unexpired 30-second lifetime, and in-bounds image
+coordinates. Authoritative metadata stays in an owner-only local record;
+provider open happens only after validation. Screenshot pixels are transformed
+to provider action coordinates from recorded dimensions rather than inferred
+display scale.
+
+See [Task-Directed Capability Routing](operate/task-routing.md) for the formal
+axes, selection algorithm, complexity, recovery graph, and provider conformance
+requirements.
 
 ## Capability Matrix And Workflow Readiness
 
@@ -4686,7 +4768,7 @@ Uni-CLI
 |
 |-- Operation catalog
 |   |-- Runtime registry: src/registry.ts
-|   |-- Core catalog: src/discovery/core-catalog.ts
+|   |-- Core catalog and O(1) id/category indexes: src/discovery/core-catalog.ts
 |   |-- Adapter catalog: src/adapters/<site>/<command>.yaml or .ts
 |   |-- Schema v2: src/core/schema-v2.ts
 |   |-- Aliases and categories: src/discovery/aliases.ts
@@ -4702,12 +4784,17 @@ Uni-CLI
 |   `-- Output envelope: src/output/*
 |
 |-- Action substrates
+|   |-- Task/operator projection: src/core/operator-model.ts
+|   |-- Compute route planning: src/transport/routing.ts
+|   |-- Single-provider dispatch: src/transport/compute-dispatch.ts
+|   |-- Visual observation capabilities: src/compute/visual-observation.ts
 |   |-- Web/API: src/engine/steps/fetch*.ts, src/engine/steps/parse*.ts
 |   |-- Browser/CDP: src/browser/*, src/transport/adapters/cdp-browser.ts
 |   |-- Desktop/OS: src/commands/compute.ts, src/compute/*, src/transport/adapters/desktop-*.ts
 |   |-- Local tools/files: src/hub/*, src/engine/steps/exec*.ts, src/adapters/pdf/*
 |   |-- Protocols: src/mcp/*, src/commands/acp.ts, src/protocol/*
-|   `-- Visual fallback: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
+|   |-- Explicit OS driver: src/transport/adapters/cua-driver.ts
+|   `-- Explicit visual control: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
 |
 |-- Evidence, delivery, and repair
 |   |-- Run recording: src/engine/session/*
@@ -4752,7 +4839,7 @@ flowchart TD
   discover --> contract["OperationContract"]
   contract --> policy["permission and risk policy"]
   policy --> kernel["adapter kernel or fixed core handler"]
-  kernel --> substrate["HTTP / CDP / accessibility / subprocess / visual / protocol"]
+  kernel --> substrate["HTTP / CDP / accessibility / subprocess / OS driver / visual / protocol"]
   substrate --> envelope["AgentEnvelope v2"]
   envelope --> optional["optional recording / post-state / trajectory"]
   optional --> delivery["optional delivery assessment"]
@@ -4840,6 +4927,13 @@ broker target, transport, overlay, file, clipboard, or desktop side effect.
 Permission schema v2 is deny-first, supports an explicit default decision and
 bounded argument constraints, and evaluates actual arguments without storing
 them in approval memory.
+Cookie/header commands read one persisted site credential source. An explicit
+`--auth-retry` obtains fresh values from one selected browser source and wraps
+them in an opaque one-shot capability. A new kernel invocation consumes that
+capability inside an AsyncLocalStorage scope; matching site/domain acquisitions
+see the fresh values, concurrent or later invocations do not, and cookie values
+never enter the public handle. No automatic 401/403 browser navigation or
+credential-source cascade runs inside the pipeline.
 
 ### 4. Observe
 
@@ -4856,6 +4950,8 @@ Observation is what turns a tool call into evidence.
   and stale-reference diagnostics.
 - Computer-use actions can attach `visual_action`, target point, overlay status,
   dispatch result, and post-action capture.
+- Inline driver/visual screenshots can attach a single-use observation
+  capability for one subsequent coordinate action.
 - `--record` writes append-only local traces under the run store.
 - Replay, compare, eval, and delivery consume these traces rather than inventing
   a parallel audit model.
@@ -4892,7 +4988,7 @@ hand-maintained tables.
 
 ## Current Ecosystem Signal
 
-Primary sources dated through 2026-07-18 show a stack specializing by
+Primary sources dated through 2026-07-31 show a stack specializing by
 boundary. [ARD](https://agenticresourcediscovery.org/spec/) and the
 [MCP Registry](https://modelcontextprotocol.io/registry/about) publish where
 capabilities exist. [MCP](https://modelcontextprotocol.io/) and
@@ -4975,6 +5071,23 @@ Current compute surface:
 - `doctor compute` for transport and overlay availability;
 - MCP `computer-use` profile for agent callers.
 
+## Bounded protocol state
+
+Modern MCP work is partitioned by verified OAuth principal or an
+unauthenticated bearer-handle owner. Task admission is atomic at 32 active
+tasks per principal and 200 globally. Streamable HTTP sessions are bounded at
+25 per principal and 100 globally. Terminal or cancelled tasks release active
+capacity, while session expiry/removal releases session capacity. Principal
+exhaustion and global exhaustion return distinct errors, preserving
+cross-principal fairness while protecting the process ceiling.
+
+Task-to-subscription delivery uses an inverted index keyed by task id, so
+notification work is proportional to matching subscribers. Registry,
+transport, ref, core-command, and category lookups use maps or bounded posting
+lists rather than repeated catalog scans. Generated manifest commands carry
+the canonical effect decision produced from the complete live command; the
+cold path never reclassifies effects from an incomplete pipeline projection.
+
 ## Public Front-End
 
 The docs front-end is not a marketing landing page. It is an operator console
@@ -5002,16 +5115,16 @@ The public UI should keep these components honest:
 
 These are architecture cleanup targets, not immediate deletions without tests.
 
-| Target                                       | Why                                    | Safe direction                                               |
-| -------------------------------------------- | -------------------------------------- | ------------------------------------------------------------ |
-| Wrapper-specific semantics                   | Causes CLI/MCP/ACP drift               | Move behavior into CommandContract and kernel stages         |
-| Regex-based TS adapter stub extraction       | Fragile metadata discovery             | Prefer explicit registration metadata or generated contracts |
-| Internal imports from `src/engine/invoke.ts` | Compatibility shim hides owner modules | New code imports kernel modules directly                     |
-| Hand-maintained counts in docs               | Drift from generated artifacts         | Use stats replacement scripts only                           |
-| Expanded MCP as default                      | Too much resident context              | Keep default/deferred profile first                          |
-| Visual-first control language                | Encourages brittle automation          | Require structured substrate before visual fallback          |
-| Adapter health theater                       | Passing load is not working behavior   | Health gates must run real owned runner/probe surfaces       |
-| Generated public docs edits                  | Source of truth is upstream docs files | Edit `docs/` sources, regenerate `docs/public/`              |
+| Target                                       | Why                                    | Safe direction                                                 |
+| -------------------------------------------- | -------------------------------------- | -------------------------------------------------------------- |
+| Wrapper-specific semantics                   | Causes CLI/MCP/ACP drift               | Move behavior into CommandContract and kernel stages           |
+| Regex-based TS adapter stub extraction       | Fragile metadata discovery             | Prefer explicit registration metadata or generated contracts   |
+| Internal imports from `src/engine/invoke.ts` | Compatibility shim hides owner modules | New code imports kernel modules directly                       |
+| Hand-maintained counts in docs               | Drift from generated artifacts         | Use stats replacement scripts only                             |
+| Expanded MCP as default                      | Too much resident context              | Keep default/deferred profile first                            |
+| Visual-first control language                | Encourages brittle automation          | Require an explicit pixel route after semantic target analysis |
+| Adapter health theater                       | Passing load is not working behavior   | Health gates must run real owned runner/probe surfaces         |
+| Generated public docs edits                  | Source of truth is upstream docs files | Edit `docs/` sources, regenerate `docs/public/`                |
 
 ## Design Options For The Rebuild
 
@@ -5283,7 +5396,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v0.400.2 — Apollo · Duke. Static adapter catalog: <!-- STATS:site_count -->324<!-- /STATS --> sites, <!-- STATS:command_count -->1817<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->105<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v1.0.0 — Artemis · Glover. Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks engineering direction for the open Agent-Computer Interface
 runtime for real software. Historical release notes live in `CHANGELOG.md`;

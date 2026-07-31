@@ -7,7 +7,7 @@
 - 栏目: 解释
 - 上级: 解释 (/zh/ARCHITECTURE)
 
-> Current: v0.400.2 — Apollo · Duke. 静态 adapter 目录：<!-- STATS:site_count -->324<!-- /STATS --> 个站点、<!-- STATS:command_count -->1817<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->105<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
+> Current: v1.0.0 — Artemis · Glover. 静态 adapter 目录：<!-- STATS:site_count -->326<!-- /STATS --> 个站点、<!-- STATS:command_count -->1829<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
 路线图按“面向真实软件的 Agent-Computer Interface 运行时”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 
@@ -67,7 +67,7 @@
 3. 强化 control kernel：结果 envelope、权限评估、browser action evidence 都要可审查。
 4. 扩大 operation policy 覆盖：默认开放，`confirm` / `locked` 可选，`describe` 和 `--dry-run` 持续暴露风险。
 5. 为微信、企业微信、钉钉、飞书、Mail、Notes、Word、PPT、Excel 建立桌面控制 fixture。
-6. 为不完整 AX 壳的 Electron 应用加入 CDP、a11y、后台动作、Visual 的分层 fallback。
+6. 为不完整 AX 壳的 Electron 应用建立按目标证据选择的 CDP、a11y、后台动作与显式 Visual 路由。
 7. 把外部趋势搜索变成定期输入：来源归档在内部，公开文档只保留能力结论，然后回到本地测试验证。
 8. 从 `workflow_readiness` 里挑 cataloged 但缺少 live evidence 的工作流，逐个补 runner、fixture、live smoke 或 platform doctor；不要为了覆盖数字新增未验证命令。
 

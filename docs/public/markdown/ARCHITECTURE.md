@@ -12,15 +12,31 @@ visual cursor, or generated tool list. It is the executable boundary that lets
 an agent discover and select operations, govern supported effects, act across
 software substrates, inspect results, and repair supported failures.
 
-The current generated static adapter catalog is the source of truth for:
-**<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites**,
-**<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter commands**,
-**<span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> adapters**,
-**<span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> built-in actions**
-(<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span>
-registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span>
-transport-native),
-and **<span><!-- STATS:test_count -->9816<!-- /STATS --></span> tests** in v0.400.2.
+Normalized live command descriptors are the source of truth. The generated
+manifest is a reproducible, parity-tested projection for cold discovery. It contains
+<span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites.
+
+Those sites expose
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
+commands.
+
+The catalog implements them across
+<span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters.
+
+The pipeline surface contains
+<span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in
+actions.
+
+Of these,
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> are
+registered steps.
+
+The remaining
+<span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> are
+transport-native.
+
+Version 0.400.2 includes
+<span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests in v1.0.0.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 
@@ -61,19 +77,19 @@ feature has shipped.
 These roots define the intended product semantics. The current-support column
 above and the roadmap determine which runtime surfaces implement each root now.
 
-| Priority | Layer                    | Contract                                                                                   |
-| -------- | ------------------------ | ------------------------------------------------------------------------------------------ |
-| P0       | Agent-Computer Interface | Discovery, selection, governance, action, observation, repair, and exposure                |
-| P0       | Operation contract       | Args, output, auth posture, effect, safety, capability, source path, and repair path       |
-| P0       | Adapter control kernel   | Validate, harden, authorize, invoke an adapter substrate, observe, and envelope            |
-| P0       | Action substrates        | HTTP, browser CDP, desktop accessibility, subprocess, visual fallback, protocols, wrappers |
-| P0       | Result and delivery loop | AgentEnvelope v2 plus optional run traces, post-state checks, objective gates, and repair  |
-| P1       | Discovery                | `search`, `list`, `describe`, `do`, generated catalog, docs index                          |
-| P1       | Governance               | Permission profiles, deny rules, approvals, effect/risk/capability metadata                |
-| P1       | Authoring                | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                   |
-| P1       | Runtime exposure         | Native CLI; MCP adapter projection; documented ACP/HTTP/agent-pack/skills subsets          |
-| P2       | Broad coverage           | Hundreds of site commands, vertical meta-commands, external CLI hub                        |
-| P2       | Public docs UI           | Homepage, operation catalog, architecture, compute evidence demo                           |
+| Priority | Layer                    | Contract                                                                                                                                               |
+| -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P0       | Agent-Computer Interface | Discovery, selection, governance, action, observation, repair, and exposure                                                                            |
+| P0       | Operation contract       | Args, output, auth posture, effect, safety, capability, source path, and repair path                                                                   |
+| P0       | Adapter control kernel   | Validate, harden, authorize, invoke an adapter substrate, observe, and envelope                                                                        |
+| P0       | Execution operators      | Structured API, browser protocol, native CLI, browser semantics, desktop accessibility, visual observation, explicit visual coordinates, local runtime |
+| P0       | Result and delivery loop | AgentEnvelope v2 plus optional run traces, post-state checks, objective gates, and repair                                                              |
+| P1       | Discovery                | `search`, `list`, `describe`, `do`, generated catalog, docs index                                                                                      |
+| P1       | Governance               | Permission profiles, deny rules, approvals, effect/risk/capability metadata                                                                            |
+| P1       | Authoring                | YAML first, TypeScript escape hatch, schema-v2 lint, repair verification                                                                               |
+| P1       | Runtime exposure         | Native CLI; MCP adapter projection; documented ACP/HTTP/agent-pack/skills subsets                                                                      |
+| P2       | Broad coverage           | Hundreds of site commands, vertical meta-commands, external CLI hub                                                                                    |
+| P2       | Public docs UI           | Homepage, operation catalog, architecture, compute evidence demo                                                                                       |
 
 ## Substrate Boundary
 
@@ -91,6 +107,39 @@ boundary.
   operation contracts.
 - Generated public files under `docs/public/` are build artifacts, not
   hand-edited architecture sources.
+
+## Task-Directed Operator Boundary
+
+Discovery and execution routing are separate boundaries. Search retrieves
+operation contracts by intent. The selected contract projects one execution
+operator, effect, verification channel, and target scope. Compute routing then
+binds an exact target and selects one provider before any provider is opened.
+
+The operator classes are structured API, browser protocol, native CLI, browser
+semantics, desktop accessibility, visual observation, explicit visual
+coordinates, and local runtime. A website label does not imply browser control,
+and an application label does not imply desktop input. The command contract
+and target evidence make that choice.
+
+Compute provider declarations compile into an exact provider hash index and
+per-action posting lists. Exact refs, renderer endpoints, window ids, and
+intrinsic operation constraints are hard constraints. Coordinate control is
+split into explicit OS-driver and visual providers; neither is an implicit
+semantic fallback. Ordinary failures stay on the selected provider; retry,
+repair, replan, outcome inspection, session escalation, and privilege
+escalation are separate transitions.
+
+Inline driver and visual screenshots issue opaque, 256-bit observation refs.
+Coordinate actions atomically claim one ref and require the same provider,
+desktop scope, named session, unexpired 30-second lifetime, and in-bounds image
+coordinates. Authoritative metadata stays in an owner-only local record;
+provider open happens only after validation. Screenshot pixels are transformed
+to provider action coordinates from recorded dimensions rather than inferred
+display scale.
+
+See [Task-Directed Capability Routing](operate/task-routing.md) for the formal
+axes, selection algorithm, complexity, recovery graph, and provider conformance
+requirements.
 
 ## Capability Matrix And Workflow Readiness
 
@@ -157,7 +206,7 @@ Uni-CLI
 |
 |-- Operation catalog
 |   |-- Runtime registry: src/registry.ts
-|   |-- Core catalog: src/discovery/core-catalog.ts
+|   |-- Core catalog and O(1) id/category indexes: src/discovery/core-catalog.ts
 |   |-- Adapter catalog: src/adapters/<site>/<command>.yaml or .ts
 |   |-- Schema v2: src/core/schema-v2.ts
 |   |-- Aliases and categories: src/discovery/aliases.ts
@@ -173,12 +222,17 @@ Uni-CLI
 |   `-- Output envelope: src/output/*
 |
 |-- Action substrates
+|   |-- Task/operator projection: src/core/operator-model.ts
+|   |-- Compute route planning: src/transport/routing.ts
+|   |-- Single-provider dispatch: src/transport/compute-dispatch.ts
+|   |-- Visual observation capabilities: src/compute/visual-observation.ts
 |   |-- Web/API: src/engine/steps/fetch*.ts, src/engine/steps/parse*.ts
 |   |-- Browser/CDP: src/browser/*, src/transport/adapters/cdp-browser.ts
 |   |-- Desktop/OS: src/commands/compute.ts, src/compute/*, src/transport/adapters/desktop-*.ts
 |   |-- Local tools/files: src/hub/*, src/engine/steps/exec*.ts, src/adapters/pdf/*
 |   |-- Protocols: src/mcp/*, src/commands/acp.ts, src/protocol/*
-|   `-- Visual fallback: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
+|   |-- Explicit OS driver: src/transport/adapters/cua-driver.ts
+|   `-- Explicit visual control: src/transport/adapters/visual.ts, src/compute/visual-timeline.ts
 |
 |-- Evidence, delivery, and repair
 |   |-- Run recording: src/engine/session/*
@@ -223,7 +277,7 @@ flowchart TD
   discover --> contract["OperationContract"]
   contract --> policy["permission and risk policy"]
   policy --> kernel["adapter kernel or fixed core handler"]
-  kernel --> substrate["HTTP / CDP / accessibility / subprocess / visual / protocol"]
+  kernel --> substrate["HTTP / CDP / accessibility / subprocess / OS driver / visual / protocol"]
   substrate --> envelope["AgentEnvelope v2"]
   envelope --> optional["optional recording / post-state / trajectory"]
   optional --> delivery["optional delivery assessment"]
@@ -311,6 +365,13 @@ broker target, transport, overlay, file, clipboard, or desktop side effect.
 Permission schema v2 is deny-first, supports an explicit default decision and
 bounded argument constraints, and evaluates actual arguments without storing
 them in approval memory.
+Cookie/header commands read one persisted site credential source. An explicit
+`--auth-retry` obtains fresh values from one selected browser source and wraps
+them in an opaque one-shot capability. A new kernel invocation consumes that
+capability inside an AsyncLocalStorage scope; matching site/domain acquisitions
+see the fresh values, concurrent or later invocations do not, and cookie values
+never enter the public handle. No automatic 401/403 browser navigation or
+credential-source cascade runs inside the pipeline.
 
 ### 4. Observe
 
@@ -327,6 +388,8 @@ Observation is what turns a tool call into evidence.
   and stale-reference diagnostics.
 - Computer-use actions can attach `visual_action`, target point, overlay status,
   dispatch result, and post-action capture.
+- Inline driver/visual screenshots can attach a single-use observation
+  capability for one subsequent coordinate action.
 - `--record` writes append-only local traces under the run store.
 - Replay, compare, eval, and delivery consume these traces rather than inventing
   a parallel audit model.
@@ -363,7 +426,7 @@ hand-maintained tables.
 
 ## Current Ecosystem Signal
 
-Primary sources dated through 2026-07-18 show a stack specializing by
+Primary sources dated through 2026-07-31 show a stack specializing by
 boundary. [ARD](https://agenticresourcediscovery.org/spec/) and the
 [MCP Registry](https://modelcontextprotocol.io/registry/about) publish where
 capabilities exist. [MCP](https://modelcontextprotocol.io/) and
@@ -446,6 +509,23 @@ Current compute surface:
 - `doctor compute` for transport and overlay availability;
 - MCP `computer-use` profile for agent callers.
 
+## Bounded protocol state
+
+Modern MCP work is partitioned by verified OAuth principal or an
+unauthenticated bearer-handle owner. Task admission is atomic at 32 active
+tasks per principal and 200 globally. Streamable HTTP sessions are bounded at
+25 per principal and 100 globally. Terminal or cancelled tasks release active
+capacity, while session expiry/removal releases session capacity. Principal
+exhaustion and global exhaustion return distinct errors, preserving
+cross-principal fairness while protecting the process ceiling.
+
+Task-to-subscription delivery uses an inverted index keyed by task id, so
+notification work is proportional to matching subscribers. Registry,
+transport, ref, core-command, and category lookups use maps or bounded posting
+lists rather than repeated catalog scans. Generated manifest commands carry
+the canonical effect decision produced from the complete live command; the
+cold path never reclassifies effects from an incomplete pipeline projection.
+
 ## Public Front-End
 
 The docs front-end is not a marketing landing page. It is an operator console
@@ -473,16 +553,16 @@ The public UI should keep these components honest:
 
 These are architecture cleanup targets, not immediate deletions without tests.
 
-| Target                                       | Why                                    | Safe direction                                               |
-| -------------------------------------------- | -------------------------------------- | ------------------------------------------------------------ |
-| Wrapper-specific semantics                   | Causes CLI/MCP/ACP drift               | Move behavior into CommandContract and kernel stages         |
-| Regex-based TS adapter stub extraction       | Fragile metadata discovery             | Prefer explicit registration metadata or generated contracts |
-| Internal imports from `src/engine/invoke.ts` | Compatibility shim hides owner modules | New code imports kernel modules directly                     |
-| Hand-maintained counts in docs               | Drift from generated artifacts         | Use stats replacement scripts only                           |
-| Expanded MCP as default                      | Too much resident context              | Keep default/deferred profile first                          |
-| Visual-first control language                | Encourages brittle automation          | Require structured substrate before visual fallback          |
-| Adapter health theater                       | Passing load is not working behavior   | Health gates must run real owned runner/probe surfaces       |
-| Generated public docs edits                  | Source of truth is upstream docs files | Edit `docs/` sources, regenerate `docs/public/`              |
+| Target                                       | Why                                    | Safe direction                                                 |
+| -------------------------------------------- | -------------------------------------- | -------------------------------------------------------------- |
+| Wrapper-specific semantics                   | Causes CLI/MCP/ACP drift               | Move behavior into CommandContract and kernel stages           |
+| Regex-based TS adapter stub extraction       | Fragile metadata discovery             | Prefer explicit registration metadata or generated contracts   |
+| Internal imports from `src/engine/invoke.ts` | Compatibility shim hides owner modules | New code imports kernel modules directly                       |
+| Hand-maintained counts in docs               | Drift from generated artifacts         | Use stats replacement scripts only                             |
+| Expanded MCP as default                      | Too much resident context              | Keep default/deferred profile first                            |
+| Visual-first control language                | Encourages brittle automation          | Require an explicit pixel route after semantic target analysis |
+| Adapter health theater                       | Passing load is not working behavior   | Health gates must run real owned runner/probe surfaces         |
+| Generated public docs edits                  | Source of truth is upstream docs files | Edit `docs/` sources, regenerate `docs/public/`                |
 
 ## Design Options For The Rebuild
 

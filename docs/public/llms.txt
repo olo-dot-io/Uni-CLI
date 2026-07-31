@@ -4,12 +4,12 @@ Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, 
 
 ## Operation Snapshot
 
-- Static adapter sites: 324
-- Registered adapter commands: 1817
+- Static adapter sites: 326
+- Registered adapter commands: 1829
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1237 (993 YAML + 244 TypeScript)
-- Built-in actions: 105 (50 registered + 55 transport-native)
-- Tests: 9816
+- Adapters: 1226 (980 YAML + 246 TypeScript)
+- Built-in actions: 113 (58 registered + 55 transport-native)
+- Tests: 9983
 
 ## Agent Contract
 

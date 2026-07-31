@@ -18,6 +18,7 @@
  * - docs/ROADMAP.md: Current version line
  * - docs/faq.md / docs/zh/faq.md: Current package version sentence
  * - docs/release-info.json: Version-derived release metadata
+ * - docs/public agent assets: Regenerated after release metadata changes
  * - server.json: MCP registry manifest version fields
  *
  * What it does NOT update (handled elsewhere):
@@ -32,6 +33,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -424,6 +426,27 @@ if (existsSync(serverJsonPath)) {
 } else {
   console.log(`   ✗ FAIL server.json — file not found`);
   failed++;
+}
+
+// Generated docs consume release-info.json, stats.json, and the source docs.
+// Refresh them only after every source-of-truth file above has settled so a
+// local candidate cannot retain the previous published release label.
+if (!dryRun && failed === 0) {
+  console.log("\n   Regenerating public agent docs...");
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const result = spawnSync(npmCommand, ["run", "docs:prepare"], {
+    cwd: ROOT,
+    env: process.env,
+    stdio: "inherit",
+  });
+  if (result.status === 0) {
+    console.log("   ✓ public agent docs regenerated");
+  } else {
+    console.log(
+      `   ✗ FAIL public agent docs — docs:prepare exited ${result.status ?? "without a status"}`,
+    );
+    failed++;
+  }
 }
 
 console.log(

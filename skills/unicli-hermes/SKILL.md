@@ -4,7 +4,7 @@ description: >
   Use Uni-CLI to interact with the current website, desktop-app, and system-tool catalog.
   Trigger when: user asks to check a website, fetch data, control a desktop app,
   or interact with social media, news, finance, or AI platforms.
-version: 0.400.2
+version: 1.0.0
 depends-on:
   - talk-normal
 triggers:

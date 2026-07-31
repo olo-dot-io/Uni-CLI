@@ -1,24 +1,24 @@
 {
-  "version": "0.400.2",
-  "codename": "Apollo · Duke",
-  "date": "2026-07-18",
-  "status": "published",
+  "version": "1.0.0",
+  "codename": "Artemis · Glover",
+  "date": "2026-07-31",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.2",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#04002--2026-07-18--apollo--duke",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-07-31--artemis--glover",
   "highlights": {
     "root": [
-      "Uni-CLI 0.400.2 defines the open Agent-Computer Interface runtime for discovering, selecting, governing, acting through, observing, and repairing operations across real software, while making fixed-core MCP routing limits explicit.",
-      "Deep retrieval now compiles natural arXiv queries into explicit syntax, filters bounded candidates for meaningful relevance, preserves publisher provenance, validates exact GitHub issue and pull-request URLs, and returns status-specific recovery guidance.",
-      "A bounded privacy-safe local event log now correlates CLI, MCP, ACP, bench, and hub operations with source identity and typed outcomes; recoverable locks, strict readers, and sanitized Commander errors keep diagnostics reliable without retaining raw user input.",
-      "Compute actions, waits, refs, sessions, and combined captures now bind to one exact app, renderer, transport, and native window identity; fresh-condition polling, target tombstones, atomic artifacts, and closed-failure capture prevent cross-target drift and false success."
+      "Uni-CLI 1.0.0 establishes a stable operation-first Agent-Computer Interface: agents discover exact effects, feasibility, provider, substrate, target scope, evidence, and recovery before executing work.",
+      "Deterministic routing selects one declared provider for each operation. Structured provider failures remain visible and repairable instead of triggering a silent cross-provider cascade.",
+      "Computer use now shares one exact-target contract across AX, UIA, AT-SPI, CDP, and visual drivers, with visual refs, same-provider post-action capture, effect verdicts, bounded observation, and atomic artifacts.",
+      "Modern MCP tasks, subscriptions, principal quotas, request settlement, result budgets, compact command description, and bounded indexed search make the complete runtime directly usable by agents."
     ],
     "zh": [
-      "Uni-CLI 0.400.2 将项目明确为开放的 Agent-Computer Interface runtime：统一发现、选择、治理、执行、观察和修复真实软件操作，并如实暴露 fixed-core MCP 路由边界。",
-      "深度检索现在会把自然语言 arXiv 查询编译为显式语法，对有界候选执行实质相关性过滤，保留 publisher 来源，校验精确 GitHub issue/PR URL，并返回按状态区分的恢复动作。",
-      "新的有界隐私安全本地事件日志统一关联 CLI、MCP、ACP、bench 与 hub 操作，记录 source identity 和类型化结果；可恢复锁、严格读取器与脱敏 Commander 错误确保诊断可靠且不保留原始用户输入。",
-      "Compute action、wait、ref、session 与组合 capture 现在绑定同一 app、renderer、transport 和精确原生窗口；fresh 条件轮询、target tombstone、原子 artifact 与失败关闭 capture 消除跨目标漂移和假成功。"
+      "Uni-CLI 1.0.0 建立稳定的 operation-first Agent-Computer Interface：Agent 在执行前即可发现精确的 effect、feasibility、provider、substrate、target scope、evidence 与 recovery。",
+      "确定性路由为每个 operation 选择一个明确 provider；provider 故障会保留结构化原因和修复路径，执行过程不会静默切换其他 substrate。",
+      "Computer use 通过统一的精确 target contract 覆盖 AX、UIA、AT-SPI、CDP 与 visual driver，并提供 visual ref、同 provider 执行后 capture、effect verdict、有界 observation 和原子 artifact。",
+      "现代 MCP task、subscription、principal quota、request settlement、result budget、紧凑 command description 与有界索引搜索让 Agent 能直接使用完整 runtime。"
     ]
   }
 }

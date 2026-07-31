@@ -227,7 +227,7 @@ Uni-CLI 位于 agent 应用之下、真实网站/桌面应用/本地工具/文�
 不采用：
 
 - 把 ACP 或 MCP 当作核心语义模型。
-- 把浏览器自动化、sandbox 或 visual fallback 当作产品边界。
+- 把浏览器自动化、sandbox 或 visual coordinate operator 当作产品边界。
 - API/CDP/a11y/subprocess 可用时不先用 Visual。
 - 把静态隐私标签当作唯一安全机制。
 - 把没有观察证据的浏览器动作当作成功副作用。

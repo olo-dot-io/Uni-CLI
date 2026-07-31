@@ -11,7 +11,7 @@
 
 ## Uni-CLI 是什么？
 
-Uni-CLI 是面向真实软件的开源 Agent-Computer Interface 运行时。它在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、accessibility 和 visual control 之间提供一个可搜索边界：按意图排序已编目 operation，通过选中 operation 已声明的 substrate 按当前策略运行，返回稳定的成功/错误 envelope，并让支持的失败路径可修复。静态 adapter 目录当前覆盖 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点；固定 core 与主机动态发现 surface 在运行时加入 native CLI。
+Uni-CLI 是面向真实软件的开源 Agent-Computer Interface 运行时。它在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、操作系统能力、MCP 服务、accessibility 和 visual control 之间提供一个可搜索边界：按意图排序已编目 operation，通过选中 operation 已声明的 substrate 按当前策略运行，返回稳定的成功/错误 envelope，并让支持的失败路径可修复。静态 adapter 目录当前覆盖 <span><!-- STATS:site_count -->326<!-- /STATS --></span> 个站点；固定 core 与主机动态发现 surface 在运行时加入 native CLI。
 
 ## 为什么叫 Agent-Computer Interface 运行时？
 
@@ -39,7 +39,7 @@ CLI 是 Uni-CLI 原生、可检查的完整 command surface：不用常驻 serve
 
 ## 一共有多少站点和命令？
 
-v0.400.2 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->324<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1817<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1237<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9816<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一个 Agent-Computer Interface 产品边界：发现、选择、治理、行动、观察和修复横跨 web、browser、desktop、本地工具、文件与协议的 operation。
+v1.0.0 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count -->326<!-- /STATS --></span> 个站点、<span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条已注册命令与 <span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> 个适配器；固定 core 与主机动态发现命令在运行时单独计数。仓库另含 <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）和 <span><!-- STATS:test_count -->9983<!-- /STATS --></span> 个测试。真正重要的不是数字，而是一个 Agent-Computer Interface 产品边界：发现、选择、治理、行动、观察和修复横跨 web、browser、desktop、本地工具、文件与协议的 operation。
 
 ## 能下载论文并读取本地 PDF 吗？
 
@@ -56,10 +56,13 @@ v0.400.2 生成的静态 adapter 操作目录包含 <span><!-- STATS:site_count 
 ## 需要登录的网站能跑吗？
 
 能。Operation 会显式声明 `public`、`cookie`、`header`、`intercept` 或 `ui` 之一。
-存在 probe URL 时，有界 HTTP probe 只尝试 `public → cookie → header`，并在进程内
-缓存第一个有效结果；它不会自动升级到 browser-backed `intercept` 或 `ui`。
-`cookie`/`header` command 优先读取用户显式持久化的文件；没有文件时只把 live
-browser/CDP Cookie 读入本次进程内存。只有 `auth import` 和 `browser cookies` 会显式落盘。
+有界 HTTP probe 可以为诊断比较 `public`、`cookie` 与 `header`，command
+execution 只运行已声明的 strategy。`cookie`/`header` command 正常读取该站点
+持久化的 credential；`--auth-retry` 根据结构化失败显式选择唯一来源：
+`auth_required` 选择已选定的 local-browser profile，`challenge_required`
+选择当前 live CDP target。新值封装在一次性 opaque capability 中，只能由一个
+新的 invocation 消费。读取 miss、解密失败或 profile 歧义都会终止刷新，不会
+切换来源。只有 `auth import` 和 `browser cookies` 会显式落盘。
 
 ## token 成本上比 MCP 好多少？
 

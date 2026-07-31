@@ -135,7 +135,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-0.400.2 — Apollo · Duke
+1.0.0 — Artemis · Glover
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

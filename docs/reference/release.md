@@ -139,6 +139,7 @@ Current program map:
 | `0.1xx`       | Sputnik |
 | `0.200-0.213` | Vostok  |
 | `0.216+`      | Apollo  |
+| `1.x`         | Artemis |
 
 Rules:
 
@@ -158,6 +159,12 @@ npm run release:check -- --strict-codename
 
 For the 0.400 line, the release label format is unchanged. The published
 release label is `Apollo · Duke`.
+
+The 1.x line starts with `Artemis · Glover`. Version `1.0.0` establishes the
+stable operation-first compatibility contract: discovery declares one feasible
+provider and its substrate before execution; targets, effects, evidence, errors,
+and recovery remain machine-readable across CLI and MCP boundaries. Future 1.x
+releases preserve those public contracts unless semver requires another major.
 
 Candidate delivery uses the default `local` status, so generated docs cannot
 turn an unobserved npm or GitHub Release event into a publication claim. Only

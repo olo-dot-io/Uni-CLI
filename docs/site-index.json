@@ -1,7 +1,7 @@
 {
-  "generated": "2026-07-18T19:11:06.905Z",
-  "total_sites": 324,
-  "total_commands": 1817,
+  "generated": "2026-07-31T14:52:21.962Z",
+  "total_sites": 326,
+  "total_commands": 1829,
   "sites": [
     {
       "site": "12306",
@@ -64,61 +64,6 @@
       ]
     },
     {
-      "site": "1point3acres",
-      "type": "web-api",
-      "domain": "www.1point3acres.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 9,
-      "commands": [
-        {
-          "name": "hot",
-          "description": "Read hot 1Point3Acres threads",
-          "command": "unicli 1point3acres hot"
-        },
-        {
-          "name": "latest",
-          "description": "Read latest 1Point3Acres threads",
-          "command": "unicli 1point3acres latest"
-        },
-        {
-          "name": "digest",
-          "description": "Read digest 1Point3Acres threads",
-          "command": "unicli 1point3acres digest"
-        },
-        {
-          "name": "forum",
-          "description": "Browse threads from a 1Point3Acres forum by fid",
-          "command": "unicli 1point3acres forum"
-        },
-        {
-          "name": "forums",
-          "description": "List 1Point3Acres forum ids and names",
-          "command": "unicli 1point3acres forums"
-        },
-        {
-          "name": "search",
-          "description": "Search 1Point3Acres forum posts using browser cookies",
-          "command": "unicli 1point3acres search"
-        },
-        {
-          "name": "thread",
-          "description": "Read a 1Point3Acres thread page with floor rows",
-          "command": "unicli 1point3acres thread"
-        },
-        {
-          "name": "notifications",
-          "description": "Read 1Point3Acres account notifications using browser cookies",
-          "command": "unicli 1point3acres notifications"
-        },
-        {
-          "name": "user",
-          "description": "Read a 1Point3Acres user profile",
-          "command": "unicli 1point3acres user"
-        }
-      ]
-    },
-    {
       "site": "36kr",
       "type": "web-api",
       "domain": "36kr.com",
@@ -154,61 +99,6 @@
       ]
     },
     {
-      "site": "51job",
-      "type": "web-api",
-      "domain": "jobs.51job.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 4,
-      "commands": [
-        {
-          "name": "search",
-          "description": "51job",
-          "command": "unicli 51job search"
-        },
-        {
-          "name": "hot",
-          "description": "51job",
-          "command": "unicli 51job hot"
-        },
-        {
-          "name": "detail",
-          "description": "51job",
-          "command": "unicli 51job detail"
-        },
-        {
-          "name": "company",
-          "description": "51job",
-          "command": "unicli 51job company"
-        }
-      ]
-    },
-    {
-      "site": "acl-anthology",
-      "type": "web-api",
-      "domain": "aclanthology.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search ACL Anthology papers",
-          "command": "unicli acl-anthology search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch an ACL Anthology paper by anthology id",
-          "command": "unicli acl-anthology paper"
-        },
-        {
-          "name": "read",
-          "description": "Download an ACL Anthology paper PDF by id and extract text",
-          "command": "unicli acl-anthology read"
-        }
-      ]
-    },
-    {
       "site": "adguardhome",
       "type": "service",
       "auth": false,
@@ -239,60 +129,6 @@
           "name": "toggle",
           "description": "Enable or disable AdGuard Home DNS filtering protection",
           "command": "unicli adguardhome toggle"
-        }
-      ]
-    },
-    {
-      "site": "ai",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 6,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search live AI infrastructure with provenance and recovery",
-          "command": "unicli ai search"
-        },
-        {
-          "name": "pulse",
-          "description": "Fetch a current role-specific AI field pulse across first-party docs, code, papers, model hubs, and communities",
-          "command": "unicli ai pulse"
-        },
-        {
-          "name": "read",
-          "description": "Read and structure a live AI/AI-infrastructure source with clean Markdown, headings, links, provenance, timestamp, and content hash",
-          "command": "unicli ai read"
-        },
-        {
-          "name": "sources",
-          "description": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O",
-          "command": "unicli ai sources"
-        },
-        {
-          "name": "landscape",
-          "description": "List the maintained first-party AI lab, hardware, runtime, model-hub, research, benchmark, world-model, robotics, and community target directory",
-          "command": "unicli ai landscape"
-        },
-        {
-          "name": "profiles",
-          "description": "List what AI practitioners monitor daily and the live source/query bundle for each role",
-          "command": "unicli ai profiles"
-        }
-      ]
-    },
-    {
-      "site": "aibase",
-      "type": "web-api",
-      "domain": "www.aibase.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "news",
-          "description": "AIbase daily AI industry news",
-          "command": "unicli aibase news"
         }
       ]
     },
@@ -343,130 +179,6 @@
           "name": "search",
           "description": "Search Amazon products",
           "command": "unicli amazon search"
-        }
-      ]
-    },
-    {
-      "site": "anilist",
-      "type": "web-api",
-      "domain": "anilist.co",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 5,
-      "commands": [
-        {
-          "name": "anime",
-          "description": "Search AniList anime by Japanese title, native title, romaji, alias, or keyword",
-          "command": "unicli anilist anime"
-        },
-        {
-          "name": "manga",
-          "description": "Search AniList manga by Japanese title, native title, romaji, alias, or keyword",
-          "command": "unicli anilist manga"
-        },
-        {
-          "name": "characters",
-          "description": "Search AniList characters by Japanese name, native name, romaji, or alias",
-          "command": "unicli anilist characters"
-        },
-        {
-          "name": "staff",
-          "description": "Search AniList staff by Japanese name, native name, romaji, or alias",
-          "command": "unicli anilist staff"
-        },
-        {
-          "name": "studios",
-          "description": "Search AniList studios by Japanese name, native name, romaji, or alias",
-          "command": "unicli anilist studios"
-        }
-      ]
-    },
-    {
-      "site": "antigravity",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 16,
-      "commands": [
-        {
-          "name": "extract-code",
-          "description": "Extract code blocks from the active Antigravity conversation",
-          "command": "unicli antigravity extract-code"
-        },
-        {
-          "name": "watch",
-          "description": "Poll Antigravity conversation text for updates",
-          "command": "unicli antigravity watch"
-        },
-        {
-          "name": "ask",
-          "description": "Send a prompt to Antigravity and wait for response",
-          "command": "unicli antigravity ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to Antigravity without waiting",
-          "command": "unicli antigravity send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from Antigravity",
-          "command": "unicli antigravity read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in Antigravity",
-          "command": "unicli antigravity model"
-        },
-        {
-          "name": "status",
-          "description": "Check Antigravity app status",
-          "command": "unicli antigravity status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Antigravity",
-          "command": "unicli antigravity new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of Antigravity",
-          "command": "unicli antigravity screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM.",
-          "command": "unicli antigravity dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli antigravity open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli antigravity status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity.",
-          "command": "unicli antigravity snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Antigravity.",
-          "command": "unicli antigravity click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Antigravity.",
-          "command": "unicli antigravity type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Antigravity, with optional comma-separated modifiers.",
-          "command": "unicli antigravity press"
         }
       ]
     },
@@ -660,21 +372,6 @@
       ]
     },
     {
-      "site": "baidu-scholar",
-      "type": "web-api",
-      "domain": "xueshu.baidu.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Baidu Scholar papers",
-          "command": "unicli baidu-scholar search"
-        }
-      ]
-    },
-    {
       "site": "band",
       "type": "web-api",
       "domain": "band.us",
@@ -701,41 +398,6 @@
           "name": "posts",
           "description": "List BAND posts from a group",
           "command": "unicli band posts"
-        }
-      ]
-    },
-    {
-      "site": "bangumi",
-      "type": "web-api",
-      "domain": "bgm.tv",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 5,
-      "commands": [
-        {
-          "name": "characters",
-          "description": "Search Bangumi characters by Japanese name, Chinese name, romaji, or alias",
-          "command": "unicli bangumi characters"
-        },
-        {
-          "name": "subject",
-          "description": "Get Bangumi subject details by subject id",
-          "command": "unicli bangumi subject"
-        },
-        {
-          "name": "anime",
-          "description": "Search Bangumi anime subjects by Japanese title, Chinese title, romaji, or alias",
-          "command": "unicli bangumi anime"
-        },
-        {
-          "name": "book",
-          "description": "Search Bangumi book subjects by Japanese title, Chinese title, romaji, or alias",
-          "command": "unicli bangumi book"
-        },
-        {
-          "name": "game",
-          "description": "Search Bangumi game subjects by Japanese title, Chinese title, romaji, or alias",
-          "command": "unicli bangumi game"
         }
       ]
     },
@@ -986,41 +648,6 @@
           "name": "trades",
           "description": "Binance recent trades for a trading pair",
           "command": "unicli binance trades"
-        }
-      ]
-    },
-    {
-      "site": "biorxiv",
-      "type": "web-api",
-      "domain": "api.biorxiv.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 5,
-      "commands": [
-        {
-          "name": "recent",
-          "description": "List recent bioRxiv preprints from the official API",
-          "command": "unicli biorxiv recent"
-        },
-        {
-          "name": "search",
-          "description": "Search bioRxiv official API metadata within a bounded date window",
-          "command": "unicli biorxiv search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch bioRxiv preprint metadata by DOI",
-          "command": "unicli biorxiv paper"
-        },
-        {
-          "name": "download",
-          "description": "Download a bioRxiv preprint PDF by DOI",
-          "command": "unicli biorxiv download"
-        },
-        {
-          "name": "read",
-          "description": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
-          "command": "unicli biorxiv read"
         }
       ]
     },
@@ -1348,190 +975,6 @@
       ]
     },
     {
-      "site": "chatgpt",
-      "type": "web-api",
-      "domain": "chatgpt.com",
-      "auth": true,
-      "strategy": "public",
-      "command_count": 17,
-      "commands": [
-        {
-          "name": "image",
-          "description": "Generate an image in ChatGPT web and optionally save visible images",
-          "command": "unicli chatgpt image"
-        },
-        {
-          "name": "history",
-          "description": "List visible ChatGPT web conversation history from the sidebar",
-          "command": "unicli chatgpt history"
-        },
-        {
-          "name": "detail",
-          "description": "Open a ChatGPT web conversation by ID and read its messages",
-          "command": "unicli chatgpt detail"
-        },
-        {
-          "name": "ask",
-          "description": "Send a prompt to ChatGPT and wait for response",
-          "command": "unicli chatgpt ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to ChatGPT without waiting",
-          "command": "unicli chatgpt send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from ChatGPT",
-          "command": "unicli chatgpt read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in ChatGPT",
-          "command": "unicli chatgpt model"
-        },
-        {
-          "name": "status",
-          "description": "Check ChatGPT app status",
-          "command": "unicli chatgpt status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in ChatGPT",
-          "command": "unicli chatgpt new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of ChatGPT",
-          "command": "unicli chatgpt screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM.",
-          "command": "unicli chatgpt dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli chatgpt open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli chatgpt status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT.",
-          "command": "unicli chatgpt snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatGPT.",
-          "command": "unicli chatgpt click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatGPT.",
-          "command": "unicli chatgpt type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatGPT, with optional comma-separated modifiers.",
-          "command": "unicli chatgpt press"
-        }
-      ]
-    },
-    {
-      "site": "chatwise",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 16,
-      "commands": [
-        {
-          "name": "history",
-          "description": "List ChatWise conversations from the sidebar",
-          "command": "unicli chatwise history"
-        },
-        {
-          "name": "export",
-          "description": "Export the current ChatWise conversation as Markdown text",
-          "command": "unicli chatwise export"
-        },
-        {
-          "name": "ask",
-          "description": "Send a prompt to ChatWise and wait for response",
-          "command": "unicli chatwise ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to ChatWise without waiting",
-          "command": "unicli chatwise send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from ChatWise",
-          "command": "unicli chatwise read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in ChatWise",
-          "command": "unicli chatwise model"
-        },
-        {
-          "name": "status",
-          "description": "Check ChatWise app status",
-          "command": "unicli chatwise status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in ChatWise",
-          "command": "unicli chatwise new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of ChatWise",
-          "command": "unicli chatwise screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM.",
-          "command": "unicli chatwise dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli chatwise open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli chatwise status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise.",
-          "command": "unicli chatwise snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in ChatWise.",
-          "command": "unicli chatwise click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in ChatWise.",
-          "command": "unicli chatwise type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in ChatWise, with optional comma-separated modifiers.",
-          "command": "unicli chatwise press"
-        }
-      ]
-    },
-    {
       "site": "chrome",
       "type": "desktop",
       "auth": false,
@@ -1547,111 +990,6 @@
           "name": "tabs",
           "description": "List all open tabs in Google Chrome (macOS)",
           "command": "unicli chrome tabs"
-        }
-      ]
-    },
-    {
-      "site": "cipo",
-      "type": "web-api",
-      "domain": "cipo.ic.gc.ca",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single Canadian patent document (CIPO, browser)",
-          "command": "unicli cipo get"
-        },
-        {
-          "name": "legal-status",
-          "description": "CIPO Canadian patent administrative-status lookup (browser)",
-          "command": "unicli cipo legal-status"
-        },
-        {
-          "name": "search",
-          "description": "Search the Canadian Patents Database (CIPO, browser, no API)",
-          "command": "unicli cipo search"
-        }
-      ]
-    },
-    {
-      "site": "claude",
-      "type": "web-api",
-      "domain": "claude.ai",
-      "auth": true,
-      "strategy": "public",
-      "command_count": 14,
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to Claude and return the assistant response",
-          "command": "unicli claude ask"
-        },
-        {
-          "name": "send",
-          "description": "Send a prompt to Claude without waiting for a response",
-          "command": "unicli claude send"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Claude",
-          "command": "unicli claude new"
-        },
-        {
-          "name": "status",
-          "description": "Check Claude page availability and login state",
-          "command": "unicli claude status"
-        },
-        {
-          "name": "read",
-          "description": "Read the current Claude conversation",
-          "command": "unicli claude read"
-        },
-        {
-          "name": "history",
-          "description": "List conversation history from Claude /recents",
-          "command": "unicli claude history"
-        },
-        {
-          "name": "detail",
-          "description": "Open a Claude conversation by ID and read its messages",
-          "command": "unicli claude detail"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Claude desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli claude open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli claude status-app"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM.",
-          "command": "unicli claude dump"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Claude.",
-          "command": "unicli claude snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Claude.",
-          "command": "unicli claude click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Claude.",
-          "command": "unicli claude type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Claude, with optional comma-separated modifiers.",
-          "command": "unicli claude press"
         }
       ]
     },
@@ -1698,46 +1036,6 @@
       ]
     },
     {
-      "site": "cnipa",
-      "type": "web-api",
-      "domain": "pss-system.cponline.cnipa.gov.cn",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single CNIPA patent document by publication number",
-          "command": "unicli cnipa get"
-        },
-        {
-          "name": "legal-status",
-          "description": "CNIPA legal-status / prosecution timeline lookup (browser)",
-          "command": "unicli cnipa legal-status"
-        },
-        {
-          "name": "search",
-          "description": "Search CNIPA via the public",
-          "command": "unicli cnipa search"
-        }
-      ]
-    },
-    {
-      "site": "cnki",
-      "type": "web-api",
-      "domain": "scholar.cnki.net",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search CNKI academic papers by title",
-          "command": "unicli cnki search"
-        }
-      ]
-    },
-    {
       "site": "cnn",
       "type": "web-api",
       "domain": "rss.cnn.com",
@@ -1778,106 +1076,6 @@
       ]
     },
     {
-      "site": "codex",
-      "type": "web-api",
-      "domain": "localhost",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 18,
-      "commands": [
-        {
-          "name": "extract-diff",
-          "description": "Extract diff patches from the last Codex response",
-          "command": "unicli codex extract-diff"
-        },
-        {
-          "name": "history",
-          "description": "List Codex desktop conversation threads",
-          "command": "unicli codex history"
-        },
-        {
-          "name": "export",
-          "description": "Export the current Codex desktop thread as Markdown text",
-          "command": "unicli codex export"
-        },
-        {
-          "name": "projects",
-          "description": "List Codex projects and visible conversations from the sidebar",
-          "command": "unicli codex projects"
-        },
-        {
-          "name": "ask",
-          "description": "Send a prompt to Codex and wait for response",
-          "command": "unicli codex ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to Codex without waiting",
-          "command": "unicli codex send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from Codex",
-          "command": "unicli codex read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in Codex",
-          "command": "unicli codex model"
-        },
-        {
-          "name": "status",
-          "description": "Check Codex app status",
-          "command": "unicli codex status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Codex",
-          "command": "unicli codex new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of Codex",
-          "command": "unicli codex screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Codex desktop Electron app via CDP DOM.",
-          "command": "unicli codex dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Codex desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli codex open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Codex desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli codex status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Codex.",
-          "command": "unicli codex snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Codex.",
-          "command": "unicli codex click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Codex.",
-          "command": "unicli codex type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Codex, with optional comma-separated modifiers.",
-          "command": "unicli codex press"
-        }
-      ]
-    },
-    {
       "site": "codex-cli",
       "type": "bridge",
       "auth": false,
@@ -1908,51 +1106,6 @@
           "name": "rates",
           "description": "Get cryptocurrency exchange rates from Coinbase",
           "command": "unicli coinbase rates"
-        }
-      ]
-    },
-    {
-      "site": "coingecko",
-      "type": "web-api",
-      "domain": "api.coingecko.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "coin",
-          "description": "Fetch a single cryptocurrency's market data by CoinGecko id",
-          "command": "unicli coingecko coin"
-        },
-        {
-          "name": "top",
-          "description": "Top coins by market cap",
-          "command": "unicli coingecko top"
-        },
-        {
-          "name": "trending",
-          "description": "Top trending cryptocurrencies on CoinGecko",
-          "command": "unicli coingecko trending"
-        },
-        {
-          "name": "categories",
-          "description": "Crypto categories ranked by aggregated market cap",
-          "command": "unicli coingecko categories"
-        },
-        {
-          "name": "exchanges",
-          "description": "Top crypto exchanges by 24h BTC trading volume",
-          "command": "unicli coingecko exchanges"
-        },
-        {
-          "name": "derivatives",
-          "description": "Top crypto derivative markets by 24h volume",
-          "command": "unicli coingecko derivatives"
-        },
-        {
-          "name": "global",
-          "description": "Aggregate crypto market stats",
-          "command": "unicli coingecko global"
         }
       ]
     },
@@ -2016,26 +1169,6 @@
       ]
     },
     {
-      "site": "crates",
-      "type": "web-api",
-      "domain": "crates.io",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search the public crates.io registry by keyword",
-          "command": "unicli crates search"
-        },
-        {
-          "name": "crate",
-          "description": "Single crates.io crate metadata",
-          "command": "unicli crates crate"
-        }
-      ]
-    },
-    {
       "site": "crates-io",
       "type": "web-api",
       "domain": "crates.io",
@@ -2057,180 +1190,6 @@
           "name": "versions",
           "description": "List versions of a Rust crate",
           "command": "unicli crates-io versions"
-        }
-      ]
-    },
-    {
-      "site": "crossref",
-      "type": "web-api",
-      "domain": "api.crossref.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Crossref Works by title, author, DOI, or bibliographic text",
-          "command": "unicli crossref search"
-        },
-        {
-          "name": "work",
-          "description": "Fetch one Crossref Work by DOI",
-          "command": "unicli crossref work"
-        }
-      ]
-    },
-    {
-      "site": "ctrip",
-      "type": "web-api",
-      "domain": "flights.ctrip.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 4,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Ctrip destinations, landmarks, scenic spots, and stations",
-          "command": "unicli ctrip search"
-        },
-        {
-          "name": "hotel-suggest",
-          "description": "Search Ctrip hotel context suggestions",
-          "command": "unicli ctrip hotel-suggest"
-        },
-        {
-          "name": "hotel-search",
-          "description": "Search Ctrip hotel list by city and stay dates",
-          "command": "unicli ctrip hotel-search"
-        },
-        {
-          "name": "flight",
-          "description": "Search Ctrip one-way flights by IATA route and date",
-          "command": "unicli ctrip flight"
-        }
-      ]
-    },
-    {
-      "site": "cursor",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 18,
-      "commands": [
-        {
-          "name": "composer",
-          "description": "Open Cursor Composer mode with a prompt",
-          "command": "unicli cursor composer"
-        },
-        {
-          "name": "extract-code",
-          "description": "Extract code blocks from the last Cursor response",
-          "command": "unicli cursor extract-code"
-        },
-        {
-          "name": "export",
-          "description": "Export the current Cursor conversation to a Markdown file",
-          "command": "unicli cursor export"
-        },
-        {
-          "name": "history",
-          "description": "List recent chat sessions from the Cursor sidebar",
-          "command": "unicli cursor history"
-        },
-        {
-          "name": "ask",
-          "description": "Send a prompt to Cursor and wait for response",
-          "command": "unicli cursor ask"
-        },
-        {
-          "name": "send",
-          "description": "Send text to Cursor without waiting",
-          "command": "unicli cursor send"
-        },
-        {
-          "name": "read",
-          "description": "Read the last response from Cursor",
-          "command": "unicli cursor read"
-        },
-        {
-          "name": "model",
-          "description": "Read or switch the current model in Cursor",
-          "command": "unicli cursor model"
-        },
-        {
-          "name": "status",
-          "description": "Check Cursor app status",
-          "command": "unicli cursor status"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Cursor",
-          "command": "unicli cursor new"
-        },
-        {
-          "name": "screenshot",
-          "description": "Capture screenshot of Cursor",
-          "command": "unicli cursor screenshot"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Cursor desktop Electron app via CDP DOM.",
-          "command": "unicli cursor dump"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Cursor desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli cursor open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Cursor desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli cursor status-app"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Cursor.",
-          "command": "unicli cursor snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Cursor.",
-          "command": "unicli cursor click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Cursor.",
-          "command": "unicli cursor type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Cursor, with optional comma-separated modifiers.",
-          "command": "unicli cursor press"
-        }
-      ]
-    },
-    {
-      "site": "cvf",
-      "type": "web-api",
-      "domain": "openaccess.thecvf.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search CVF OpenAccess proceedings (CVPR/ICCV/ECCV/WACV)",
-          "command": "unicli cvf search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch CVF OpenAccess paper metadata by page id",
-          "command": "unicli cvf paper"
-        },
-        {
-          "name": "read",
-          "description": "Download a CVF OpenAccess paper PDF by page id and extract text",
-          "command": "unicli cvf read"
         }
       ]
     },
@@ -2305,36 +1264,6 @@
       ]
     },
     {
-      "site": "dblp",
-      "type": "web-api",
-      "domain": "dblp.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 4,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search dblp computer-science bibliography",
-          "command": "unicli dblp search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch a dblp record by canonical key",
-          "command": "unicli dblp paper"
-        },
-        {
-          "name": "venue",
-          "description": "Search dblp venue registry by name or acronym",
-          "command": "unicli dblp venue"
-        },
-        {
-          "name": "author",
-          "description": "List dblp publications by author name or PID",
-          "command": "unicli dblp author"
-        }
-      ]
-    },
-    {
       "site": "deepseek",
       "type": "web-api",
       "domain": "chat.deepseek.com",
@@ -2386,26 +1315,6 @@
           "name": "send",
           "description": "Send a prompt to a specific DeepSeek conversation without waiting for a response",
           "command": "unicli deepseek send"
-        }
-      ]
-    },
-    {
-      "site": "defillama",
-      "type": "web-api",
-      "domain": "defillama.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "protocols",
-          "description": "Top DeFi protocols by current TVL",
-          "command": "unicli defillama protocols"
-        },
-        {
-          "name": "protocol",
-          "description": "Fetch DefiLlama protocol detail by slug",
-          "command": "unicli defillama protocol"
         }
       ]
     },
@@ -2564,140 +1473,6 @@
       ]
     },
     {
-      "site": "discord-app",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 15,
-      "commands": [
-        {
-          "name": "servers",
-          "description": "List Discord servers",
-          "command": "unicli discord-app servers"
-        },
-        {
-          "name": "channels",
-          "description": "List channels in current server",
-          "command": "unicli discord-app channels"
-        },
-        {
-          "name": "read",
-          "description": "Read recent messages",
-          "command": "unicli discord-app read"
-        },
-        {
-          "name": "send",
-          "description": "Send message in current channel",
-          "command": "unicli discord-app send"
-        },
-        {
-          "name": "search",
-          "description": "Search Discord messages",
-          "command": "unicli discord-app search"
-        },
-        {
-          "name": "members",
-          "description": "List server members",
-          "command": "unicli discord-app members"
-        },
-        {
-          "name": "delete",
-          "description": "Delete a message by its ID in the active Discord channel",
-          "command": "unicli discord-app delete"
-        },
-        {
-          "name": "status",
-          "description": "Discord app status",
-          "command": "unicli discord-app status"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Discord desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli discord-app open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Discord desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli discord-app status-app"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Discord desktop Electron app via CDP DOM.",
-          "command": "unicli discord-app dump"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Discord.",
-          "command": "unicli discord-app snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Discord.",
-          "command": "unicli discord-app click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Discord.",
-          "command": "unicli discord-app type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Discord, with optional comma-separated modifiers.",
-          "command": "unicli discord-app press"
-        }
-      ]
-    },
-    {
-      "site": "dlsite",
-      "type": "web-api",
-      "domain": "www.dlsite.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 8,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search DLsite doujin works by keyword, type, and sort order",
-          "command": "unicli dlsite search"
-        },
-        {
-          "name": "manga",
-          "description": "Search DLsite manga works",
-          "command": "unicli dlsite manga"
-        },
-        {
-          "name": "cg",
-          "description": "Search DLsite CG and illustration works",
-          "command": "unicli dlsite cg"
-        },
-        {
-          "name": "game",
-          "description": "Search DLsite game and ADV works",
-          "command": "unicli dlsite game"
-        },
-        {
-          "name": "maker",
-          "description": "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
-          "command": "unicli dlsite maker"
-        },
-        {
-          "name": "creator",
-          "description": "Search DLsite works by creator, author, illustrator, or voice actor name",
-          "command": "unicli dlsite creator"
-        },
-        {
-          "name": "genre",
-          "description": "Search DLsite works by DLsite genre tag id",
-          "command": "unicli dlsite genre"
-        },
-        {
-          "name": "work",
-          "description": "Get DLsite public work detail by product id",
-          "command": "unicli dlsite work"
-        }
-      ]
-    },
-    {
       "site": "docker",
       "type": "desktop",
       "auth": false,
@@ -2763,26 +1538,6 @@
           "name": "tags",
           "description": "List Docker Hub image tags",
           "command": "unicli docker-hub tags"
-        }
-      ]
-    },
-    {
-      "site": "dockerhub",
-      "type": "web-api",
-      "domain": "hub.docker.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Docker Hub repositories by keyword",
-          "command": "unicli dockerhub search"
-        },
-        {
-          "name": "image",
-          "description": "Fetch a Docker Hub repository's public metadata",
-          "command": "unicli dockerhub image"
         }
       ]
     },
@@ -2981,81 +1736,6 @@
       ]
     },
     {
-      "site": "douyin",
-      "type": "web-api",
-      "domain": "creator.douyin.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 13,
-      "commands": [
-        {
-          "name": "activities",
-          "description": "List official Douyin activities",
-          "command": "unicli douyin activities"
-        },
-        {
-          "name": "collections",
-          "description": "List Douyin collections (playlists)",
-          "command": "unicli douyin collections"
-        },
-        {
-          "name": "delete",
-          "description": "Delete a Douyin video",
-          "command": "unicli douyin delete"
-        },
-        {
-          "name": "draft",
-          "description": "Upload a video and save as draft on Douyin",
-          "command": "unicli douyin draft"
-        },
-        {
-          "name": "drafts",
-          "description": "List Douyin draft videos",
-          "command": "unicli douyin drafts"
-        },
-        {
-          "name": "hashtag",
-          "description": "Search, suggest, or list hot Douyin hashtags",
-          "command": "unicli douyin hashtag"
-        },
-        {
-          "name": "location",
-          "description": "Search Douyin POI locations for video tagging",
-          "command": "unicli douyin location"
-        },
-        {
-          "name": "profile",
-          "description": "Get Douyin account info",
-          "command": "unicli douyin profile"
-        },
-        {
-          "name": "publish",
-          "description": "Publish a scheduled video to Douyin (2h-14d window required)",
-          "command": "unicli douyin publish"
-        },
-        {
-          "name": "stats",
-          "description": "Get Douyin video analytics (7-day metrics trend)",
-          "command": "unicli douyin stats"
-        },
-        {
-          "name": "update",
-          "description": "Update Douyin video metadata (reschedule or change caption)",
-          "command": "unicli douyin update"
-        },
-        {
-          "name": "user-videos",
-          "description": "Get a user's video list with download URLs and top comments",
-          "command": "unicli douyin user-videos"
-        },
-        {
-          "name": "videos",
-          "description": "List works from the Douyin creator center",
-          "command": "unicli douyin videos"
-        }
-      ]
-    },
-    {
       "site": "douyu",
       "type": "web-api",
       "domain": "www.douyu.com",
@@ -3229,46 +1909,6 @@
       ]
     },
     {
-      "site": "ehentai",
-      "type": "web-api",
-      "domain": "e-hentai.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 6,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search public E-Hentai galleries with category and structured tag filters",
-          "command": "unicli ehentai search"
-        },
-        {
-          "name": "artist",
-          "description": "Search public E-Hentai galleries by exact artist tag",
-          "command": "unicli ehentai artist"
-        },
-        {
-          "name": "tag",
-          "description": "Search public E-Hentai galleries by exact namespaced tag such as artist, group, parody, language, or character",
-          "command": "unicli ehentai tag"
-        },
-        {
-          "name": "gallery",
-          "description": "Get E-Hentai gallery metadata through the official API",
-          "command": "unicli ehentai gallery"
-        },
-        {
-          "name": "torrents",
-          "description": "List E-Hentai gallery torrent metadata from the official API",
-          "command": "unicli ehentai torrents"
-        },
-        {
-          "name": "pages",
-          "description": "List public E-Hentai gallery image page URLs and thumbnail sprites",
-          "command": "unicli ehentai pages"
-        }
-      ]
-    },
-    {
       "site": "ele",
       "type": "web-api",
       "domain": "www.ele.me",
@@ -3285,21 +1925,6 @@
           "name": "search",
           "description": "Search restaurants and food on Ele.me",
           "command": "unicli ele search"
-        }
-      ]
-    },
-    {
-      "site": "endoflife",
-      "type": "web-api",
-      "domain": "endoflife.date",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "product",
-          "description": "Release cycles and support dates for an endoflife.date product",
-          "command": "unicli endoflife product"
         }
       ]
     },
@@ -3330,36 +1955,6 @@
           "name": "search",
           "description": "Search EPO published patents via Open Patent Services v3.2 (CQL)",
           "command": "unicli epo search"
-        }
-      ]
-    },
-    {
-      "site": "espacenet",
-      "type": "web-api",
-      "domain": "worldwide.espacenet.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 4,
-      "commands": [
-        {
-          "name": "family",
-          "description": "Espacenet DOCDB simple-family lookup (browser)",
-          "command": "unicli espacenet family"
-        },
-        {
-          "name": "get",
-          "description": "Retrieve a single Espacenet publication detail (browser, no key)",
-          "command": "unicli espacenet get"
-        },
-        {
-          "name": "legal-status",
-          "description": "Espacenet INPADOC legal-status lookup (browser)",
-          "command": "unicli espacenet legal-status"
-        },
-        {
-          "name": "search",
-          "description": "Search Espacenet (EPO public no-key front end) for worldwide patents",
-          "command": "unicli espacenet search"
         }
       ]
     },
@@ -3657,46 +2252,6 @@
       ]
     },
     {
-      "site": "fips",
-      "type": "web-api",
-      "domain": "www.fips.ru",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single Rospatent FIPS document (browser-only)",
-          "command": "unicli fips get"
-        },
-        {
-          "name": "search",
-          "description": "Search Rospatent FIPS Russian patent database (browser, no API)",
-          "command": "unicli fips search"
-        }
-      ]
-    },
-    {
-      "site": "flathub",
-      "type": "web-api",
-      "domain": "flathub.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Flathub apps by keyword",
-          "command": "unicli flathub search"
-        },
-        {
-          "name": "app",
-          "description": "Fetch full Flathub appstream metadata by app id",
-          "command": "unicli flathub app"
-        }
-      ]
-    },
-    {
       "site": "flyctl",
       "type": "bridge",
       "auth": false,
@@ -3790,26 +2345,6 @@
           "name": "sketch",
           "description": "Export 2D sketch geometry to SVG or DXF",
           "command": "unicli freecad sketch"
-        }
-      ]
-    },
-    {
-      "site": "freepatentsonline-web",
-      "type": "web-api",
-      "domain": "www.freepatentsonline.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single FreePatentsOnline bibliographic record (keyless, no Chrome)",
-          "command": "unicli freepatentsonline-web get"
-        },
-        {
-          "name": "search",
-          "description": "Keyless FreePatentsOnline search via the public SSR listing (no API key, no Chrome)",
-          "command": "unicli freepatentsonline-web search"
         }
       ]
     },
@@ -4145,111 +2680,6 @@
           "name": "search",
           "description": "BigQuery search over the Google Patents Public Datasets corpus",
           "command": "unicli google-patents-bq search"
-        }
-      ]
-    },
-    {
-      "site": "google-patents-web",
-      "type": "web-api",
-      "domain": "patents.google.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single Google Patents bibliographic record (keyless, no Chrome)",
-          "command": "unicli google-patents-web get"
-        },
-        {
-          "name": "search",
-          "description": "Keyless Google Patents search via the public XHR endpoint (no API key, no Chrome required)",
-          "command": "unicli google-patents-web search"
-        }
-      ]
-    },
-    {
-      "site": "google-scholar",
-      "type": "web-api",
-      "domain": "scholar.google.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "cite",
-          "description": "Fetch a Google Scholar citation for a paper",
-          "command": "unicli google-scholar cite"
-        },
-        {
-          "name": "profile",
-          "description": "Read a Google Scholar author profile and top papers",
-          "command": "unicli google-scholar profile"
-        },
-        {
-          "name": "search",
-          "description": "Search Google Scholar papers",
-          "command": "unicli google-scholar search"
-        }
-      ]
-    },
-    {
-      "site": "goproxy",
-      "type": "web-api",
-      "domain": "proxy.golang.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "module",
-          "description": "Latest version and VCS origin metadata for a Go module",
-          "command": "unicli goproxy module"
-        },
-        {
-          "name": "versions",
-          "description": "Published version tags for a Go module",
-          "command": "unicli goproxy versions"
-        }
-      ]
-    },
-    {
-      "site": "gov-law",
-      "type": "web-api",
-      "domain": "flk.npc.gov.cn",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search the National Laws and Regulations Database",
-          "command": "unicli gov-law search"
-        },
-        {
-          "name": "recent",
-          "description": "List recent laws and regulations",
-          "command": "unicli gov-law recent"
-        }
-      ]
-    },
-    {
-      "site": "gov-policy",
-      "type": "web-api",
-      "domain": "www.gov.cn",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search gov.cn policy documents",
-          "command": "unicli gov-policy search"
-        },
-        {
-          "name": "recent",
-          "description": "List latest State Council policy documents",
-          "command": "unicli gov-policy recent"
         }
       ]
     },
@@ -4640,26 +3070,6 @@
       ]
     },
     {
-      "site": "indeed",
-      "type": "web-api",
-      "domain": "www.indeed.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Indeed jobs through the rendered browser DOM",
-          "command": "unicli indeed search"
-        },
-        {
-          "name": "job",
-          "description": "Read an Indeed job posting by 16-character jk job key",
-          "command": "unicli indeed job"
-        }
-      ]
-    },
-    {
       "site": "infoq",
       "type": "web-api",
       "domain": "www.infoq.com",
@@ -4700,26 +3110,6 @@
           "name": "optimize",
           "description": "Optimize and clean SVG by vacuuming unused defs and producing plain SVG",
           "command": "unicli inkscape optimize"
-        }
-      ]
-    },
-    {
-      "site": "inpi-br",
-      "type": "web-api",
-      "domain": "busca.inpi.gov.br",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "get",
-          "description": "Retrieve a single INPI Brasil patent record (browser-only)",
-          "command": "unicli inpi-br get"
-        },
-        {
-          "name": "search",
-          "description": "Search INPI Brasil patents (browser-only, no upstream API)",
-          "command": "unicli inpi-br search"
         }
       ]
     },
@@ -5553,26 +3943,6 @@
       ]
     },
     {
-      "site": "lichess",
-      "type": "web-api",
-      "domain": "lichess.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "top",
-          "description": "Top-N Lichess leaderboard for a perf type",
-          "command": "unicli lichess top"
-        },
-        {
-          "name": "user",
-          "description": "Fetch a public Lichess player profile by username",
-          "command": "unicli lichess user"
-        }
-      ]
-    },
-    {
       "site": "linear",
       "type": "web-api",
       "domain": "api.linear.app",
@@ -5659,71 +4029,6 @@
           "name": "timeline",
           "description": "LinkedIn feed (recent posts from connections)",
           "command": "unicli linkedin timeline"
-        }
-      ]
-    },
-    {
-      "site": "linux-do",
-      "type": "web-api",
-      "domain": "linux.do",
-      "auth": true,
-      "strategy": "public",
-      "command_count": 11,
-      "commands": [
-        {
-          "name": "categories",
-          "description": "List all Linux.do forum categories",
-          "command": "unicli linux-do categories"
-        },
-        {
-          "name": "category",
-          "description": "Topics in a Linux.do category",
-          "command": "unicli linux-do category"
-        },
-        {
-          "name": "feed",
-          "description": "Linux.do personal feed (new topics)",
-          "command": "unicli linux-do feed"
-        },
-        {
-          "name": "hot",
-          "description": "Linux.do hot topics",
-          "command": "unicli linux-do hot"
-        },
-        {
-          "name": "latest",
-          "description": "Linux.do latest topics",
-          "command": "unicli linux-do latest"
-        },
-        {
-          "name": "tags",
-          "description": "List Linux.do forum tags",
-          "command": "unicli linux-do tags"
-        },
-        {
-          "name": "topic",
-          "description": "Linux.do topic detail and replies",
-          "command": "unicli linux-do topic"
-        },
-        {
-          "name": "user-posts",
-          "description": "Linux.do user posts (replies)",
-          "command": "unicli linux-do user-posts"
-        },
-        {
-          "name": "user-topics",
-          "description": "Linux.do topics created by a user",
-          "command": "unicli linux-do user-topics"
-        },
-        {
-          "name": "search",
-          "description": "Search Linux.do forum topics",
-          "command": "unicli linux-do search"
-        },
-        {
-          "name": "topic-content",
-          "description": "Read the main Linux.do topic body as Markdown",
-          "command": "unicli linux-do topic-content"
         }
       ]
     },
@@ -6102,26 +4407,6 @@
       ]
     },
     {
-      "site": "mangadex",
-      "type": "web-api",
-      "domain": "mangadex.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "manga",
-          "description": "Search MangaDex manga by Japanese title, romaji, alias, or keyword",
-          "command": "unicli mangadex manga"
-        },
-        {
-          "name": "authors",
-          "description": "Search MangaDex authors and artists by public name or romaji",
-          "command": "unicli mangadex authors"
-        }
-      ]
-    },
-    {
       "site": "maoyan",
       "type": "web-api",
       "domain": "www.maoyan.com",
@@ -6153,51 +4438,6 @@
           "name": "read",
           "description": "Convert a public URL to Markdown through markdown.new",
           "command": "unicli markdown-new read"
-        }
-      ]
-    },
-    {
-      "site": "marxists-cn",
-      "type": "web-api",
-      "domain": "www.marxists.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "index",
-          "description": "List Chinese Marxists Internet Archive top-level people, topics, and library links",
-          "command": "unicli marxists-cn index"
-        },
-        {
-          "name": "reading-list",
-          "description": "Return curated Chinese Marxists archive reading lists with directly readable paths",
-          "command": "unicli marxists-cn reading-list"
-        },
-        {
-          "name": "western-marxism",
-          "description": "List famous Western Marxist authors and works from the Chinese Marxists archive with read commands",
-          "command": "unicli marxists-cn western-marxism"
-        },
-        {
-          "name": "authors",
-          "description": "List people, authors, organizations, and topic directories in the Chinese Marxists archive",
-          "command": "unicli marxists-cn authors"
-        },
-        {
-          "name": "works",
-          "description": "List works/books/articles under a Chinese Marxists archive author or topic path",
-          "command": "unicli marxists-cn works"
-        },
-        {
-          "name": "read",
-          "description": "Read a Chinese Marxists archive HTML page as clean plain text",
-          "command": "unicli marxists-cn read"
-        },
-        {
-          "name": "search",
-          "description": "Search Chinese Marxists archive people, books, works, and scoped full text",
-          "command": "unicli marxists-cn search"
         }
       ]
     },
@@ -6262,21 +4502,6 @@
       ]
     },
     {
-      "site": "mdn",
-      "type": "web-api",
-      "domain": "developer.mozilla.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search MDN Web Docs by keyword",
-          "command": "unicli mdn search"
-        }
-      ]
-    },
-    {
       "site": "medium",
       "type": "web-api",
       "domain": "medium.com",
@@ -6313,41 +4538,6 @@
           "name": "tag",
           "description": "Latest Medium articles tagged with a keyword from RSS",
           "command": "unicli medium tag"
-        }
-      ]
-    },
-    {
-      "site": "medrxiv",
-      "type": "web-api",
-      "domain": "api.biorxiv.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 5,
-      "commands": [
-        {
-          "name": "recent",
-          "description": "List recent medRxiv preprints from the official API",
-          "command": "unicli medrxiv recent"
-        },
-        {
-          "name": "search",
-          "description": "Search medRxiv official API metadata within a bounded date window",
-          "command": "unicli medrxiv search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch medRxiv preprint metadata by DOI",
-          "command": "unicli medrxiv paper"
-        },
-        {
-          "name": "download",
-          "description": "Download a medRxiv preprint PDF by DOI",
-          "command": "unicli medrxiv download"
-        },
-        {
-          "name": "read",
-          "description": "Read medRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
-          "command": "unicli medrxiv read"
         }
       ]
     },
@@ -6422,31 +4612,6 @@
           "name": "models",
           "description": "Search live ModelScope model metadata through the public OpenAPI",
           "command": "unicli modelscope models"
-        }
-      ]
-    },
-    {
-      "site": "moegirl",
-      "type": "web-api",
-      "domain": "zh.moegirl.org.cn",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Moegirl ACG wiki articles for characters, works, songs, games, and studios",
-          "command": "unicli moegirl search"
-        },
-        {
-          "name": "page",
-          "description": "Read a Moegirl article as plain text with metadata",
-          "command": "unicli moegirl page"
-        },
-        {
-          "name": "links",
-          "description": "Extract internal Moegirl article links from a page, useful for disambiguation pages",
-          "command": "unicli moegirl links"
         }
       ]
     },
@@ -6662,31 +4827,6 @@
       ]
     },
     {
-      "site": "neurips",
-      "type": "web-api",
-      "domain": "proceedings.neurips.cc",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search NeurIPS proceedings by year",
-          "command": "unicli neurips search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch NeurIPS proceedings paper metadata by page id",
-          "command": "unicli neurips paper"
-        },
-        {
-          "name": "read",
-          "description": "Download a NeurIPS proceedings paper PDF by page id and extract text",
-          "command": "unicli neurips read"
-        }
-      ]
-    },
-    {
       "site": "notebooklm",
       "type": "web-api",
       "domain": "notebooklm.google.com",
@@ -6776,8 +4916,8 @@
       "type": "web-api",
       "domain": "www.notion.so",
       "auth": true,
-      "strategy": "public",
-      "command_count": 18,
+      "strategy": "cookie",
+      "command_count": 3,
       "commands": [
         {
           "name": "databases",
@@ -6791,83 +4931,8 @@
         },
         {
           "name": "search",
-          "description": "Search in Notion (Cmd+K)",
+          "description": "Search Notion pages via web API",
           "command": "unicli notion search"
-        },
-        {
-          "name": "open-app",
-          "description": "Open Notion desktop Electron app with CDP enabled for AI control.",
-          "command": "unicli notion open-app"
-        },
-        {
-          "name": "status-app",
-          "description": "Inspect current Notion desktop app page, title, URL, visible controls, and text summary.",
-          "command": "unicli notion status-app"
-        },
-        {
-          "name": "dump",
-          "description": "Dump visible text from the Notion desktop Electron app via CDP DOM.",
-          "command": "unicli notion dump"
-        },
-        {
-          "name": "snapshot-app",
-          "description": "List visible clickable text, buttons, inputs, and regions in Notion.",
-          "command": "unicli notion snapshot-app"
-        },
-        {
-          "name": "click-text",
-          "description": "Click visible text, aria-label, title, or button content in Notion.",
-          "command": "unicli notion click-text"
-        },
-        {
-          "name": "type-text",
-          "description": "Type text into the focused field or a text-matched target in Notion.",
-          "command": "unicli notion type-text"
-        },
-        {
-          "name": "press",
-          "description": "Press a key in Notion, with optional comma-separated modifiers.",
-          "command": "unicli notion press"
-        },
-        {
-          "name": "read",
-          "description": "Read current Notion page content",
-          "command": "unicli notion read"
-        },
-        {
-          "name": "write",
-          "description": "Append text to current Notion page",
-          "command": "unicli notion write"
-        },
-        {
-          "name": "new",
-          "description": "Create new Notion page",
-          "command": "unicli notion new"
-        },
-        {
-          "name": "status",
-          "description": "Notion workspace status",
-          "command": "unicli notion status"
-        },
-        {
-          "name": "sidebar",
-          "description": "Read Notion sidebar navigation",
-          "command": "unicli notion sidebar"
-        },
-        {
-          "name": "favorites",
-          "description": "List Notion favorites",
-          "command": "unicli notion favorites"
-        },
-        {
-          "name": "export",
-          "description": "Export current Notion page as markdown",
-          "command": "unicli notion export"
-        },
-        {
-          "name": "screenshot",
-          "description": "Screenshot current Notion page",
-          "command": "unicli notion screenshot"
         }
       ]
     },
@@ -6892,96 +4957,6 @@
           "name": "status",
           "description": "Check the status of a Novita AI generation task",
           "command": "unicli novita status"
-        }
-      ]
-    },
-    {
-      "site": "nowcoder",
-      "type": "web-api",
-      "domain": "www.nowcoder.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 16,
-      "commands": [
-        {
-          "name": "hot",
-          "description": "hot",
-          "command": "unicli nowcoder hot"
-        },
-        {
-          "name": "trending",
-          "description": "trending",
-          "command": "unicli nowcoder trending"
-        },
-        {
-          "name": "topics",
-          "description": "topics",
-          "command": "unicli nowcoder topics"
-        },
-        {
-          "name": "jobs",
-          "description": "jobs",
-          "command": "unicli nowcoder jobs"
-        },
-        {
-          "name": "companies",
-          "description": "companies",
-          "command": "unicli nowcoder companies"
-        },
-        {
-          "name": "creators",
-          "description": "creators",
-          "command": "unicli nowcoder creators"
-        },
-        {
-          "name": "recommend",
-          "description": "recommend",
-          "command": "unicli nowcoder recommend"
-        },
-        {
-          "name": "experience",
-          "description": "experience",
-          "command": "unicli nowcoder experience"
-        },
-        {
-          "name": "referral",
-          "description": "referral",
-          "command": "unicli nowcoder referral"
-        },
-        {
-          "name": "salary",
-          "description": "salary",
-          "command": "unicli nowcoder salary"
-        },
-        {
-          "name": "papers",
-          "description": "papers",
-          "command": "unicli nowcoder papers"
-        },
-        {
-          "name": "practice",
-          "description": "practice",
-          "command": "unicli nowcoder practice"
-        },
-        {
-          "name": "search",
-          "description": "search",
-          "command": "unicli nowcoder search"
-        },
-        {
-          "name": "suggest",
-          "description": "suggest",
-          "command": "unicli nowcoder suggest"
-        },
-        {
-          "name": "detail",
-          "description": "detail",
-          "command": "unicli nowcoder detail"
-        },
-        {
-          "name": "notifications",
-          "description": "notifications",
-          "command": "unicli nowcoder notifications"
         }
       ]
     },
@@ -7062,21 +5037,6 @@
           "name": "package",
           "description": "Full NuGet package version history",
           "command": "unicli nuget package"
-        }
-      ]
-    },
-    {
-      "site": "nvd",
-      "type": "web-api",
-      "domain": "services.nvd.nist.gov",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "cve",
-          "description": "NIST NVD CVE detail",
-          "command": "unicli nvd cve"
         }
       ]
     },
@@ -7208,26 +5168,6 @@
       ]
     },
     {
-      "site": "oeis",
-      "type": "web-api",
-      "domain": "oeis.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search OEIS sequences by keyword or numeric pattern",
-          "command": "unicli oeis search"
-        },
-        {
-          "name": "sequence",
-          "description": "Fetch OEIS sequence detail by A-number",
-          "command": "unicli oeis sequence"
-        }
-      ]
-    },
-    {
       "site": "ollama",
       "type": "service",
       "auth": false,
@@ -7342,31 +5282,6 @@
       ]
     },
     {
-      "site": "openalex",
-      "type": "web-api",
-      "domain": "api.openalex.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search OpenAlex Works by keyword",
-          "command": "unicli openalex search"
-        },
-        {
-          "name": "work",
-          "description": "Fetch a single OpenAlex Work",
-          "command": "unicli openalex work"
-        },
-        {
-          "name": "read",
-          "description": "Download an OpenAlex open-access Work PDF and extract text",
-          "command": "unicli openalex read"
-        }
-      ]
-    },
-    {
       "site": "opencode",
       "type": "bridge",
       "auth": false,
@@ -7401,26 +5316,6 @@
       ]
     },
     {
-      "site": "openfda",
-      "type": "web-api",
-      "domain": "fda.gov",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "drug-label",
-          "description": "Search FDA drug labels by brand or generic name",
-          "command": "unicli openfda drug-label"
-        },
-        {
-          "name": "food-recall",
-          "description": "Search FDA food recall and enforcement actions",
-          "command": "unicli openfda food-recall"
-        }
-      ]
-    },
-    {
       "site": "openharness",
       "type": "desktop",
       "auth": false,
@@ -7436,51 +5331,6 @@
           "name": "skills-list",
           "description": "List skills installed in the local OpenHarness (~/.openharness/skills)",
           "command": "unicli openharness skills-list"
-        }
-      ]
-    },
-    {
-      "site": "openreview",
-      "type": "web-api",
-      "domain": "openreview.net",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search OpenReview papers by free-text query",
-          "command": "unicli openreview search"
-        },
-        {
-          "name": "paper",
-          "description": "Show full metadata for a single OpenReview paper",
-          "command": "unicli openreview paper"
-        },
-        {
-          "name": "download",
-          "description": "Download an OpenReview paper PDF by forum id",
-          "command": "unicli openreview download"
-        },
-        {
-          "name": "read",
-          "description": "Download and extract text from an OpenReview paper PDF",
-          "command": "unicli openreview read"
-        },
-        {
-          "name": "author",
-          "description": "List OpenReview submissions by author profile id",
-          "command": "unicli openreview author"
-        },
-        {
-          "name": "venue",
-          "description": "List papers at an OpenReview venue or invitation",
-          "command": "unicli openreview venue"
-        },
-        {
-          "name": "reviews",
-          "description": "Show paper, reviews, decisions, and comments for an OpenReview forum",
-          "command": "unicli openreview reviews"
         }
       ]
     },
@@ -7501,26 +5351,6 @@
           "name": "search",
           "description": "Search OpenRouter AI models",
           "command": "unicli openrouter search"
-        }
-      ]
-    },
-    {
-      "site": "osv",
-      "type": "web-api",
-      "domain": "osv.dev",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "query",
-          "description": "OSV.dev vulnerabilities affecting a package",
-          "command": "unicli osv query"
-        },
-        {
-          "name": "vulnerability",
-          "description": "Single OSV.dev vulnerability detail",
-          "command": "unicli osv vulnerability"
         }
       ]
     },
@@ -7752,46 +5582,6 @@
       ]
     },
     {
-      "site": "pmlr",
-      "type": "web-api",
-      "domain": "proceedings.mlr.press",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 3,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search a PMLR proceedings volume (e.g. v235 for ICML 2024)",
-          "command": "unicli pmlr search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch a PMLR paper by id inside a proceedings volume",
-          "command": "unicli pmlr paper"
-        },
-        {
-          "name": "read",
-          "description": "Download a PMLR paper PDF by id inside a proceedings volume and extract text",
-          "command": "unicli pmlr read"
-        }
-      ]
-    },
-    {
-      "site": "powerchina",
-      "type": "web-api",
-      "domain": "bid.powerchina.cn",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search PowerChina procurement notices",
-          "command": "unicli powerchina search"
-        }
-      ]
-    },
-    {
       "site": "powerpoint",
       "type": "desktop",
       "auth": false,
@@ -7925,51 +5715,6 @@
       ]
     },
     {
-      "site": "pubmed",
-      "type": "web-api",
-      "domain": "pubmed.ncbi.nlm.nih.gov",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search PubMed articles",
-          "command": "unicli pubmed search"
-        },
-        {
-          "name": "article",
-          "description": "Get detailed information for a PubMed article by PMID",
-          "command": "unicli pubmed article"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch normalized PubMed article metadata by PMID",
-          "command": "unicli pubmed paper"
-        },
-        {
-          "name": "read",
-          "description": "Read PubMed Central full text for a PMID or PMCID",
-          "command": "unicli pubmed read"
-        },
-        {
-          "name": "author",
-          "description": "Search PubMed articles by author name",
-          "command": "unicli pubmed author"
-        },
-        {
-          "name": "citations",
-          "description": "Get PubMed citation relationships for an article",
-          "command": "unicli pubmed citations"
-        },
-        {
-          "name": "related",
-          "description": "Find articles related to a PubMed article",
-          "command": "unicli pubmed related"
-        }
-      ]
-    },
-    {
       "site": "pypi",
       "type": "web-api",
       "domain": "pypistats.org",
@@ -8075,56 +5820,6 @@
       ]
     },
     {
-      "site": "qwen",
-      "type": "web-api",
-      "domain": "www.qianwen.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 8,
-      "commands": [
-        {
-          "name": "ask",
-          "description": "Send a prompt to Qwen and return the assistant reply",
-          "command": "unicli qwen ask"
-        },
-        {
-          "name": "read",
-          "description": "Read messages in the current Qwen conversation",
-          "command": "unicli qwen read"
-        },
-        {
-          "name": "send",
-          "description": "Send a prompt to Qwen without waiting for the reply",
-          "command": "unicli qwen send"
-        },
-        {
-          "name": "history",
-          "description": "List recent Qwen conversations",
-          "command": "unicli qwen history"
-        },
-        {
-          "name": "detail",
-          "description": "Open a Qwen conversation by ID and read its messages",
-          "command": "unicli qwen detail"
-        },
-        {
-          "name": "new",
-          "description": "Start a new conversation in Qwen",
-          "command": "unicli qwen new"
-        },
-        {
-          "name": "status",
-          "description": "Check Qwen page availability, login state, current session and model",
-          "command": "unicli qwen status"
-        },
-        {
-          "name": "image",
-          "description": "Generate images with Qwen and save them locally",
-          "command": "unicli qwen image"
-        }
-      ]
-    },
-    {
       "site": "railway",
       "type": "bridge",
       "auth": false,
@@ -8150,11 +5845,6 @@
           "name": "comment",
           "description": "Post a comment on a Reddit post or reply to a comment",
           "command": "unicli reddit comment"
-        },
-        {
-          "name": "comments",
-          "description": "Reddit post comments with nested reply hierarchy",
-          "command": "unicli reddit comments"
         },
         {
           "name": "read",
@@ -8222,6 +5912,11 @@
           "command": "unicli reddit reply"
         },
         {
+          "name": "comments",
+          "description": "Reddit post comments with nested reply hierarchy",
+          "command": "unicli reddit comments"
+        },
+        {
           "name": "hot",
           "description": "Reddit front page hot posts",
           "command": "unicli reddit hot"
@@ -8265,51 +5960,6 @@
           "name": "search",
           "description": "Search Reddit posts",
           "command": "unicli reddit search"
-        }
-      ]
-    },
-    {
-      "site": "rednote",
-      "type": "web-api",
-      "domain": "www.rednote.com",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "note",
-          "description": "Read note body and engagement counts from a rednote note",
-          "command": "unicli rednote note"
-        },
-        {
-          "name": "search",
-          "description": "Search rednote notes",
-          "command": "unicli rednote search"
-        },
-        {
-          "name": "user",
-          "description": "Get public notes from a rednote user profile",
-          "command": "unicli rednote user"
-        },
-        {
-          "name": "comments",
-          "description": "Read comments from a rednote note (supports nested replies)",
-          "command": "unicli rednote comments"
-        },
-        {
-          "name": "feed",
-          "description": "Rednote home feed (reads hydrated Pinia store)",
-          "command": "unicli rednote feed"
-        },
-        {
-          "name": "notifications",
-          "description": "Rednote notifications (mentions/likes/connections)",
-          "command": "unicli rednote notifications"
-        },
-        {
-          "name": "download",
-          "description": "Download images and videos from a rednote note",
-          "command": "unicli rednote download"
         }
       ]
     },
@@ -8358,45 +6008,6 @@
       ]
     },
     {
-      "site": "rest-countries",
-      "type": "web-api",
-      "domain": "restcountries.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "country",
-          "description": "Look up countries by common or official name",
-          "command": "unicli rest-countries country"
-        },
-        {
-          "name": "region",
-          "description": "List countries in a REST Countries region",
-          "command": "unicli rest-countries region"
-        }
-      ]
-    },
-    {
-      "site": "retrieval",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Federate current records across registered retrieval providers without a domain-specific router",
-          "command": "unicli retrieval search"
-        },
-        {
-          "name": "sources",
-          "description": "List registered retrieval providers and their semantic argument mappings",
-          "command": "unicli retrieval sources"
-        }
-      ]
-    },
-    {
       "site": "reuters",
       "type": "web-api",
       "domain": "www.reuters.com",
@@ -8428,21 +6039,6 @@
           "name": "article-detail",
           "description": "Reuters article detail with title, metadata, and body text",
           "command": "unicli reuters article-detail"
-        }
-      ]
-    },
-    {
-      "site": "rfc",
-      "type": "web-api",
-      "domain": "datatracker.ietf.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "rfc",
-          "description": "Fetch IETF RFC metadata by RFC number",
-          "command": "unicli rfc rfc"
         }
       ]
     },
@@ -8498,61 +6094,6 @@
           "name": "tags",
           "description": "Search Safebooru tags by exact tag name or ASCII tag prefix such as blue_archive",
           "command": "unicli safebooru tags"
-        }
-      ]
-    },
-    {
-      "site": "scholar-artifacts",
-      "type": "web-api",
-      "domain": "scholarly-pdf",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "download-pdf",
-          "description": "Download a scholarly PDF URL with artifact metadata",
-          "command": "unicli scholar-artifacts download-pdf"
-        },
-        {
-          "name": "read-pdf",
-          "description": "Download a scholarly PDF URL and extract text with pdftotext",
-          "command": "unicli scholar-artifacts read-pdf"
-        }
-      ]
-    },
-    {
-      "site": "semantic-scholar",
-      "type": "web-api",
-      "domain": "api.semanticscholar.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 5,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Semantic Scholar papers",
-          "command": "unicli semantic-scholar search"
-        },
-        {
-          "name": "paper",
-          "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
-          "command": "unicli semantic-scholar paper"
-        },
-        {
-          "name": "read",
-          "description": "Download a Semantic Scholar open-access paper PDF and extract text",
-          "command": "unicli semantic-scholar read"
-        },
-        {
-          "name": "citations",
-          "description": "List Semantic Scholar paper citations",
-          "command": "unicli semantic-scholar citations"
-        },
-        {
-          "name": "references",
-          "description": "List Semantic Scholar paper references",
-          "command": "unicli semantic-scholar references"
         }
       ]
     },
@@ -8855,41 +6396,6 @@
           "command": "unicli spotify top-tracks"
         },
         {
-          "name": "auth",
-          "description": "Create or complete Spotify OAuth setup",
-          "command": "unicli spotify auth"
-        },
-        {
-          "name": "status",
-          "description": "Show current Spotify playback status",
-          "command": "unicli spotify status"
-        },
-        {
-          "name": "volume",
-          "description": "Set Spotify playback volume",
-          "command": "unicli spotify volume"
-        },
-        {
-          "name": "queue",
-          "description": "Add a Spotify track to the playback queue",
-          "command": "unicli spotify queue"
-        },
-        {
-          "name": "play-track",
-          "description": "Search Spotify for a track query and start playback",
-          "command": "unicli spotify play-track"
-        },
-        {
-          "name": "shuffle",
-          "description": "Toggle Spotify shuffle mode",
-          "command": "unicli spotify shuffle"
-        },
-        {
-          "name": "repeat",
-          "description": "Set Spotify repeat mode",
-          "command": "unicli spotify repeat"
-        },
-        {
           "name": "open-app",
           "description": "Open Spotify desktop Electron app with CDP enabled for AI control.",
           "command": "unicli spotify open-app"
@@ -8953,6 +6459,41 @@
           "name": "prev",
           "description": "prev playback in the Spotify desktop app.",
           "command": "unicli spotify prev"
+        },
+        {
+          "name": "auth",
+          "description": "Create or complete Spotify OAuth setup",
+          "command": "unicli spotify auth"
+        },
+        {
+          "name": "status",
+          "description": "Show current Spotify playback status",
+          "command": "unicli spotify status"
+        },
+        {
+          "name": "volume",
+          "description": "Set Spotify playback volume",
+          "command": "unicli spotify volume"
+        },
+        {
+          "name": "queue",
+          "description": "Add a Spotify track to the playback queue",
+          "command": "unicli spotify queue"
+        },
+        {
+          "name": "play-track",
+          "description": "Search Spotify for a track query and start playback",
+          "command": "unicli spotify play-track"
+        },
+        {
+          "name": "shuffle",
+          "description": "Toggle Spotify shuffle mode",
+          "command": "unicli spotify shuffle"
+        },
+        {
+          "name": "repeat",
+          "description": "Set Spotify repeat mode",
+          "command": "unicli spotify repeat"
         }
       ]
     },
@@ -9180,21 +6721,6 @@
       ]
     },
     {
-      "site": "tdx",
-      "type": "web-api",
-      "domain": "pul.tdx.com.cn",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "hot-rank",
-          "description": "Read TDX hot-search stock ranking",
-          "command": "unicli tdx hot-rank"
-        }
-      ]
-    },
-    {
       "site": "techcrunch",
       "type": "web-api",
       "domain": "techcrunch.com",
@@ -9271,21 +6797,6 @@
           "name": "media",
           "description": "List public media exposed by a Threads post",
           "command": "unicli threads media"
-        }
-      ]
-    },
-    {
-      "site": "ths",
-      "type": "web-api",
-      "domain": "eq.10jqka.com.cn",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "hot-rank",
-          "description": "Read Tonghuashun hot-stock ranking",
-          "command": "unicli ths hot-rank"
         }
       ]
     },
@@ -9441,26 +6952,6 @@
           "name": "articles",
           "description": "List Toutiao creator dashboard articles",
           "command": "unicli toutiao articles"
-        }
-      ]
-    },
-    {
-      "site": "tvmaze",
-      "type": "web-api",
-      "domain": "tvmaze.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search TVmaze shows by title",
-          "command": "unicli tvmaze search"
-        },
-        {
-          "name": "show",
-          "description": "Fetch TVmaze show detail by id",
-          "command": "unicli tvmaze show"
         }
       ]
     },
@@ -9740,41 +7231,6 @@
       ]
     },
     {
-      "site": "uisdc",
-      "type": "web-api",
-      "domain": "www.uisdc.com",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "news",
-          "description": "UISDC latest AI and design news",
-          "command": "unicli uisdc news"
-        }
-      ]
-    },
-    {
-      "site": "uiverse",
-      "type": "web-api",
-      "domain": "uiverse.io",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "code",
-          "description": "Uiverse component code export (HTML or CSS)",
-          "command": "unicli uiverse code"
-        },
-        {
-          "name": "preview",
-          "description": "Capture a Uiverse component preview screenshot",
-          "command": "unicli uiverse preview"
-        }
-      ]
-    },
-    {
       "site": "ukipo",
       "type": "web-api",
       "domain": "search-for-intellectual-property.service.gov.uk",
@@ -9786,26 +7242,6 @@
           "name": "info",
           "description": "UK IPO registry placeholder — Ipsum retired 2025-01; OneIPO API on 2026 roadmap",
           "command": "unicli ukipo info"
-        }
-      ]
-    },
-    {
-      "site": "unpaywall",
-      "type": "web-api",
-      "domain": "api.unpaywall.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "oa",
-          "description": "Find open-access PDF availability for a DOI via Unpaywall",
-          "command": "unicli unpaywall oa"
-        },
-        {
-          "name": "read",
-          "description": "Download an Unpaywall open-access PDF by DOI and extract text",
-          "command": "unicli unpaywall read"
         }
       ]
     },
@@ -9939,51 +7375,6 @@
       ]
     },
     {
-      "site": "vndb",
-      "type": "web-api",
-      "domain": "api.vndb.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 7,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search VNDB visual novels by title, alias, tag, or keyword",
-          "command": "unicli vndb search"
-        },
-        {
-          "name": "vn",
-          "description": "Get VNDB visual novel details by v-id",
-          "command": "unicli vndb vn"
-        },
-        {
-          "name": "releases",
-          "description": "Search VNDB releases by title or visual novel keyword",
-          "command": "unicli vndb releases"
-        },
-        {
-          "name": "tags",
-          "description": "Search VNDB game tags and genres",
-          "command": "unicli vndb tags"
-        },
-        {
-          "name": "staff",
-          "description": "Search VNDB creators and staff",
-          "command": "unicli vndb staff"
-        },
-        {
-          "name": "producers",
-          "description": "Search VNDB producers, studios, brands, makers, circles, companies, and visual novel publishers such as Yuzusoft",
-          "command": "unicli vndb producers"
-        },
-        {
-          "name": "characters",
-          "description": "Search VNDB characters and traits",
-          "command": "unicli vndb characters"
-        }
-      ]
-    },
-    {
       "site": "vscode",
       "type": "desktop",
       "auth": false,
@@ -10039,21 +7430,6 @@
           "name": "press",
           "description": "Press a key in Visual Studio Code, with optional comma-separated modifiers.",
           "command": "unicli vscode press"
-        }
-      ]
-    },
-    {
-      "site": "wanfang",
-      "type": "web-api",
-      "domain": "s.wanfangdata.com.cn",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Wanfang papers by keyword",
-          "command": "unicli wanfang search"
         }
       ]
     },
@@ -10252,26 +7628,6 @@
       ]
     },
     {
-      "site": "wikidata",
-      "type": "web-api",
-      "domain": "www.wikidata.org",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Wikidata items by keyword",
-          "command": "unicli wikidata search"
-        },
-        {
-          "name": "entity",
-          "description": "Fetch a Wikidata entity by Q/P/L id",
-          "command": "unicli wikidata entity"
-        }
-      ]
-    },
-    {
       "site": "wikipedia",
       "type": "web-api",
       "domain": "wikipedia.org",
@@ -10419,26 +7775,6 @@
       ]
     },
     {
-      "site": "wttr",
-      "type": "web-api",
-      "domain": "wttr.in",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "current",
-          "description": "Current weather conditions for a location",
-          "command": "unicli wttr current"
-        },
-        {
-          "name": "forecast",
-          "description": "Multi-day weather forecast for a location",
-          "command": "unicli wttr forecast"
-        }
-      ]
-    },
-    {
       "site": "xianyu",
       "type": "web-api",
       "domain": "www.goofish.com",
@@ -10512,11 +7848,6 @@
       "command_count": 22,
       "commands": [
         {
-          "name": "feed",
-          "description": "Xiaohongshu home feed",
-          "command": "unicli xiaohongshu feed"
-        },
-        {
           "name": "follow",
           "description": "Follow a Xiaohongshu user",
           "command": "unicli xiaohongshu follow"
@@ -10555,11 +7886,6 @@
           "name": "suggest",
           "description": "Xiaohongshu search suggestions/autocomplete",
           "command": "unicli xiaohongshu suggest"
-        },
-        {
-          "name": "trending",
-          "description": "Xiaohongshu trending searches and visible hot notes",
-          "command": "unicli xiaohongshu trending"
         },
         {
           "name": "unfollow",
@@ -10602,6 +7928,11 @@
           "command": "unicli xiaohongshu download"
         },
         {
+          "name": "feed",
+          "description": "Xiaohongshu home feed",
+          "command": "unicli xiaohongshu feed"
+        },
+        {
           "name": "note",
           "description": "Get note content and engagement metrics",
           "command": "unicli xiaohongshu note"
@@ -10615,6 +7946,11 @@
           "name": "search",
           "description": "Search notes on Xiaohongshu",
           "command": "unicli xiaohongshu search"
+        },
+        {
+          "name": "trending",
+          "description": "Xiaohongshu trending searches and visible hot notes",
+          "command": "unicli xiaohongshu trending"
         },
         {
           "name": "user",
@@ -11111,11 +8447,6 @@
           "command": "unicli zhihu columns"
         },
         {
-          "name": "comment",
-          "description": "Get Zhihu comments with normalized nested reply hierarchy",
-          "command": "unicli zhihu comment"
-        },
-        {
           "name": "download",
           "description": "Download Zhihu answer/article content as markdown",
           "command": "unicli zhihu download"
@@ -11211,29 +8542,14 @@
           "command": "unicli zhihu collection"
         },
         {
+          "name": "comment",
+          "description": "Get Zhihu comments with normalized nested reply hierarchy",
+          "command": "unicli zhihu comment"
+        },
+        {
           "name": "recommend",
           "description": "recommend",
           "command": "unicli zhihu recommend"
-        }
-      ]
-    },
-    {
-      "site": "zlibrary",
-      "type": "web-api",
-      "domain": "z-library.im",
-      "auth": true,
-      "strategy": "cookie",
-      "command_count": 2,
-      "commands": [
-        {
-          "name": "search",
-          "description": "Search Z-Library for books by title, author, ISBN, or keyword",
-          "command": "unicli zlibrary search"
-        },
-        {
-          "name": "info",
-          "description": "Get book details and available download formats from a Z-Library book page",
-          "command": "unicli zlibrary info"
         }
       ]
     },
@@ -11346,6 +8662,514 @@
       ]
     },
     {
+      "site": "1point3acres",
+      "type": "web-api",
+      "domain": "www.1point3acres.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 9,
+      "commands": [
+        {
+          "name": "hot",
+          "description": "Read hot 1Point3Acres threads",
+          "command": "unicli 1point3acres hot"
+        },
+        {
+          "name": "latest",
+          "description": "Read latest 1Point3Acres threads",
+          "command": "unicli 1point3acres latest"
+        },
+        {
+          "name": "digest",
+          "description": "Read digest 1Point3Acres threads",
+          "command": "unicli 1point3acres digest"
+        },
+        {
+          "name": "forum",
+          "description": "Browse threads from a 1Point3Acres forum by fid",
+          "command": "unicli 1point3acres forum"
+        },
+        {
+          "name": "forums",
+          "description": "List 1Point3Acres forum ids and names",
+          "command": "unicli 1point3acres forums"
+        },
+        {
+          "name": "search",
+          "description": "Search 1Point3Acres forum posts using browser cookies",
+          "command": "unicli 1point3acres search"
+        },
+        {
+          "name": "thread",
+          "description": "Read a 1Point3Acres thread page with floor rows",
+          "command": "unicli 1point3acres thread"
+        },
+        {
+          "name": "user",
+          "description": "Read a 1Point3Acres user profile",
+          "command": "unicli 1point3acres user"
+        },
+        {
+          "name": "notifications",
+          "description": "Read 1Point3Acres account notifications using browser cookies",
+          "command": "unicli 1point3acres notifications"
+        }
+      ]
+    },
+    {
+      "site": "51job",
+      "type": "web-api",
+      "domain": "jobs.51job.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "51job",
+          "command": "unicli 51job search"
+        },
+        {
+          "name": "hot",
+          "description": "51job",
+          "command": "unicli 51job hot"
+        },
+        {
+          "name": "detail",
+          "description": "51job",
+          "command": "unicli 51job detail"
+        },
+        {
+          "name": "company",
+          "description": "51job",
+          "command": "unicli 51job company"
+        }
+      ]
+    },
+    {
+      "site": "acl-anthology",
+      "type": "web-api",
+      "domain": "aclanthology.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search ACL Anthology papers",
+          "command": "unicli acl-anthology search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch an ACL Anthology paper by anthology id",
+          "command": "unicli acl-anthology paper"
+        },
+        {
+          "name": "read",
+          "description": "Download an ACL Anthology paper PDF by id and extract text",
+          "command": "unicli acl-anthology read"
+        }
+      ]
+    },
+    {
+      "site": "ai",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 6,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search live AI infrastructure with provenance and recovery",
+          "command": "unicli ai search"
+        },
+        {
+          "name": "pulse",
+          "description": "Fetch a current role-specific AI field pulse across first-party docs, code, papers, model hubs, and communities",
+          "command": "unicli ai pulse"
+        },
+        {
+          "name": "read",
+          "description": "Read and structure a live AI/AI-infrastructure source with clean Markdown, headings, links, provenance, timestamp, and content hash",
+          "command": "unicli ai read"
+        },
+        {
+          "name": "sources",
+          "description": "List the registry-backed AI source, provenance, capability, auth, and adapter-path matrix without network I/O",
+          "command": "unicli ai sources"
+        },
+        {
+          "name": "landscape",
+          "description": "List the maintained first-party AI lab, hardware, runtime, model-hub, research, benchmark, world-model, robotics, and community target directory",
+          "command": "unicli ai landscape"
+        },
+        {
+          "name": "profiles",
+          "description": "List what AI practitioners monitor daily and the live source/query bundle for each role",
+          "command": "unicli ai profiles"
+        }
+      ]
+    },
+    {
+      "site": "aibase",
+      "type": "web-api",
+      "domain": "www.aibase.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "news",
+          "description": "AIbase daily AI industry news",
+          "command": "unicli aibase news"
+        }
+      ]
+    },
+    {
+      "site": "anilist",
+      "type": "web-api",
+      "domain": "anilist.co",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search AniList anime by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist anime"
+        },
+        {
+          "name": "manga",
+          "description": "Search AniList manga by Japanese title, native title, romaji, alias, or keyword",
+          "command": "unicli anilist manga"
+        },
+        {
+          "name": "characters",
+          "description": "Search AniList characters by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist characters"
+        },
+        {
+          "name": "staff",
+          "description": "Search AniList staff by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist staff"
+        },
+        {
+          "name": "studios",
+          "description": "Search AniList studios by Japanese name, native name, romaji, or alias",
+          "command": "unicli anilist studios"
+        }
+      ]
+    },
+    {
+      "site": "antigravity",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 17,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Antigravity and wait for response",
+          "command": "unicli antigravity ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to Antigravity without waiting",
+          "command": "unicli antigravity send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from Antigravity",
+          "command": "unicli antigravity read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in Antigravity",
+          "command": "unicli antigravity model"
+        },
+        {
+          "name": "status",
+          "description": "Check Antigravity app status",
+          "command": "unicli antigravity status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Antigravity",
+          "command": "unicli antigravity new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of Antigravity",
+          "command": "unicli antigravity screenshot"
+        },
+        {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from Antigravity",
+          "command": "unicli antigravity dom-snapshot"
+        },
+        {
+          "name": "extract-code",
+          "description": "Extract code blocks from the active Antigravity conversation",
+          "command": "unicli antigravity extract-code"
+        },
+        {
+          "name": "watch",
+          "description": "Poll Antigravity conversation text for updates",
+          "command": "unicli antigravity watch"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Antigravity desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli antigravity open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Antigravity desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli antigravity status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Antigravity desktop Electron app via CDP DOM.",
+          "command": "unicli antigravity dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Antigravity.",
+          "command": "unicli antigravity snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Antigravity.",
+          "command": "unicli antigravity click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Antigravity.",
+          "command": "unicli antigravity type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Antigravity, with optional comma-separated modifiers.",
+          "command": "unicli antigravity press"
+        }
+      ]
+    },
+    {
+      "site": "archive",
+      "type": "web-api",
+      "domain": "archive.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "item",
+          "description": "Fetch public Internet Archive item metadata by identifier",
+          "command": "unicli archive item"
+        },
+        {
+          "name": "search",
+          "description": "Search public Internet Archive books, movies, audio, software, web, and data",
+          "command": "unicli archive search"
+        },
+        {
+          "name": "snapshots",
+          "description": "List Wayback Machine CDX snapshots for a URL and time range",
+          "command": "unicli archive snapshots"
+        },
+        {
+          "name": "wayback",
+          "description": "Resolve the closest Wayback Machine snapshot for a URL",
+          "command": "unicli archive wayback"
+        }
+      ]
+    },
+    {
+      "site": "baidu-scholar",
+      "type": "web-api",
+      "domain": "xueshu.baidu.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Baidu Scholar papers",
+          "command": "unicli baidu-scholar search"
+        }
+      ]
+    },
+    {
+      "site": "bangumi",
+      "type": "web-api",
+      "domain": "bgm.tv",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "anime",
+          "description": "Search Bangumi anime subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi anime"
+        },
+        {
+          "name": "book",
+          "description": "Search Bangumi book subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi book"
+        },
+        {
+          "name": "game",
+          "description": "Search Bangumi game subjects by Japanese title, Chinese title, romaji, or alias",
+          "command": "unicli bangumi game"
+        },
+        {
+          "name": "characters",
+          "description": "Search Bangumi characters by Japanese name, Chinese name, romaji, or alias",
+          "command": "unicli bangumi characters"
+        },
+        {
+          "name": "subject",
+          "description": "Get Bangumi subject details by subject id",
+          "command": "unicli bangumi subject"
+        }
+      ]
+    },
+    {
+      "site": "biorxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent bioRxiv preprints from the official API",
+          "command": "unicli biorxiv recent"
+        },
+        {
+          "name": "search",
+          "description": "Search bioRxiv official API metadata within a bounded date window",
+          "command": "unicli biorxiv search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch bioRxiv preprint metadata by DOI",
+          "command": "unicli biorxiv paper"
+        },
+        {
+          "name": "download",
+          "description": "Download a bioRxiv preprint PDF by DOI",
+          "command": "unicli biorxiv download"
+        },
+        {
+          "name": "read",
+          "description": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli biorxiv read"
+        }
+      ]
+    },
+    {
+      "site": "chatgpt",
+      "type": "web-api",
+      "domain": "chatgpt.com",
+      "auth": true,
+      "strategy": "public",
+      "command_count": 18,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatGPT and wait for response",
+          "command": "unicli chatgpt ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatGPT without waiting",
+          "command": "unicli chatgpt send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatGPT",
+          "command": "unicli chatgpt read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatGPT",
+          "command": "unicli chatgpt model"
+        },
+        {
+          "name": "status",
+          "description": "Check ChatGPT app status",
+          "command": "unicli chatgpt status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatGPT",
+          "command": "unicli chatgpt new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatGPT",
+          "command": "unicli chatgpt screenshot"
+        },
+        {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from ChatGPT",
+          "command": "unicli chatgpt dom-snapshot"
+        },
+        {
+          "name": "image",
+          "description": "Generate an image in ChatGPT web and optionally save visible images",
+          "command": "unicli chatgpt image"
+        },
+        {
+          "name": "history",
+          "description": "List visible ChatGPT web conversation history from the sidebar",
+          "command": "unicli chatgpt history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a ChatGPT web conversation by ID and read its messages",
+          "command": "unicli chatgpt detail"
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatGPT desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli chatgpt open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatGPT desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli chatgpt status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the ChatGPT desktop Electron app via CDP DOM.",
+          "command": "unicli chatgpt dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatGPT.",
+          "command": "unicli chatgpt snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatGPT.",
+          "command": "unicli chatgpt click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatGPT.",
+          "command": "unicli chatgpt type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatGPT, with optional comma-separated modifiers.",
+          "command": "unicli chatgpt press"
+        }
+      ]
+    },
+    {
       "site": "chatgpt-app",
       "type": "web-api",
       "auth": false,
@@ -11388,9 +9212,801 @@
           "command": "unicli chatgpt-app screenshot"
         },
         {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from ChatGPT",
+          "command": "unicli chatgpt-app dom-snapshot"
+        }
+      ]
+    },
+    {
+      "site": "chatwise",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 17,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to ChatWise and wait for response",
+          "command": "unicli chatwise ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to ChatWise without waiting",
+          "command": "unicli chatwise send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from ChatWise",
+          "command": "unicli chatwise read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in ChatWise",
+          "command": "unicli chatwise model"
+        },
+        {
+          "name": "status",
+          "description": "Check ChatWise app status",
+          "command": "unicli chatwise status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in ChatWise",
+          "command": "unicli chatwise new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of ChatWise",
+          "command": "unicli chatwise screenshot"
+        },
+        {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from ChatWise",
+          "command": "unicli chatwise dom-snapshot"
+        },
+        {
+          "name": "history",
+          "description": "List ChatWise conversations from the sidebar",
+          "command": "unicli chatwise history"
+        },
+        {
+          "name": "export",
+          "description": "Export the current ChatWise conversation as Markdown text",
+          "command": "unicli chatwise export"
+        },
+        {
+          "name": "open-app",
+          "description": "Open ChatWise desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli chatwise open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current ChatWise desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli chatwise status-app"
+        },
+        {
           "name": "dump",
-          "description": "Dump full page content from ChatGPT",
-          "command": "unicli chatgpt-app dump"
+          "description": "Dump visible text from the ChatWise desktop Electron app via CDP DOM.",
+          "command": "unicli chatwise dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in ChatWise.",
+          "command": "unicli chatwise snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in ChatWise.",
+          "command": "unicli chatwise click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in ChatWise.",
+          "command": "unicli chatwise type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in ChatWise, with optional comma-separated modifiers.",
+          "command": "unicli chatwise press"
+        }
+      ]
+    },
+    {
+      "site": "cipo",
+      "type": "web-api",
+      "domain": "cipo.ic.gc.ca",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Canadian patent document (CIPO, browser)",
+          "command": "unicli cipo get"
+        },
+        {
+          "name": "legal-status",
+          "description": "CIPO Canadian patent administrative-status lookup (browser)",
+          "command": "unicli cipo legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search the Canadian Patents Database (CIPO, browser, no API)",
+          "command": "unicli cipo search"
+        }
+      ]
+    },
+    {
+      "site": "claude",
+      "type": "web-api",
+      "domain": "claude.ai",
+      "auth": true,
+      "strategy": "public",
+      "command_count": 14,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Claude and return the assistant response",
+          "command": "unicli claude ask"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Claude without waiting for a response",
+          "command": "unicli claude send"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Claude",
+          "command": "unicli claude new"
+        },
+        {
+          "name": "status",
+          "description": "Check Claude page availability and login state",
+          "command": "unicli claude status"
+        },
+        {
+          "name": "read",
+          "description": "Read the current Claude conversation",
+          "command": "unicli claude read"
+        },
+        {
+          "name": "history",
+          "description": "List conversation history from Claude /recents",
+          "command": "unicli claude history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Claude conversation by ID and read its messages",
+          "command": "unicli claude detail"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Claude desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli claude open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Claude desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli claude status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Claude desktop Electron app via CDP DOM.",
+          "command": "unicli claude dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Claude.",
+          "command": "unicli claude snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Claude.",
+          "command": "unicli claude click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Claude.",
+          "command": "unicli claude type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Claude, with optional comma-separated modifiers.",
+          "command": "unicli claude press"
+        }
+      ]
+    },
+    {
+      "site": "cnipa",
+      "type": "web-api",
+      "domain": "pss-system.cponline.cnipa.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single CNIPA patent document by publication number",
+          "command": "unicli cnipa get"
+        },
+        {
+          "name": "legal-status",
+          "description": "CNIPA legal-status / prosecution timeline lookup (browser)",
+          "command": "unicli cnipa legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search CNIPA via the public",
+          "command": "unicli cnipa search"
+        }
+      ]
+    },
+    {
+      "site": "cnki",
+      "type": "web-api",
+      "domain": "scholar.cnki.net",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search CNKI academic papers by title",
+          "command": "unicli cnki search"
+        }
+      ]
+    },
+    {
+      "site": "codex",
+      "type": "web-api",
+      "domain": "localhost",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 19,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Codex and wait for response",
+          "command": "unicli codex ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to Codex without waiting",
+          "command": "unicli codex send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from Codex",
+          "command": "unicli codex read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in Codex",
+          "command": "unicli codex model"
+        },
+        {
+          "name": "status",
+          "description": "Check Codex app status",
+          "command": "unicli codex status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Codex",
+          "command": "unicli codex new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of Codex",
+          "command": "unicli codex screenshot"
+        },
+        {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from Codex",
+          "command": "unicli codex dom-snapshot"
+        },
+        {
+          "name": "extract-diff",
+          "description": "Extract diff patches from the last Codex response",
+          "command": "unicli codex extract-diff"
+        },
+        {
+          "name": "history",
+          "description": "List Codex desktop conversation threads",
+          "command": "unicli codex history"
+        },
+        {
+          "name": "export",
+          "description": "Export the current Codex desktop thread as Markdown text",
+          "command": "unicli codex export"
+        },
+        {
+          "name": "projects",
+          "description": "List Codex projects and visible conversations from the sidebar",
+          "command": "unicli codex projects"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Codex desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli codex open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Codex desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli codex status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Codex desktop Electron app via CDP DOM.",
+          "command": "unicli codex dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Codex.",
+          "command": "unicli codex snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Codex.",
+          "command": "unicli codex click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Codex.",
+          "command": "unicli codex type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Codex, with optional comma-separated modifiers.",
+          "command": "unicli codex press"
+        }
+      ]
+    },
+    {
+      "site": "coingecko",
+      "type": "web-api",
+      "domain": "api.coingecko.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "coin",
+          "description": "Fetch a single cryptocurrency's market data by CoinGecko id",
+          "command": "unicli coingecko coin"
+        },
+        {
+          "name": "top",
+          "description": "Top coins by market cap",
+          "command": "unicli coingecko top"
+        },
+        {
+          "name": "trending",
+          "description": "Top trending cryptocurrencies on CoinGecko",
+          "command": "unicli coingecko trending"
+        },
+        {
+          "name": "categories",
+          "description": "Crypto categories ranked by aggregated market cap",
+          "command": "unicli coingecko categories"
+        },
+        {
+          "name": "exchanges",
+          "description": "Top crypto exchanges by 24h BTC trading volume",
+          "command": "unicli coingecko exchanges"
+        },
+        {
+          "name": "derivatives",
+          "description": "Top crypto derivative markets by 24h volume",
+          "command": "unicli coingecko derivatives"
+        },
+        {
+          "name": "global",
+          "description": "Aggregate crypto market stats",
+          "command": "unicli coingecko global"
+        }
+      ]
+    },
+    {
+      "site": "crates",
+      "type": "web-api",
+      "domain": "crates.io",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the public crates.io registry by keyword",
+          "command": "unicli crates search"
+        },
+        {
+          "name": "crate",
+          "description": "Single crates.io crate metadata",
+          "command": "unicli crates crate"
+        }
+      ]
+    },
+    {
+      "site": "crossref",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Crossref Works by title, author, DOI, or bibliographic text",
+          "command": "unicli crossref search"
+        },
+        {
+          "name": "work",
+          "description": "Fetch one Crossref Work by DOI",
+          "command": "unicli crossref work"
+        }
+      ]
+    },
+    {
+      "site": "ctrip",
+      "type": "web-api",
+      "domain": "flights.ctrip.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Ctrip destinations, landmarks, scenic spots, and stations",
+          "command": "unicli ctrip search"
+        },
+        {
+          "name": "hotel-suggest",
+          "description": "Search Ctrip hotel context suggestions",
+          "command": "unicli ctrip hotel-suggest"
+        },
+        {
+          "name": "hotel-search",
+          "description": "Search Ctrip hotel list by city and stay dates",
+          "command": "unicli ctrip hotel-search"
+        },
+        {
+          "name": "flight",
+          "description": "Search Ctrip one-way flights by IATA route and date",
+          "command": "unicli ctrip flight"
+        }
+      ]
+    },
+    {
+      "site": "cursor",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 19,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Cursor and wait for response",
+          "command": "unicli cursor ask"
+        },
+        {
+          "name": "send",
+          "description": "Send text to Cursor without waiting",
+          "command": "unicli cursor send"
+        },
+        {
+          "name": "read",
+          "description": "Read the last response from Cursor",
+          "command": "unicli cursor read"
+        },
+        {
+          "name": "model",
+          "description": "Read or switch the current model in Cursor",
+          "command": "unicli cursor model"
+        },
+        {
+          "name": "status",
+          "description": "Check Cursor app status",
+          "command": "unicli cursor status"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Cursor",
+          "command": "unicli cursor new"
+        },
+        {
+          "name": "screenshot",
+          "description": "Capture screenshot of Cursor",
+          "command": "unicli cursor screenshot"
+        },
+        {
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from Cursor",
+          "command": "unicli cursor dom-snapshot"
+        },
+        {
+          "name": "composer",
+          "description": "Open Cursor Composer mode with a prompt",
+          "command": "unicli cursor composer"
+        },
+        {
+          "name": "extract-code",
+          "description": "Extract code blocks from the last Cursor response",
+          "command": "unicli cursor extract-code"
+        },
+        {
+          "name": "export",
+          "description": "Export the current Cursor conversation to a Markdown file",
+          "command": "unicli cursor export"
+        },
+        {
+          "name": "history",
+          "description": "List recent chat sessions from the Cursor sidebar",
+          "command": "unicli cursor history"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Cursor desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli cursor open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Cursor desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli cursor status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Cursor desktop Electron app via CDP DOM.",
+          "command": "unicli cursor dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Cursor.",
+          "command": "unicli cursor snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Cursor.",
+          "command": "unicli cursor click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Cursor.",
+          "command": "unicli cursor type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Cursor, with optional comma-separated modifiers.",
+          "command": "unicli cursor press"
+        }
+      ]
+    },
+    {
+      "site": "cvf",
+      "type": "web-api",
+      "domain": "openaccess.thecvf.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search CVF OpenAccess proceedings (CVPR/ICCV/ECCV/WACV)",
+          "command": "unicli cvf search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch CVF OpenAccess paper metadata by page id",
+          "command": "unicli cvf paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a CVF OpenAccess paper PDF by page id and extract text",
+          "command": "unicli cvf read"
+        }
+      ]
+    },
+    {
+      "site": "dblp",
+      "type": "web-api",
+      "domain": "dblp.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search dblp computer-science bibliography",
+          "command": "unicli dblp search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a dblp record by canonical key",
+          "command": "unicli dblp paper"
+        },
+        {
+          "name": "venue",
+          "description": "Search dblp venue registry by name or acronym",
+          "command": "unicli dblp venue"
+        },
+        {
+          "name": "author",
+          "description": "List dblp publications by author name or PID",
+          "command": "unicli dblp author"
+        }
+      ]
+    },
+    {
+      "site": "defillama",
+      "type": "web-api",
+      "domain": "defillama.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "protocols",
+          "description": "Top DeFi protocols by current TVL",
+          "command": "unicli defillama protocols"
+        },
+        {
+          "name": "protocol",
+          "description": "Fetch DefiLlama protocol detail by slug",
+          "command": "unicli defillama protocol"
+        }
+      ]
+    },
+    {
+      "site": "discord-app",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 15,
+      "commands": [
+        {
+          "name": "servers",
+          "description": "List Discord servers",
+          "command": "unicli discord-app servers"
+        },
+        {
+          "name": "channels",
+          "description": "List channels in current server",
+          "command": "unicli discord-app channels"
+        },
+        {
+          "name": "read",
+          "description": "Read recent messages",
+          "command": "unicli discord-app read"
+        },
+        {
+          "name": "send",
+          "description": "Send message in current channel",
+          "command": "unicli discord-app send"
+        },
+        {
+          "name": "search",
+          "description": "Search Discord messages",
+          "command": "unicli discord-app search"
+        },
+        {
+          "name": "members",
+          "description": "List server members",
+          "command": "unicli discord-app members"
+        },
+        {
+          "name": "delete",
+          "description": "Delete a message by its ID in the active Discord channel",
+          "command": "unicli discord-app delete"
+        },
+        {
+          "name": "status",
+          "description": "Discord app status",
+          "command": "unicli discord-app status"
+        },
+        {
+          "name": "open-app",
+          "description": "Open Discord desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli discord-app open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Discord desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli discord-app status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Discord desktop Electron app via CDP DOM.",
+          "command": "unicli discord-app dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Discord.",
+          "command": "unicli discord-app snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Discord.",
+          "command": "unicli discord-app click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Discord.",
+          "command": "unicli discord-app type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Discord, with optional comma-separated modifiers.",
+          "command": "unicli discord-app press"
+        }
+      ]
+    },
+    {
+      "site": "dlsite",
+      "type": "web-api",
+      "domain": "www.dlsite.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 8,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search DLsite doujin works by keyword, type, and sort order",
+          "command": "unicli dlsite search"
+        },
+        {
+          "name": "manga",
+          "description": "Search DLsite manga works",
+          "command": "unicli dlsite manga"
+        },
+        {
+          "name": "cg",
+          "description": "Search DLsite CG and illustration works",
+          "command": "unicli dlsite cg"
+        },
+        {
+          "name": "game",
+          "description": "Search DLsite game and ADV works",
+          "command": "unicli dlsite game"
+        },
+        {
+          "name": "maker",
+          "description": "Search DLsite works from a circle or maker id such as RG01012594 or VG02994",
+          "command": "unicli dlsite maker"
+        },
+        {
+          "name": "creator",
+          "description": "Search DLsite works by creator, author, illustrator, or voice actor name",
+          "command": "unicli dlsite creator"
+        },
+        {
+          "name": "genre",
+          "description": "Search DLsite works by DLsite genre tag id",
+          "command": "unicli dlsite genre"
+        },
+        {
+          "name": "work",
+          "description": "Get DLsite public work detail by product id",
+          "command": "unicli dlsite work"
+        }
+      ]
+    },
+    {
+      "site": "dockerhub",
+      "type": "web-api",
+      "domain": "hub.docker.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Docker Hub repositories by keyword",
+          "command": "unicli dockerhub search"
+        },
+        {
+          "name": "image",
+          "description": "Fetch a Docker Hub repository's public metadata",
+          "command": "unicli dockerhub image"
         }
       ]
     },
@@ -11399,7 +10015,7 @@
       "type": "web-api",
       "auth": false,
       "strategy": "public",
-      "command_count": 13,
+      "command_count": 14,
       "commands": [
         {
           "name": "ask",
@@ -11432,9 +10048,9 @@
           "command": "unicli doubao-app screenshot"
         },
         {
-          "name": "dump",
-          "description": "Dump visible text from the Doubao desktop Electron app via CDP DOM.",
-          "command": "unicli doubao-app dump"
+          "name": "dom-snapshot",
+          "description": "Capture a compact DOM snapshot from Doubao",
+          "command": "unicli doubao-app dom-snapshot"
         },
         {
           "name": "open-app",
@@ -11445,6 +10061,11 @@
           "name": "status-app",
           "description": "Inspect current Doubao desktop app page, title, URL, visible controls, and text summary.",
           "command": "unicli doubao-app status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Doubao desktop Electron app via CDP DOM.",
+          "command": "unicli doubao-app dump"
         },
         {
           "name": "snapshot-app",
@@ -11465,6 +10086,210 @@
           "name": "press",
           "description": "Press a key in Doubao, with optional comma-separated modifiers.",
           "command": "unicli doubao-app press"
+        }
+      ]
+    },
+    {
+      "site": "douyin",
+      "type": "web-api",
+      "domain": "creator.douyin.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 13,
+      "commands": [
+        {
+          "name": "activities",
+          "description": "List official Douyin activities",
+          "command": "unicli douyin activities"
+        },
+        {
+          "name": "collections",
+          "description": "List Douyin collections (playlists)",
+          "command": "unicli douyin collections"
+        },
+        {
+          "name": "delete",
+          "description": "Delete a Douyin video",
+          "command": "unicli douyin delete"
+        },
+        {
+          "name": "draft",
+          "description": "Upload a video and save as draft on Douyin",
+          "command": "unicli douyin draft"
+        },
+        {
+          "name": "drafts",
+          "description": "List Douyin draft videos",
+          "command": "unicli douyin drafts"
+        },
+        {
+          "name": "hashtag",
+          "description": "Search, suggest, or list hot Douyin hashtags",
+          "command": "unicli douyin hashtag"
+        },
+        {
+          "name": "location",
+          "description": "Search Douyin POI locations for video tagging",
+          "command": "unicli douyin location"
+        },
+        {
+          "name": "profile",
+          "description": "Get Douyin account info",
+          "command": "unicli douyin profile"
+        },
+        {
+          "name": "publish",
+          "description": "Publish a scheduled video to Douyin (2h-14d window required)",
+          "command": "unicli douyin publish"
+        },
+        {
+          "name": "stats",
+          "description": "Get Douyin video analytics (7-day metrics trend)",
+          "command": "unicli douyin stats"
+        },
+        {
+          "name": "update",
+          "description": "Update Douyin video metadata (reschedule or change caption)",
+          "command": "unicli douyin update"
+        },
+        {
+          "name": "user-videos",
+          "description": "Get a user's video list with download URLs and top comments",
+          "command": "unicli douyin user-videos"
+        },
+        {
+          "name": "videos",
+          "description": "List works from the Douyin creator center",
+          "command": "unicli douyin videos"
+        }
+      ]
+    },
+    {
+      "site": "ehentai",
+      "type": "web-api",
+      "domain": "e-hentai.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 6,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search public E-Hentai galleries with category and structured tag filters",
+          "command": "unicli ehentai search"
+        },
+        {
+          "name": "artist",
+          "description": "Search public E-Hentai galleries by exact artist tag",
+          "command": "unicli ehentai artist"
+        },
+        {
+          "name": "tag",
+          "description": "Search public E-Hentai galleries by exact namespaced tag such as artist, group, parody, language, or character",
+          "command": "unicli ehentai tag"
+        },
+        {
+          "name": "gallery",
+          "description": "Get E-Hentai gallery metadata through the official API",
+          "command": "unicli ehentai gallery"
+        },
+        {
+          "name": "torrents",
+          "description": "List E-Hentai gallery torrent metadata from the official API",
+          "command": "unicli ehentai torrents"
+        },
+        {
+          "name": "pages",
+          "description": "List public E-Hentai gallery image page URLs and thumbnail sprites",
+          "command": "unicli ehentai pages"
+        }
+      ]
+    },
+    {
+      "site": "notion-app",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 16,
+      "commands": [
+        {
+          "name": "open-app",
+          "description": "Open Notion desktop Electron app with CDP enabled for AI control.",
+          "command": "unicli notion-app open-app"
+        },
+        {
+          "name": "status-app",
+          "description": "Inspect current Notion desktop app page, title, URL, visible controls, and text summary.",
+          "command": "unicli notion-app status-app"
+        },
+        {
+          "name": "dump",
+          "description": "Dump visible text from the Notion desktop Electron app via CDP DOM.",
+          "command": "unicli notion-app dump"
+        },
+        {
+          "name": "snapshot-app",
+          "description": "List visible clickable text, buttons, inputs, and regions in Notion.",
+          "command": "unicli notion-app snapshot-app"
+        },
+        {
+          "name": "click-text",
+          "description": "Click visible text, aria-label, title, or button content in Notion.",
+          "command": "unicli notion-app click-text"
+        },
+        {
+          "name": "type-text",
+          "description": "Type text into the focused field or a text-matched target in Notion.",
+          "command": "unicli notion-app type-text"
+        },
+        {
+          "name": "press",
+          "description": "Press a key in Notion, with optional comma-separated modifiers.",
+          "command": "unicli notion-app press"
+        },
+        {
+          "name": "search",
+          "description": "Search in Notion (Cmd+K)",
+          "command": "unicli notion-app search"
+        },
+        {
+          "name": "read",
+          "description": "Read current Notion page content",
+          "command": "unicli notion-app read"
+        },
+        {
+          "name": "write",
+          "description": "Append text to current Notion page",
+          "command": "unicli notion-app write"
+        },
+        {
+          "name": "new",
+          "description": "Create new Notion page",
+          "command": "unicli notion-app new"
+        },
+        {
+          "name": "status",
+          "description": "Notion workspace status",
+          "command": "unicli notion-app status"
+        },
+        {
+          "name": "sidebar",
+          "description": "Read Notion sidebar navigation",
+          "command": "unicli notion-app sidebar"
+        },
+        {
+          "name": "favorites",
+          "description": "List Notion favorites",
+          "command": "unicli notion-app favorites"
+        },
+        {
+          "name": "export",
+          "description": "Export current Notion page as markdown",
+          "command": "unicli notion-app export"
+        },
+        {
+          "name": "screenshot",
+          "description": "Screenshot current Notion page",
+          "command": "unicli notion-app screenshot"
         }
       ]
     },
@@ -12173,6 +10998,256 @@
       ]
     },
     {
+      "site": "endoflife",
+      "type": "web-api",
+      "domain": "endoflife.date",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "product",
+          "description": "Release cycles and support dates for an endoflife.date product",
+          "command": "unicli endoflife product"
+        }
+      ]
+    },
+    {
+      "site": "espacenet",
+      "type": "web-api",
+      "domain": "worldwide.espacenet.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "family",
+          "description": "Espacenet DOCDB simple-family lookup (browser)",
+          "command": "unicli espacenet family"
+        },
+        {
+          "name": "get",
+          "description": "Retrieve a single Espacenet publication detail (browser, no key)",
+          "command": "unicli espacenet get"
+        },
+        {
+          "name": "legal-status",
+          "description": "Espacenet INPADOC legal-status lookup (browser)",
+          "command": "unicli espacenet legal-status"
+        },
+        {
+          "name": "search",
+          "description": "Search Espacenet (EPO public no-key front end) for worldwide patents",
+          "command": "unicli espacenet search"
+        }
+      ]
+    },
+    {
+      "site": "fips",
+      "type": "web-api",
+      "domain": "www.fips.ru",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Rospatent FIPS document (browser-only)",
+          "command": "unicli fips get"
+        },
+        {
+          "name": "search",
+          "description": "Search Rospatent FIPS Russian patent database (browser, no API)",
+          "command": "unicli fips search"
+        }
+      ]
+    },
+    {
+      "site": "flathub",
+      "type": "web-api",
+      "domain": "flathub.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Flathub apps by keyword",
+          "command": "unicli flathub search"
+        },
+        {
+          "name": "app",
+          "description": "Fetch full Flathub appstream metadata by app id",
+          "command": "unicli flathub app"
+        }
+      ]
+    },
+    {
+      "site": "freepatentsonline-web",
+      "type": "web-api",
+      "domain": "www.freepatentsonline.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single FreePatentsOnline bibliographic record (keyless, no Chrome)",
+          "command": "unicli freepatentsonline-web get"
+        },
+        {
+          "name": "search",
+          "description": "Keyless FreePatentsOnline search via the public SSR listing (no API key, no Chrome)",
+          "command": "unicli freepatentsonline-web search"
+        }
+      ]
+    },
+    {
+      "site": "google-patents-web",
+      "type": "web-api",
+      "domain": "patents.google.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single Google Patents bibliographic record (keyless, no Chrome)",
+          "command": "unicli google-patents-web get"
+        },
+        {
+          "name": "search",
+          "description": "Keyless Google Patents search via the public XHR endpoint (no API key, no Chrome required)",
+          "command": "unicli google-patents-web search"
+        }
+      ]
+    },
+    {
+      "site": "google-scholar",
+      "type": "web-api",
+      "domain": "scholar.google.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "cite",
+          "description": "Fetch a Google Scholar citation for a paper",
+          "command": "unicli google-scholar cite"
+        },
+        {
+          "name": "profile",
+          "description": "Read a Google Scholar author profile and top papers",
+          "command": "unicli google-scholar profile"
+        },
+        {
+          "name": "search",
+          "description": "Search Google Scholar papers",
+          "command": "unicli google-scholar search"
+        }
+      ]
+    },
+    {
+      "site": "goproxy",
+      "type": "web-api",
+      "domain": "proxy.golang.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "module",
+          "description": "Latest version and VCS origin metadata for a Go module",
+          "command": "unicli goproxy module"
+        },
+        {
+          "name": "versions",
+          "description": "Published version tags for a Go module",
+          "command": "unicli goproxy versions"
+        }
+      ]
+    },
+    {
+      "site": "gov-law",
+      "type": "web-api",
+      "domain": "flk.npc.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search the National Laws and Regulations Database",
+          "command": "unicli gov-law search"
+        },
+        {
+          "name": "recent",
+          "description": "List recent laws and regulations",
+          "command": "unicli gov-law recent"
+        }
+      ]
+    },
+    {
+      "site": "gov-policy",
+      "type": "web-api",
+      "domain": "www.gov.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search gov.cn policy documents",
+          "command": "unicli gov-policy search"
+        },
+        {
+          "name": "recent",
+          "description": "List latest State Council policy documents",
+          "command": "unicli gov-policy recent"
+        }
+      ]
+    },
+    {
+      "site": "indeed",
+      "type": "web-api",
+      "domain": "www.indeed.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Indeed jobs through the rendered browser DOM",
+          "command": "unicli indeed search"
+        },
+        {
+          "name": "job",
+          "description": "Read an Indeed job posting by 16-character jk job key",
+          "command": "unicli indeed job"
+        }
+      ]
+    },
+    {
+      "site": "inpi-br",
+      "type": "web-api",
+      "domain": "busca.inpi.gov.br",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "get",
+          "description": "Retrieve a single INPI Brasil patent record (browser-only)",
+          "command": "unicli inpi-br get"
+        },
+        {
+          "name": "search",
+          "description": "Search INPI Brasil patents (browser-only, no upstream API)",
+          "command": "unicli inpi-br search"
+        }
+      ]
+    },
+    {
       "site": "jikan",
       "type": "web-api",
       "domain": "api.jikan.moe",
@@ -12219,6 +11294,1010 @@
           "name": "manga",
           "description": "Search Kitsu manga by Japanese title, romaji, alias, or keyword",
           "command": "unicli kitsu manga"
+        }
+      ]
+    },
+    {
+      "site": "lichess",
+      "type": "web-api",
+      "domain": "lichess.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "top",
+          "description": "Top-N Lichess leaderboard for a perf type",
+          "command": "unicli lichess top"
+        },
+        {
+          "name": "user",
+          "description": "Fetch a public Lichess player profile by username",
+          "command": "unicli lichess user"
+        }
+      ]
+    },
+    {
+      "site": "linux-do",
+      "type": "browser",
+      "domain": "linux.do",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 11,
+      "commands": [
+        {
+          "name": "categories",
+          "description": "List all Linux.do forum categories",
+          "command": "unicli linux-do categories"
+        },
+        {
+          "name": "category",
+          "description": "Topics in a Linux.do category",
+          "command": "unicli linux-do category"
+        },
+        {
+          "name": "feed",
+          "description": "Linux.do personal feed (new topics)",
+          "command": "unicli linux-do feed"
+        },
+        {
+          "name": "hot",
+          "description": "Linux.do hot topics",
+          "command": "unicli linux-do hot"
+        },
+        {
+          "name": "latest",
+          "description": "Linux.do latest topics",
+          "command": "unicli linux-do latest"
+        },
+        {
+          "name": "tags",
+          "description": "List Linux.do forum tags",
+          "command": "unicli linux-do tags"
+        },
+        {
+          "name": "topic",
+          "description": "Linux.do topic detail and replies",
+          "command": "unicli linux-do topic"
+        },
+        {
+          "name": "user-posts",
+          "description": "Linux.do user posts (replies)",
+          "command": "unicli linux-do user-posts"
+        },
+        {
+          "name": "user-topics",
+          "description": "Linux.do topics created by a user",
+          "command": "unicli linux-do user-topics"
+        },
+        {
+          "name": "search",
+          "description": "Search Linux.do forum topics",
+          "command": "unicli linux-do search"
+        },
+        {
+          "name": "topic-content",
+          "description": "Read the main Linux.do topic body as Markdown",
+          "command": "unicli linux-do topic-content"
+        }
+      ]
+    },
+    {
+      "site": "mangadex",
+      "type": "web-api",
+      "domain": "mangadex.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "manga",
+          "description": "Search MangaDex manga by Japanese title, romaji, alias, or keyword",
+          "command": "unicli mangadex manga"
+        },
+        {
+          "name": "authors",
+          "description": "Search MangaDex authors and artists by public name or romaji",
+          "command": "unicli mangadex authors"
+        }
+      ]
+    },
+    {
+      "site": "marxists-cn",
+      "type": "web-api",
+      "domain": "www.marxists.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "index",
+          "description": "List Chinese Marxists Internet Archive top-level people, topics, and library links",
+          "command": "unicli marxists-cn index"
+        },
+        {
+          "name": "reading-list",
+          "description": "Return curated Chinese Marxists archive reading lists with directly readable paths",
+          "command": "unicli marxists-cn reading-list"
+        },
+        {
+          "name": "western-marxism",
+          "description": "List famous Western Marxist authors and works from the Chinese Marxists archive with read commands",
+          "command": "unicli marxists-cn western-marxism"
+        },
+        {
+          "name": "authors",
+          "description": "List people, authors, organizations, and topic directories in the Chinese Marxists archive",
+          "command": "unicli marxists-cn authors"
+        },
+        {
+          "name": "works",
+          "description": "List works/books/articles under a Chinese Marxists archive author or topic path",
+          "command": "unicli marxists-cn works"
+        },
+        {
+          "name": "read",
+          "description": "Read a Chinese Marxists archive HTML page as clean plain text",
+          "command": "unicli marxists-cn read"
+        },
+        {
+          "name": "search",
+          "description": "Search Chinese Marxists archive people, books, works, and scoped full text",
+          "command": "unicli marxists-cn search"
+        }
+      ]
+    },
+    {
+      "site": "mdn",
+      "type": "web-api",
+      "domain": "developer.mozilla.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search MDN Web Docs by keyword",
+          "command": "unicli mdn search"
+        }
+      ]
+    },
+    {
+      "site": "medrxiv",
+      "type": "web-api",
+      "domain": "api.biorxiv.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "recent",
+          "description": "List recent medRxiv preprints from the official API",
+          "command": "unicli medrxiv recent"
+        },
+        {
+          "name": "search",
+          "description": "Search medRxiv official API metadata within a bounded date window",
+          "command": "unicli medrxiv search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch medRxiv preprint metadata by DOI",
+          "command": "unicli medrxiv paper"
+        },
+        {
+          "name": "download",
+          "description": "Download a medRxiv preprint PDF by DOI",
+          "command": "unicli medrxiv download"
+        },
+        {
+          "name": "read",
+          "description": "Read medRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
+          "command": "unicli medrxiv read"
+        }
+      ]
+    },
+    {
+      "site": "moegirl",
+      "type": "web-api",
+      "domain": "zh.moegirl.org.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Moegirl ACG wiki articles for characters, works, songs, games, and studios",
+          "command": "unicli moegirl search"
+        },
+        {
+          "name": "page",
+          "description": "Read a Moegirl article as plain text with metadata",
+          "command": "unicli moegirl page"
+        },
+        {
+          "name": "links",
+          "description": "Extract internal Moegirl article links from a page, useful for disambiguation pages",
+          "command": "unicli moegirl links"
+        }
+      ]
+    },
+    {
+      "site": "neurips",
+      "type": "web-api",
+      "domain": "proceedings.neurips.cc",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search NeurIPS proceedings by year",
+          "command": "unicli neurips search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch NeurIPS proceedings paper metadata by page id",
+          "command": "unicli neurips paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a NeurIPS proceedings paper PDF by page id and extract text",
+          "command": "unicli neurips read"
+        }
+      ]
+    },
+    {
+      "site": "nowcoder",
+      "type": "web-api",
+      "domain": "www.nowcoder.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 16,
+      "commands": [
+        {
+          "name": "hot",
+          "description": "hot",
+          "command": "unicli nowcoder hot"
+        },
+        {
+          "name": "trending",
+          "description": "trending",
+          "command": "unicli nowcoder trending"
+        },
+        {
+          "name": "topics",
+          "description": "topics",
+          "command": "unicli nowcoder topics"
+        },
+        {
+          "name": "jobs",
+          "description": "jobs",
+          "command": "unicli nowcoder jobs"
+        },
+        {
+          "name": "companies",
+          "description": "companies",
+          "command": "unicli nowcoder companies"
+        },
+        {
+          "name": "creators",
+          "description": "creators",
+          "command": "unicli nowcoder creators"
+        },
+        {
+          "name": "recommend",
+          "description": "recommend",
+          "command": "unicli nowcoder recommend"
+        },
+        {
+          "name": "experience",
+          "description": "experience",
+          "command": "unicli nowcoder experience"
+        },
+        {
+          "name": "referral",
+          "description": "referral",
+          "command": "unicli nowcoder referral"
+        },
+        {
+          "name": "salary",
+          "description": "salary",
+          "command": "unicli nowcoder salary"
+        },
+        {
+          "name": "papers",
+          "description": "papers",
+          "command": "unicli nowcoder papers"
+        },
+        {
+          "name": "practice",
+          "description": "practice",
+          "command": "unicli nowcoder practice"
+        },
+        {
+          "name": "search",
+          "description": "search",
+          "command": "unicli nowcoder search"
+        },
+        {
+          "name": "suggest",
+          "description": "suggest",
+          "command": "unicli nowcoder suggest"
+        },
+        {
+          "name": "detail",
+          "description": "detail",
+          "command": "unicli nowcoder detail"
+        },
+        {
+          "name": "notifications",
+          "description": "notifications",
+          "command": "unicli nowcoder notifications"
+        }
+      ]
+    },
+    {
+      "site": "nvd",
+      "type": "web-api",
+      "domain": "services.nvd.nist.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "cve",
+          "description": "NIST NVD CVE detail",
+          "command": "unicli nvd cve"
+        }
+      ]
+    },
+    {
+      "site": "oeis",
+      "type": "web-api",
+      "domain": "oeis.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OEIS sequences by keyword or numeric pattern",
+          "command": "unicli oeis search"
+        },
+        {
+          "name": "sequence",
+          "description": "Fetch OEIS sequence detail by A-number",
+          "command": "unicli oeis sequence"
+        }
+      ]
+    },
+    {
+      "site": "openalex",
+      "type": "web-api",
+      "domain": "api.openalex.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenAlex Works by keyword",
+          "command": "unicli openalex search"
+        },
+        {
+          "name": "work",
+          "description": "Fetch a single OpenAlex Work",
+          "command": "unicli openalex work"
+        },
+        {
+          "name": "read",
+          "description": "Download an OpenAlex open-access Work PDF and extract text",
+          "command": "unicli openalex read"
+        }
+      ]
+    },
+    {
+      "site": "openfda",
+      "type": "web-api",
+      "domain": "fda.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "drug-label",
+          "description": "Search FDA drug labels by brand or generic name",
+          "command": "unicli openfda drug-label"
+        },
+        {
+          "name": "food-recall",
+          "description": "Search FDA food recall and enforcement actions",
+          "command": "unicli openfda food-recall"
+        }
+      ]
+    },
+    {
+      "site": "openreview",
+      "type": "web-api",
+      "domain": "openreview.net",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search OpenReview papers by free-text query",
+          "command": "unicli openreview search"
+        },
+        {
+          "name": "paper",
+          "description": "Show full metadata for a single OpenReview paper",
+          "command": "unicli openreview paper"
+        },
+        {
+          "name": "download",
+          "description": "Download an OpenReview paper PDF by forum id",
+          "command": "unicli openreview download"
+        },
+        {
+          "name": "read",
+          "description": "Download and extract text from an OpenReview paper PDF",
+          "command": "unicli openreview read"
+        },
+        {
+          "name": "author",
+          "description": "List OpenReview submissions by author profile id",
+          "command": "unicli openreview author"
+        },
+        {
+          "name": "venue",
+          "description": "List papers at an OpenReview venue or invitation",
+          "command": "unicli openreview venue"
+        },
+        {
+          "name": "reviews",
+          "description": "Show paper, reviews, decisions, and comments for an OpenReview forum",
+          "command": "unicli openreview reviews"
+        }
+      ]
+    },
+    {
+      "site": "osv",
+      "type": "web-api",
+      "domain": "osv.dev",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "query",
+          "description": "OSV.dev vulnerabilities affecting a package",
+          "command": "unicli osv query"
+        },
+        {
+          "name": "vulnerability",
+          "description": "Single OSV.dev vulnerability detail",
+          "command": "unicli osv vulnerability"
+        }
+      ]
+    },
+    {
+      "site": "pmlr",
+      "type": "web-api",
+      "domain": "proceedings.mlr.press",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search a PMLR proceedings volume (e.g. v235 for ICML 2024)",
+          "command": "unicli pmlr search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch a PMLR paper by id inside a proceedings volume",
+          "command": "unicli pmlr paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a PMLR paper PDF by id inside a proceedings volume and extract text",
+          "command": "unicli pmlr read"
+        }
+      ]
+    },
+    {
+      "site": "powerchina",
+      "type": "web-api",
+      "domain": "bid.powerchina.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PowerChina procurement notices",
+          "command": "unicli powerchina search"
+        }
+      ]
+    },
+    {
+      "site": "pubmed",
+      "type": "web-api",
+      "domain": "pubmed.ncbi.nlm.nih.gov",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PubMed articles",
+          "command": "unicli pubmed search"
+        },
+        {
+          "name": "article",
+          "description": "Get detailed information for a PubMed article by PMID",
+          "command": "unicli pubmed article"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch normalized PubMed article metadata by PMID",
+          "command": "unicli pubmed paper"
+        },
+        {
+          "name": "read",
+          "description": "Read PubMed Central full text for a PMID or PMCID",
+          "command": "unicli pubmed read"
+        },
+        {
+          "name": "author",
+          "description": "Search PubMed articles by author name",
+          "command": "unicli pubmed author"
+        },
+        {
+          "name": "citations",
+          "description": "Get PubMed citation relationships for an article",
+          "command": "unicli pubmed citations"
+        },
+        {
+          "name": "related",
+          "description": "Find articles related to a PubMed article",
+          "command": "unicli pubmed related"
+        }
+      ]
+    },
+    {
+      "site": "qwen",
+      "type": "web-api",
+      "domain": "www.qianwen.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 8,
+      "commands": [
+        {
+          "name": "ask",
+          "description": "Send a prompt to Qwen and return the assistant reply",
+          "command": "unicli qwen ask"
+        },
+        {
+          "name": "read",
+          "description": "Read messages in the current Qwen conversation",
+          "command": "unicli qwen read"
+        },
+        {
+          "name": "send",
+          "description": "Send a prompt to Qwen without waiting for the reply",
+          "command": "unicli qwen send"
+        },
+        {
+          "name": "history",
+          "description": "List recent Qwen conversations",
+          "command": "unicli qwen history"
+        },
+        {
+          "name": "detail",
+          "description": "Open a Qwen conversation by ID and read its messages",
+          "command": "unicli qwen detail"
+        },
+        {
+          "name": "new",
+          "description": "Start a new conversation in Qwen",
+          "command": "unicli qwen new"
+        },
+        {
+          "name": "status",
+          "description": "Check Qwen page availability, login state, current session and model",
+          "command": "unicli qwen status"
+        },
+        {
+          "name": "image",
+          "description": "Generate images with Qwen and save them locally",
+          "command": "unicli qwen image"
+        }
+      ]
+    },
+    {
+      "site": "rednote",
+      "type": "web-api",
+      "domain": "www.rednote.com",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "note",
+          "description": "Read note body and engagement counts from a rednote note",
+          "command": "unicli rednote note"
+        },
+        {
+          "name": "search",
+          "description": "Search rednote notes",
+          "command": "unicli rednote search"
+        },
+        {
+          "name": "user",
+          "description": "Get public notes from a rednote user profile",
+          "command": "unicli rednote user"
+        },
+        {
+          "name": "comments",
+          "description": "Read comments from a rednote note (supports nested replies)",
+          "command": "unicli rednote comments"
+        },
+        {
+          "name": "feed",
+          "description": "Rednote home feed (reads hydrated Pinia store)",
+          "command": "unicli rednote feed"
+        },
+        {
+          "name": "notifications",
+          "description": "Rednote notifications (mentions/likes/connections)",
+          "command": "unicli rednote notifications"
+        },
+        {
+          "name": "download",
+          "description": "Download images and videos from a rednote note",
+          "command": "unicli rednote download"
+        }
+      ]
+    },
+    {
+      "site": "rest-countries",
+      "type": "web-api",
+      "domain": "restcountries.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "country",
+          "description": "Look up countries by common or official name",
+          "command": "unicli rest-countries country"
+        },
+        {
+          "name": "region",
+          "description": "List countries in a REST Countries region",
+          "command": "unicli rest-countries region"
+        }
+      ]
+    },
+    {
+      "site": "retrieval",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Federate current records across registered retrieval providers without a domain-specific router",
+          "command": "unicli retrieval search"
+        },
+        {
+          "name": "sources",
+          "description": "List registered retrieval providers and their semantic argument mappings",
+          "command": "unicli retrieval sources"
+        }
+      ]
+    },
+    {
+      "site": "rfc",
+      "type": "web-api",
+      "domain": "datatracker.ietf.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "rfc",
+          "description": "Fetch IETF RFC metadata by RFC number",
+          "command": "unicli rfc rfc"
+        }
+      ]
+    },
+    {
+      "site": "scholar-artifacts",
+      "type": "web-api",
+      "domain": "scholarly-pdf",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "download-pdf",
+          "description": "Download a scholarly PDF URL with artifact metadata",
+          "command": "unicli scholar-artifacts download-pdf"
+        },
+        {
+          "name": "read-pdf",
+          "description": "Download a scholarly PDF URL and extract text with pdftotext",
+          "command": "unicli scholar-artifacts read-pdf"
+        }
+      ]
+    },
+    {
+      "site": "semantic-scholar",
+      "type": "web-api",
+      "domain": "api.semanticscholar.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 6,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Semantic Scholar papers",
+          "command": "unicli semantic-scholar search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one Semantic Scholar paper by paperId, DOI, or arXiv id",
+          "command": "unicli semantic-scholar paper"
+        },
+        {
+          "name": "read",
+          "description": "Download a Semantic Scholar open-access paper PDF and extract text",
+          "command": "unicli semantic-scholar read"
+        },
+        {
+          "name": "citations",
+          "description": "List Semantic Scholar paper citations",
+          "command": "unicli semantic-scholar citations"
+        },
+        {
+          "name": "references",
+          "description": "List Semantic Scholar paper references",
+          "command": "unicli semantic-scholar references"
+        },
+        {
+          "name": "recommendations",
+          "description": "Get Semantic Scholar AI-curated related papers for a paperId, DOI, or arXiv id",
+          "command": "unicli semantic-scholar recommendations"
+        }
+      ]
+    },
+    {
+      "site": "tdx",
+      "type": "web-api",
+      "domain": "pul.tdx.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read TDX hot-search stock ranking",
+          "command": "unicli tdx hot-rank"
+        }
+      ]
+    },
+    {
+      "site": "ths",
+      "type": "web-api",
+      "domain": "eq.10jqka.com.cn",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "hot-rank",
+          "description": "Read Tonghuashun hot-stock ranking",
+          "command": "unicli ths hot-rank"
+        }
+      ]
+    },
+    {
+      "site": "tvmaze",
+      "type": "web-api",
+      "domain": "tvmaze.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search TVmaze shows by title",
+          "command": "unicli tvmaze search"
+        },
+        {
+          "name": "show",
+          "description": "Fetch TVmaze show detail by id",
+          "command": "unicli tvmaze show"
+        }
+      ]
+    },
+    {
+      "site": "uisdc",
+      "type": "web-api",
+      "domain": "www.uisdc.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "news",
+          "description": "UISDC latest AI and design news",
+          "command": "unicli uisdc news"
+        }
+      ]
+    },
+    {
+      "site": "uiverse",
+      "type": "web-api",
+      "domain": "uiverse.io",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "code",
+          "description": "Uiverse component code export (HTML or CSS)",
+          "command": "unicli uiverse code"
+        },
+        {
+          "name": "preview",
+          "description": "Capture a Uiverse component preview screenshot",
+          "command": "unicli uiverse preview"
+        }
+      ]
+    },
+    {
+      "site": "unpaywall",
+      "type": "web-api",
+      "domain": "api.unpaywall.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "oa",
+          "description": "Find open-access PDF availability for a DOI via Unpaywall",
+          "command": "unicli unpaywall oa"
+        },
+        {
+          "name": "read",
+          "description": "Download an Unpaywall open-access PDF by DOI and extract text",
+          "command": "unicli unpaywall read"
+        }
+      ]
+    },
+    {
+      "site": "vndb",
+      "type": "web-api",
+      "domain": "api.vndb.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 7,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search VNDB visual novels by title, alias, tag, or keyword",
+          "command": "unicli vndb search"
+        },
+        {
+          "name": "vn",
+          "description": "Get VNDB visual novel details by v-id",
+          "command": "unicli vndb vn"
+        },
+        {
+          "name": "releases",
+          "description": "Search VNDB releases by title or visual novel keyword",
+          "command": "unicli vndb releases"
+        },
+        {
+          "name": "tags",
+          "description": "Search VNDB game tags and genres",
+          "command": "unicli vndb tags"
+        },
+        {
+          "name": "staff",
+          "description": "Search VNDB creators and staff",
+          "command": "unicli vndb staff"
+        },
+        {
+          "name": "producers",
+          "description": "Search VNDB producers, studios, brands, makers, circles, companies, and visual novel publishers such as Yuzusoft",
+          "command": "unicli vndb producers"
+        },
+        {
+          "name": "characters",
+          "description": "Search VNDB characters and traits",
+          "command": "unicli vndb characters"
+        }
+      ]
+    },
+    {
+      "site": "wanfang",
+      "type": "web-api",
+      "domain": "s.wanfangdata.com.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wanfang papers by keyword",
+          "command": "unicli wanfang search"
+        }
+      ]
+    },
+    {
+      "site": "wikidata",
+      "type": "web-api",
+      "domain": "www.wikidata.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Wikidata items by keyword",
+          "command": "unicli wikidata search"
+        },
+        {
+          "name": "entity",
+          "description": "Fetch a Wikidata entity by Q/P/L id",
+          "command": "unicli wikidata entity"
+        }
+      ]
+    },
+    {
+      "site": "wttr",
+      "type": "web-api",
+      "domain": "wttr.in",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "current",
+          "description": "Current weather conditions for a location",
+          "command": "unicli wttr current"
+        },
+        {
+          "name": "forecast",
+          "description": "Multi-day weather forecast for a location",
+          "command": "unicli wttr forecast"
+        }
+      ]
+    },
+    {
+      "site": "zlibrary",
+      "type": "web-api",
+      "domain": "z-library.im",
+      "auth": true,
+      "strategy": "cookie",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Z-Library for books by title, author, ISBN, or keyword",
+          "command": "unicli zlibrary search"
+        },
+        {
+          "name": "info",
+          "description": "Get book details and available download formats from a Z-Library book page",
+          "command": "unicli zlibrary info"
         }
       ]
     }

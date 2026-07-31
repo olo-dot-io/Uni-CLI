@@ -11,22 +11,15 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：324 个站点，1817 条命令。
+这个目录来自适配器 manifest：326 个站点，1829 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
 | 12306 | web-api | 3 | 否 | unicli 12306 price<br>unicli 12306 stations<br>unicli 12306 trains |
 | 1688 | web-api | 5 | 是 | unicli 1688 item<br>unicli 1688 search<br>unicli 1688 store |
-| 1point3acres | web-api | 9 | 是 | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 36kr | web-api | 5 | 否 | unicli 36kr article<br>unicli 36kr hot<br>unicli 36kr latest |
-| 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
-| acl-anthology | web-api | 3 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
 | adguardhome | service | 5 | 否 | unicli adguardhome add-rule<br>unicli adguardhome rules<br>unicli adguardhome stats |
-| ai | web-api | 6 | 否 | unicli ai search<br>unicli ai pulse<br>unicli ai read |
-| aibase | web-api | 1 | 否 | unicli aibase news |
 | amazon | web-api | 8 | 是 | unicli amazon bestsellers<br>unicli amazon discussion<br>unicli amazon movers-shakers |
-| anilist | web-api | 5 | 否 | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
-| antigravity | web-api | 16 | 否 | unicli antigravity extract-code<br>unicli antigravity watch<br>unicli antigravity ask |
 | apple-notes | desktop | 3 | 否 | unicli apple-notes list<br>unicli apple-notes read<br>unicli apple-notes search |
 | apple-podcasts | web-api | 3 | 否 | unicli apple-podcasts episodes<br>unicli apple-podcasts search<br>unicli apple-podcasts top |
 | arxiv | web-api | 7 | 否 | unicli arxiv download<br>unicli arxiv paper<br>unicli arxiv trending |
@@ -34,84 +27,56 @@
 | autoagent | bridge | 1 | 否 | unicli autoagent eval-run |
 | aws | bridge | 1 | 否 | unicli aws s3-ls |
 | baidu | web-api | 2 | 是 | unicli baidu hot<br>unicli baidu search |
-| baidu-scholar | web-api | 1 | 否 | unicli baidu-scholar search |
 | band | web-api | 4 | 是 | unicli band bands<br>unicli band mentions<br>unicli band post |
-| bangumi | web-api | 5 | 否 | unicli bangumi characters<br>unicli bangumi subject<br>unicli bangumi anime |
 | barchart | web-api | 4 | 是 | unicli barchart flow<br>unicli barchart greeks<br>unicli barchart options |
 | bbc | web-api | 5 | 否 | unicli bbc news<br>unicli bbc technology<br>unicli bbc top |
 | bilibili | web-api | 20 | 是 | unicli bilibili coin<br>unicli bilibili dynamic<br>unicli bilibili favorites |
 | binance | web-api | 13 | 否 | unicli binance asks<br>unicli binance depth<br>unicli binance gainers |
-| biorxiv | web-api | 5 | 否 | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
 | blender | desktop | 13 | 否 | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | 否 | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
 | bluesky | web-api | 13 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | 是 | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | 否 | unicli brave search |
 | chaoxing | web-api | 2 | 是 | unicli chaoxing assignments<br>unicli chaoxing exams |
-| chatgpt | web-api | 17 | 是 | unicli chatgpt image<br>unicli chatgpt history<br>unicli chatgpt detail |
-| chatwise | web-api | 16 | 否 | unicli chatwise history<br>unicli chatwise export<br>unicli chatwise ask |
 | chrome | desktop | 2 | 否 | unicli chrome bookmarks<br>unicli chrome tabs |
-| cipo | web-api | 3 | 否 | unicli cipo get<br>unicli cipo legal-status<br>unicli cipo search |
-| claude | web-api | 14 | 是 | unicli claude ask<br>unicli claude send<br>unicli claude new |
 | claude-code | bridge | 1 | 否 | unicli claude-code version |
 | cloudcompare | desktop | 4 | 否 | unicli cloudcompare compare<br>unicli cloudcompare convert<br>unicli cloudcompare info |
-| cnipa | web-api | 3 | 否 | unicli cnipa get<br>unicli cnipa legal-status<br>unicli cnipa search |
-| cnki | web-api | 1 | 否 | unicli cnki search |
 | cnn | web-api | 2 | 否 | unicli cnn technology<br>unicli cnn top |
 | cocoapods | web-api | 2 | 否 | unicli cocoapods info<br>unicli cocoapods search |
-| codex | web-api | 18 | 否 | unicli codex extract-diff<br>unicli codex history<br>unicli codex export |
 | codex-cli | bridge | 1 | 否 | unicli codex-cli version |
 | coinbase | web-api | 2 | 否 | unicli coinbase prices<br>unicli coinbase rates |
-| coingecko | web-api | 7 | 否 | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
 | comfyui | service | 4 | 否 | unicli comfyui generate<br>unicli comfyui history<br>unicli comfyui nodes |
 | coupang | web-api | 4 | 是 | unicli coupang add-to-cart<br>unicli coupang hot<br>unicli coupang search |
-| crates | web-api | 2 | 否 | unicli crates search<br>unicli crates crate |
 | crates-io | web-api | 3 | 否 | unicli crates-io info<br>unicli crates-io search<br>unicli crates-io versions |
-| crossref | web-api | 2 | 否 | unicli crossref search<br>unicli crossref work |
-| ctrip | web-api | 4 | 是 | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
-| cursor | web-api | 18 | 否 | unicli cursor composer<br>unicli cursor extract-code<br>unicli cursor export |
-| cvf | web-api | 3 | 否 | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
 | danbooru | web-api | 8 | 否 | unicli danbooru artists<br>unicli danbooru comments<br>unicli danbooru detail |
 | dangdang | web-api | 2 | 是 | unicli dangdang hot<br>unicli dangdang search |
-| dblp | web-api | 4 | 否 | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
 | deepseek | web-api | 9 | 是 | unicli deepseek chat<br>unicli deepseek models<br>unicli deepseek ask |
-| defillama | web-api | 2 | 否 | unicli defillama protocols<br>unicli defillama protocol |
 | defuddle | web-api | 1 | 否 | unicli defuddle read |
 | devto | web-api | 6 | 否 | unicli devto latest<br>unicli devto search<br>unicli devto tag |
 | dianping | web-api | 3 | 是 | unicli dianping hot<br>unicli dianping search<br>unicli dianping shop |
 | dictionary | web-api | 3 | 否 | unicli dictionary examples<br>unicli dictionary search<br>unicli dictionary synonyms |
 | dingtalk | bridge | 8 | 否 | unicli dingtalk version<br>unicli dingtalk open-app<br>unicli dingtalk status-app |
-| discord-app | web-api | 15 | 否 | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
-| dlsite | web-api | 8 | 否 | unicli dlsite search<br>unicli dlsite manga<br>unicli dlsite cg |
 | docker | desktop | 7 | 否 | unicli docker build<br>unicli docker images<br>unicli docker logs |
 | docker-hub | web-api | 3 | 否 | unicli docker-hub info<br>unicli docker-hub search<br>unicli docker-hub tags |
-| dockerhub | web-api | 2 | 否 | unicli dockerhub search<br>unicli dockerhub image |
 | doctl | bridge | 1 | 否 | unicli doctl droplets |
 | douban | web-api | 12 | 是 | unicli douban book-hot<br>unicli douban download<br>unicli douban group-hot |
 | doubao | web-api | 9 | 是 | unicli doubao ask<br>unicli doubao new<br>unicli doubao status |
 | doubao-web | web-api | 9 | 是 | unicli doubao-web ask<br>unicli doubao-web detail<br>unicli doubao-web history |
-| douyin | web-api | 13 | 是 | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
 | douyu | web-api | 2 | 是 | unicli douyu hot<br>unicli douyu search |
 | dpma | web-api | 2 | 否 | unicli dpma get<br>unicli dpma search |
 | drawio | desktop | 1 | 否 | unicli drawio export |
 | duckduckgo | web-api | 2 | 否 | unicli duckduckgo search<br>unicli duckduckgo suggest |
 | eastmoney | web-api | 18 | 否 | unicli eastmoney fund<br>unicli eastmoney hot<br>unicli eastmoney market |
-| ehentai | web-api | 6 | 否 | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
 | ele | web-api | 2 | 是 | unicli ele hot<br>unicli ele search |
-| endoflife | web-api | 1 | 否 | unicli endoflife product |
 | epo | web-api | 4 | 否 | unicli epo family<br>unicli epo get<br>unicli epo legal-status |
-| espacenet | web-api | 4 | 否 | unicli espacenet family<br>unicli espacenet get<br>unicli espacenet legal-status |
 | excel | desktop | 7 | 否 | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | 否 | unicli exchangerate convert<br>unicli exchangerate list |
 | facebook | web-api | 15 | 是 | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
 | feishu | bridge | 4 | 否 | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | 否 | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | 是 | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
-| fips | web-api | 2 | 否 | unicli fips get<br>unicli fips search |
-| flathub | web-api | 2 | 否 | unicli flathub search<br>unicli flathub app |
 | flyctl | bridge | 1 | 否 | unicli flyctl apps |
 | freecad | desktop | 15 | 否 | unicli freecad assembly<br>unicli freecad bom<br>unicli freecad boolean |
-| freepatentsonline-web | web-api | 2 | 否 | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
 | futu | web-api | 2 | 是 | unicli futu hot<br>unicli futu quote |
 | gemini | web-api | 5 | 是 | unicli gemini ask<br>unicli gemini deep-research-result<br>unicli gemini deep-research |
 | gh | bridge | 11 | 是 | unicli gh discussions<br>unicli gh issue-thread<br>unicli gh issue |
@@ -122,11 +87,6 @@
 | godot | desktop | 2 | 否 | unicli godot project-run<br>unicli godot scene-export |
 | google | web-api | 4 | 否 | unicli google news<br>unicli google search<br>unicli google suggest |
 | google-patents-bq | web-api | 2 | 是 | unicli google-patents-bq prior-art<br>unicli google-patents-bq search |
-| google-patents-web | web-api | 2 | 否 | unicli google-patents-web get<br>unicli google-patents-web search |
-| google-scholar | web-api | 3 | 否 | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
-| goproxy | web-api | 2 | 否 | unicli goproxy module<br>unicli goproxy versions |
-| gov-law | web-api | 2 | 否 | unicli gov-law search<br>unicli gov-law recent |
-| gov-policy | web-api | 2 | 否 | unicli gov-policy search<br>unicli gov-policy recent |
 | grok | web-api | 8 | 是 | unicli grok ask<br>unicli grok read<br>unicli grok history |
 | hackernews | web-api | 11 | 否 | unicli hackernews ask<br>unicli hackernews best<br>unicli hackernews comments |
 | hermes | desktop | 3 | 否 | unicli hermes sessions-search<br>unicli hermes skills-list<br>unicli hermes skills-read |
@@ -137,10 +97,8 @@
 | imagemagick | desktop | 6 | 否 | unicli imagemagick compare<br>unicli imagemagick composite<br>unicli imagemagick convert |
 | imdb | web-api | 7 | 否 | unicli imdb box-office<br>unicli imdb person<br>unicli imdb reviews |
 | imessage | desktop | 3 | 否 | unicli imessage contact<br>unicli imessage recent<br>unicli imessage search |
-| indeed | web-api | 2 | 是 | unicli indeed search<br>unicli indeed job |
 | infoq | web-api | 2 | 否 | unicli infoq articles<br>unicli infoq latest |
 | inkscape | desktop | 3 | 否 | unicli inkscape convert<br>unicli inkscape export<br>unicli inkscape optimize |
-| inpi-br | web-api | 2 | 否 | unicli inpi-br get<br>unicli inpi-br search |
 | inpi-fr | web-api | 2 | 否 | unicli inpi-fr get<br>unicli inpi-fr search |
 | instagram | web-api | 29 | 是 | unicli instagram activity<br>unicli instagram comment<br>unicli instagram explore |
 | ip-info | web-api | 1 | 否 | unicli ip-info lookup |
@@ -166,57 +124,42 @@
 | lens | web-api | 2 | 是 | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | 否 | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | 否 | unicli libreoffice convert<br>unicli libreoffice print |
-| lichess | web-api | 2 | 否 | unicli lichess top<br>unicli lichess user |
 | linear | web-api | 10 | 否 | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
 | linkedin | web-api | 4 | 是 | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
-| linux-do | web-api | 11 | 是 | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
 | lobsters | web-api | 7 | 否 | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
 | macos | desktop | 60 | 否 | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |
 | maimai | browser | 2 | 是 | unicli maimai search<br>unicli maimai search-talents |
-| mangadex | web-api | 2 | 否 | unicli mangadex manga<br>unicli mangadex authors |
 | maoyan | web-api | 2 | 是 | unicli maoyan hot<br>unicli maoyan search |
 | markdown-new | web-api | 1 | 否 | unicli markdown-new read |
-| marxists-cn | web-api | 7 | 否 | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
 | mastodon | web-api | 5 | 否 | unicli mastodon search<br>unicli mastodon timeline<br>unicli mastodon trending |
 | maven | web-api | 3 | 否 | unicli maven info<br>unicli maven search<br>unicli maven artifact |
-| mdn | web-api | 1 | 否 | unicli mdn search |
 | medium | web-api | 6 | 否 | unicli medium article<br>unicli medium feed<br>unicli medium search |
-| medrxiv | web-api | 5 | 否 | unicli medrxiv recent<br>unicli medrxiv search<br>unicli medrxiv paper |
 | meituan | web-api | 1 | 是 | unicli meituan search |
 | mermaid | desktop | 1 | 否 | unicli mermaid render |
 | minimax | web-api | 3 | 是 | unicli minimax chat<br>unicli minimax models<br>unicli minimax tts |
 | modelscope | web-api | 2 | 否 | unicli modelscope datasets<br>unicli modelscope models |
-| moegirl | web-api | 3 | 否 | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
 | motion-studio | web-api | 1 | 否 | unicli motion-studio component-get |
 | mubu | web-api | 6 | 是 | unicli mubu list<br>unicli mubu search<br>unicli mubu docs |
 | musescore | desktop | 5 | 否 | unicli musescore convert<br>unicli musescore export<br>unicli musescore info |
 | neonctl | bridge | 1 | 否 | unicli neonctl projects |
 | netease-music | web-api | 17 | 否 | unicli netease-music hot<br>unicli netease-music playlist<br>unicli netease-music search |
 | netlify | bridge | 1 | 否 | unicli netlify sites |
-| neurips | web-api | 3 | 否 | unicli neurips search<br>unicli neurips paper<br>unicli neurips read |
 | notebooklm | web-api | 15 | 是 | unicli notebooklm current<br>unicli notebooklm get<br>unicli notebooklm history |
-| notion | web-api | 18 | 是 | unicli notion databases<br>unicli notion pages<br>unicli notion search |
+| notion | web-api | 3 | 是 | unicli notion databases<br>unicli notion pages<br>unicli notion search |
 | novita | service | 3 | 否 | unicli novita generate<br>unicli novita models<br>unicli novita status |
-| nowcoder | web-api | 16 | 是 | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
 | npm | web-api | 5 | 否 | unicli npm downloads<br>unicli npm info<br>unicli npm search |
 | npm-trends | web-api | 2 | 否 | unicli npm-trends compare<br>unicli npm-trends trending |
 | nuget | web-api | 3 | 否 | unicli nuget info<br>unicli nuget search<br>unicli nuget package |
-| nvd | web-api | 1 | 否 | unicli nvd cve |
 | nytimes | web-api | 2 | 否 | unicli nytimes search<br>unicli nytimes top |
 | obs | service | 8 | 否 | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | 否 | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
-| oeis | web-api | 2 | 否 | unicli oeis search<br>unicli oeis sequence |
 | ollama | service | 4 | 否 | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
 | ollama-cloud | web-api | 2 | 否 | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
 | ones | web-api | 11 | 是 | unicli ones enrich-tasks<br>unicli ones login<br>unicli ones logout |
-| openalex | web-api | 3 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | opencode | bridge | 1 | 否 | unicli opencode version |
 | opencsg | web-api | 2 | 否 | unicli opencsg datasets<br>unicli opencsg models |
-| openfda | web-api | 2 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
 | openharness | desktop | 2 | 否 | unicli openharness memory-read<br>unicli openharness skills-list |
-| openreview | web-api | 7 | 否 | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
 | openrouter | web-api | 2 | 否 | unicli openrouter models<br>unicli openrouter search |
-| osv | web-api | 2 | 否 | unicli osv query<br>unicli osv vulnerability |
 | packagist | web-api | 3 | 否 | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | 否 | unicli pandoc convert |
 | paperreview | web-api | 3 | 否 | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -226,31 +169,21 @@
 | pexels | web-api | 2 | 是 | unicli pexels curated<br>unicli pexels search |
 | pinduoduo | web-api | 2 | 是 | unicli pinduoduo hot<br>unicli pinduoduo search |
 | pixiv | web-api | 6 | 是 | unicli pixiv detail<br>unicli pixiv download<br>unicli pixiv illusts |
-| pmlr | web-api | 3 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
-| powerchina | web-api | 1 | 是 | unicli powerchina search |
 | powerpoint | desktop | 7 | 否 | unicli powerpoint add-slide<br>unicli powerpoint insert-image<br>unicli powerpoint insert-link |
 | pqai | web-api | 2 | 否 | unicli pqai prior-art<br>unicli pqai search |
 | producthunt | web-api | 5 | 否 | unicli producthunt browse<br>unicli producthunt hot<br>unicli producthunt posts |
 | pscale | bridge | 1 | 否 | unicli pscale databases |
 | pub-dev | web-api | 2 | 否 | unicli pub-dev info<br>unicli pub-dev search |
-| pubmed | web-api | 7 | 否 | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
 | pypi | web-api | 5 | 否 | unicli pypi info<br>unicli pypi search<br>unicli pypi versions |
 | quark | web-api | 8 | 是 | unicli quark ls<br>unicli quark search<br>unicli quark mkdir |
 | qweather | web-api | 2 | 否 | unicli qweather forecast<br>unicli qweather now |
-| qwen | web-api | 8 | 是 | unicli qwen ask<br>unicli qwen read<br>unicli qwen send |
 | railway | bridge | 1 | 否 | unicli railway deploy |
-| reddit | web-api | 24 | 是 | unicli reddit comment<br>unicli reddit comments<br>unicli reddit read |
-| rednote | web-api | 7 | 是 | unicli rednote note<br>unicli rednote search<br>unicli rednote user |
+| reddit | web-api | 24 | 是 | unicli reddit comment<br>unicli reddit read<br>unicli reddit save |
 | renderdoc | desktop | 2 | 否 | unicli renderdoc capture-list<br>unicli renderdoc frame-export |
 | replicate | web-api | 3 | 是 | unicli replicate run<br>unicli replicate search<br>unicli replicate trending |
-| rest-countries | web-api | 2 | 否 | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | 否 | unicli retrieval search<br>unicli retrieval sources |
 | reuters | web-api | 5 | 否 | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
-| rfc | web-api | 1 | 否 | unicli rfc rfc |
 | rubygems | web-api | 3 | 否 | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 否 | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
-| scholar-artifacts | web-api | 2 | 否 | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
-| semantic-scholar | web-api | 5 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
 | shotcut | desktop | 3 | 否 | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 否 | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 否 | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -267,43 +200,33 @@
 | substack | web-api | 4 | 否 | unicli substack feed<br>unicli substack publication<br>unicli substack search |
 | supabase | bridge | 1 | 否 | unicli supabase projects |
 | taobao | browser | 6 | 是 | unicli taobao hot<br>unicli taobao search<br>unicli taobao detail |
-| tdx | web-api | 1 | 是 | unicli tdx hot-rank |
 | techcrunch | web-api | 2 | 否 | unicli techcrunch latest<br>unicli techcrunch search |
 | theverge | web-api | 2 | 否 | unicli theverge latest<br>unicli theverge search |
 | threads | web-api | 6 | 是 | unicli threads hot<br>unicli threads search<br>unicli threads user |
-| ths | web-api | 1 | 是 | unicli ths hot-rank |
 | tieba | web-api | 4 | 否 | unicli tieba hot<br>unicli tieba posts<br>unicli tieba read |
 | tiktok | web-api | 18 | 是 | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | 是 | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
-| tvmaze | web-api | 2 | 否 | unicli tvmaze search<br>unicli tvmaze show |
 | twitch | web-api | 4 | 是 | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
 | twitter | web-api | 47 | 是 | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
-| uisdc | web-api | 1 | 否 | unicli uisdc news |
-| uiverse | web-api | 2 | 否 | unicli uiverse code<br>unicli uiverse preview |
 | ukipo | web-api | 1 | 否 | unicli ukipo info |
-| unpaywall | web-api | 2 | 否 | unicli unpaywall oa<br>unicli unpaywall read |
 | unsplash | web-api | 2 | 否 | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | 否 | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
 | v2ex | web-api | 12 | 是 | unicli v2ex daily<br>unicli v2ex hot<br>unicli v2ex latest |
 | vercel | bridge | 1 | 否 | unicli vercel list |
-| vndb | web-api | 7 | 否 | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | vscode | desktop | 10 | 否 | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| wanfang | web-api | 1 | 否 | unicli wanfang search |
 | web | web-api | 1 | 否 | unicli web read |
 | wechat-channels | web-api | 2 | 是 | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | 是 | unicli weibo comments<br>unicli weibo feed<br>unicli weibo hot |
 | weixin | browser | 6 | 是 | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
 | weread | web-api | 8 | 是 | unicli weread book<br>unicli weread highlights<br>unicli weread notebooks |
-| wikidata | web-api | 2 | 否 | unicli wikidata search<br>unicli wikidata entity |
 | wikipedia | web-api | 6 | 否 | unicli wikipedia random<br>unicli wikipedia search<br>unicli wikipedia summary |
 | wipo-patentscope | web-api | 1 | 否 | unicli wipo-patentscope info |
 | wiremock | service | 5 | 否 | unicli wiremock create-stub<br>unicli wiremock delete-stub<br>unicli wiremock reset |
 | word | desktop | 7 | 否 | unicli word insert-image<br>unicli word insert-link<br>unicli word insert-text |
 | wrangler | bridge | 1 | 否 | unicli wrangler list |
-| wttr | web-api | 2 | 否 | unicli wttr current<br>unicli wttr forecast |
 | xianyu | web-api | 4 | 是 | unicli xianyu chat<br>unicli xianyu item<br>unicli xianyu search |
 | xiaoe | web-api | 5 | 是 | unicli xiaoe catalog<br>unicli xiaoe content<br>unicli xiaoe courses |
-| xiaohongshu | web-api | 22 | 是 | unicli xiaohongshu feed<br>unicli xiaohongshu follow<br>unicli xiaohongshu hashtag |
+| xiaohongshu | web-api | 22 | 是 | unicli xiaohongshu follow<br>unicli xiaohongshu hashtag<br>unicli xiaohongshu hot |
 | xiaoyuzhou | web-api | 5 | 是 | unicli xiaoyuzhou episode<br>unicli xiaoyuzhou podcast-episodes<br>unicli xiaoyuzhou podcast |
 | xueqiu | web-api | 14 | 是 | unicli xueqiu comments<br>unicli xueqiu earnings-date<br>unicli xueqiu feed |
 | yahoo | web-api | 1 | 否 | unicli yahoo search |
@@ -315,12 +238,43 @@
 | yt-dlp | bridge | 5 | 否 | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | 是 | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
 | zhihu | web-api | 27 | 是 | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
-| zlibrary | web-api | 2 | 是 | unicli zlibrary search<br>unicli zlibrary info |
 | zoom | desktop | 3 | 否 | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | 否 | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
 | zsxq | web-api | 5 | 是 | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
+| 1point3acres | web-api | 9 | 是 | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
+| 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| acl-anthology | web-api | 3 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
+| ai | web-api | 6 | 否 | unicli ai search<br>unicli ai pulse<br>unicli ai read |
+| aibase | web-api | 1 | 否 | unicli aibase news |
+| anilist | web-api | 5 | 否 | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
+| antigravity | web-api | 17 | 否 | unicli antigravity ask<br>unicli antigravity send<br>unicli antigravity read |
+| archive | web-api | 4 | 否 | unicli archive item<br>unicli archive search<br>unicli archive snapshots |
+| baidu-scholar | web-api | 1 | 否 | unicli baidu-scholar search |
+| bangumi | web-api | 5 | 否 | unicli bangumi anime<br>unicli bangumi book<br>unicli bangumi game |
+| biorxiv | web-api | 5 | 否 | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
+| chatgpt | web-api | 18 | 是 | unicli chatgpt ask<br>unicli chatgpt send<br>unicli chatgpt read |
 | chatgpt-app | web-api | 8 | 否 | unicli chatgpt-app ask<br>unicli chatgpt-app send<br>unicli chatgpt-app read |
-| doubao-app | web-api | 13 | 否 | unicli doubao-app ask<br>unicli doubao-app send<br>unicli doubao-app read |
+| chatwise | web-api | 17 | 否 | unicli chatwise ask<br>unicli chatwise send<br>unicli chatwise read |
+| cipo | web-api | 3 | 否 | unicli cipo get<br>unicli cipo legal-status<br>unicli cipo search |
+| claude | web-api | 14 | 是 | unicli claude ask<br>unicli claude send<br>unicli claude new |
+| cnipa | web-api | 3 | 否 | unicli cnipa get<br>unicli cnipa legal-status<br>unicli cnipa search |
+| cnki | web-api | 1 | 否 | unicli cnki search |
+| codex | web-api | 19 | 否 | unicli codex ask<br>unicli codex send<br>unicli codex read |
+| coingecko | web-api | 7 | 否 | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
+| crates | web-api | 2 | 否 | unicli crates search<br>unicli crates crate |
+| crossref | web-api | 2 | 否 | unicli crossref search<br>unicli crossref work |
+| ctrip | web-api | 4 | 是 | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
+| cursor | web-api | 19 | 否 | unicli cursor ask<br>unicli cursor send<br>unicli cursor read |
+| cvf | web-api | 3 | 否 | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
+| dblp | web-api | 4 | 否 | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
+| defillama | web-api | 2 | 否 | unicli defillama protocols<br>unicli defillama protocol |
+| discord-app | web-api | 15 | 否 | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
+| dlsite | web-api | 8 | 否 | unicli dlsite search<br>unicli dlsite manga<br>unicli dlsite cg |
+| dockerhub | web-api | 2 | 否 | unicli dockerhub search<br>unicli dockerhub image |
+| doubao-app | web-api | 14 | 否 | unicli doubao-app ask<br>unicli doubao-app send<br>unicli doubao-app read |
+| douyin | web-api | 13 | 是 | unicli douyin activities<br>unicli douyin collections<br>unicli douyin delete |
+| ehentai | web-api | 6 | 否 | unicli ehentai search<br>unicli ehentai artist<br>unicli ehentai tag |
+| notion-app | web-api | 16 | 否 | unicli notion-app open-app<br>unicli notion-app status-app<br>unicli notion-app dump |
 | logseq | web-api | 7 | 否 | unicli logseq open-app<br>unicli logseq status-app<br>unicli logseq dump |
 | typora | web-api | 7 | 否 | unicli typora open-app<br>unicli typora status-app<br>unicli typora dump |
 | postman | web-api | 7 | 否 | unicli postman open-app<br>unicli postman status-app<br>unicli postman dump |
@@ -337,8 +291,56 @@
 | wechat-work | web-api | 7 | 否 | unicli wechat-work open-app<br>unicli wechat-work status-app<br>unicli wechat-work dump |
 | zoom-app | web-api | 7 | 否 | unicli zoom-app open-app<br>unicli zoom-app status-app<br>unicli zoom-app dump |
 | evernote-app | web-api | 7 | 否 | unicli evernote-app open-app<br>unicli evernote-app status-app<br>unicli evernote-app dump |
+| endoflife | web-api | 1 | 否 | unicli endoflife product |
+| espacenet | web-api | 4 | 否 | unicli espacenet family<br>unicli espacenet get<br>unicli espacenet legal-status |
+| fips | web-api | 2 | 否 | unicli fips get<br>unicli fips search |
+| flathub | web-api | 2 | 否 | unicli flathub search<br>unicli flathub app |
+| freepatentsonline-web | web-api | 2 | 否 | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
+| google-patents-web | web-api | 2 | 否 | unicli google-patents-web get<br>unicli google-patents-web search |
+| google-scholar | web-api | 3 | 否 | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
+| goproxy | web-api | 2 | 否 | unicli goproxy module<br>unicli goproxy versions |
+| gov-law | web-api | 2 | 否 | unicli gov-law search<br>unicli gov-law recent |
+| gov-policy | web-api | 2 | 否 | unicli gov-policy search<br>unicli gov-policy recent |
+| indeed | web-api | 2 | 是 | unicli indeed search<br>unicli indeed job |
+| inpi-br | web-api | 2 | 否 | unicli inpi-br get<br>unicli inpi-br search |
 | jikan | web-api | 4 | 否 | unicli jikan anime<br>unicli jikan manga<br>unicli jikan characters |
 | kitsu | web-api | 2 | 否 | unicli kitsu anime<br>unicli kitsu manga |
+| lichess | web-api | 2 | 否 | unicli lichess top<br>unicli lichess user |
+| linux-do | browser | 11 | 是 | unicli linux-do categories<br>unicli linux-do category<br>unicli linux-do feed |
+| mangadex | web-api | 2 | 否 | unicli mangadex manga<br>unicli mangadex authors |
+| marxists-cn | web-api | 7 | 否 | unicli marxists-cn index<br>unicli marxists-cn reading-list<br>unicli marxists-cn western-marxism |
+| mdn | web-api | 1 | 否 | unicli mdn search |
+| medrxiv | web-api | 5 | 否 | unicli medrxiv recent<br>unicli medrxiv search<br>unicli medrxiv paper |
+| moegirl | web-api | 3 | 否 | unicli moegirl search<br>unicli moegirl page<br>unicli moegirl links |
+| neurips | web-api | 3 | 否 | unicli neurips search<br>unicli neurips paper<br>unicli neurips read |
+| nowcoder | web-api | 16 | 是 | unicli nowcoder hot<br>unicli nowcoder trending<br>unicli nowcoder topics |
+| nvd | web-api | 1 | 否 | unicli nvd cve |
+| oeis | web-api | 2 | 否 | unicli oeis search<br>unicli oeis sequence |
+| openalex | web-api | 3 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
+| openfda | web-api | 2 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
+| openreview | web-api | 7 | 否 | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
+| osv | web-api | 2 | 否 | unicli osv query<br>unicli osv vulnerability |
+| pmlr | web-api | 3 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
+| powerchina | web-api | 1 | 是 | unicli powerchina search |
+| pubmed | web-api | 7 | 否 | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
+| qwen | web-api | 8 | 是 | unicli qwen ask<br>unicli qwen read<br>unicli qwen send |
+| rednote | web-api | 7 | 是 | unicli rednote note<br>unicli rednote search<br>unicli rednote user |
+| rest-countries | web-api | 2 | 否 | unicli rest-countries country<br>unicli rest-countries region |
+| retrieval | web-api | 2 | 否 | unicli retrieval search<br>unicli retrieval sources |
+| rfc | web-api | 1 | 否 | unicli rfc rfc |
+| scholar-artifacts | web-api | 2 | 否 | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
+| semantic-scholar | web-api | 6 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
+| tdx | web-api | 1 | 是 | unicli tdx hot-rank |
+| ths | web-api | 1 | 是 | unicli ths hot-rank |
+| tvmaze | web-api | 2 | 否 | unicli tvmaze search<br>unicli tvmaze show |
+| uisdc | web-api | 1 | 否 | unicli uisdc news |
+| uiverse | web-api | 2 | 否 | unicli uiverse code<br>unicli uiverse preview |
+| unpaywall | web-api | 2 | 否 | unicli unpaywall oa<br>unicli unpaywall read |
+| vndb | web-api | 7 | 否 | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
+| wanfang | web-api | 1 | 否 | unicli wanfang search |
+| wikidata | web-api | 2 | 否 | unicli wikidata search<br>unicli wikidata entity |
+| wttr | web-api | 2 | 否 | unicli wttr current<br>unicli wttr forecast |
+| zlibrary | web-api | 2 | 是 | unicli zlibrary search<br>unicli zlibrary info |
 
 ## 怎么读这个目录
 

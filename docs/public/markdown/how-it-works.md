@@ -40,14 +40,14 @@ page-native tools, and per-app harnesses are useful, but they are not Uni-CLI's
 category. They are concrete technical boundaries that the Agent-Computer
 Interface can execute through or expose.
 
-| Substrate         | What it contributes                                               | What Uni-CLI keeps above it                              |
-| ----------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
-| Web/API           | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, structured results          |
-| Browser           | CDP control, DOM/accessibility refs, screenshots, network capture | declared strategies, recordings, diagnostics             |
-| Desktop/OS        | installed apps, accessibility trees, screenshots, local state     | governed actions and platform diagnostics                |
-| Local tools/files | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability               |
-| Protocols         | MCP, ACP, Streamable HTTP, JSON streams                           | adapter projection today; broader parity on the roadmap  |
-| Visual fallback   | last-mile screen interaction                                      | truthfulness gate: only claim paths that can see and act |
+| Substrate          | What it contributes                                               | What Uni-CLI keeps above it                             |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Web/API            | typed fetch, cookie/header auth, downloads, extraction            | operation contracts, policy, structured results         |
+| Browser            | CDP control, DOM/accessibility refs, screenshots, network capture | declared strategies, recordings, diagnostics            |
+| Desktop/OS         | installed apps, accessibility trees, screenshots, local state     | governed actions and platform diagnostics               |
+| Local tools/files  | subprocesses, PDFs, media tools, developer CLIs                   | typed args, output envelopes, retryability              |
+| Protocols          | MCP, ACP, Streamable HTTP, JSON streams                           | adapter projection today; broader parity on the roadmap |
+| Visual coordinates | explicit pixel-only screen interaction                            | route gate, exact evidence, foreground impact           |
 
 ## Where it sits in the protocol stack
 
@@ -120,9 +120,9 @@ Five fields define the authoring unit: `site` (the integration name), `name` (th
 
 ## Internal pipeline registry
 
-The runtime exposes <span><!-- STATS:pipeline_step_count -->105<!-- /STATS --></span>
+The runtime exposes <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span>
 built-in action names, but they are not one flat programming language:
-<span><!-- STATS:pipeline_registered_step_count -->50<!-- /STATS --></span> are
+<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> are
 registered pipeline actions and
 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> are
 low-level transport-native Visual/AX/UIA/AT-SPI actions. The budgets are
@@ -147,34 +147,39 @@ external state; the documentation does not call those effects deterministic.
 
 The pipeline runs top to bottom with a shared context object. Each step reads `ctx.data` and writes back. Templates (`${{ item.field }}`) interpolate from prior step outputs.
 
-## The strategy cascade
+## Declared web strategies
 
 Authentication is the messiest part of touching the modern web. An operation
-can declare one of five strategies, but they are not one automatic five-way
-cascade.
+declares one of five strategies. The runtime executes that declared path; it
+does not probe other strategies after failure.
 
-| Strategy    | Auth source                              | Typical cost                               |
-| ----------- | ---------------------------------------- | ------------------------------------------ |
-| `public`    | None                                     | Direct fetch                               |
-| `cookie`    | Explicit file or live browser/CDP memory | Inject into target request headers         |
-| `header`    | Cookie + auto-extracted CSRF             | Read CSRF, inject into target request      |
-| `intercept` | Live browser session                     | Navigate page, capture XHR/fetch responses |
-| `ui`        | Live browser session                     | Click, type, snapshot                      |
+| Strategy    | Auth source                               | Typical cost                               |
+| ----------- | ----------------------------------------- | ------------------------------------------ |
+| `public`    | None                                      | Direct fetch                               |
+| `cookie`    | One declared site-bound credential source | Inject into target request headers         |
+| `header`    | Cookie + auto-extracted CSRF              | Read CSRF, inject into target request      |
+| `intercept` | Live browser session                      | Navigate page, capture XHR/fetch responses |
+| `ui`        | Live browser session                      | Click, type, snapshot                      |
 
-Where a probe URL is available, the bounded HTTP probe tries `public → cookie →
-header` and caches the first valid result for the process. It never silently
-escalates into `intercept` or `ui`; those browser-backed strategies must be
-declared by the operation.
+`public`, `cookie`, and `header` are separate structured HTTP authentication
+contracts. `intercept` and `ui` are browser-backed contracts. Switching between
+them is an adapter repair or explicit replan because the session, evidence,
+cost, and side-effect boundaries differ.
 
-Live browser/CDP acquisition remains in process memory. Only explicit
-`auth import` or `browser cookies` commands persist plaintext JSON under
-`~/.unicli/cookies/`.
+Normal invocation reads persisted site credentials. `--auth-retry` explicitly
+selects one source from the structured failure: the selected local-browser
+profile for `auth_required`, or the live CDP target for
+`challenge_required`. Fresh cookie values stay behind an opaque capability
+that can be consumed by exactly one new invocation and only for the matching
+site and domain. A miss or source failure ends the refresh without changing
+authority. Only explicit `auth import` or `browser cookies` commands persist
+plaintext JSON under `~/.unicli/cookies/`.
 
 ## The v2 AgentEnvelope
 
 Every registered adapter command rendered by the CLI formatter returns a v2
 AgentEnvelope with success and failure arms. Agents parse one schema across the static adapter
-catalog of <span><!-- STATS:command_count -->1817<!-- /STATS --></span>
+catalog of <span><!-- STATS:command_count -->1829<!-- /STATS --></span>
 commands; fixed core and host-discovered commands are listed separately at
 runtime.
 
@@ -298,8 +303,8 @@ $ unicli hackernews top -n 10 -f json \
 That is the canonical full exposure path. Adapter operation contracts can also
 run through MCP profiles; ACP, HTTP, skills, and CI expose documented subsets.
 One command shape covers the static catalog of
-<span><!-- STATS:site_count -->324<!-- /STATS --></span> adapter sites and
-<span><!-- STATS:command_count -->1817<!-- /STATS --></span> registered adapter
+<span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites and
+<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
 commands; fixed core and host-discovered commands join the native CLI at
 runtime. Rendered calls share the v2 success/error envelope shape; optional
 evidence and repair fields depend on the operation and failure class.

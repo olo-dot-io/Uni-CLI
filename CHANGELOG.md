@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.0.0] — 2026-07-31 — Artemis · Glover
+
+### Added
+
+- Introduce one operation contract across CLI, MCP, browser, desktop, HTTP, app,
+  and subprocess substrates. Discovery now returns operation family, effects,
+  target scope, feasibility, provider, evidence, and recovery metadata before an
+  agent executes work.
+- Add a first-class computer-use driver with exact target binding, visual refs,
+  same-provider post-action capture, typed effect verdicts, and bounded
+  observation. Native AX, UIA, AT-SPI, CDP, and visual paths share the contract
+  without collapsing their capabilities.
+- Add modern MCP protocol support for durable tasks, subscriptions, request
+  settlement, principal quotas, result budgets, and the 2026-07-28 protocol while
+  retaining the supported 2025-11-25 transport contract.
+- Add compact command description, one-shot intent execution, task-routing
+  guidance, live capability smoke tests, and operation specifications for browser
+  control.
+
+### Changed
+
+- Replace cross-provider cascades with deterministic feasibility ranking and one
+  declared provider per execution. A provider failure now returns its structured
+  cause and repair path instead of silently switching substrate or target.
+- Rebuild intent search around bounded top-k selection and reusable indexed
+  postings. The 611-case evaluation records 76.27% top-1, 92.47% top-5, and
+  0.8294 MRR@5 while performance tests enforce the new query budgets.
+- Bind compute dispatch, screenshots, assertions, waits, and replay to exact app,
+  renderer, transport, and window identities. Ref lifetimes, tombstones, and
+  atomic artifact publication prevent stale or cross-target execution.
+- Align CLI, MCP, adapter, browser, auth, diagnostic, and agent-readable surfaces
+  around structured operation envelopes. The static catalog now contains 326
+  sites and 1,829 commands, backed by 980 schema-conforming YAML adapters plus
+  246 TypeScript adapters.
+
+### Fixed
+
+- Preserve operation-specific errors through every pipeline and transport
+  boundary, including authentication, rate limits, unsupported surfaces, stale
+  refs, ambiguous targets, provider policy, and temporary resource contention.
+- Close browser ownership and cookie-authority gaps so probes remain passive,
+  background and foreground contracts stay explicit, and empty or policy-blocked
+  profiles fail with an actionable next step.
+
 ## [0.400.2] — 2026-07-18 — Apollo · Duke
 
 > Published from annotated tag `v0.400.2` at commit `785c3ef6` through GitHub

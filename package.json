@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "0.400.2",
+  "version": "1.0.0",
   "description": "Open Agent-Computer Interface runtime for discovering, selecting, governing, acting through, observing, and repairing operations across real software.",
   "packageManager": "npm@11.14.0",
   "type": "module",
