@@ -41,7 +41,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · task-directed operators · browser CDP · explicit visual control · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9983<!-- /STATS --> tests</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelopes · task-directed operators · browser CDP · explicit visual control · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> static adapter surfaces · <!-- STATS:test_count -->9984<!-- /STATS --> tests</sub>
 </p>
 
 <p align="center">
@@ -595,5 +595,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v1.0.0 — Artemis · Glover</sub>
+  <sub>v1.0.1 — Artemis · Glover</sub>
 </p>

@@ -30,7 +30,7 @@ The remaining
 transport-native.
 
 Version 0.400.2 includes
-<span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests in v1.0.0.
+<span><!-- STATS:test_count -->9984<!-- /STATS --></span> tests in v1.0.1.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 

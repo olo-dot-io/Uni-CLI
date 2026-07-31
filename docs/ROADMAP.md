@@ -1,6 +1,6 @@
 # Uni-CLI Roadmap
 
-> Current: v1.0.0 — Artemis · Glover. Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v1.0.1 — Artemis · Glover. Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks engineering direction for the open Agent-Computer Interface
 runtime for real software. Historical release notes live in `CHANGELOG.md`;

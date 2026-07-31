@@ -50,7 +50,7 @@ Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, bro
 - Static adapter sites: 326
 - Registered adapter operations: 1829
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 9983
+- Tests: 9984
 
 Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
@@ -63,7 +63,7 @@ Site and operation totals describe the static adapter catalog; fixed core and ho
 
 ## Current Version
 
-Local release: v1.0.0 · Artemis · Glover.
+Local release: v1.0.1 · Artemis · Glover.
 
 ## Agent Index
 

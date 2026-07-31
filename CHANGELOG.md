@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.0.1] — 2026-07-31 — Artemis · Glover
+
+> The `v1.0.0` candidate remained unpublished. Both release attempts stopped
+> before registry or GitHub Release creation when the shared runner falsified
+> the index-construction performance budget. Version 1.0.1 carries the measured
+> hot-path correction without rewriting that tag.
+
+### Changed
+
+- Cache exact-content document tokenization in a bounded 8,192-entry preparation
+  store and reuse it across immutable index rebuilds. Fuse per-document term
+  counting with postings construction, retain only term counts in the finished
+  index, and invalidate prepared data whenever any indexed field changes.
+- Preserve the 1.0 operation-first contract, computer-use drivers, modern MCP
+  task surface, deterministic provider routing, and 326-site catalog from the
+  1.0.0 candidate as the first publishable 1.x package.
+
+### Fixed
+
+- Regenerate the public agent-document surface after release metadata changes so
+  local candidates and published versions cannot retain an older version label.
+- Upgrade `fast-uri` to 3.1.5 in the locked dependency closure, removing the
+  production audit findings that affected earlier 3.1.x builds.
+
 ## [1.0.0] — 2026-07-31 — Artemis · Glover
 
 ### Added

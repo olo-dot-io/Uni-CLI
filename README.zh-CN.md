@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9983<!-- /STATS --> 个测试</sub>
+  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9984<!-- /STATS --> 个测试</sub>
 </p>
 
 <p align="center">
@@ -524,5 +524,5 @@ npm run verify
 [Apache-2.0](./LICENSE)
 
 <p align="center">
-  <sub>v1.0.0 — Artemis · Glover</sub>
+  <sub>v1.0.1 — Artemis · Glover</sub>
 </p>

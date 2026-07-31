@@ -1,21 +1,21 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "codename": "Artemis · Glover",
   "date": "2026-07-31",
   "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#100--2026-07-31--artemis--glover",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#101--2026-07-31--artemis--glover",
   "highlights": {
     "root": [
-      "Uni-CLI 1.0.0 establishes a stable operation-first Agent-Computer Interface: agents discover exact effects, feasibility, provider, substrate, target scope, evidence, and recovery before executing work.",
+      "Uni-CLI 1.0.1 establishes a stable operation-first Agent-Computer Interface: agents discover exact effects, feasibility, provider, substrate, target scope, evidence, and recovery before executing work.",
       "Deterministic routing selects one declared provider for each operation. Structured provider failures remain visible and repairable instead of triggering a silent cross-provider cascade.",
       "Computer use now shares one exact-target contract across AX, UIA, AT-SPI, CDP, and visual drivers, with visual refs, same-provider post-action capture, effect verdicts, bounded observation, and atomic artifacts.",
       "Modern MCP tasks, subscriptions, principal quotas, request settlement, result budgets, compact command description, and bounded indexed search make the complete runtime directly usable by agents."
     ],
     "zh": [
-      "Uni-CLI 1.0.0 建立稳定的 operation-first Agent-Computer Interface：Agent 在执行前即可发现精确的 effect、feasibility、provider、substrate、target scope、evidence 与 recovery。",
+      "Uni-CLI 1.0.1 建立稳定的 operation-first Agent-Computer Interface：Agent 在执行前即可发现精确的 effect、feasibility、provider、substrate、target scope、evidence 与 recovery。",
       "确定性路由为每个 operation 选择一个明确 provider；provider 故障会保留结构化原因和修复路径，执行过程不会静默切换其他 substrate。",
       "Computer use 通过统一的精确 target contract 覆盖 AX、UIA、AT-SPI、CDP 与 visual driver，并提供 visual ref、同 provider 执行后 capture、effect verdict、有界 observation 和原子 artifact。",
       "现代 MCP task、subscription、principal quota、request settlement、result budget、紧凑 command description 与有界索引搜索让 Agent 能直接使用完整 runtime。"

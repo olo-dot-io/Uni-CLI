@@ -69,7 +69,7 @@ Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, bro
 - Static adapter sites: 326
 - Registered adapter operations: 1829
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 9983
+- Tests: 9984
 
 Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
 
@@ -82,7 +82,7 @@ Site and operation totals describe the static adapter catalog; fixed core and ho
 
 ## Current Version
 
-Local release: v1.0.0 · Artemis · Glover.
+Local release: v1.0.1 · Artemis · Glover.
 
 ## Agent Index
 
@@ -1372,7 +1372,7 @@ Any runtime that can spawn a subprocess can use Uni-CLI directly. Uni-CLI also e
 
 ## How many sites and commands does Uni-CLI ship?
 
-v1.0.0 ships a generated static adapter catalog with <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests. The headline is not the count; it is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.
+v1.0.1 ships a generated static adapter catalog with <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites, <span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered commands, and <span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters. Fixed core and host-discovered commands are counted separately at runtime. The repository also contains <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in actions (<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> transport-native) and <span><!-- STATS:test_count -->9984<!-- /STATS --></span> tests. The headline is not the count; it is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.
 
 ## Can Uni-CLI download papers and read local PDFs?
 
@@ -4598,7 +4598,7 @@ The remaining
 transport-native.
 
 Version 0.400.2 includes
-<span><!-- STATS:test_count -->9983<!-- /STATS --></span> tests in v1.0.0.
+<span><!-- STATS:test_count -->9984<!-- /STATS --></span> tests in v1.0.1.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 
@@ -5396,7 +5396,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Explanation
 - Parent: Explanation (/ARCHITECTURE)
 
-> Current: v1.0.0 — Artemis · Glover. Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
+> Current: v1.0.1 — Artemis · Glover. Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands. Runtime also adds fixed core and host-discovered commands. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native).
 
 This file tracks engineering direction for the open Agent-Computer Interface
 runtime for real software. Historical release notes live in `CHANGELOG.md`;

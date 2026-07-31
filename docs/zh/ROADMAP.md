@@ -1,6 +1,6 @@
 # 路线图
 
-> Current: v1.0.0 — Artemis · Glover. 静态 adapter 目录：<!-- STATS:site_count -->326<!-- /STATS --> 个站点、<!-- STATS:command_count -->1829<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
+> Current: v1.0.1 — Artemis · Glover. 静态 adapter 目录：<!-- STATS:site_count -->326<!-- /STATS --> 个站点、<!-- STATS:command_count -->1829<!-- /STATS --> 条已注册命令；运行时另加入固定 core 与主机动态发现命令。<!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 built-in action（<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> 个 registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> 个 transport-native）。
 
 路线图按“面向真实软件的 Agent-Computer Interface 运行时”成熟度推进，不按固定周节奏发布。发布节奏取决于社区反馈和实际开发状态。
 

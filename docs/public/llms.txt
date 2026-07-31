@@ -9,7 +9,7 @@ Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, 
 - Runtime scope: fixed core and host-discovered commands are additional
 - Adapters: 1226 (980 YAML + 246 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 9983
+- Tests: 9984
 
 ## Agent Contract
 
