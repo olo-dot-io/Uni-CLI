@@ -216,6 +216,23 @@ describe("buildIndexFromDocuments", () => {
     expect(index.documents).toHaveLength(0);
   });
 
+  it("invalidates prepared tokens when document content changes", () => {
+    const document = {
+      site: "cache-probe",
+      command: "inspect",
+      description: "Original zephyr marker",
+    };
+    expect(buildIndexFromDocuments([document]).postings.has("zephyr")).toBe(
+      true,
+    );
+
+    document.description = "Updated quasar marker";
+    const rebuilt = buildIndexFromDocuments([document]);
+
+    expect(rebuilt.postings.has("quasar")).toBe(true);
+    expect(rebuilt.postings.has("zephyr")).toBe(false);
+  });
+
   it("indexes hostile user-controlled identity tokens without prototype collisions", () => {
     const documents = [
       {

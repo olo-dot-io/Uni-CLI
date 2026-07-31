@@ -84,10 +84,13 @@ interface Document {
   description: string;
   category?: string;
   feasibility?: CommandFeasibilityProfile;
-  /** Pre-tokenized terms from site + command + description */
-  terms: string[];
   /** Total term count for BM25 length normalization */
   termCount: number;
+  /** Per-document term counts used to construct postings and vector norms. */
+  termFrequencies: Map<string, number>;
+  /** Normalized fields used by exact phrase boosts. */
+  normalizedCommand: string;
+  normalizedDescription: string;
 }
 
 interface ScoredCandidate {
@@ -113,7 +116,7 @@ export interface SearchIndex {
     description: string;
     category?: string;
     feasibility?: CommandFeasibilityProfile;
-    terms: string[];
+    termCount: number;
     /** Query-independent BM25 denominator component. */
     bm25LengthNorm: number;
     /** Query-independent TF-IDF document-vector norm. */
@@ -181,6 +184,15 @@ const PROVIDER_DIVERSITY_ACTION_TERMS = new Set([
 
 let cachedIndex: SearchIndex | null = null;
 let cachedRegistryVersion = -1;
+const DOCUMENT_TOKEN_CACHE_LIMIT = 8192;
+type TokenizedDocument = Pick<
+  Document,
+  | "termCount"
+  | "termFrequencies"
+  | "normalizedCommand"
+  | "normalizedDescription"
+>;
+const documentTokenCache = new Map<string, TokenizedDocument>();
 
 /**
  * Load the live registry search index. Called lazily on first search.
@@ -234,62 +246,68 @@ export function buildIndexFromDocuments(
 ): SearchIndex {
   const documents: Document[] = [];
   const siteSet = new Set<string>();
+  const siteTerms = new Map<string, string[]>();
+  const postings = new Map<string, number[]>();
+  const frequencies = new Map<string, number[]>();
+  let totalTermCount = 0;
 
   for (const doc of searchDocuments) {
     siteSet.add(doc.site);
-    const terms = tokenizeDocument(
-      doc.site,
-      doc.command,
-      doc.description,
-      doc.category,
-    );
-    documents.push({
+    const tokenCacheKey = documentTokenCacheKey(doc);
+    let tokenized = documentTokenCache.get(tokenCacheKey);
+    if (!tokenized) {
+      let cachedSiteTerms = siteTerms.get(doc.site);
+      if (!cachedSiteTerms) {
+        const normalizedSite = doc.site.toLowerCase();
+        cachedSiteTerms = [normalizedSite, ...normalizedSite.split(/[-_]/)];
+        siteTerms.set(doc.site, cachedSiteTerms);
+      }
+      tokenized = tokenizeDocument(
+        cachedSiteTerms,
+        doc.site,
+        doc.command,
+        doc.description,
+        doc.category,
+      );
+      if (documentTokenCache.size >= DOCUMENT_TOKEN_CACHE_LIMIT) {
+        const oldestKey = documentTokenCache.keys().next().value;
+        if (oldestKey !== undefined) documentTokenCache.delete(oldestKey);
+      }
+      documentTokenCache.set(tokenCacheKey, tokenized);
+    }
+    const index = documents.length;
+    const document: Document = {
       id: `${doc.site}/${doc.command}`,
       site: doc.site,
       command: doc.command,
       description: doc.description,
       ...(doc.category ? { category: doc.category } : {}),
       ...(doc.feasibility ? { feasibility: doc.feasibility } : {}),
-      terms,
-      termCount: terms.length,
-    });
+      ...tokenized,
+    };
+    documents.push(document);
+    totalTermCount += document.termCount;
+
+    for (const [term, frequency] of document.termFrequencies) {
+      const posting = postings.get(term);
+      if (posting) {
+        posting.push(index);
+        frequencies.get(term)!.push(frequency);
+      } else {
+        postings.set(term, [index]);
+        frequencies.set(term, [frequency]);
+      }
+    }
   }
 
-  const siteLookup = new Set(siteSet);
+  const siteLookup = siteSet;
   const sitePhrases = Array.from(siteSet, (site) => ({
     site,
     phrase: normalizeSitePhrase(site),
   })).filter((entry) => entry.phrase.includes(" "));
 
   const N = documents.length;
-  const avgDl =
-    N > 0 ? documents.reduce((sum, d) => sum + d.termCount, 0) / N : 0;
-
-  // Build the positional inverted index. Frequency arrays are aligned with
-  // postings so retrieval can accumulate both lexical scores directly from
-  // query-term posting lists instead of rebuilding a term-frequency Map once
-  // per candidate and per scoring model.
-  const postings = new Map<string, number[]>();
-  const frequencies = new Map<string, number[]>();
-  const documentTermFrequencies: Array<Map<string, number>> = [];
-  for (let i = 0; i < documents.length; i++) {
-    const termFrequencies = new Map<string, number>();
-    for (const term of documents[i].terms) {
-      termFrequencies.set(term, (termFrequencies.get(term) ?? 0) + 1);
-    }
-    documentTermFrequencies.push(termFrequencies);
-    for (const [term, frequency] of termFrequencies) {
-      const posting = postings.get(term);
-      const termFrequency = frequencies.get(term);
-      if (posting && termFrequency) {
-        posting.push(i);
-        termFrequency.push(frequency);
-      } else {
-        postings.set(term, [i]);
-        frequencies.set(term, [frequency]);
-      }
-    }
-  }
+  const avgDl = N > 0 ? totalTermCount / N : 0;
 
   // Compute IDF for each term
   const idf = new Map<string, number>();
@@ -303,29 +321,29 @@ export function buildIndexFromDocuments(
     postings,
     frequencies,
     idf,
-    documents: documents.map((d, index) => ({
+    documents: documents.map((d) => ({
       id: d.id,
       site: d.site,
       command: d.command,
       description: d.description,
       ...(d.category ? { category: d.category } : {}),
       ...(d.feasibility ? { feasibility: d.feasibility } : {}),
-      terms: d.terms,
+      termCount: d.termCount,
       bm25LengthNorm:
         K1 * (1 - B + B * (avgDl === 0 ? 0 : d.termCount / avgDl)),
-      tfidfNorm: documentTfidfNorm(
-        d.termCount,
-        documentTermFrequencies[index]!,
-        idf,
-      ),
-      normalizedCommand: normalizeSitePhrase(d.command),
-      normalizedDescription: normalizeSitePhrase(d.description),
+      tfidfNorm: documentTfidfNorm(d.termCount, d.termFrequencies, idf),
+      normalizedCommand: d.normalizedCommand,
+      normalizedDescription: d.normalizedDescription,
     })),
     avgDl,
     N,
     siteLookup,
     sitePhrases,
   };
+}
+
+function documentTokenCacheKey(doc: CommandSearchDocument): string {
+  return `${doc.site}\0${doc.command}\0${doc.description}\0${doc.category ?? ""}`;
 }
 
 function documentTfidfNorm(
@@ -401,37 +419,61 @@ const DOC_CLEAN_REGEX =
  * the query tokenizer.
  */
 function tokenizeDocument(
+  siteTerms: readonly string[],
   site: string,
   command: string,
   description: string,
   category?: string,
-): string[] {
-  const terms: string[] = [];
+): TokenizedDocument {
+  const termFrequencies = new Map<string, number>();
+  let termCount = 0;
 
-  // Site name and its parts
-  const siteParts = site.toLowerCase().split(/[-_]/);
-  terms.push(site.toLowerCase(), ...siteParts);
+  for (const term of siteTerms) {
+    termFrequencies.set(term, (termFrequencies.get(term) ?? 0) + 1);
+    termCount++;
+  }
 
   // Command name and its parts
-  const cmdParts = command.toLowerCase().split(/[-_]/);
-  terms.push(command.toLowerCase(), ...cmdParts);
+  const normalizedCommand = command.normalize("NFKC").toLowerCase();
+  termFrequencies.set(
+    normalizedCommand,
+    (termFrequencies.get(normalizedCommand) ?? 0) + 1,
+  );
+  termCount++;
+  for (const term of normalizedCommand.split(/[-_]/)) {
+    termFrequencies.set(term, (termFrequencies.get(term) ?? 0) + 1);
+    termCount++;
+  }
 
   // NFKC normalize description (full-width → half-width, etc.)
-  const normalizedDesc = description.normalize("NFKC");
+  const normalizedDescription = description.normalize("NFKC").toLowerCase();
 
   // Description words (lowercase, filter short words and stopwords)
-  const descWords = normalizedDesc
-    .toLowerCase()
+  const descWords = normalizedDescription
     .replace(DOC_CLEAN_REGEX, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 1 && !DOC_STOPWORDS.has(w));
-  terms.push(...descWords);
+    .split(/\s+/);
+  for (const term of descWords) {
+    if (term.length <= 1 || DOC_STOPWORDS.has(term)) continue;
+    termFrequencies.set(term, (termFrequencies.get(term) ?? 0) + 1);
+    termCount++;
+  }
 
   // Category as a term
   const categoryTerm = category ?? SITE_CATEGORIES.get(site);
-  if (categoryTerm) terms.push(categoryTerm);
+  if (categoryTerm) {
+    termFrequencies.set(
+      categoryTerm,
+      (termFrequencies.get(categoryTerm) ?? 0) + 1,
+    );
+    termCount++;
+  }
 
-  return terms;
+  return {
+    termCount,
+    termFrequencies,
+    normalizedCommand: normalizePreparedSitePhrase(normalizedCommand),
+    normalizedDescription: normalizePreparedSitePhrase(normalizedDescription),
+  };
 }
 
 // ── Main Search Function ────────────────────────────────────────────────────
@@ -580,7 +622,7 @@ function searchIndex(
       candidateSet.add(docIdx);
       bm25Scores[docIdx] +=
         termIdf * ((frequency * (K1 + 1)) / (frequency + doc.bm25LengthNorm));
-      tfidfDots[docIdx] += termIdf * ((frequency / doc.terms.length) * termIdf);
+      tfidfDots[docIdx] += termIdf * ((frequency / doc.termCount) * termIdf);
     }
   }
   const queryNorm = Math.sqrt(queryNormSquare);
@@ -830,9 +872,11 @@ function deriveSitePhraseHints(index: SearchIndex, query: string): string[] {
 }
 
 function normalizeSitePhrase(value: string): string {
+  return normalizePreparedSitePhrase(value.normalize("NFKC").toLowerCase());
+}
+
+function normalizePreparedSitePhrase(value: string): string {
   return value
-    .normalize("NFKC")
-    .toLowerCase()
     .replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ")
     .trim()
     .replace(/\s+/g, " ");
