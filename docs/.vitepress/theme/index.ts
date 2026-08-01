@@ -1,7 +1,10 @@
-import DefaultTheme from "vitepress/theme";
+import DefaultTheme from "vitepress/theme-without-fonts";
 import type { Theme } from "vitepress";
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/noto-sans-sc";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
 import Layout from "./components/Layout.vue";
-import CommandLifecycleIsland from "./components/CommandLifecycleIsland.vue";
 import ComputeCursorDemo from "./components/ComputeCursorDemo.vue";
 import HomePage from "./components/HomePage.vue";
 import SiteCatalog from "./components/SiteCatalog.vue";
@@ -14,7 +17,6 @@ export default {
   extends: DefaultTheme,
   Layout,
   enhanceApp({ app }) {
-    app.component("CommandLifecycleIsland", CommandLifecycleIsland);
     app.component("ComputeCursorDemo", ComputeCursorDemo);
     app.component("HomePage", HomePage);
     app.component("SiteCatalog", SiteCatalog);

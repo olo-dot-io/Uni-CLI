@@ -59,6 +59,7 @@ const README_SITE_GRID_TARGETS: Record<string, Record<string, string>> = {
     utility: "工具",
     agent: "Agent",
     other: "其他",
+    travel: "旅行",
   },
 };
 
@@ -97,156 +98,6 @@ const CATEGORY_ORDER = [
   "agent",
   "other",
 ];
-
-const CATEGORY_COLORS: Record<string, string> = {
-  social: "2563eb",
-  video: "dc2626",
-  news: "b45309",
-  finance: "047857",
-  shopping: "be185d",
-  dev: "4f46e5",
-  ai: "7c3aed",
-  scholarly: "0f766e",
-  patent: "0369a1",
-  reference: "0f766e",
-  audio: "16a34a",
-  content: "c2410c",
-  productivity: "475569",
-  jobs: "0891b2",
-  desktop: "334155",
-  games: "9333ea",
-  utility: "0d9488",
-  agent: "111827",
-  other: "64748b",
-};
-
-const SITE_LOGOS: Record<string, string> = {
-  "apple-notes": "apple",
-  "apple-podcasts": "applepodcasts",
-  "apple-tv": "appletv",
-  "claude-code": "anthropic",
-  "codex-cli": "openai",
-  "crates-io": "rust",
-  "discord-app": "discord",
-  "docker-desktop": "docker",
-  "docker-hub": "docker",
-  firefox: "firefoxbrowser",
-  "github-desktop": "github",
-  "github-trending": "github",
-  "google-scholar": "google",
-  "huggingface-papers": "huggingface",
-  "lm-studio": "lmstudio",
-  "microsoft-excel": "microsoftexcel",
-  "microsoft-powerpoint": "microsoftpowerpoint",
-  "microsoft-teams": "microsoftteams",
-  "microsoft-word": "microsoftword",
-  "netease-music": "neteasecloudmusic",
-  "npm-trends": "npm",
-  "openai-responses": "openai",
-  "pub-dev": "dart",
-  qweather: "icloud",
-  "slay-the-spire-ii": "steam",
-  "wechat-channels": "wechat",
-  "wechat-work": "wechat",
-  "yahoo-finance": "yahoo",
-  "yt-dlp": "youtube",
-  "zoom-app": "zoom",
-  "1688": "alibabadotcom",
-  amazon: "amazon",
-  antigravity: "google",
-  arxiv: "arxiv",
-  aws: "amazonaws",
-  band: "bandlab",
-  barchart: "chartdotjs",
-  bbc: "bbc",
-  bilibili: "bilibili",
-  binance: "binance",
-  blender: "blender",
-  bluesky: "bluesky",
-  bloomberg: "bloomberg",
-  chatgpt: "openai",
-  chrome: "googlechrome",
-  cnn: "cnn",
-  claude: "anthropic",
-  cloudcompare: "cloudinary",
-  cocoapods: "cocoapods",
-  codex: "openai",
-  coinbase: "coinbase",
-  coupang: "coupang",
-  cursor: "cursor",
-  deepseek: "deepseek",
-  dingtalk: "dingtalk",
-  docker: "docker",
-  douban: "douban",
-  douyin: "tiktok",
-  figma: "figma",
-  ffmpeg: "ffmpeg",
-  freecad: "freecad",
-  gemini: "googlegemini",
-  gh: "github",
-  gimp: "gimp",
-  gitkraken: "gitkraken",
-  gitlab: "gitlab",
-  google: "google",
-  hackernews: "ycombinator",
-  hf: "huggingface",
-  homebrew: "homebrew",
-  imagemagick: "imagemagick",
-  instagram: "instagram",
-  insomnia: "insomnia",
-  jq: "json",
-  lark: "lark",
-  linear: "linear",
-  macos: "apple",
-  mastodon: "mastodon",
-  maven: "apachemaven",
-  mermaid: "mermaid",
-  netlify: "netlify",
-  notion: "notion",
-  npm: "npm",
-  nytimes: "newyorktimes",
-  nuget: "nuget",
-  obsidian: "obsidian",
-  openrouter: "openai",
-  packagist: "packagist",
-  pandoc: "pandoc",
-  pexels: "pexels",
-  pixiv: "pixiv",
-  postman: "postman",
-  powerpoint: "microsoftpowerpoint",
-  producthunt: "producthunt",
-  pypi: "pypi",
-  qwen: "alibabacloud",
-  reddit: "reddit",
-  replicate: "replicate",
-  reuters: "reuters",
-  rubygems: "rubygems",
-  signal: "signal",
-  slack: "slack",
-  spotify: "spotify",
-  stackoverflow: "stackoverflow",
-  steam: "steam",
-  supabase: "supabase",
-  teams: "microsoftteams",
-  tiktok: "tiktok",
-  todoist: "todoist",
-  twitch: "twitch",
-  twitter: "x",
-  typora: "typora",
-  unsplash: "unsplash",
-  vercel: "vercel",
-  viber: "viber",
-  vscode: "visualstudiocode",
-  weibo: "sinaweibo",
-  whatsapp: "whatsapp",
-  wikipedia: "wikipedia",
-  word: "microsoftword",
-  xiaohongshu: "xiaohongshu",
-  youtube: "youtube",
-  zhihu: "zhihu",
-  zoom: "zoom",
-  zotero: "zotero",
-};
 
 function loadStats(): Record<string, unknown> {
   if (!existsSync(STATS_PATH)) {
@@ -302,7 +153,7 @@ export function buildServerDescription(stats: Record<string, unknown>): string {
   const sites = requiredCount(stats, "site_count");
   const yamlAdapters = requiredCount(stats, "adapter_count_yaml");
   const commands = requiredCount(stats, "command_count");
-  return `Open Agent-Computer Interface runtime for real software, with a static catalog of ${String(sites)} adapter sites, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
+  return `Operation-first Agent-Computer Interface for real software, with a static catalog of ${String(sites)} adapter sites, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
 }
 
 function syncServerDescription(stats: Record<string, unknown>): boolean {
@@ -329,69 +180,62 @@ function categoryRank(category: string): number {
   return rank === -1 ? CATEGORY_ORDER.length : rank;
 }
 
-function badgeUrl(
-  site: string,
-  commandCount: number,
-  category: string,
-): string {
-  const params = new URLSearchParams({
-    label: site,
-    message: `${commandCount} cmds`,
-    color: CATEGORY_COLORS[category] ?? CATEGORY_COLORS.other,
-    style: "flat-square",
-  });
-  const logo = SITE_LOGOS[site];
-  if (logo) {
-    params.set("logo", logo);
-    params.set("logoColor", "white");
-  }
-  return `https://img.shields.io/static/v1?${params.toString()}`;
-}
-
 export function buildSiteGrid(
   manifest: Manifest,
   categoryLabels: Record<string, string> = {},
 ): string {
   const rows = Object.entries(manifest.sites)
-    .map(([site, info]) => {
-      const commandCount = info.commands.filter(
+    .map(([site, info]) => ({
+      site,
+      category: info.category ?? "other",
+      commandCount: info.commands.filter(
         (command) => command.quarantined !== true,
-      ).length;
-      return {
-        site,
-        category: info.category ?? "other",
-        commandCount,
-      };
-    })
-    .filter((row) => row.commandCount > 0 && SITE_LOGOS[row.site])
-    .sort(
-      (a, b) =>
-        categoryRank(a.category) - categoryRank(b.category) ||
-        a.site.localeCompare(b.site),
-    );
+      ).length,
+    }))
+    .filter((row) => row.commandCount > 0);
 
-  const byCategory = new Map<string, typeof rows>();
+  const byCategory = new Map<
+    string,
+    { sites: number; commands: number; examples: typeof rows }
+  >();
   for (const row of rows) {
-    const categoryRows = byCategory.get(row.category) ?? [];
-    categoryRows.push(row);
-    byCategory.set(row.category, categoryRows);
+    const summary = byCategory.get(row.category) ?? {
+      sites: 0,
+      commands: 0,
+      examples: [],
+    };
+    summary.sites += 1;
+    summary.commands += row.commandCount;
+    summary.examples.push(row);
+    byCategory.set(row.category, summary);
   }
 
-  const sections = Array.from(byCategory.entries()).map(([category, sites]) => {
-    const badges = sites
-      .map((row) => {
-        const title = `${row.site}: ${row.commandCount} command${row.commandCount === 1 ? "" : "s"}`;
-        return `<a data-site="${row.site}" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="${title}"><img alt="${row.site}" src="${badgeUrl(row.site, row.commandCount, category)}"></a>`;
-      })
-      .join("\n  ");
-    return `<p><strong>${categoryLabels[category] ?? category}</strong><br>\n  ${badges}\n</p>`;
-  });
+  const header = categoryLabels.social
+    ? "| 类别 | 站点 | Operations | 示例 |\n| --- | ---: | ---: | --- |"
+    : "| Surface | Sites | Operations | Examples |\n| --- | ---: | ---: | --- |";
+  const sections = Array.from(byCategory.entries())
+    .sort(([a], [b]) => categoryRank(a) - categoryRank(b))
+    .map(([category, summary]) => {
+      const examples = summary.examples
+        .sort(
+          (a, b) =>
+            b.commandCount - a.commandCount || a.site.localeCompare(b.site),
+        )
+        .slice(0, 4)
+        .map(
+          (row) =>
+            `[${row.site}](https://olo-dot-io.github.io/Uni-CLI/reference/sites#${row.site})`,
+        )
+        .join(", ");
+      return `| ${categoryLabels[category] ?? category} | ${summary.sites} | ${summary.commands} | ${examples} |`;
+    });
 
   return [
     SITE_GRID_START,
-    '<div align="center">',
+    "<!-- prettier-ignore -->",
+    header,
     ...sections,
-    "</div>",
+    "",
     SITE_GRID_END,
   ].join("\n");
 }

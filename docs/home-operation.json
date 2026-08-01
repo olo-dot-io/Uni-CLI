@@ -1,0 +1,21 @@
+{
+  "intent": {
+    "en": "List the top Hacker News stories",
+    "zh": "列出 Hacker News 热门文章"
+  },
+  "shell": "unicli hackernews top --limit 3 -f json",
+  "selected": {
+    "operation": "hackernews.top",
+    "operator": "structured-api",
+    "effect": "read",
+    "strategy": "public"
+  },
+  "candidates": {
+    "en": ["hackernews.top", "hackernews.search", "hackernews.new"],
+    "zh": ["hackernews.top", "hackernews.read", "hackernews.comments"]
+  },
+  "result": {
+    "en": "3 structured stories · source URLs retained",
+    "zh": "3 条结构化文章 · 来源 URL 已保留"
+  }
+}

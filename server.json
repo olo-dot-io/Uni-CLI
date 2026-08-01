@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.olo-dot-io/Uni-CLI",
-  "description": "Open Agent-Computer Interface runtime for real software, with a static catalog of 326 adapter sites, 980 declarative YAML adapters, and 1829 registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.",
+  "description": "Operation-first Agent-Computer Interface for real software, with a static catalog of 326 adapter sites, 980 declarative YAML adapters, and 1829 registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.",
   "version": "1.0.1",
   "repository": {
     "url": "https://github.com/olo-dot-io/Uni-CLI",

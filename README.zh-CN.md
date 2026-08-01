@@ -1,463 +1,231 @@
 <p align="center">
-  <img src="assets/mascot-otter.png" alt="Uni-CLI 水獭 mascot" width="180">
+  <img src="assets/mascot-otter.png" alt="Uni-CLI 水獭吉祥物" width="112">
 </p>
 
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <a href="./README.md">English</a> · 简体中文
+  <strong>一个接口。跨越多种软件边界。</strong><br>
+  面向真实软件的 operation-first Agent-Computer Interface。
 </p>
 
 <p align="center">
-  <strong>面向真实软件的开源 Agent-Computer Interface 运行时。</strong>
+  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/">网站</a> ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites">Operation 目录</a> ·
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli">npm</a> ·
+  <a href="./README.md">English</a>
 </p>
 
 <p align="center">
-  在 Agent 与网站、登录态浏览器、桌面 App、本地工具、文件、操作系统服务和
-  Agent 协议之间，提供一个可搜索的统一边界。Uni-CLI 按意图排序已编目 operation，
-  通过该 operation 声明的软件 substrate 按策略运行，用稳定的成功/错误 envelope
-  包装结果，并让失败可诊断、可修复。
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=805522"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-20231d?style=flat-square"></a>
+  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-805522?style=flat-square">
 </p>
 
 <p align="center">
-  <a href="https://olo-dot-io.github.io/Uni-CLI/">文档站</a>
-  ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/reference/sites">操作目录</a>
-  ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/llms.txt">Agent 索引</a>
+  <img src="docs/public/operation-field.webp" alt="一条被选中的 operation 穿越软件边界的雕塑化 routing field" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square"></a>
-  <a href="./LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square"></a>
-  <img alt="Node 22.19+" src="https://img.shields.io/badge/node-22.19%2B-339933?style=flat-square&logo=node.js&logoColor=white">
-  <img alt="MCP" src="https://img.shields.io/badge/MCP-2025--11--25-6f42c1?style=flat-square">
-  <img alt="AgentEnvelope v2" src="https://img.shields.io/badge/AgentEnvelope-v2-0f766e?style=flat-square">
-  <img alt="本地 computer use" src="https://img.shields.io/badge/local_computer_use-macOS_AX-111827?style=flat-square">
-  <img alt="交付 operator" src="https://img.shields.io/badge/delivery--operator-trajectory-f97316?style=flat-square">
-  <img alt="策略执行" src="https://img.shields.io/badge/policy-open_%7C_confirm_%7C_locked-2563eb?style=flat-square">
-</p>
-
-<p align="center">
-  <sub>Native CLI · MCP · ACP · JSON/Markdown envelope · browser CDP · visual fallback · macOS desktop AX · <!-- STATS:site_count -->326<!-- /STATS --> 个静态 adapter surface · <!-- STATS:test_count -->9984<!-- /STATS --> 个测试</sub>
-</p>
-
-<p align="center">
-  <strong>找到操作。跨过边界。让结果可检查。</strong><br>
-  发现 → 选择 → 治理 → 行动 → 观察 → 修复。
-</p>
-
-## 30 秒安装并运行
+Uni-CLI 按意图发现可执行 operation，由调用方选择一条已声明的 substrate，并返回可检查的结果。目录覆盖 API、登录态浏览器、桌面应用、本地命令、文件、操作系统服务与 Agent 协议，各条能力保留自身的结构和边界。
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli do "找 Hacker News 首页"
-unicli extract https://example.com --max-chars 1200
-unicli compute snapshot --app Calculator --format compact
-npx @zenalexa/unicli mcp serve
+unicli search "列出 Hacker News 热门文章"
+unicli hackernews top --limit 3 -f json
 ```
 
-| Agent 需要知道...      | Uni-CLI 给的答案                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| 什么能完成这个任务？   | `unicli search` 与只产出计划的 `unicli do` 返回一小组排序结果；Agent 再显式调用其中一条                |
-| 哪个软件边界会行动？   | 每条 operation 声明自己的 strategy 与 substrate：API、文件、CLI、browser、desktop、protocol 或 visual  |
-| 这个动作会影响什么？   | Operation contract 提前暴露参数、认证、能力范围、effect、risk 和 approval posture                      |
-| 这次调用返回了什么？   | AgentEnvelope 始终区分成功与错误；支持的 operation 还会提供 artifact、recording 或 post-state evidence |
-| 路径漂移了，下一步呢？ | 结构化错误可以指出归属源码、失败 step、retryability、替代路径和下一条 repair command                   |
-| 我的 Agent 怎么调用？  | Native CLI 是完整规范入口；MCP 通过 default、deferred、expanded profile 投影 adapter operation         |
+## 按任务选择路径
 
-## 为什么需要它
+Operation 目录负责发现和合同。执行阶段再选择结构最强、范围最小的 operator。每次只运行一个 provider；路径失败后保留原始原因和修复命令。
 
-模型只是 Agent 系统的一半。另一半是它感知状态、选择动作、跨越软件边界并理解
-反馈的接口。人类界面为眼睛、双手和记忆设计；裸 API 和巨型工具列表则为开发者或
-协议设计。面对上下文有限、必须完成任务的模型，两者都不是完整答案。
-
-Uni-CLI 负责的正是这条缺失边界：**Agent-Computer Interface（ACI）**。它不选
-模型，也不接管 Agent 的推理编排；它让真实软件可发现、可操作，再返回可检查的
-结构化结果。支持 evidence 的 operation 还可以记录 artifact、state delta 或 trajectory。
-浏览器自动化、App harness、MCP、WebMCP、
-accessibility、subprocess 和 visual control 都是接口下面可替换的 substrate。
-
-## Agent-Computer Interface 闭环
-
-这六个动词是精简的产品叙事。可执行架构更明确：`unicli architecture audit`
-报告九个 runtime stage——`intent`、`select`、`govern`、`act`、`observe`、
-`diagnose`、`repair-or-reroute`、`deliver`、`expose`。
-
-| 产品关注点 | 当前运行时事实                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------- |
-| 发现       | `search` 与只产出计划的 `do` 从意图排序候选 operation；两者都不会执行外部动作                                 |
-| 选择       | Agent 或 caller 选择一条已声明 strategy/substrate 的 operation；Uni-CLI 尚不会在所有替代 substrate 间自动仲裁 |
-| 治理       | `open`、`confirm`、`locked` profile 评估当前已覆盖的 operation effect 与 capability scope                     |
-| 行动       | adapter command 走共享 adapter kernel；固定 core command 保持各自的 native CLI handler                        |
-| 观察       | 每次渲染调用都有稳定成功/错误 envelope；operation-specific evidence 是可选能力，不能从 dispatch 自动推断      |
-| 修复       | operation 提供足够上下文时，结构化错误与 delivery 工具可以约束 diagnosis、reroute 或 verification attempt     |
-
-`diagnose` 与 `deliver` 让观察结果可行动；`expose` 把运行时投影给 Agent 入口。
-Adapter operation 同时用于 native CLI 和 MCP profile。固定 core command 当前以
-native CLI 为规范入口；逐命令 protocol parity 是明确的路线图工作。
-
-## 和常见路径的区别
-
-| 如果从...开始                | 它最擅长...                              | Uni-CLI 负责的不同边界                                                 |
-| ---------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
-| App/site-to-CLI harness      | 为单个 surface 建立深度结构化接口        | 用同一目录和结构化失败模型发现并运行大量接口                           |
-| Browser agent 或 browser MCP | 在浏览器内感知、规划并行动               | 把 browser control 当作一种 substrate，而不变成模型或 planner          |
-| Hosted SaaS integration 平台 | 托管 OAuth、用户、trigger 和云端 toolkit | 开源、本地优先地接触用户真实的 browser、desktop、文件和本地工具        |
-| MCP registry / operations    | 编目、运行、代理或治理 MCP server        | 通过 MCP 暴露 adapter operation，同时用 native command 覆盖非 MCP 软件 |
-| ARD 一类 discovery standard  | 发布能力在哪里                           | 检查本地可执行路径、调用、报告结果，并修复漂移                         |
-
-Uni-CLI 不是 Agent framework、model runtime、托管 integration marketplace、企业级
-MCP gateway 或操作系统。它是这些系统在 Agent 需要使用真实软件时可以调用的接口运行时。
-
-<!-- IF YOU ARE AN AI AGENT: Start here.
-Install: npm install -g @zenalexa/unicli
-Discover: unicli search "your intent"
-Run: unicli <site> <command> [args] [-f json|md|yaml|csv|compact]
-Repair: read the error envelope, edit the adapter_path, run unicli repair <site> <command>
-Delivery: write an objective spec, run unicli delivery run spec.json -f json
-Prefer native CLI / JSON stream / MCP for agent runtimes. Use ACP as an editor compatibility gateway.
--->
-
-## 它控制什么
-
-Uni-CLI 把 computer 当作环境，把每一个可控边界当作 substrate。substrate 可以是高层 typed API，也可以是低层 visual；回执保持同一种。
-
-| 层级               | 能力                                                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Operation contract | 可复用动作，带 args、输出形状、认证姿态、安全元数据、source path、repair path                                                                                |
-| Web 和 API         | public、cookie、header、browser-intercept、download、upload、publish、extract、search 工作流                                                                 |
-| Browser session    | CDP navigate/click/type/fill/select/wait/network/screenshot/snapshot/evidence                                                                                |
-| Desktop 和 OS      | macOS App、Accessibility ref、截图、剪贴板、日历、亮度、App action、本地系统状态                                                                             |
-| 本地工具和文件     | subprocess bridge、外部二进制、PDF/论文工作流、文件转换、媒体工具、开发者 CLI                                                                                |
-| Agent 协议         | native CLI、JSON stream、MCP、ACP、Streamable HTTP、OpenAI-compatible route、生成配置、skill                                                                 |
-| 策略和证据         | permission profile、deny rule、approval、run recording、replay、probe、compare、browser session lease、render-aware evidence、movement check、stale-ref 细节 |
-| 交付和修复         | `unicli delivery assess`、`run`、`trajectory`、`repair-candidate`，覆盖 evidence gate、diagnosis、hypothesis、已执行尝试、换路和有边界修复                   |
-
-## 为 Agent Runtime 设计
-
-Uni-CLI 在边界上刻意保持朴素：进程、文件、JSON、Markdown 和标准协议。Agent 运行时、shell 脚本、CI，以及任何能启动 subprocess 或接 MCP server 的 host 都能用。
-
-长期任务里，这些细节比 demo 更重要：
-
-- 按意图发现命令，不要求 Agent 背站点名和参数名；
-- 输出足够稳定，可以 pipe 给 `jq`、存为证据，或者继续喂给下一步工具；
-- auth failure、empty result、timeout、blocked action 是不同 exit state；
-- repair instruction 指向我们拥有的文件，而不是让 Agent 猜 upstream 哪儿变了；
-- 生成文档、`llms.txt`、AGENTS.md 和 skills 描述当前目录；MCP profile 投影
-  adapter operation，固定 core parity 仍是路线图工作。
-
-## 能力地图
-
-| 层级                  | 例子                                                                                     |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| 意图和发现            | `search`、`do`、生成操作目录、docs index、compact catalog、AGENTS surface                |
-| Operation contract    | args、output、auth posture、effect、safety、capability、source path、repair path         |
-| 行动 substrate        | HTTP、RSS、CDP、AX/UIA/AT-SPI、subprocess、visual、protocol、App-specific adapter        |
-| 本地 computer control | `compute apps`、`snapshot`、`find`、`click`、`type`、`press`、`scroll`、`doctor compute` |
-| 策略和证据            | permission profile、deny rule、approval、run recording、replay、probe、compare           |
-| 交付和修复            | objective spec、trajectory、repair candidate、reroute、evidence gate                     |
-| Runtime 暴露          | native CLI、MCP stdio、MCP Streamable HTTP、ACP、package export、agent skills            |
-
-## 给 Agent 的入口
-
-先搜索，再执行最小可用命令。
+| 任务边界                 | Execution operator  | 原因                                     |
+| ------------------------ | ------------------- | ---------------------------------------- |
+| 公开数据或稳定服务合同   | Structured API      | 保留 typed fields、认证姿态和来源        |
+| 文件、系统状态、本地工具 | Local runtime       | 直接跨越进程和 OS 边界，不引入浏览器状态 |
+| 需要登录态或私有网络合同 | Browser protocol    | 使用明确的 profile、Cookie 或网络合同    |
+| 只有页面界面的网页流程   | Semantic browser    | 通过 DOM 与 CDP 语义操作明确目标和会话   |
+| 原生桌面应用             | Accessibility       | 使用 AX、UIA 或 AT-SPI 结构化控件树      |
+| 像素级或无结构界面       | Visual computer use | 缺少更强接口时使用坐标和视觉 observation |
 
 ```bash
-unicli search "推特热门" --limit 5
-unicli twitter search "coding agents" -f json
-unicli anilist characters "Sparkle" --limit 5 -f json
-unicli danbooru tags sparkle --limit 5 -f json
-unicli arxiv download 1706.03762 --output ./papers -f json
-unicli pdf read ./papers/1706.03762.pdf --first_page 1 --last_page 3 -f json
-unicli macos app-actions --app WhatsApp -f json
-unicli macos automation-smoke -f json
-unicli repair twitter search
+unicli search "导出我的收藏内容"        # 发现和排序
+unicli list --site reddit                # 检查一个 surface
+unicli browser doctor --json             # 检查浏览器 delivery 状态
+unicli repair reddit saved               # 验证受支持的漂移路径
 ```
 
-非 TTY 和 Agent 环境默认输出结构化 Markdown。需要机器格式时显式指定：
+## Operation 合同
 
-```bash
-UNICLI_OUTPUT=json unicli reddit hot --limit 10
-unicli hackernews top --limit 5 -f yaml
-unicli --record --permission-profile confirm twitter search "coding agents" -f json
-unicli runs list -f json
-unicli runs show <run_id> -f json
-unicli runs probe <run_id> -f json
-unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1 --min-context-score 1 --min-overall-score 1 -f json
-unicli runs compare <run_id> <replay_run_id> -f json
-unicli runs compare <run_id> <replay_run_id> --min-score 1 --min-context-score 1 --min-overall-score 1 -f json
-unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
-unicli approvals list -f json
-unicli approvals revoke <approval_key> -f json
-unicli browser evidence --render-aware --expect-domain example.com -f json
+公开模型保持紧凑：
+
+```text
+intent → candidate operations → explicit selection → policy → substrate → receipt
 ```
 
-协议入口：
+| 阶段     | Runtime 行为                                                        |
+| -------- | ------------------------------------------------------------------- |
+| Discover | BM25 双语搜索返回一组小型候选集                                     |
+| Select   | 调用方选择一条声明了 strategy 和 substrate 的 operation             |
+| Govern   | `open`、`confirm`、`locked` profile 检查 effect 和 capability scope |
+| Act      | 执行选中的 adapter、core command、browser、desktop 或 protocol 路径 |
+| Observe  | 每条普通命令返回稳定的成功或错误 envelope                           |
+| Repair   | Owned drift path 给出源文件、失败边界和有界验证命令                 |
 
-```bash
-npx @zenalexa/unicli mcp serve
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-unicli acp
-unicli agents recommend codex
-unicli agents matrix
-```
+Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都可以独立选择。
 
-ACP 作为编辑器和桥接兼容层保留。真正跑任务时，优先 native CLI、JSON stream 或 MCP。
+## 能力表面
 
-## 覆盖范围
+| Surface   | 当前 Runtime                                                                     |
+| --------- | -------------------------------------------------------------------------------- |
+| Web       | 公开数据、Cookie、header、下载、上传、发布、搜索和中文平台                       |
+| Browser   | CDP 导航、语义动作、网络、snapshot、截图和执行后证据                             |
+| Desktop   | 原生控件、macOS 服务、设计工具、Office 和媒体应用                                |
+| Local     | subprocess bridge、文件、PDF 与论文流程、媒体转换和开发者 CLI                    |
+| Protocols | Native CLI、MCP stdio、MCP Streamable HTTP、ACP、生成配置和 Agent skills         |
+| Policy    | Permission profiles、deny rules、scoped approvals、recording、replay 和 evidence |
 
-目录刻意保持广覆盖。目录行可搜索、带类型；这只是 inventory evidence，不代表
-第三方 endpoint 或登录态此刻健康。fixture shape、实时 endpoint health、带登录态
-browser health 是三层独立证据，绝不相加成“可用命令数”。近期 inventory 包含论文
-下载和本地 PDF 读取、ACG/动画/漫画/wiki 发现、booru tag 搜索、美少女游戏目录，
-以及日文和罗马音实体检索。
+静态目录：
 
-下面的网格由 active manifest 中带真实 logo 的站点生成，徽章命令数不包含 quarantined 命令。完整目录始终以 `unicli list` 和文档站为准。
+- <!-- STATS:site_count -->326<!-- /STATS --> 个站点
+- <!-- STATS:command_count -->1829<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1226<!-- /STATS --> 个 adapters
+- <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
+- <!-- STATS:test_count -->9984<!-- /STATS --> 个测试
+
+Fixed core 和 host-discovered commands 会在运行时加入。
 
 <!-- BEGIN README_SITE_GRID -->
-<div align="center">
-<p><strong>社交</strong><br>
-  <a data-site="band" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="band: 4 commands"><img alt="band" src="https://img.shields.io/static/v1?label=band&message=4+cmds&color=2563eb&style=flat-square&logo=bandlab&logoColor=white"></a>
-  <a data-site="bluesky" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bluesky: 13 commands"><img alt="bluesky" src="https://img.shields.io/static/v1?label=bluesky&message=13+cmds&color=2563eb&style=flat-square&logo=bluesky&logoColor=white"></a>
-  <a data-site="dingtalk" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="dingtalk: 8 commands"><img alt="dingtalk" src="https://img.shields.io/static/v1?label=dingtalk&message=8+cmds&color=2563eb&style=flat-square&logo=dingtalk&logoColor=white"></a>
-  <a data-site="discord-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="discord-app: 15 commands"><img alt="discord-app" src="https://img.shields.io/static/v1?label=discord-app&message=15+cmds&color=2563eb&style=flat-square&logo=discord&logoColor=white"></a>
-  <a data-site="douban" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douban: 9 commands"><img alt="douban" src="https://img.shields.io/static/v1?label=douban&message=9+cmds&color=2563eb&style=flat-square&logo=douban&logoColor=white"></a>
-  <a data-site="instagram" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="instagram: 28 commands"><img alt="instagram" src="https://img.shields.io/static/v1?label=instagram&message=28+cmds&color=2563eb&style=flat-square&logo=instagram&logoColor=white"></a>
-  <a data-site="lark" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lark: 8 commands"><img alt="lark" src="https://img.shields.io/static/v1?label=lark&message=8+cmds&color=2563eb&style=flat-square&logo=lark&logoColor=white"></a>
-  <a data-site="mastodon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mastodon: 4 commands"><img alt="mastodon" src="https://img.shields.io/static/v1?label=mastodon&message=4+cmds&color=2563eb&style=flat-square&logo=mastodon&logoColor=white"></a>
-  <a data-site="reddit" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reddit: 24 commands"><img alt="reddit" src="https://img.shields.io/static/v1?label=reddit&message=24+cmds&color=2563eb&style=flat-square&logo=reddit&logoColor=white"></a>
-  <a data-site="signal" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="signal: 7 commands"><img alt="signal" src="https://img.shields.io/static/v1?label=signal&message=7+cmds&color=2563eb&style=flat-square&logo=signal&logoColor=white"></a>
-  <a data-site="slack" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="slack: 14 commands"><img alt="slack" src="https://img.shields.io/static/v1?label=slack&message=14+cmds&color=2563eb&style=flat-square&logo=slack&logoColor=white"></a>
-  <a data-site="teams" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="teams: 7 commands"><img alt="teams" src="https://img.shields.io/static/v1?label=teams&message=7+cmds&color=2563eb&style=flat-square&logo=microsoftteams&logoColor=white"></a>
-  <a data-site="twitter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitter: 47 commands"><img alt="twitter" src="https://img.shields.io/static/v1?label=twitter&message=47+cmds&color=2563eb&style=flat-square&logo=x&logoColor=white"></a>
-  <a data-site="wechat-work" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wechat-work: 7 commands"><img alt="wechat-work" src="https://img.shields.io/static/v1?label=wechat-work&message=7+cmds&color=2563eb&style=flat-square&logo=wechat&logoColor=white"></a>
-  <a data-site="weibo" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="weibo: 12 commands"><img alt="weibo" src="https://img.shields.io/static/v1?label=weibo&message=12+cmds&color=2563eb&style=flat-square&logo=sinaweibo&logoColor=white"></a>
-  <a data-site="whatsapp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="whatsapp: 7 commands"><img alt="whatsapp" src="https://img.shields.io/static/v1?label=whatsapp&message=7+cmds&color=2563eb&style=flat-square&logo=whatsapp&logoColor=white"></a>
-  <a data-site="xiaohongshu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="xiaohongshu: 22 commands"><img alt="xiaohongshu" src="https://img.shields.io/static/v1?label=xiaohongshu&message=22+cmds&color=2563eb&style=flat-square&logo=xiaohongshu&logoColor=white"></a>
-  <a data-site="zhihu" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zhihu: 27 commands"><img alt="zhihu" src="https://img.shields.io/static/v1?label=zhihu&message=27+cmds&color=2563eb&style=flat-square&logo=zhihu&logoColor=white"></a>
-  <a data-site="zoom" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom: 2 commands"><img alt="zoom" src="https://img.shields.io/static/v1?label=zoom&message=2+cmds&color=2563eb&style=flat-square&logo=zoom&logoColor=white"></a>
-  <a data-site="zoom-app" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zoom-app: 7 commands"><img alt="zoom-app" src="https://img.shields.io/static/v1?label=zoom-app&message=7+cmds&color=2563eb&style=flat-square&logo=zoom&logoColor=white"></a>
-</p>
-<p><strong>视频</strong><br>
-  <a data-site="bilibili" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bilibili: 14 commands"><img alt="bilibili" src="https://img.shields.io/static/v1?label=bilibili&message=14+cmds&color=dc2626&style=flat-square&logo=bilibili&logoColor=white"></a>
-  <a data-site="douyin" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="douyin: 13 commands"><img alt="douyin" src="https://img.shields.io/static/v1?label=douyin&message=13+cmds&color=dc2626&style=flat-square&logo=tiktok&logoColor=white"></a>
-  <a data-site="tiktok" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="tiktok: 18 commands"><img alt="tiktok" src="https://img.shields.io/static/v1?label=tiktok&message=18+cmds&color=dc2626&style=flat-square&logo=tiktok&logoColor=white"></a>
-  <a data-site="twitch" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="twitch: 4 commands"><img alt="twitch" src="https://img.shields.io/static/v1?label=twitch&message=4+cmds&color=dc2626&style=flat-square&logo=twitch&logoColor=white"></a>
-  <a data-site="youtube" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="youtube: 17 commands"><img alt="youtube" src="https://img.shields.io/static/v1?label=youtube&message=17+cmds&color=dc2626&style=flat-square&logo=youtube&logoColor=white"></a>
-  <a data-site="yt-dlp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yt-dlp: 5 commands"><img alt="yt-dlp" src="https://img.shields.io/static/v1?label=yt-dlp&message=5+cmds&color=dc2626&style=flat-square&logo=youtube&logoColor=white"></a>
-</p>
-<p><strong>新闻</strong><br>
-  <a data-site="bbc" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bbc: 5 commands"><img alt="bbc" src="https://img.shields.io/static/v1?label=bbc&message=5+cmds&color=b45309&style=flat-square&logo=bbc&logoColor=white"></a>
-  <a data-site="bloomberg" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="bloomberg: 10 commands"><img alt="bloomberg" src="https://img.shields.io/static/v1?label=bloomberg&message=10+cmds&color=b45309&style=flat-square&logo=bloomberg&logoColor=white"></a>
-  <a data-site="cnn" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cnn: 2 commands"><img alt="cnn" src="https://img.shields.io/static/v1?label=cnn&message=2+cmds&color=b45309&style=flat-square&logo=cnn&logoColor=white"></a>
-  <a data-site="hackernews" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hackernews: 11 commands"><img alt="hackernews" src="https://img.shields.io/static/v1?label=hackernews&message=11+cmds&color=b45309&style=flat-square&logo=ycombinator&logoColor=white"></a>
-  <a data-site="nytimes" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="nytimes: 2 commands"><img alt="nytimes" src="https://img.shields.io/static/v1?label=nytimes&message=2+cmds&color=b45309&style=flat-square&logo=newyorktimes&logoColor=white"></a>
-  <a data-site="reuters" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="reuters: 3 commands"><img alt="reuters" src="https://img.shields.io/static/v1?label=reuters&message=3+cmds&color=b45309&style=flat-square&logo=reuters&logoColor=white"></a>
-</p>
-<p><strong>财经</strong><br>
-  <a data-site="barchart" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="barchart: 4 commands"><img alt="barchart" src="https://img.shields.io/static/v1?label=barchart&message=4+cmds&color=047857&style=flat-square&logo=chartdotjs&logoColor=white"></a>
-  <a data-site="binance" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="binance: 13 commands"><img alt="binance" src="https://img.shields.io/static/v1?label=binance&message=13+cmds&color=047857&style=flat-square&logo=binance&logoColor=white"></a>
-  <a data-site="coinbase" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="coinbase: 2 commands"><img alt="coinbase" src="https://img.shields.io/static/v1?label=coinbase&message=2+cmds&color=047857&style=flat-square&logo=coinbase&logoColor=white"></a>
-  <a data-site="yahoo-finance" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="yahoo-finance: 2 commands"><img alt="yahoo-finance" src="https://img.shields.io/static/v1?label=yahoo-finance&message=2+cmds&color=047857&style=flat-square&logo=yahoo&logoColor=white"></a>
-</p>
-<p><strong>购物</strong><br>
-  <a data-site="1688" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="1688: 5 commands"><img alt="1688" src="https://img.shields.io/static/v1?label=1688&message=5+cmds&color=be185d&style=flat-square&logo=alibabadotcom&logoColor=white"></a>
-  <a data-site="amazon" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="amazon: 8 commands"><img alt="amazon" src="https://img.shields.io/static/v1?label=amazon&message=8+cmds&color=be185d&style=flat-square&logo=amazon&logoColor=white"></a>
-  <a data-site="coupang" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="coupang: 3 commands"><img alt="coupang" src="https://img.shields.io/static/v1?label=coupang&message=3+cmds&color=be185d&style=flat-square&logo=coupang&logoColor=white"></a>
-</p>
-<p><strong>开发</strong><br>
-  <a data-site="claude-code" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="claude-code: 1 command"><img alt="claude-code" src="https://img.shields.io/static/v1?label=claude-code&message=1+cmds&color=4f46e5&style=flat-square&logo=anthropic&logoColor=white"></a>
-  <a data-site="cocoapods" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cocoapods: 2 commands"><img alt="cocoapods" src="https://img.shields.io/static/v1?label=cocoapods&message=2+cmds&color=4f46e5&style=flat-square&logo=cocoapods&logoColor=white"></a>
-  <a data-site="codex" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="codex: 19 commands"><img alt="codex" src="https://img.shields.io/static/v1?label=codex&message=19+cmds&color=4f46e5&style=flat-square&logo=openai&logoColor=white"></a>
-  <a data-site="codex-cli" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="codex-cli: 1 command"><img alt="codex-cli" src="https://img.shields.io/static/v1?label=codex-cli&message=1+cmds&color=4f46e5&style=flat-square&logo=openai&logoColor=white"></a>
-  <a data-site="crates-io" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="crates-io: 3 commands"><img alt="crates-io" src="https://img.shields.io/static/v1?label=crates-io&message=3+cmds&color=4f46e5&style=flat-square&logo=rust&logoColor=white"></a>
-  <a data-site="cursor" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cursor: 19 commands"><img alt="cursor" src="https://img.shields.io/static/v1?label=cursor&message=19+cmds&color=4f46e5&style=flat-square&logo=cursor&logoColor=white"></a>
-  <a data-site="docker-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-desktop: 7 commands"><img alt="docker-desktop" src="https://img.shields.io/static/v1?label=docker-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
-  <a data-site="docker-hub" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker-hub: 3 commands"><img alt="docker-hub" src="https://img.shields.io/static/v1?label=docker-hub&message=3+cmds&color=4f46e5&style=flat-square&logo=docker&logoColor=white"></a>
-  <a data-site="gh" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gh: 11 commands"><img alt="gh" src="https://img.shields.io/static/v1?label=gh&message=11+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
-  <a data-site="github-desktop" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-desktop: 7 commands"><img alt="github-desktop" src="https://img.shields.io/static/v1?label=github-desktop&message=7+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
-  <a data-site="github-trending" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="github-trending: 1 command"><img alt="github-trending" src="https://img.shields.io/static/v1?label=github-trending&message=1+cmds&color=4f46e5&style=flat-square&logo=github&logoColor=white"></a>
-  <a data-site="gitkraken" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitkraken: 7 commands"><img alt="gitkraken" src="https://img.shields.io/static/v1?label=gitkraken&message=7+cmds&color=4f46e5&style=flat-square&logo=gitkraken&logoColor=white"></a>
-  <a data-site="gitlab" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gitlab: 3 commands"><img alt="gitlab" src="https://img.shields.io/static/v1?label=gitlab&message=3+cmds&color=4f46e5&style=flat-square&logo=gitlab&logoColor=white"></a>
-  <a data-site="homebrew" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="homebrew: 5 commands"><img alt="homebrew" src="https://img.shields.io/static/v1?label=homebrew&message=5+cmds&color=4f46e5&style=flat-square&logo=homebrew&logoColor=white"></a>
-  <a data-site="insomnia" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="insomnia: 7 commands"><img alt="insomnia" src="https://img.shields.io/static/v1?label=insomnia&message=7+cmds&color=4f46e5&style=flat-square&logo=insomnia&logoColor=white"></a>
-  <a data-site="maven" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="maven: 3 commands"><img alt="maven" src="https://img.shields.io/static/v1?label=maven&message=3+cmds&color=4f46e5&style=flat-square&logo=apachemaven&logoColor=white"></a>
-  <a data-site="npm" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="npm: 5 commands"><img alt="npm" src="https://img.shields.io/static/v1?label=npm&message=5+cmds&color=4f46e5&style=flat-square&logo=npm&logoColor=white"></a>
-  <a data-site="npm-trends" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="npm-trends: 2 commands"><img alt="npm-trends" src="https://img.shields.io/static/v1?label=npm-trends&message=2+cmds&color=4f46e5&style=flat-square&logo=npm&logoColor=white"></a>
-  <a data-site="nuget" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="nuget: 3 commands"><img alt="nuget" src="https://img.shields.io/static/v1?label=nuget&message=3+cmds&color=4f46e5&style=flat-square&logo=nuget&logoColor=white"></a>
-  <a data-site="packagist" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="packagist: 3 commands"><img alt="packagist" src="https://img.shields.io/static/v1?label=packagist&message=3+cmds&color=4f46e5&style=flat-square&logo=packagist&logoColor=white"></a>
-  <a data-site="postman" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="postman: 7 commands"><img alt="postman" src="https://img.shields.io/static/v1?label=postman&message=7+cmds&color=4f46e5&style=flat-square&logo=postman&logoColor=white"></a>
-  <a data-site="producthunt" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="producthunt: 5 commands"><img alt="producthunt" src="https://img.shields.io/static/v1?label=producthunt&message=5+cmds&color=4f46e5&style=flat-square&logo=producthunt&logoColor=white"></a>
-  <a data-site="pub-dev" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pub-dev: 2 commands"><img alt="pub-dev" src="https://img.shields.io/static/v1?label=pub-dev&message=2+cmds&color=4f46e5&style=flat-square&logo=dart&logoColor=white"></a>
-  <a data-site="pypi" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pypi: 4 commands"><img alt="pypi" src="https://img.shields.io/static/v1?label=pypi&message=4+cmds&color=4f46e5&style=flat-square&logo=pypi&logoColor=white"></a>
-  <a data-site="rubygems" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="rubygems: 3 commands"><img alt="rubygems" src="https://img.shields.io/static/v1?label=rubygems&message=3+cmds&color=4f46e5&style=flat-square&logo=rubygems&logoColor=white"></a>
-  <a data-site="stackoverflow" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="stackoverflow: 10 commands"><img alt="stackoverflow" src="https://img.shields.io/static/v1?label=stackoverflow&message=10+cmds&color=4f46e5&style=flat-square&logo=stackoverflow&logoColor=white"></a>
-  <a data-site="vscode" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="vscode: 10 commands"><img alt="vscode" src="https://img.shields.io/static/v1?label=vscode&message=10+cmds&color=4f46e5&style=flat-square&logo=visualstudiocode&logoColor=white"></a>
-</p>
-<p><strong>AI</strong><br>
-  <a data-site="antigravity" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="antigravity: 17 commands"><img alt="antigravity" src="https://img.shields.io/static/v1?label=antigravity&message=17+cmds&color=7c3aed&style=flat-square&logo=google&logoColor=white"></a>
-  <a data-site="chatgpt" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="chatgpt: 18 commands"><img alt="chatgpt" src="https://img.shields.io/static/v1?label=chatgpt&message=18+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
-  <a data-site="claude" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="claude: 14 commands"><img alt="claude" src="https://img.shields.io/static/v1?label=claude&message=14+cmds&color=7c3aed&style=flat-square&logo=anthropic&logoColor=white"></a>
-  <a data-site="deepseek" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="deepseek: 9 commands"><img alt="deepseek" src="https://img.shields.io/static/v1?label=deepseek&message=9+cmds&color=7c3aed&style=flat-square&logo=deepseek&logoColor=white"></a>
-  <a data-site="gemini" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gemini: 5 commands"><img alt="gemini" src="https://img.shields.io/static/v1?label=gemini&message=5+cmds&color=7c3aed&style=flat-square&logo=googlegemini&logoColor=white"></a>
-  <a data-site="hf" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="hf: 6 commands"><img alt="hf" src="https://img.shields.io/static/v1?label=hf&message=6+cmds&color=7c3aed&style=flat-square&logo=huggingface&logoColor=white"></a>
-  <a data-site="lm-studio" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="lm-studio: 7 commands"><img alt="lm-studio" src="https://img.shields.io/static/v1?label=lm-studio&message=7+cmds&color=7c3aed&style=flat-square&logo=lmstudio&logoColor=white"></a>
-  <a data-site="openrouter" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="openrouter: 2 commands"><img alt="openrouter" src="https://img.shields.io/static/v1?label=openrouter&message=2+cmds&color=7c3aed&style=flat-square&logo=openai&logoColor=white"></a>
-  <a data-site="qwen" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="qwen: 8 commands"><img alt="qwen" src="https://img.shields.io/static/v1?label=qwen&message=8+cmds&color=7c3aed&style=flat-square&logo=alibabacloud&logoColor=white"></a>
-  <a data-site="replicate" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="replicate: 2 commands"><img alt="replicate" src="https://img.shields.io/static/v1?label=replicate&message=2+cmds&color=7c3aed&style=flat-square&logo=replicate&logoColor=white"></a>
-</p>
-<p><strong>学术</strong><br>
-  <a data-site="arxiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="arxiv: 6 commands"><img alt="arxiv" src="https://img.shields.io/static/v1?label=arxiv&message=6+cmds&color=0f766e&style=flat-square&logo=arxiv&logoColor=white"></a>
-  <a data-site="google-scholar" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google-scholar: 3 commands"><img alt="google-scholar" src="https://img.shields.io/static/v1?label=google-scholar&message=3+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
-  <a data-site="huggingface-papers" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="huggingface-papers: 2 commands"><img alt="huggingface-papers" src="https://img.shields.io/static/v1?label=huggingface-papers&message=2+cmds&color=0f766e&style=flat-square&logo=huggingface&logoColor=white"></a>
-  <a data-site="zotero" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="zotero: 8 commands"><img alt="zotero" src="https://img.shields.io/static/v1?label=zotero&message=8+cmds&color=0f766e&style=flat-square&logo=zotero&logoColor=white"></a>
-</p>
-<p><strong>知识</strong><br>
-  <a data-site="google" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="google: 4 commands"><img alt="google" src="https://img.shields.io/static/v1?label=google&message=4+cmds&color=0f766e&style=flat-square&logo=google&logoColor=white"></a>
-  <a data-site="wikipedia" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wikipedia: 5 commands"><img alt="wikipedia" src="https://img.shields.io/static/v1?label=wikipedia&message=5+cmds&color=0f766e&style=flat-square&logo=wikipedia&logoColor=white"></a>
-</p>
-<p><strong>音频</strong><br>
-  <a data-site="apple-podcasts" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="apple-podcasts: 2 commands"><img alt="apple-podcasts" src="https://img.shields.io/static/v1?label=apple-podcasts&message=2+cmds&color=16a34a&style=flat-square&logo=applepodcasts&logoColor=white"></a>
-  <a data-site="netease-music" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="netease-music: 15 commands"><img alt="netease-music" src="https://img.shields.io/static/v1?label=netease-music&message=15+cmds&color=16a34a&style=flat-square&logo=neteasecloudmusic&logoColor=white"></a>
-  <a data-site="spotify" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="spotify: 24 commands"><img alt="spotify" src="https://img.shields.io/static/v1?label=spotify&message=24+cmds&color=16a34a&style=flat-square&logo=spotify&logoColor=white"></a>
-</p>
-<p><strong>内容</strong><br>
-  <a data-site="pixiv" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pixiv: 6 commands"><img alt="pixiv" src="https://img.shields.io/static/v1?label=pixiv&message=6+cmds&color=c2410c&style=flat-square&logo=pixiv&logoColor=white"></a>
-</p>
-<p><strong>效率</strong><br>
-  <a data-site="apple-notes" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="apple-notes: 3 commands"><img alt="apple-notes" src="https://img.shields.io/static/v1?label=apple-notes&message=3+cmds&color=475569&style=flat-square&logo=apple&logoColor=white"></a>
-  <a data-site="notion" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="notion: 3 commands"><img alt="notion" src="https://img.shields.io/static/v1?label=notion&message=3+cmds&color=475569&style=flat-square&logo=notion&logoColor=white"></a>
-  <a data-site="obsidian" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="obsidian: 10 commands"><img alt="obsidian" src="https://img.shields.io/static/v1?label=obsidian&message=10+cmds&color=475569&style=flat-square&logo=obsidian&logoColor=white"></a>
-  <a data-site="typora" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="typora: 7 commands"><img alt="typora" src="https://img.shields.io/static/v1?label=typora&message=7+cmds&color=475569&style=flat-square&logo=typora&logoColor=white"></a>
-</p>
-<p><strong>桌面</strong><br>
-  <a data-site="blender" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="blender: 13 commands"><img alt="blender" src="https://img.shields.io/static/v1?label=blender&message=13+cmds&color=334155&style=flat-square&logo=blender&logoColor=white"></a>
-  <a data-site="cloudcompare" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="cloudcompare: 4 commands"><img alt="cloudcompare" src="https://img.shields.io/static/v1?label=cloudcompare&message=4+cmds&color=334155&style=flat-square&logo=cloudinary&logoColor=white"></a>
-  <a data-site="docker" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="docker: 7 commands"><img alt="docker" src="https://img.shields.io/static/v1?label=docker&message=7+cmds&color=334155&style=flat-square&logo=docker&logoColor=white"></a>
-  <a data-site="ffmpeg" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="ffmpeg: 11 commands"><img alt="ffmpeg" src="https://img.shields.io/static/v1?label=ffmpeg&message=11+cmds&color=334155&style=flat-square&logo=ffmpeg&logoColor=white"></a>
-  <a data-site="figma" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="figma: 7 commands"><img alt="figma" src="https://img.shields.io/static/v1?label=figma&message=7+cmds&color=334155&style=flat-square&logo=figma&logoColor=white"></a>
-  <a data-site="freecad" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="freecad: 15 commands"><img alt="freecad" src="https://img.shields.io/static/v1?label=freecad&message=15+cmds&color=334155&style=flat-square&logo=freecad&logoColor=white"></a>
-  <a data-site="gimp" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="gimp: 12 commands"><img alt="gimp" src="https://img.shields.io/static/v1?label=gimp&message=12+cmds&color=334155&style=flat-square&logo=gimp&logoColor=white"></a>
-  <a data-site="imagemagick" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="imagemagick: 6 commands"><img alt="imagemagick" src="https://img.shields.io/static/v1?label=imagemagick&message=6+cmds&color=334155&style=flat-square&logo=imagemagick&logoColor=white"></a>
-  <a data-site="macos" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="macos: 60 commands"><img alt="macos" src="https://img.shields.io/static/v1?label=macos&message=60+cmds&color=334155&style=flat-square&logo=apple&logoColor=white"></a>
-  <a data-site="mermaid" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="mermaid: 1 command"><img alt="mermaid" src="https://img.shields.io/static/v1?label=mermaid&message=1+cmds&color=334155&style=flat-square&logo=mermaid&logoColor=white"></a>
-  <a data-site="pandoc" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pandoc: 1 command"><img alt="pandoc" src="https://img.shields.io/static/v1?label=pandoc&message=1+cmds&color=334155&style=flat-square&logo=pandoc&logoColor=white"></a>
-  <a data-site="powerpoint" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="powerpoint: 7 commands"><img alt="powerpoint" src="https://img.shields.io/static/v1?label=powerpoint&message=7+cmds&color=334155&style=flat-square&logo=microsoftpowerpoint&logoColor=white"></a>
-  <a data-site="word" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="word: 7 commands"><img alt="word" src="https://img.shields.io/static/v1?label=word&message=7+cmds&color=334155&style=flat-square&logo=microsoftword&logoColor=white"></a>
-</p>
-<p><strong>游戏</strong><br>
-  <a data-site="steam" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="steam: 7 commands"><img alt="steam" src="https://img.shields.io/static/v1?label=steam&message=7+cmds&color=9333ea&style=flat-square&logo=steam&logoColor=white"></a>
-</p>
-<p><strong>工具</strong><br>
-  <a data-site="linear" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="linear: 10 commands"><img alt="linear" src="https://img.shields.io/static/v1?label=linear&message=10+cmds&color=0d9488&style=flat-square&logo=linear&logoColor=white"></a>
-  <a data-site="qweather" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="qweather: 2 commands"><img alt="qweather" src="https://img.shields.io/static/v1?label=qweather&message=2+cmds&color=0d9488&style=flat-square&logo=icloud&logoColor=white"></a>
-  <a data-site="todoist" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="todoist: 7 commands"><img alt="todoist" src="https://img.shields.io/static/v1?label=todoist&message=7+cmds&color=0d9488&style=flat-square&logo=todoist&logoColor=white"></a>
-</p>
-<p><strong>其他</strong><br>
-  <a data-site="aws" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="aws: 1 command"><img alt="aws" src="https://img.shields.io/static/v1?label=aws&message=1+cmds&color=64748b&style=flat-square&logo=amazonaws&logoColor=white"></a>
-  <a data-site="chrome" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="chrome: 2 commands"><img alt="chrome" src="https://img.shields.io/static/v1?label=chrome&message=2+cmds&color=64748b&style=flat-square&logo=googlechrome&logoColor=white"></a>
-  <a data-site="jq" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="jq: 2 commands"><img alt="jq" src="https://img.shields.io/static/v1?label=jq&message=2+cmds&color=64748b&style=flat-square&logo=json&logoColor=white"></a>
-  <a data-site="netlify" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="netlify: 1 command"><img alt="netlify" src="https://img.shields.io/static/v1?label=netlify&message=1+cmds&color=64748b&style=flat-square&logo=netlify&logoColor=white"></a>
-  <a data-site="pexels" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="pexels: 2 commands"><img alt="pexels" src="https://img.shields.io/static/v1?label=pexels&message=2+cmds&color=64748b&style=flat-square&logo=pexels&logoColor=white"></a>
-  <a data-site="slay-the-spire-ii" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="slay-the-spire-ii: 6 commands"><img alt="slay-the-spire-ii" src="https://img.shields.io/static/v1?label=slay-the-spire-ii&message=6+cmds&color=64748b&style=flat-square&logo=steam&logoColor=white"></a>
-  <a data-site="supabase" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="supabase: 1 command"><img alt="supabase" src="https://img.shields.io/static/v1?label=supabase&message=1+cmds&color=64748b&style=flat-square&logo=supabase&logoColor=white"></a>
-  <a data-site="unsplash" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="unsplash: 2 commands"><img alt="unsplash" src="https://img.shields.io/static/v1?label=unsplash&message=2+cmds&color=64748b&style=flat-square&logo=unsplash&logoColor=white"></a>
-  <a data-site="vercel" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="vercel: 1 command"><img alt="vercel" src="https://img.shields.io/static/v1?label=vercel&message=1+cmds&color=64748b&style=flat-square&logo=vercel&logoColor=white"></a>
-  <a data-site="wechat-channels" href="https://olo-dot-io.github.io/Uni-CLI/reference/sites" title="wechat-channels: 2 commands"><img alt="wechat-channels" src="https://img.shields.io/static/v1?label=wechat-channels&message=2+cmds&color=64748b&style=flat-square&logo=wechat&logoColor=white"></a>
-</p>
-</div>
+<!-- prettier-ignore -->
+| 类别 | 站点 | Operations | 示例 |
+| --- | ---: | ---: | --- |
+| 社交 | 33 | 372 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| 视频 | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
+| 新闻 | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
+| 财经 | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
+| 购物 | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
+| 开发 | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
+| AI | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
+| 学术 | 22 | 80 | [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
+| 专利 | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
+| 知识 | 12 | 48 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi) |
+| 音频 | 4 | 46 | [spotify](https://olo-dot-io.github.io/Uni-CLI/reference/sites#spotify), [netease-music](https://olo-dot-io.github.io/Uni-CLI/reference/sites#netease-music), [xiaoyuzhou](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoyuzhou), [apple-podcasts](https://olo-dot-io.github.io/Uni-CLI/reference/sites#apple-podcasts) |
+| 内容 | 16 | 93 | [lesswrong](https://olo-dot-io.github.io/Uni-CLI/reference/sites#lesswrong), [danbooru](https://olo-dot-io.github.io/Uni-CLI/reference/sites#danbooru), [dlsite](https://olo-dot-io.github.io/Uni-CLI/reference/sites#dlsite), [weread](https://olo-dot-io.github.io/Uni-CLI/reference/sites#weread) |
+| 效率 | 10 | 78 | [notion-app](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notion-app), [ones](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ones), [obsidian](https://olo-dot-io.github.io/Uni-CLI/reference/sites#obsidian), [quark](https://olo-dot-io.github.io/Uni-CLI/reference/sites#quark) |
+| 招聘 | 6 | 42 | [nowcoder](https://olo-dot-io.github.io/Uni-CLI/reference/sites#nowcoder), [boss](https://olo-dot-io.github.io/Uni-CLI/reference/sites#boss), [51job](https://olo-dot-io.github.io/Uni-CLI/reference/sites#51job), [linkedin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linkedin) |
+| 桌面 | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
+| 游戏 | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
+| 工具 | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
+| 其他 | 68 | 116 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| 旅行 | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
+
 <!-- END README_SITE_GRID -->
 
-看实时目录：
+生成的 [Operation 目录](https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites) 是权威清单。
+
+## 接入 Agent
+
+### Native CLI
 
 ```bash
-unicli list
-unicli list --site macos
-unicli ext list
-unicli ext list --tag agent
+unicli search "下载最新的 computer use 论文" -f json
+unicli arxiv search "computer use agents" --limit 5 -f json
+unicli extract https://example.com --max-chars 1200
 ```
 
-同一份生成目录也发布在文档站：
-<https://olo-dot-io.github.io/Uni-CLI/reference/sites>
+管道输出默认使用 Markdown。后续步骤需要稳定机器格式时，可以选择 `-f json`、`yaml`、`csv` 或 `compact`。
 
-## 输出契约
+### MCP
 
-普通命令都返回 v2 envelope。`mcp serve` 和 `acp` 是协议服务器，保留各自原始 stdio 协议。
+```json
+{
+  "mcpServers": {
+    "unicli": {
+      "command": "npx",
+      "args": ["-y", "@zenalexa/unicli-mcp"]
+    }
+  }
+}
+```
+
+等价命令：
+
+```bash
+npx -y @zenalexa/unicli mcp serve
+```
+
+默认 profile 暴露 4 个 meta-tools。Host 需要 tool-level discovery 时，可以使用 deferred 或 expanded profile。运行 `unicli mcp health -f json` 检查当前投影。
+
+### 本地计算机
+
+```bash
+unicli compute apps --format compact
+unicli compute snapshot --app Calculator --format compact
+unicli compute find --app Calculator --role AXButton --title "7"
+unicli compute click --ref <ref-from-find>
+```
+
+桌面动作优先使用 accessibility references。Visual route 需要明确选择 backend，不会充当隐藏 fallback。
+
+## 能解释自身的结果
+
+成功：
 
 ```yaml
 ok: true
 schema_version: "2"
-command: "twitter.search"
+command: "hackernews.top"
 meta:
   duration_ms: 412
-  count: 20
+  count: 3
   surface: web
 data:
-  - { id: "...", text: "...", author: "..." }
+  - { rank: "1", title: "...", url: "...", author: "..." }
 error: null
 ```
 
-错误也要可执行：
+失败：
 
 ```yaml
 ok: false
 schema_version: "2"
-command: "twitter.search"
-meta:
-  duration_ms: 91
+command: "reddit.saved"
 data: null
 error:
   code: auth_required
-  message: "401 Unauthorized"
-  adapter_path: "src/adapters/twitter/search.yaml"
+  adapter_path: "src/adapters/reddit/saved.yaml"
   step: 1
-  suggestion: "Run: unicli auth setup twitter"
+  suggestion: "Run: unicli auth setup reddit"
   retryable: false
-  alternatives: ["twitter.timeline", "twitter.profile"]
 ```
 
-退出码：`0` 成功，`66` 空结果，`69` 服务不可用，`75` 临时失败，`77` 需要认证，`78` 配置错误。
+Exit code 区分成功、空结果、依赖不可用、临时失败、认证和配置问题。详见 [输出和 exit code 参考](docs/reference/exit-codes.md)。
 
-## 自修复
+## 在 Owned Boundary 修复漂移
 
-adapter 默认是很小的 YAML。命令失败时，Agent 不需要猜，可以直接按错误定位到文件和步骤。
+Adapter 保持 Agent 可读，并支持本地替换：
 
 ```text
-1. 执行命令。
-2. 读取错误 envelope。
-3. 打开 error.adapter_path。
-4. 修改失败 step。
-5. 保存到 ~/.unicli/adapters/<site>/<command>.yaml。
-6. 用 unicli repair <site> <command> 做一次有界验证。
-7. 再检查原始命令返回的代表性数据。
+run → read error.adapter_path → patch the owned step → save override → verify once
 ```
 
-`unicli repair` 不修改源码或 git 状态。它把原始命令作为有 timeout 的子进程
-oracle；只有目标 envelope 为 `ok=true` 且进程 exit `0` 才返回成功，失败时传播
-目标错误和退出码。本地修复会在 npm 更新后继续保留。详见
-[自修复](docs/zh/guide/self-repair.md)。
+```bash
+unicli repair <site> <command>
+```
 
-## 写一个 adapter
+`repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
+
+最小 YAML adapter：
 
 ```yaml
 site: example
 name: search
-description: "Search example.com"
+description: Search example.com
 transport: http
 strategy: public
-capabilities: [fetch, select, map, limit]
-minimum_capability: http.fetch
-trust: public
-confidentiality: public
-quarantine: false
 pipeline:
-  - fetch:
-      url: "https://api.example.com/search?q=${{ args.query }}"
+  - fetch: { url: "https://api.example.com/search?q=${{ args.query }}" }
   - select: data.results
-  - map:
-      title: "${{ item.title }}"
-      url: "${{ item.url }}"
+  - map: { title: "${{ item.title }}", url: "${{ item.url }}" }
   - limit: "${{ args.limit }}"
 args:
   - { name: query, type: string, required: true, positional: true }
@@ -465,50 +233,18 @@ args:
 columns: [title, url]
 ```
 
-文档入口：
+继续阅读 [Adapter 格式](docs/ADAPTER-FORMAT.md)、[Pipeline 参考](docs/reference/pipeline.md) 和 [自修复指南](docs/zh/guide/self-repair.md)。
 
-- [独立文档站](https://olo-dot-io.github.io/Uni-CLI/)
-- [快速开始](docs/guide/getting-started.md)
-- [Agent 集成](docs/guide/integrations.md)
-- [Adapter 格式](docs/ADAPTER-FORMAT.md)
-- [Pipeline 参考](docs/reference/pipeline.md)
-- [Exit codes](docs/reference/exit-codes.md)
+## 信任边界
 
-## 边界和诚实说明
+- Live browser cookie 默认只留在进程内存；只有用户明确执行 `auth import` 或 `browser cookies` 时才持久化。
+- Browser automation 使用 `~/.unicli/` 下的 Uni-CLI-owned profile。Chrome 136+ 不支持在默认 user-data directory 上开启 remote debugging。
+- `unicli browser doctor --json` 返回当前可用的 delivery path 和精确修复命令，不会启动 browser provider。
+- Permission rules 会在 browser、file、clipboard、subprocess 或 desktop side effects 前授权。显式错误的 policy 会 fail closed。
+- Visual route 需要真实配置的 backend。Provider 缺失时返回 structured error。
+- Invocation diagnostics 排除参数、内容、URL、credentials 和 raw errors；`UNICLI_NO_LOG=1` 可以关闭新增事件。
 
-- 需要登录的命令可以把本地浏览器/CDP Cookie 读入本次进程内存，默认不落盘。
-  `unicli auth import` 和 `unicli browser cookies <domain> --profile-id <id>`
-  是显式 plaintext-JSON 持久化路径：`~/.unicli/cookies/<site>.json`
-  （POSIX 目录 `0700`、文件 `0600`）。
-- Browser adapter 共用一个 owner-only Browser Runtime Broker。默认 managed
-  provider 隐藏运行，并使用 Uni-CLI 自有 automation profile；Agent session 分别
-  持有 target，也可以显式共享登录/存储 partition。控制现有 Chrome 需要先运行
-  `unicli browser native-host install --browser chrome`，再用
-  `unicli browser native-host extension-path` 定位 unpacked extension，并显式选择
-  background 或 foreground visibility。空 profile 必须显式使用
-  `unicli browser start --ephemeral` 或 `UNICLI_BROWSER_EPHEMERAL=1`。
-  Chrome 136+ 仍然禁止 default user-data-dir 上的 remote debugging；
-  `RemoteDebuggingAllowed` 只能整体禁用本地 CDP，不能让 default profile CDP
-  重新变成可支持路径。
-- `unicli browser doctor --json` 会报告 `default_path`、`profile_source`、
-  `chrome_remote_debugging` 和每个 check 的 `next_step`；安全本地修复命令是
-  `unicli browser doctor --repair`，不会把 CDP 指向用户真实默认 Chrome profile。
-- Permission profile 是用户选择的运行时策略。默认是 `open`；更严格的
-  `confirm` 和 `locked` profile 会要求 `--yes` 或 `UNICLI_APPROVE=1`。
-  `--yes` 加 `--remember-approval` 会把同一条命令的 capability 和资源 scope
-  记到 `~/.unicli/approvals.jsonl`。资源 scope 来自稳定 metadata，比如域名、
-  账号面、应用、进程族和路径参数槽。用 `unicli approvals list`、`revoke`、
-  `clear` 查看或移除已记住的 scope。文件只存 scope metadata，原始运行参数留在审批记忆之外。
-- 本地 deny 规则放在 `~/.unicli/permission-rules.json`，也可以用
-  `UNICLI_PERMISSION_RULES_PATH` 指定。规则按站点、命令、effect、capability
-  维度和资源 metadata 匹配，优先级高于 `--yes` 和已记住的审批。运行时还会检查
-  fetch 域名、浏览器跳转目标、下载和输出路径、子进程可执行文件，命中后在请求、写入或
-  启动进程之前停下。
-- Run recording 是显式启用能力。需要可审查证据时使用 `--record` 或
-  `UNICLI_RECORD_RUN=1`，追加写入 `~/.unicli/runs`。
-- Visual 路由必须配置真实 backend。声明了但不可用的 provider 会失败关闭，并返回结构化错误。
-- 用户 adapter 和修复放在 `~/.unicli/adapters/`；包内 adapter 是基线。
-- 如果网站阻止自动化或私有 API 变了，Uni-CLI 会返回清楚的失败 envelope。
+完整行为和存储路径见 [信任、认证和边界](docs/zh/guide/trust.md)。
 
 ## 开发
 
@@ -516,13 +252,14 @@ columns: [title, url]
 npm install
 npm run typecheck
 npm run lint
-npm run verify
+npm test
+npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 ```
+
+需要 Node.js 22.19 或更高版本。Adapter 和 engine 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+<p align="center"><sub>v1.0.1 — Artemis · Glover</sub></p>
 
 ## License
 
-[Apache-2.0](./LICENSE)
-
-<p align="center">
-  <sub>v1.0.1 — Artemis · Glover</sub>
-</p>
+Apache-2.0

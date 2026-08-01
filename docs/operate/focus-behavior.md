@@ -28,11 +28,11 @@ column remain within that provider's target, permission, and error boundary.
 | `compute scroll`     | AX scroll action                                                                    | UIA Scroll, then provider-owned wheel input          | AT-SPI Component scroll, then provider-owned wheel input     | Attached renderer wheel event | Foreground wheel event       |
 | `compute screenshot` | Window/screen capture; Screen Recording may be required                             | Owning HWND bitmap or bounded crop                   | X11 window or Wayland bounded capture                        | Attached renderer capture     | Visual-provider capture      |
 
-Source implementations: [desktop-ax](../../src/transport/adapters/desktop-ax.ts),
-[desktop-uia](../../crates/unicli-uia/src),
-[desktop-atspi](../../crates/unicli-atspi/src),
-[cdp-browser](../../src/transport/adapters/cdp-browser.ts), and
-[route planner](../../src/transport/routing.ts).
+Source implementations: [desktop-ax](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/adapters/desktop-ax.ts),
+[desktop-uia](https://github.com/olo-dot-io/Uni-CLI/tree/main/crates/unicli-uia/src),
+[desktop-atspi](https://github.com/olo-dot-io/Uni-CLI/tree/main/crates/unicli-atspi/src),
+[cdp-browser](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/adapters/cdp-browser.ts), and
+[route planner](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/routing.ts).
 
 ## Operational Notes
 

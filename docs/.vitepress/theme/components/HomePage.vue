@@ -1,286 +1,299 @@
 <!--
 @owner docs/.vitepress/theme/components/HomePage.vue
-@does Render the bilingual product story, first command, capability loop, and documentation entry points.
+@does Render the bilingual public landing page and task-directed substrate map.
 @needs docs/release-info.json, docs/site-index.json, stats.json, VitePress locale/base data, browser Clipboard API
 @feeds English and Chinese documentation homepages
 @breaks Stale product claims or generated counts misrepresent the public Agent-Computer Interface surface.
-@invariants English and Chinese copy describe the same category, runtime loop, and honesty boundary.
+@invariants English and Chinese copy describe the same operation contract and routing order.
 @side-effects Copies the first-command block on explicit user action and updates local reactive state.
 @perf O(1) over static copy and generated scalar counts per render.
 @concurrency Browser-main-thread Vue reactivity; clipboard completion may resolve asynchronously.
-@test none; npm run docs:build verifies the compiled public surface
+@test npm run docs:build verifies the compiled public surface
 @stability stable
 @since 2026-04-28
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useData, withBase } from "vitepress";
+import homeOperation from "../../../home-operation.json";
 import releaseInfo from "../../../release-info.json";
 import siteIndex from "../../../site-index.json";
 import stats from "../../../../stats.json";
-import CommandLifecycleIsland from "./CommandLifecycleIsland.vue";
+import OperationReceipt from "./OperationReceipt.vue";
 
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
-const copiedCommand = ref(false);
+const copyState = ref<"idle" | "copied" | "failed">("idle");
 const firstCommand = computed(() =>
   isZh.value
     ? `npm install -g @zenalexa/unicli
-unicli search "查 Reddit 上的 AI agent 讨论"
-unicli agents recommend codex
-unicli mcp serve --transport streamable --port 19826`
+unicli search "${homeOperation.intent.zh}"
+${homeOperation.shell}`
     : `npm install -g @zenalexa/unicli
-unicli search "find AI agent discussions on reddit"
-unicli agents recommend codex
-unicli mcp serve --transport streamable --port 19826`,
+unicli search "${homeOperation.intent.en.toLowerCase()}"
+${homeOperation.shell}`,
 );
 
 const copy = computed(() =>
   isZh.value
     ? {
-        label: "面向真实软件的开源 Agent-Computer Interface 运行时",
-        lead: "找到操作。跨过边界。让结果可检查。",
-        body: `Uni-CLI 在 Agent 与 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、文件、MCP 服务及系统能力之间提供一个可搜索边界。它按意图排序可执行 operation，通过选中 operation 已声明的 substrate 按策略运行，返回稳定的成功/错误 envelope，并让失败可诊断、可修复。`,
-        primary: "30 秒跑起来",
-        secondary: "看操作目录",
-        badgesTitle: "运行时合同",
-        badges: [
-          "Intent discovery",
-          "Declared substrates",
-          "Policy-aware",
-          "Structured envelopes",
-          "MCP + ACP",
-          "Browser + Desktop",
-          "Repairable paths",
-        ],
-        commandTitle: "第一条命令",
+        eyebrow: "OPEN AGENT-COMPUTER INTERFACE",
+        titleA: "一个接口。",
+        titleB: "跨越多种软件边界。",
+        lead: "发现 operation，选择一条明确 substrate，拿回可检查的结果。",
+        body: `Uni-CLI 把 ${siteIndex.total_sites} 个网站和工具、登录态浏览器、桌面应用、本地命令、文件与 Agent 协议组织成一个 operation-first runtime。`,
+        primary: "开始使用",
+        secondary: "浏览 operation",
+        commandTitle: "FIRST ROUTE",
         copy: "复制",
         copied: "已复制",
-        thesisTitle: "一个 Agent 接口，下面接住真实软件的每一种有效边界。",
-        thesis:
-          "模型只负责推理还不够。Agent 还需要一套为有限上下文设计的 interface：知道什么能行动、每条 operation 会走哪种 substrate、动作会影响什么、调用返回了什么，以及失败后怎样继续。Uni-CLI 不接管模型和编排；它把 API、文件、CLI、browser、desktop、protocol 和 visual 组织成一个可发现、可治理、可观察、可修复的运行时。",
-        principles: [
+        copyFailed: "请手动选择",
+        routeLabel: "ROUTE BY TASK",
+        routeTitle: "任务决定能力选择。",
+        routeIntro:
+          "Operation 目录负责发现和合同；执行再选择结构最强、范围最小的 operator。每次只运行一个 provider，失败保留原始原因与修复入口。",
+        routes: [
           {
-            name: "发现",
-            text: "BM25 双语搜索只取当前任务相关的操作、参数、认证姿态、风险和样例。",
+            index: "01",
+            task: "公开数据或稳定服务接口",
+            substrate: "Structured API",
+            detail: "直接读取 typed response，保留字段、认证姿态和来源。",
           },
           {
-            name: "选择与治理",
-            text: "Agent 选择已声明 strategy/substrate 的 operation；执行前可检查 capability scope、effect、risk 和 approval。",
+            index: "02",
+            task: "文件、系统状态、本地工具",
+            substrate: "Local runtime",
+            detail: "直接走操作系统或进程边界，避免引入浏览器状态。",
           },
           {
-            name: "行动与观察",
-            text: "Adapter kernel 调用选中的 operation；AgentEnvelope 区分成功与错误，支持的 operation 再附加 artifact、recording 或 post-state evidence。",
+            index: "03",
+            task: "需要登录态或私有网络合同的网页",
+            substrate: "Browser protocol",
+            detail: "复用明确的 browser profile、Cookie 或 network contract。",
           },
           {
-            name: "修复",
-            text: "错误指出 source path、失败边界、retryable、suggestion 和 alternatives，再验证本地修复或换路。",
+            index: "04",
+            task: "只有页面界面的网页流程",
+            substrate: "Semantic browser",
+            detail: "使用 DOM、CDP 与页面语义；目标和会话保持显式。",
+          },
+          {
+            index: "05",
+            task: "原生桌面应用",
+            substrate: "Accessibility",
+            detail: "优先 AX、UIA、AT-SPI 等结构化控件树。",
+          },
+          {
+            index: "06",
+            task: "像素级或无结构界面",
+            substrate: "Visual computer use",
+            detail: "仅在缺少更强接口时使用坐标与视觉 observation。",
           },
         ],
-        questionsTitle: "为什么需要它",
-        questions: [
-          {
-            q: "Uni-CLI 到底是什么类目？",
-            a: "Agent-Computer Interface 运行时：Agent 与真实软件之间的可执行边界。CLI 是原生完整进程入口，MCP 投影 adapter operation；browser、desktop 和 visual 是行动 substrate。",
-          },
-          {
-            q: "为什么不是直接让 Agent 操作网页？",
-            a: "浏览器只是一个边界。Catalog 同时容纳 API、文件、CLI、页面语义、CDP、桌面 AX 和 visual operation；当前由 Agent 选择 operation，而不是由 runtime 自动仲裁所有路径。",
-          },
-          {
-            q: "“结果可检查”具体是什么意思？",
-            a: "所有渲染调用都用稳定 envelope 区分成功与错误；读取、文件写入、browser 变更和 desktop action 只有在对应 operation 明确支持时才附加来源、post-state、artifact 或 recording。Dispatch 不能自动证明目标完成。",
-          },
-          {
-            q: "和 MCP 是什么关系？",
-            a: "MCP 是 discovery/exposure substrate 之一。Compact、deferred 与 expanded profile 投影 adapter operation；固定 core command 当前以 native CLI 为规范入口，逐命令 parity 在路线图中。",
-          },
-        ],
-        workflowTitle: "一条意图怎样变成可检查的结果",
-        coverageTitle: "当前能力",
-        coverageText:
-          "这些数字来自当前仓库生成物：operation、adapter、pipeline step、测试和 substrate 都在本地构建流程里计数。",
-        stats: [
-          { value: siteIndex.total_sites, label: "站点和工具" },
-          { value: siteIndex.total_commands, label: "操作" },
-          { value: String(stats.pipeline_step_count), label: "pipeline step" },
-          { value: String(stats.test_count), label: "测试" },
-        ],
-        surfacesTitle: "它现在能控制这些 substrate",
+        workflowLabel: "OPERATION RECEIPT",
+        workflowTitle: "从意图到结果，路径始终可见。",
+        surfaceLabel: "CURRENT SURFACE",
+        surfaceTitle: "一套合同，跨越真实软件。",
         surfaces: [
           {
-            name: "网页和社区",
-            text: "公开 API、Cookie 会话、RSS、搜索、下载、发布，以及常用中文平台。",
+            name: "Catalog",
+            value: String(siteIndex.total_sites),
+            text: "网站、桌面应用、本地工具和协议的可搜索 operation 合同。",
           },
           {
-            name: "浏览器动作",
-            text: "CDP 导航、点击、输入、拦截、截图、快照和动作前后证据。",
+            name: "Browser",
+            value: "CDP",
+            text: "导航、语义动作、网络、快照、截图与执行后证据。",
           },
           {
-            name: "桌面和本机",
-            text: "macOS AX、后台输入、Office、设计工具、音视频工具、容器、本地 subprocess。",
+            name: "Desktop",
+            value: "AX",
+            text: "桌面控件、本机系统、设计工具、Office 与媒体软件。",
           },
           {
-            name: "Agent 协议",
-            text: "MCP stdio / Streamable（兼容旧版 `sse` 别名）、ACP、agent matrix、skills export 和配置生成。",
+            name: "Protocols",
+            value: "MCP",
+            text: "原生 CLI、MCP stdio / Streamable、ACP、skills 与配置生成。",
           },
         ],
-        entriesTitle: "从这里进文档",
+        stats: [
+          { value: siteIndex.total_commands, label: "registered operations" },
+          { value: stats.adapter_count_total, label: "adapters" },
+          { value: stats.pipeline_step_count, label: "pipeline actions" },
+          { value: stats.test_count, label: "tests" },
+        ],
+        entriesLabel: "START HERE",
+        entriesTitle: "选一个入口，开始执行。",
         entries: [
           {
+            number: "01",
             title: "安装运行",
-            text: "装好 CLI，跑第一条搜索，理解输出格式和退出码。",
+            text: "从第一条 intent search 到结构化结果。",
             href: "/zh/guide/getting-started",
           },
           {
-            title: "操作目录",
-            text: "按站点、substrate、认证方式和样例找操作。",
+            number: "02",
+            title: "Operation 目录",
+            text: "按站点、认证和 substrate 查找能力。",
             href: "/zh/reference/sites",
           },
           {
-            title: "修 adapter",
-            text: "看 YAML、pipeline step、自修复流程和验证方式。",
-            href: "/zh/guide/adapters",
-          },
-          {
-            title: "接 Agent",
-            text: "原生 CLI、MCP、ACP、agent config 和 skills export。",
+            number: "03",
+            title: "接入 Agent",
+            text: "配置 CLI、MCP、ACP 和 agent skills。",
             href: "/zh/guide/integrations",
           },
+          {
+            number: "04",
+            title: "修复 Adapter",
+            text: "读取失败边界，修改 owned source，再验证。",
+            href: "/zh/guide/self-repair",
+          },
         ],
-        indexText: "Agent 可读索引",
+        indexText: "AGENT INDEX",
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       }
     : {
-        label: "The open Agent-Computer Interface runtime for real software",
-        lead: "Find the operation. Cross the boundary. Keep the outcome inspectable.",
-        body: `Uni-CLI provides one searchable boundary between agents and ${siteIndex.total_sites} websites and tools, logged-in browsers, desktop apps, local commands, files, MCP servers, and system capabilities. It ranks executable operations by intent, runs the selected operation through its declared substrate under policy, returns a stable success/error envelope, and keeps failure diagnosable and repairable.`,
-        primary: "Start in 30 seconds",
+        eyebrow: "OPEN AGENT-COMPUTER INTERFACE",
+        titleA: "One interface.",
+        titleB: "Across real software.",
+        lead: "Discover the operation. Select one declared substrate. Keep the outcome inspectable.",
+        body: `Uni-CLI organizes ${siteIndex.total_sites} sites and tools, logged-in browsers, desktop apps, local commands, files, and agent protocols into one operation-first runtime.`,
+        primary: "Get started",
         secondary: "Browse operations",
-        badgesTitle: "Runtime contract",
-        badges: [
-          "Intent discovery",
-          "Declared substrates",
-          "Policy-aware",
-          "Structured envelopes",
-          "MCP + ACP",
-          "Browser + Desktop",
-          "Repairable paths",
-        ],
-        commandTitle: "First command",
+        commandTitle: "FIRST ROUTE",
         copy: "Copy",
         copied: "Copied",
-        thesisTitle:
-          "One agent interface. Every useful software boundary underneath.",
-        thesis:
-          "A model that can reason still needs an interface designed for bounded context: what can act, which substrate an operation declares, what the action can affect, what the call returned, and how to continue after failure. Uni-CLI does not replace the model or orchestrator. It organizes APIs, files, CLIs, browsers, desktops, protocols, and visual control into one discoverable, governed, observable, repairable runtime.",
-        principles: [
+        copyFailed: "Select manually",
+        routeLabel: "ROUTE BY TASK",
+        routeTitle: "The task chooses the capability.",
+        routeIntro:
+          "The operation catalog handles discovery and contracts. Execution then selects the strongest operator with the smallest effective scope. One provider runs; failures preserve their cause and repair route.",
+        routes: [
           {
-            name: "Discover",
-            text: "Bilingual BM25 search retrieves only the operations, arguments, auth posture, risk, and examples relevant to the task.",
+            index: "01",
+            task: "Public data or stable service interface",
+            substrate: "Structured API",
+            detail:
+              "Read the typed response directly while preserving fields, auth posture, and source identity.",
           },
           {
-            name: "Select and govern",
-            text: "The agent selects an operation with a declared strategy and substrate; capability scope, effect, risk, and approval remain inspectable before execution.",
+            index: "02",
+            task: "Files, system state, local tools",
+            substrate: "Local runtime",
+            detail:
+              "Cross the operating-system or process boundary directly without browser state.",
           },
           {
-            name: "Act and observe",
-            text: "The adapter kernel invokes the selected operation; AgentEnvelope distinguishes success from error, and supporting operations add artifacts, recordings, or post-state evidence.",
+            index: "03",
+            task: "Authenticated or private web contract",
+            substrate: "Browser protocol",
+            detail:
+              "Reuse an explicit browser profile, cookie session, or network contract.",
           },
           {
-            name: "Repair",
-            text: "Errors name the source path, failed boundary, retryability, suggestion, and alternatives, then verify a local repair or reroute.",
+            index: "04",
+            task: "Page-only web flow",
+            substrate: "Semantic browser",
+            detail:
+              "Use DOM and CDP semantics with an explicit target and session contract.",
+          },
+          {
+            index: "05",
+            task: "Native desktop application",
+            substrate: "Accessibility",
+            detail:
+              "Prefer structured AX, UIA, or AT-SPI control trees when available.",
+          },
+          {
+            index: "06",
+            task: "Pixel-only or unstructured interface",
+            substrate: "Visual computer use",
+            detail:
+              "Use coordinates and visual observation only when no stronger interface exists.",
           },
         ],
-        questionsTitle: "Why it matters",
-        questions: [
-          {
-            q: "What category is Uni-CLI?",
-            a: "An Agent-Computer Interface runtime: the executable boundary between an agent and real software. CLI is the native full process entry point; MCP projects adapter operations, while browser, desktop, and visual control are action substrates.",
-          },
-          {
-            q: "Why not just drive the browser directly?",
-            a: "The browser is one boundary. The catalog can hold API, file, CLI, page-semantic, CDP, desktop-accessibility, and visual operations. Today the agent selects the operation; the runtime does not arbitrate every alternative automatically.",
-          },
-          {
-            q: "What does an inspectable outcome mean?",
-            a: "Every rendered call distinguishes success from error in a stable envelope. Reads, file writes, browser mutations, and desktop actions add provenance, post-state, artifacts, or recordings only when that operation supports them. Dispatch cannot prove objective completion.",
-          },
-          {
-            q: "How does MCP fit?",
-            a: "MCP is one discovery and exposure substrate. Compact, deferred, and expanded profiles project adapter operations. Fixed core commands are currently canonical on native CLI; command-level parity is roadmap work.",
-          },
-        ],
-        workflowTitle: "How intent becomes an inspectable result",
-        coverageTitle: "Current surface",
-        coverageText:
-          "These numbers come from the current generated repo artifacts: operations, adapters, pipeline steps, tests, and substrates are counted by the build.",
-        stats: [
-          { value: siteIndex.total_sites, label: "sites and tools" },
-          { value: siteIndex.total_commands, label: "operations" },
-          { value: String(stats.pipeline_step_count), label: "pipeline steps" },
-          { value: String(stats.test_count), label: "tests" },
-        ],
-        surfacesTitle: "What it can control today",
+        workflowLabel: "OPERATION RECEIPT",
+        workflowTitle: "Intent becomes an outcome without hiding the route.",
+        surfaceLabel: "CURRENT SURFACE",
+        surfaceTitle: "One contract across real software.",
         surfaces: [
           {
-            name: "Web and communities",
-            text: "Public APIs, cookie sessions, RSS, search, downloads, publishing, and Chinese platforms.",
+            name: "Catalog",
+            value: String(siteIndex.total_sites),
+            text: "Searchable operation contracts for sites, desktop apps, local tools, and protocols.",
           },
           {
-            name: "Browser actions",
-            text: "CDP navigation, clicks, typing, intercepts, screenshots, snapshots, and before/after evidence.",
+            name: "Browser",
+            value: "CDP",
+            text: "Navigation, semantic action, network, snapshots, screenshots, and post-action evidence.",
           },
           {
-            name: "Desktop and local",
-            text: "macOS AX, background input, Office, design tools, media tools, containers, and local subprocesses.",
+            name: "Desktop",
+            value: "AX",
+            text: "Native controls, system services, design tools, Office, and media software.",
           },
           {
-            name: "Agent protocols",
-            text: "MCP stdio / Streamable (legacy `sse` alias), ACP, agent matrix, skills export, and config generation.",
+            name: "Protocols",
+            value: "MCP",
+            text: "Native CLI, MCP stdio and Streamable HTTP, ACP, skills, and generated configs.",
           },
         ],
-        entriesTitle: "Start here",
+        stats: [
+          { value: siteIndex.total_commands, label: "registered operations" },
+          { value: stats.adapter_count_total, label: "adapters" },
+          { value: stats.pipeline_step_count, label: "pipeline actions" },
+          { value: stats.test_count, label: "tests" },
+        ],
+        entriesLabel: "START HERE",
+        entriesTitle: "Choose an entrypoint. Start operating.",
         entries: [
           {
+            number: "01",
             title: "Install",
-            text: "Install the CLI, run the first search, and learn output formats plus exit codes.",
+            text: "Go from the first intent search to a structured result.",
             href: "/guide/getting-started",
           },
           {
+            number: "02",
             title: "Operation catalog",
-            text: "Find operations by site, substrate, auth mode, and examples.",
+            text: "Find capabilities by site, auth posture, and substrate.",
             href: "/reference/sites",
           },
           {
-            title: "Repair adapters",
-            text: "Read YAML, pipeline steps, the repair flow, and verification commands.",
-            href: "/guide/adapters",
-          },
-          {
+            number: "03",
             title: "Connect agents",
-            text: "Native CLI, MCP, ACP, agent configs, and skills export.",
+            text: "Configure the CLI, MCP, ACP, and agent skills.",
             href: "/guide/integrations",
           },
+          {
+            number: "04",
+            title: "Repair adapters",
+            text: "Read the failed boundary, edit owned source, then verify.",
+            href: "/guide/self-repair",
+          },
         ],
-        indexText: "Agent-readable index",
+        indexText: "AGENT INDEX",
         version: `v${releaseInfo.version} · ${releaseInfo.codename}`,
       },
 );
 
 async function copyFirstCommand() {
   if (!navigator.clipboard) {
+    copyState.value = "failed";
     return;
   }
 
   try {
     await navigator.clipboard.writeText(firstCommand.value);
   } catch {
+    copyState.value = "failed";
     return;
   }
-  copiedCommand.value = true;
+
+  copyState.value = "copied";
   window.setTimeout(() => {
-    copiedCommand.value = false;
+    copyState.value = "idle";
   }, 1600);
 }
 </script>
@@ -288,120 +301,133 @@ async function copyFirstCommand() {
 <template>
   <main class="uni-docs-home">
     <section class="uni-landing-hero" aria-labelledby="uni-home-title">
-      <div class="uni-hero-label">{{ copy.label }}</div>
-      <h1 id="uni-home-title">Uni-CLI</h1>
-      <p class="uni-hero-lead">{{ copy.lead }}</p>
-      <p class="uni-hero-body">{{ copy.body }}</p>
+      <img
+        class="uni-hero-art"
+        :src="withBase('/operation-field.webp')"
+        alt=""
+        width="1672"
+        height="941"
+        fetchpriority="high"
+      />
+      <div class="uni-hero-shade" aria-hidden="true" />
 
-      <div class="uni-hero-badges" :aria-label="copy.badgesTitle">
-        <span v-for="badge in copy.badges" :key="badge">{{ badge }}</span>
-      </div>
+      <div class="uni-hero-copy">
+        <div class="uni-hero-mark">
+          <span aria-hidden="true" />
+          {{ copy.eyebrow }}
+          <b>{{ copy.version }}</b>
+        </div>
+        <h1 id="uni-home-title">
+          <span>{{ copy.titleA }}</span>
+          <span>{{ copy.titleB }}</span>
+        </h1>
+        <p class="uni-hero-lead">{{ copy.lead }}</p>
+        <p class="uni-hero-body">{{ copy.body }}</p>
 
-      <div class="uni-hero-actions">
-        <a
-          class="uni-link-primary"
-          :href="
-            withBase(
-              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
-            )
-          "
-        >
-          {{ copy.primary }}
-        </a>
-        <a
-          class="uni-link-secondary"
-          :href="withBase(isZh ? '/zh/reference/sites' : '/reference/sites')"
-        >
-          {{ copy.secondary }}
-        </a>
+        <div class="uni-hero-actions">
+          <a
+            class="uni-link-primary"
+            :href="
+              withBase(
+                isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+              )
+            "
+          >
+            {{ copy.primary }} <span aria-hidden="true">↗</span>
+          </a>
+          <a
+            class="uni-link-secondary"
+            :href="withBase(isZh ? '/zh/reference/sites' : '/reference/sites')"
+          >
+            {{ copy.secondary }} <span aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
 
       <div class="uni-command-strip" :aria-label="copy.commandTitle">
-        <div>
+        <div class="uni-command-meta">
           <span>{{ copy.commandTitle }}</span>
-          <span>{{ copy.version }}</span>
+          <span>intent → operation → receipt</span>
           <button
             type="button"
             class="uni-copy-button"
             @click="copyFirstCommand"
           >
-            {{ copiedCommand ? copy.copied : copy.copy }}
+            {{
+              copyState === "copied"
+                ? copy.copied
+                : copyState === "failed"
+                  ? copy.copyFailed
+                  : copy.copy
+            }}
           </button>
+          <span class="uni-sr-only" role="status" aria-live="polite">
+            {{
+              copyState === "idle"
+                ? ""
+                : copyState === "copied"
+                  ? copy.copied
+                  : copy.copyFailed
+            }}
+          </span>
         </div>
         <pre><code>{{ firstCommand }}</code></pre>
       </div>
+
+      <dl class="uni-hero-stats">
+        <div v-for="stat in copy.stats" :key="stat.label">
+          <dt>{{ stat.label }}</dt>
+          <dd>{{ stat.value }}</dd>
+        </div>
+      </dl>
     </section>
 
     <section
-      class="uni-home-section uni-thesis"
-      aria-labelledby="uni-thesis-title"
+      class="uni-home-section uni-routing"
+      aria-labelledby="uni-routing-title"
     >
-      <p class="uni-section-label">{{ isZh ? "定位" : "Positioning" }}</p>
-      <h2 id="uni-thesis-title">{{ copy.thesisTitle }}</h2>
+      <header class="uni-section-head">
+        <p class="uni-section-label">{{ copy.routeLabel }}</p>
+        <h2 id="uni-routing-title">{{ copy.routeTitle }}</h2>
+        <p>{{ copy.routeIntro }}</p>
+      </header>
 
-      <div class="uni-section-body">
-        <p>{{ copy.thesis }}</p>
-        <div class="uni-principle-list">
-          <div
-            v-for="principle in copy.principles"
-            :key="principle.name"
-            class="uni-principle"
-          >
-            <strong>{{ principle.name }}</strong>
-            <span>{{ principle.text }}</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="uni-home-section uni-qa" aria-labelledby="uni-qa-title">
-      <p class="uni-section-label">{{ isZh ? "问答" : "Questions" }}</p>
-      <h2 id="uni-qa-title">{{ copy.questionsTitle }}</h2>
-      <div class="uni-section-body uni-qa-list">
-        <article v-for="item in copy.questions" :key="item.q">
-          <h3>{{ item.q }}</h3>
-          <p>{{ item.a }}</p>
-        </article>
-      </div>
+      <ol class="uni-route-list">
+        <li v-for="route in copy.routes" :key="route.index">
+          <span class="uni-route-index">{{ route.index }}</span>
+          <strong>{{ route.task }}</strong>
+          <code>{{ route.substrate }}</code>
+          <p>{{ route.detail }}</p>
+        </li>
+      </ol>
     </section>
 
     <section
       class="uni-home-section uni-workflow"
       aria-labelledby="uni-workflow-title"
     >
-      <p class="uni-section-label">{{ isZh ? "工作流" : "Workflow" }}</p>
-      <h2 id="uni-workflow-title">{{ copy.workflowTitle }}</h2>
-      <div class="uni-section-body">
-        <CommandLifecycleIsland />
-      </div>
-    </section>
-
-    <section
-      class="uni-home-section uni-coverage"
-      aria-labelledby="uni-coverage-title"
-    >
-      <p class="uni-section-label">{{ isZh ? "目录规模" : "Coverage" }}</p>
-      <h2 id="uni-coverage-title">{{ copy.coverageTitle }}</h2>
-      <div class="uni-section-body uni-coverage-body">
-        <p>{{ copy.coverageText }}</p>
-        <dl class="uni-stat-table">
-          <div v-for="stat in copy.stats" :key="stat.label">
-            <dt>{{ stat.label }}</dt>
-            <dd>{{ stat.value }}</dd>
-          </div>
-        </dl>
-      </div>
+      <header class="uni-section-head">
+        <p class="uni-section-label">{{ copy.workflowLabel }}</p>
+        <h2 id="uni-workflow-title">{{ copy.workflowTitle }}</h2>
+      </header>
+      <OperationReceipt />
     </section>
 
     <section
       class="uni-home-section uni-surfaces"
       aria-labelledby="uni-surfaces-title"
     >
-      <p class="uni-section-label">{{ isZh ? "Surface" : "Surfaces" }}</p>
-      <h2 id="uni-surfaces-title">{{ copy.surfacesTitle }}</h2>
-      <div class="uni-section-body uni-surface-list">
+      <header class="uni-section-head">
+        <p class="uni-section-label">{{ copy.surfaceLabel }}</p>
+        <h2 id="uni-surfaces-title">{{ copy.surfaceTitle }}</h2>
+      </header>
+
+      <div class="uni-surface-list">
         <article v-for="surface in copy.surfaces" :key="surface.name">
-          <h3>{{ surface.name }}</h3>
+          <div>
+            <span>{{ surface.name }}</span>
+            <strong>{{ surface.value }}</strong>
+          </div>
           <p>{{ surface.text }}</p>
         </article>
       </div>
@@ -411,20 +437,26 @@ async function copyFirstCommand() {
       class="uni-home-section uni-entry-list"
       aria-labelledby="uni-entry-title"
     >
-      <p class="uni-section-label">{{ isZh ? "入口" : "Entrypoints" }}</p>
-      <h2 id="uni-entry-title">{{ copy.entriesTitle }}</h2>
-      <ol class="uni-section-body">
+      <header class="uni-section-head">
+        <p class="uni-section-label">{{ copy.entriesLabel }}</p>
+        <h2 id="uni-entry-title">{{ copy.entriesTitle }}</h2>
+      </header>
+
+      <ol>
         <li v-for="entry in copy.entries" :key="entry.href">
+          <span>{{ entry.number }}</span>
           <a :href="withBase(entry.href)">{{ entry.title }}</a>
-          <span>{{ entry.text }}</span>
+          <p>{{ entry.text }}</p>
+          <b aria-hidden="true">↗</b>
         </li>
       </ol>
     </section>
 
-    <section class="uni-home-section uni-index-line">
+    <section class="uni-index-line">
       <span>{{ copy.indexText }}</span>
       <a :href="withBase('/llms.txt')">/llms.txt</a>
       <a :href="withBase('/llms-full.txt')">/llms-full.txt</a>
+      <a href="https://github.com/olo-dot-io/Uni-CLI">GitHub ↗</a>
     </section>
   </main>
 </template>

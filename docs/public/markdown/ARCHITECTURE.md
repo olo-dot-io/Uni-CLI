@@ -528,12 +528,12 @@ cold path never reclassifies effects from an incomplete pipeline projection.
 
 ## Public Front-End
 
-The docs front-end is not a marketing landing page. It is an operator console
-and learning surface for the Agent-Computer Interface loop.
+The docs front-end is a public product surface, operator console, and learning
+path for the Agent-Computer Interface loop.
 
 First viewport priorities:
 
-1. State the product: open Agent-Computer Interface runtime for real software.
+1. State the product: operation-first Agent-Computer Interface for real software.
 2. Show the smallest real command path.
 3. Expose catalog scale without making command count the main claim.
 4. Send users to install, catalog, repair, and agent integration routes.
@@ -541,8 +541,8 @@ First viewport priorities:
 
 The public UI should keep these components honest:
 
-- `HomePage.vue`: positioning, install path, capability overview.
-- `CommandLifecycleIsland.vue`: discover -> execute -> evidence -> repair loop.
+- `HomePage.vue`: positioning, first route, task-directed substrate map.
+- `OperationReceipt.vue`: intent, candidates, explicit selection, and receipt.
 - `ComputeCursorDemo.vue`: visual replay backed by a checked-in
   `visual_action` fixture, not a detached animation.
 - `SiteCatalog.vue` and `SiteStats.vue`: generated catalog inspection.

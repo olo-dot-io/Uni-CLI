@@ -55,28 +55,29 @@ ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 ## Historical Release Audit
 
 The public git/tag history starts in 2026 with the `0.200.x` line. The current
-release, `0.400.2 — Apollo · Duke`, is published on npm and GitHub from the
-exact annotated tag recorded below.
+release, `1.0.1 — Artemis · Glover`, is published on npm and GitHub from the
+exact annotated tag recorded below. It is the first public 1.x package: the
+immutable `v1.0.0` candidate tag remains as the record of a performance-gate
+failure that stopped before either publication endpoint.
 
 Release facts:
 
 - npm registry state after publication:
-  `@zenalexa/unicli@latest` is `0.400.2`;
-- annotated tag `v0.400.2` resolves to main commit
-  `785c3ef65c915a88ecd4d63f63d22f0c5f89f09b`;
-- tag workflow `29658936515` rebuilt both Windows sidecars, repeated the complete
+  `@zenalexa/unicli@latest` is `1.0.1`;
+- annotated tag `v1.0.1` resolves to main commit
+  `a317b32a33c14269043a17cc748216fcda73161e`;
+- tag workflow `30644287649` rebuilt both Windows sidecars, repeated the complete
   release gate, and published through npm Trusted Publishers without a fallback
   token;
 - npm records a SLSA v1 provenance attestation for the tagged workflow. The
-  published artifact has 4,110 files, SHA-1
-  `8f96798991e883acf98d350fc54a1ba2da8c00fc`, and integrity
-  `sha512-u0gM4CRwm18eaprAYdzZTX7qpVrQJJdfG5oRCG3Lo0wv8H+2w8g6LBPgtb3YRWvUZqAqpclyZBlvDM/oHqixdQ==`;
+  published artifact has 4,204 files, SHA-1
+  `9c958cc0a46f8b33c7a79b7212cf6448465a6a21`, and integrity
+  `sha512-uQyFJq3d/tIn915eF74lK2cxc6CXrHlIOXzVM2ysLE0rdsq7gMpa3GEfr7xI30koWjtq33vvuUbFOR01cjHvBA==`;
 - the GitHub Release contains x64 and arm64 Windows process-owner executables
   that are byte-identical to the corresponding files in the npm tarball;
-- fresh registry installs at both local global prefixes execute as `0.400.2`;
-- the complete repository gate passed 3,293 unit tests (4 skipped), 94
-  integration tests (16 platform-skipped), 6,523 adapter tests, 5 performance
-  tests (1 skipped), and 42 targeted coverage behaviors at 100%; the production
+- the complete repository gate passed 3,523 unit tests (3 skipped), 94
+  integration tests (16 platform-skipped), 6,461 adapter tests, 9 performance
+  tests (1 skipped), and 44 targeted coverage behaviors at 100%; the production
   audit found zero vulnerabilities.
 
 | Release line | Historical role                                                                                                 | Audit lesson                                                                                                        |
@@ -94,6 +95,8 @@ Release facts:
 | `0.400.0`    | Shared browser/computer runtime plus direct generic Agent browser control, search, and foreground presence.     | Runtime reuse is safe only with explicit target ownership, bounded perception, and no-focus truth.                  |
 | `0.400.1`    | Domain-neutral federated retrieval plus a role-aware AI infrastructure intelligence overlay.                    | Breadth stays maintainable only when source execution, evidence contracts, and domain attribution remain separate.  |
 | `0.400.2`    | Open Agent-Computer Interface framing plus exact retrieval, diagnostics, and target-bound compute execution.    | Broad control stays trustworthy only when routing, evidence, operation identity, and target ownership remain exact. |
+| `1.0.0`      | Unpublished stable-major candidate stopped by the shared-runner index-construction performance budget.          | An immutable failed tag preserves release evidence while the next version carries the measured correction.          |
+| `1.0.1`      | First public stable-major operation contract across CLI, MCP, browser, desktop, HTTP, app, and subprocess.      | Deterministic provider selection needs exact feasibility, effects, targets, evidence, recovery, and bounded costs.  |
 
 `0.400.0` is an epoch-scale minor release because it changes the runtime
 ownership and Agent-facing browser protocol surfaces while keeping the package
@@ -106,6 +109,10 @@ cross-platform broker-launch verification, and publication-truth gaps.
 `0.400.2` is a patch release because it preserves the package and envelope
 contracts while making retrieval relevance, cross-transport diagnostics, MCP
 routing boundaries, and compute target ownership exact.
+
+`1.0.1` is the first published stable-major release. It preserves the `1.0.0`
+operation contract and includes the bounded prepared-document cache and fused
+index construction required to pass the release performance budget.
 
 ## Changesets
 
@@ -164,7 +171,7 @@ RELEASE_CODENAME="Vostok · Gagarin" npm run release
 npm run release:check -- --strict-codename
 ```
 
-For the 0.400 line, the release label format is unchanged. The published
+For the 0.400 line, the release label format is unchanged. Its final published
 release label is `Apollo · Duke`.
 
 The 1.x line starts with `Artemis · Glover`. Version `1.0.0` establishes the
@@ -178,12 +185,11 @@ turn an unobserved npm or GitHub Release event into a publication claim. Only
 after both public endpoints are verified should metadata move to `published`:
 
 ```bash
-npx tsx scripts/release.ts --codename "Apollo · Duke" --status published
+npx tsx scripts/release.ts --codename "Artemis · Glover" --status published
 ```
 
-For `0.400.2`, that transition followed registry, provenance, Release asset,
-complete release-gate, production-only installation, and exact installed-version
-probes.
+For `1.0.1`, that transition followed registry, provenance, GitHub Release
+asset, complete release-gate, and exact public-version probes.
 
 ## Substantive Commits
 

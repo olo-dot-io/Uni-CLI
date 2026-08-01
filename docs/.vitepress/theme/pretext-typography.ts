@@ -15,13 +15,16 @@ type PreparedEntry = {
 };
 
 const typographySelector = [
-  ".VPHero .text",
-  ".VPHero .tagline",
-  ".VPFeature .title",
-  ".VPFeature .details",
-  ".uni-home-stats h2",
-  ".uni-home-stats p:not(.uni-eyebrow)",
-  ".uni-surface small",
+  ".uni-landing-hero h1",
+  ".uni-hero-lead",
+  ".uni-hero-body",
+  ".uni-section-head h2",
+  ".uni-section-head > p:last-child",
+  ".uni-route-list strong",
+  ".uni-route-list p",
+  ".uni-surface-list p",
+  ".uni-entry-list a",
+  ".uni-entry-list p",
   ".vp-doc h1",
   ".vp-doc h2",
   ".vp-doc h3",
@@ -34,17 +37,14 @@ const typographySelector = [
 ].join(",");
 
 const balanceSelector = [
-  ".VPHero .text",
-  ".VPHero .tagline",
-  ".uni-home-stats h2",
+  ".uni-section-head h2",
   ".vp-doc h1",
   ".vp-doc h2",
 ].join(",");
 
-const stabilizeSelector = [
-  ".site-command-list span",
-  ".VPFeature .details",
-].join(",");
+const stabilizeSelector = [".site-command-list span", ".uni-route-list p"].join(
+  ",",
+);
 
 const preparedCache = new WeakMap<Element, PreparedEntry>();
 let mutationObserver: MutationObserver | null = null;

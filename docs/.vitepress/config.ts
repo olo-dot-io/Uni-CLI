@@ -14,7 +14,6 @@
  */
 
 import { defineConfig } from "vitepress";
-import react from "@vitejs/plugin-react";
 import { readFileSync } from "node:fs";
 import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
@@ -46,7 +45,10 @@ const siteBase = configuredSiteBase
     : "/";
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
-const zhDescription = "面向真实软件的开源 Agent-Computer Interface 运行时。";
+const publicDescription =
+  "Operation-first Agent-Computer Interface for real software—discover one executable path across APIs, browsers, desktops, local tools, and MCP; inspect its result and repair drift.";
+const zhDescription =
+  "面向真实软件的 operation-first Agent-Computer Interface：发现一条可执行路径，跨越 API、浏览器、桌面、本地工具与 MCP，并检查结果、修复漂移。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -255,7 +257,7 @@ const softwareApplicationLdJson = {
   name: "Uni-CLI",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "macOS, Linux, Windows",
-  description: `Open Agent-Computer Interface runtime for real software. Gives agents one searchable, governed, evidence-returning, repairable boundary across ${siteStats.site_count} websites and tools, browsers, desktops, files, local CLIs, and protocols.`,
+  description: publicDescription,
   url: publicSiteUrl,
   downloadUrl: npmPackageUrl,
   softwareVersion: releaseInfo.version,
@@ -407,7 +409,7 @@ const howToLdJson = {
 export default defineConfig({
   title: "Uni-CLI",
   lang: localizedSiteMaps.root.lang,
-  description: "The open Agent-Computer Interface runtime for real software.",
+  description: publicDescription,
   base: siteBase,
   srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
   cleanUrls: true,
@@ -490,9 +492,6 @@ export default defineConfig({
 
     return head;
   },
-  vite: {
-    plugins: [react()],
-  },
   markdown: {
     math: true,
     config: (md) => {
@@ -505,36 +504,25 @@ export default defineConfig({
       { rel: "icon", type: "image/png", href: `${siteBase}favicon.png` },
     ],
     ["link", { rel: "manifest", href: `${siteBase}site.webmanifest` }],
-    ["meta", { name: "theme-color", content: "#11100f" }],
+    ["meta", { name: "theme-color", content: "#11130f" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: "Uni-CLI" }],
     [
       "meta",
       {
         property: "og:description",
-        content:
-          "The open Agent-Computer Interface runtime across sites, apps, browsers, local tools, files, and agent protocols.",
+        content: publicDescription,
       },
     ],
     ["meta", { property: "og:url", content: publicSiteUrl }],
-    ["meta", { property: "og:image", content: `${publicSiteUrl}icon-512.png` }],
+    [
+      "meta",
+      {
+        property: "og:image",
+        content: `${publicSiteUrl}operation-field-og.jpg`,
+      },
+    ],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],
-    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
-    [
-      "link",
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossorigin: "",
-      },
-    ],
-    [
-      "link",
-      {
-        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap",
-        rel: "stylesheet",
-      },
-    ],
   ],
   themeConfig: rootThemeConfig,
   locales: {
