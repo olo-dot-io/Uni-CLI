@@ -546,17 +546,17 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiWindowRoot
             Err(_) => continue,
         };
         let role = live_accessible_role(&accessible).await;
-        let name = accessible.name().await.unwrap_or_default();
+        let accessible_name = accessible.name().await.unwrap_or_default();
 
         if is_live_window_role(&role) {
             let object_ref = match atspi::ObjectRefOwned::try_from(&accessible) {
                 Ok(object_ref) => object_ref,
                 Err(_) => continue,
             };
-            let Some(name) = object_ref.name_as_str() else {
+            let Some(unique_name) = object_ref.name_as_str() else {
                 continue;
             };
-            let id = exact_atspi_window_id_from_parts(name, object_ref.path_as_str());
+            let id = exact_atspi_window_id_from_parts(unique_name, object_ref.path_as_str());
             let Some(bus_name) = object_ref.name().cloned() else {
                 continue;
             };
@@ -575,7 +575,7 @@ async fn collect_all_live_atspi_window_roots() -> Result<Vec<LiveAtspiWindowRoot
                     conn,
                     accessible,
                     role,
-                    name,
+                    accessible_name,
                     MAX_CHILD_DEPTH,
                     &mut budget,
                 )
