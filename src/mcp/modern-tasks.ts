@@ -782,7 +782,12 @@ export class ModernMcpTaskManager {
         "taskId" | "status" | "lastUpdatedAt" | "createdAt" | "ttlMs"
       >
     > = [];
-    const fileNames = await this.taskFileNames();
+    // A locally active task cannot be retained or removed. Skipping it also
+    // keeps the retention scanner from opening a record while its owner is
+    // atomically replacing that record on Windows.
+    const fileNames = (await this.taskFileNames()).filter(
+      (name) => !this.active.has(name.slice(0, -5)),
+    );
     for (
       let offset = 0;
       offset < fileNames.length;
@@ -977,7 +982,7 @@ export class ModernMcpTaskManager {
       } finally {
         await file.close();
       }
-      await rename(temporary, destination);
+      await renameAtomicJson(temporary, destination);
       await syncDirectory(parent);
     } catch (error) {
       try {
@@ -1177,6 +1182,36 @@ async function syncDirectory(directory: string): Promise<void> {
     await handle.sync();
   } finally {
     await handle.close();
+  }
+}
+
+async function renameAtomicJson(
+  source: string,
+  destination: string,
+): Promise<void> {
+  const maximumAttempts = process.platform === "win32" ? 9 : 1;
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await rename(source, destination);
+      return;
+    } catch (error) {
+      if (
+        attempt >= maximumAttempts ||
+        !(
+          isNodeError(error, "EACCES") ||
+          isNodeError(error, "EBUSY") ||
+          isNodeError(error, "EPERM")
+        )
+      ) {
+        throw error;
+      }
+      // Windows may temporarily deny replacement while another reader or an
+      // indexer holds the destination. Retry the same atomic commit; never
+      // unlink the durable prior record and expose a missing-file window.
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, attempt * 5);
+      });
+    }
   }
 }
 
