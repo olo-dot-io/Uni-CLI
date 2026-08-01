@@ -148,37 +148,42 @@ describe("opaque visual observations", () => {
 
   it("admits only one of two concurrent claimants", async () => {
     const store = await root();
-    const observation = await issueVisualObservation({
-      provider: "visual",
-      targetScope: "desktop",
-      data: {
-        base64: Buffer.from("concurrent-pixels").toString("base64"),
-        width: 100,
-        height: 100,
-      },
-      root: store,
-    });
-    const claim = () =>
-      claimVisualObservation({
-        ref: observation.ref,
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const observation = await issueVisualObservation({
         provider: "visual",
         targetScope: "desktop",
-        points: [{ x: 10, y: 10, label: "point" }],
+        data: {
+          base64: Buffer.from(`concurrent-pixels-${attempt}`).toString(
+            "base64",
+          ),
+          width: 100,
+          height: 100,
+        },
         root: store,
       });
-    const settled = await Promise.allSettled([claim(), claim()]);
-    expect(
-      settled.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1);
-    expect(
-      settled.filter((result) => result.status === "rejected"),
-    ).toHaveLength(1);
-    const winner = settled.find(
-      (
-        result,
-      ): result is PromiseFulfilledResult<Awaited<ReturnType<typeof claim>>> =>
-        result.status === "fulfilled",
-    );
-    await winner?.value.release();
+      const claim = () =>
+        claimVisualObservation({
+          ref: observation.ref,
+          provider: "visual",
+          targetScope: "desktop",
+          points: [{ x: 10, y: 10, label: "point" }],
+          root: store,
+        });
+      const settled = await Promise.allSettled([claim(), claim()]);
+      expect(
+        settled.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        settled.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      const winner = settled.find(
+        (
+          result,
+        ): result is PromiseFulfilledResult<
+          Awaited<ReturnType<typeof claim>>
+        > => result.status === "fulfilled",
+      );
+      await winner?.value.release();
+    }
   });
 });

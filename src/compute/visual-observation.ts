@@ -5,9 +5,9 @@
  * @feeds       compute screenshot and coordinate-action dispatch
  * @breaks      Trusting caller-supplied provider/scope metadata or reusing an observation can actuate the wrong desktop pixels.
  * @invariants  Refs contain only 256 bits of randomness; authoritative metadata stays in a mode-0600 record; claims are single-use, TTL-bound, provider/scope/session-bound, and image-bounds checked.
- * @side-effects Creates and atomically renames short-lived records below the host temp directory.
+ * @side-effects Creates and exclusively claims short-lived records below the host temp directory.
  * @perf        O(image bytes) once while issuing for SHA-256; claim and coordinate validation are O(number of points).
- * @concurrency An atomic rename admits at most one claimant across processes.
+ * @concurrency An O_EXCL claim record admits at most one claimant across processes and operating systems.
  * @test        tests/unit/compute-visual-observation.test.ts, tests/unit/compute-visual-observation-dispatch.test.ts
  * @stability   experimental
  * @since       2026-07-31
@@ -15,7 +15,7 @@
 
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -213,11 +213,25 @@ export async function claimVisualObservation(input: {
   }
   for (const point of input.points) validatePoint(record, point);
 
-  const claimedPath = `${path}.${randomBytes(12).toString("hex")}.claimed`;
+  const claimedPath = `${path}.claimed`;
+  let claimCreated = false;
   try {
-    await rename(path, claimedPath);
+    const handle = await open(
+      claimedPath,
+      constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+      0o600,
+    );
+    claimCreated = true;
+    try {
+      await handle.writeFile(`${id}\n`, "utf8");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    await unlink(path);
   } catch (error) {
-    if (isNotFound(error)) {
+    if (claimCreated) await unlink(claimedPath).catch(() => undefined);
+    if (isNotFound(error) || isAlreadyExists(error)) {
       throw new VisualObservationError(
         "not_found",
         "visual observation is unknown, expired, or already consumed",
@@ -507,6 +521,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNotFound(error: unknown): boolean {
   return isRecord(error) && error.code === "ENOENT";
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return isRecord(error) && error.code === "EEXIST";
 }
 
 function errorMessage(error: unknown): string {
