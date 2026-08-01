@@ -63,9 +63,11 @@ describe("CDP session persistence", () => {
       name.endsWith(".json"),
     );
     expect(records).toHaveLength(2);
-    expect(statSync(`${path}.d`).mode & 0o777).toBe(0o700);
-    for (const record of records) {
-      expect(statSync(join(`${path}.d`, record)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") {
+      expect(statSync(`${path}.d`).mode & 0o777).toBe(0o700);
+      for (const record of records) {
+        expect(statSync(join(`${path}.d`, record)).mode & 0o777).toBe(0o600);
+      }
     }
   });
 

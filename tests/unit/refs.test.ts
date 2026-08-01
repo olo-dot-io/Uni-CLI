@@ -335,8 +335,10 @@ describe("RefStore", () => {
       expect(
         loaded.resolveStable("desktop-ax:window-202:AXWindow[0]/AXButton[0]"),
       ).toBeDefined();
-      for (const record of readdirSync(`${file}.d`)) {
-        expect(statSync(join(`${file}.d`, record)).mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") {
+        for (const record of readdirSync(`${file}.d`)) {
+          expect(statSync(join(`${file}.d`, record)).mode & 0o777).toBe(0o600);
+        }
       }
     } finally {
       rmSync(dir, { recursive: true, force: true });
