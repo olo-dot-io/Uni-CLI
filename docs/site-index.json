@@ -1,7 +1,7 @@
 {
-  "generated": "2026-07-31T15:38:34.223Z",
+  "generated": "2026-08-02T12:06:59.087Z",
   "total_sites": 326,
-  "total_commands": 1829,
+  "total_commands": 1830,
   "sites": [
     {
       "site": "12306",
@@ -11721,10 +11721,15 @@
       "site": "openreview",
       "type": "web-api",
       "domain": "openreview.net",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
-      "command_count": 7,
+      "command_count": 8,
       "commands": [
+        {
+          "name": "conference",
+          "description": "Create or resume an archive of every public paper, review thread, rebuttal, decision, edit revision, PDF, supplementary file, and code/data link for an OpenReview venue",
+          "command": "unicli openreview conference"
+        },
         {
           "name": "search",
           "description": "Search OpenReview papers by free-text query",

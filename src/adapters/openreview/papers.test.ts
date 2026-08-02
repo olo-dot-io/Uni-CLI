@@ -20,7 +20,7 @@ import {
 } from "./papers.js";
 
 describe("openreview agent-facing paper commands", () => {
-  it("parses challenge envelopes and sends only the public clearance cookie", () => {
+  it("parses challenge envelopes and sends access/clearance without refresh", () => {
     const challenge =
       "https://openreview.net/challenge?redirect=https%3A%2F%2Fapi2.openreview.net%2Fnotes";
     expect(
@@ -39,7 +39,9 @@ describe("openreview agent-facing paper commands", () => {
         "openreview.accessToken": "private-access",
         "openreview.refreshToken": "stale-refresh",
       }),
-    ).toBe("openreview.clearanceToken=clear");
+    ).toBe(
+      "openreview.accessToken=private-access; openreview.clearanceToken=clear",
+    );
     expect(openReviewClearanceCookieHeader(null)).toBeUndefined();
   });
 

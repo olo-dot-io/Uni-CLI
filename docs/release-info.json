@@ -1,24 +1,24 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "codename": "Artemis · Glover",
-  "date": "2026-07-31",
-  "status": "published",
+  "date": "2026-08-02",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#101--2026-07-31--artemis--glover",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.2",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#102--2026-08-02--artemis--glover",
   "highlights": {
     "root": [
-      "Uni-CLI 1.0.1 establishes a stable operation-first Agent-Computer Interface: agents discover exact effects, feasibility, provider, substrate, target scope, evidence, and recovery before executing work.",
-      "Deterministic routing selects one declared provider for each operation. Structured provider failures remain visible and repairable instead of triggering a silent cross-provider cascade.",
-      "Computer use now shares one exact-target contract across AX, UIA, AT-SPI, CDP, and visual drivers, with visual refs, same-provider post-action capture, effect verdicts, bounded observation, and atomic artifacts.",
-      "Modern MCP tasks, subscriptions, principal quotas, request settlement, result budgets, compact command description, and bounded indexed search make the complete runtime directly usable by agents."
+      "Uni-CLI 1.0.2 adds a complete OpenReview venue archive for public submissions, reviews, rebuttals, decisions, revisions, PDFs, supplementary files, and external research links.",
+      "OpenReview access now uses browser-derived sessions, bounded token refresh, strict request pacing, rate-limit-aware retries, durable cursors, transactional files, and SHA-256 verification.",
+      "Venue groups and edit history drive conference discovery and lifecycle reconstruction across current API v2 and older API v1 records.",
+      "The patch also preserves AT-SPI accessible names, makes visual evidence claims atomically single-use, and hardens durable MCP task persistence on Windows."
     ],
     "zh": [
-      "Uni-CLI 1.0.1 建立稳定的 operation-first Agent-Computer Interface：Agent 在执行前即可发现精确的 effect、feasibility、provider、substrate、target scope、evidence 与 recovery。",
-      "确定性路由为每个 operation 选择一个明确 provider；provider 故障会保留结构化原因和修复路径，执行过程不会静默切换其他 substrate。",
-      "Computer use 通过统一的精确 target contract 覆盖 AX、UIA、AT-SPI、CDP 与 visual driver，并提供 visual ref、同 provider 执行后 capture、effect verdict、有界 observation 和原子 artifact。",
-      "现代 MCP task、subscription、principal quota、request settlement、result budget、紧凑 command description 与有界索引搜索让 Agent 能直接使用完整 runtime。"
+      "Uni-CLI 1.0.2 新增完整的 OpenReview venue 归档，覆盖公开投稿、审稿、rebuttal、决定、revision、PDF、补充材料和外部研究链接。",
+      "OpenReview 访问现在使用浏览器登录态、有界 token refresh、严格请求节奏、感知 rate limit 的重试、持久 cursor、事务文件和 SHA-256 校验。",
+      "Venue group 与 edit history 驱动会议发现和生命周期重建，同时覆盖当前 API v2 与旧 API v1 记录。",
+      "本次 patch 还保留 AT-SPI accessible name，使 visual evidence claim 具备原子单次消费，并强化 Windows 上的 MCP task 持久化。"
     ]
   }
 }

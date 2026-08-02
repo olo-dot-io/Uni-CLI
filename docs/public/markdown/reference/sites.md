@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 326 sites, 1829 commands.
+This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -321,7 +321,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1829 commands.
 | oeis | web-api | 2 | no | unicli oeis search<br>unicli oeis sequence |
 | openalex | web-api | 3 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
-| openreview | web-api | 7 | no | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
+| openreview | web-api | 8 | yes | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
 | osv | web-api | 2 | no | unicli osv query<br>unicli osv vulnerability |
 | pmlr | web-api | 3 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
 | powerchina | web-api | 1 | yes | unicli powerchina search |

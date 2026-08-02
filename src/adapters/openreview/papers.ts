@@ -17,12 +17,16 @@ import { execFile } from "node:child_process";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { formatCookieHeader, loadCookies } from "../../engine/cookies.js";
-import { httpDownload, sanitizeFilename } from "../../engine/download.js";
+import { sanitizeFilename } from "../../engine/download.js";
 import { cli, Strategy } from "../../registry.js";
+import {
+  OPENREVIEW_WEB_BASE,
+  OpenReviewHttpClient,
+  openReviewChallengeUrl,
+  openReviewCookieHeader,
+} from "./client.js";
 
-const OPENREVIEW_API = "https://api2.openreview.net";
-const OPENREVIEW_BASE = "https://openreview.net";
+const OPENREVIEW_BASE = OPENREVIEW_WEB_BASE;
 const FORUM_ID_RE = /^[A-Za-z0-9_-]{6,20}$/;
 const PROFILE_ID_RE = /^~(?=.*\p{L})[\p{L}\p{M}0-9._-]+\d+$/u;
 const execFileAsync = promisify(execFile);
@@ -62,11 +66,11 @@ interface NotesEnvelope {
   errors?: unknown;
 }
 
-interface OpenReviewChallengeEnvelope {
-  name?: unknown;
-  status?: unknown;
-  details?: { challengeUrl?: unknown };
+interface GroupsEnvelope {
+  groups?: OpenReviewNote[];
 }
+
+const openReviewApi = new OpenReviewHttpClient({ apiVersion: 2 });
 
 function stringField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -314,60 +318,10 @@ function openReviewNoteUrl(forum: string, noteId: string): string {
 export function openReviewClearanceCookieHeader(
   cookies: Record<string, string> | null,
 ): string | undefined {
-  const clearance = cookies?.["openreview.clearanceToken"];
-  return clearance
-    ? formatCookieHeader({ "openreview.clearanceToken": clearance })
-    : undefined;
+  return openReviewCookieHeader(cookies);
 }
 
-export function openReviewChallengeUrl(body: string): string | undefined {
-  try {
-    const parsed = JSON.parse(body) as OpenReviewChallengeEnvelope;
-    const url = parsed.details?.challengeUrl;
-    return parsed.name === "ChallengeRequiredError" &&
-      parsed.status === 403 &&
-      typeof url === "string" &&
-      url.startsWith("https://openreview.net/challenge?")
-      ? url
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function openReviewHeaders(accept: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    "User-Agent":
-      "unicli-openreview/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-    Accept: accept,
-  };
-  const cookie = openReviewClearanceCookieHeader(loadCookies("openreview"));
-  if (cookie) headers.Cookie = cookie;
-  return headers;
-}
-
-function openReviewChallengeError(
-  challengeUrl: string,
-  label: string,
-): Error & {
-  code: string;
-  suggestion: string;
-  retryable: boolean;
-  alternatives: string[];
-} {
-  const openCommand = `unicli browser open ${JSON.stringify(challengeUrl)}`;
-  const captureCommand =
-    "unicli browser cookies openreview.net --save-as openreview";
-  return Object.assign(
-    new Error(`OpenReview requires browser verification for ${label}.`),
-    {
-      code: "challenge_required",
-      suggestion: `${openCommand}; wait for the redirect, then run \`${captureCommand}\` and retry.`,
-      retryable: false,
-      alternatives: [openCommand, captureCommand],
-    },
-  );
-}
+export { openReviewChallengeUrl };
 
 export function mapReviewThreadRows(
   root: OpenReviewNote,
@@ -408,21 +362,7 @@ async function fetchOpenReview(
   path: string,
   label: string,
 ): Promise<NotesEnvelope> {
-  const response = await fetch(`${OPENREVIEW_API}${path}`, {
-    headers: openReviewHeaders("application/json"),
-  });
-  if (response.status === 404) return {};
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const challengeUrl = openReviewChallengeUrl(body);
-    if (response.status === 403 && challengeUrl) {
-      throw openReviewChallengeError(challengeUrl, label);
-    }
-    throw new Error(
-      `OpenReview API HTTP ${response.status} for ${label}${body ? ` (${body.slice(0, 200)})` : ""}.`,
-    );
-  }
-  const json = (await response.json()) as NotesEnvelope;
+  const json = (await openReviewApi.json<NotesEnvelope>(path, label)) ?? {};
   const errors = Array.isArray(json.errors) ? json.errors : [];
   const error = stringField(json.error);
   if (errors.length > 0 || error) {
@@ -442,6 +382,63 @@ async function fetchOpenReview(
 
 function notesFromEnvelope(json: NotesEnvelope): OpenReviewNote[] {
   return Array.isArray(json.notes) ? json.notes : [];
+}
+
+function openReviewTabId(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export async function resolveOpenReviewVenueQuery(
+  value: string,
+): Promise<Record<string, string>> {
+  const raw = value.trim();
+  let groupId = "";
+  let tabId = "";
+  try {
+    const url = new URL(raw);
+    if (url.hostname === "openreview.net" && url.pathname === "/group") {
+      groupId = url.searchParams.get("id") ?? "";
+      tabId = url.hash.replace(/^#tab-/, "");
+    }
+  } catch {
+    if (!raw.includes("/-/") && raw.endsWith("/Conference")) groupId = raw;
+  }
+
+  if (!groupId) {
+    return { [raw.includes("/-/") ? "invitation" : "content.venue"]: raw };
+  }
+  const groupEnvelope = await openReviewApi.json<GroupsEnvelope>(
+    `/groups?id=${encodeURIComponent(groupId)}`,
+    `openreview venue group ${groupId}`,
+  );
+  const group = groupEnvelope?.groups?.[0];
+  if (!group)
+    throw new Error(`No OpenReview venue group found for "${groupId}".`);
+  const submissionId = stringField(readContent(group.content, "submission_id"));
+  const decisionHeadingMap = readContent(group.content, "decision_heading_map");
+  if (
+    tabId &&
+    decisionHeadingMap &&
+    typeof decisionHeadingMap === "object" &&
+    !Array.isArray(decisionHeadingMap)
+  ) {
+    const match = Object.entries(decisionHeadingMap).find(
+      ([, heading]) => openReviewTabId(String(heading)) === tabId,
+    );
+    if (match) {
+      return {
+        ...(submissionId ? { invitation: submissionId } : {}),
+        "content.venue": match[0],
+      };
+    }
+  }
+  return submissionId
+    ? { invitation: submissionId }
+    : { "content.venueid": groupId };
 }
 
 async function fetchOpenReviewPaperRow(
@@ -509,14 +506,13 @@ async function downloadOpenReviewPdf(
   }
   const outputDir = resolve(String(output ?? "./openreview-downloads"));
   const path = join(outputDir, openReviewPdfFilename(id, row.title));
-  const download = await httpDownload(pdfUrl, path, {
-    headers: openReviewHeaders("application/pdf,*/*"),
-  });
-  if (download.status === "failed") {
-    throw new Error(
-      `OpenReview PDF download failed for ${id}: ${download.error ?? "unknown error"}.`,
-    );
-  }
+  const download = await openReviewApi.download(
+    `/attachment?id=${encodeURIComponent(id)}&name=pdf`,
+    path,
+    `openreview PDF ${id}`,
+  );
+  if (!download)
+    throw new Error(`OpenReview PDF download returned 404 for ${id}.`);
   return {
     ...row,
     path: download.path,
@@ -906,6 +902,8 @@ cli({
     "title",
     "authors",
     "keywords",
+    "venue",
+    "venueid",
     "primary_area",
     "pdate",
     "pdf",
@@ -920,7 +918,7 @@ cli({
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 200);
     const offset = requireOpenReviewOffset(kwargs.offset);
     const params = new URLSearchParams({
-      [venue.includes("/-/") ? "invitation" : "content.venue"]: venue,
+      ...(await resolveOpenReviewVenueQuery(venue)),
       limit: String(limit),
       offset: String(offset),
     });
@@ -940,6 +938,8 @@ cli({
         title: row.title,
         authors: row.authors,
         keywords: row.keywords,
+        venue: row.venue,
+        venueid: row.venueid,
         primary_area: row.primary_area,
         pdate: row.pdate,
         pdf: row.pdf,

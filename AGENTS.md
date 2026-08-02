@@ -43,7 +43,7 @@ and `unicli browser doctor --repair` safely starts only the windowless broker.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1829<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->326<!-- /STATS --> sites, <!-- STATS:command_count -->1830<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -135,7 +135,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-1.0.1 — Artemis · Glover
+1.0.2 — Artemis · Glover
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

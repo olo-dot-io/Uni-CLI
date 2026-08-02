@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：326 个站点，1829 条命令。
+这个目录来自适配器 manifest：326 个站点，1830 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -318,7 +318,7 @@
 | oeis | web-api | 2 | 否 | unicli oeis search<br>unicli oeis sequence |
 | openalex | web-api | 3 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
-| openreview | web-api | 7 | 否 | unicli openreview search<br>unicli openreview paper<br>unicli openreview download |
+| openreview | web-api | 8 | 是 | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
 | osv | web-api | 2 | 否 | unicli osv query<br>unicli osv vulnerability |
 | pmlr | web-api | 3 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
 | powerchina | web-api | 1 | 是 | unicli powerchina search |

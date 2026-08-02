@@ -48,9 +48,9 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 ## 覆盖范围
 
 - 静态 adapter 站点：326
-- 已注册 adapter 操作：1829
+- 已注册 adapter 操作：1830
 - Built-in action：113（58 registered + 55 transport-native）
-- 测试：9984
+- 测试：9995
 
 站点与操作数字来自静态 adapter catalog；固定 core 与主机动态发现命令在运行时单独加入。operation、adapter、built-in action、测试和 substrate 都由本地构建流程计数。
 
@@ -63,7 +63,7 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 
 ## 当前版本
 
-当前 latest：v1.0.1 · Artemis · Glover。
+本地版本：v1.0.2 · Artemis · Glover。
 
 ## Agent 索引
 

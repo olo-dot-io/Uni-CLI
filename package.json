@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Operation-first Agent-Computer Interface for real software—discover one executable path across APIs, browsers, desktops, local tools, and MCP; inspect its result and repair drift.",
   "packageManager": "npm@11.14.0",
   "type": "module",

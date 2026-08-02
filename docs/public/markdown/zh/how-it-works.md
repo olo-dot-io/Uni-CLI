@@ -169,7 +169,7 @@ plaintext JSON。
 每条经 CLI formatter 渲染的已注册 adapter command 都返回包含 success/failure arm
 的 v2 AgentEnvelope。Agent
 用一份 schema 解析静态 adapter catalog 中的
-<span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条命令；固定 core
+<span><!-- STATS:command_count -->1830<!-- /STATS --></span> 条命令；固定 core
 命令与主机动态发现命令会在运行时单独列出。
 
 ```json
@@ -274,7 +274,7 @@ $ unicli hackernews top -n 10 -f json \
 这是规范的完整暴露路径。Adapter operation contract 也能通过 MCP profile 运行；
 ACP、HTTP、skill 与 CI 暴露各自记录过的支持子集。一种命令形状覆盖静态目录中的
 <span><!-- STATS:site_count -->326<!-- /STATS --></span> 个 adapter 站点与
-<span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条已注册 adapter command；
+<span><!-- STATS:command_count -->1830<!-- /STATS --></span> 条已注册 adapter command；
 固定 core 与主机动态发现 command 在运行时加入 native CLI。渲染调用共享 v2 成功/错误
 envelope 形状；可选 evidence 与 repair field 取决于 operation 和失败类别。
 

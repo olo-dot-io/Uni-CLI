@@ -11,6 +11,7 @@
 - [快速开始](/zh/guide/getting-started)：安装、搜索、运行、认证和基础修复。
 - [集成方式](/zh/guide/integrations)：原生 CLI、MCP、ACP 和 agent 配置。
 - [适配器](/zh/guide/adapters)：如何把一个站点或工具映射成命令。
+- [OpenReview 归档](/zh/guide/openreview-archive)：按会议保存投稿、审稿、rebuttal、修改历史和附件。
 - [自修复](/zh/guide/self-repair)：命令失败后怎么定位和修复。
 
 如果你只想看当前支持哪些软件，直接去 [站点目录](/zh/reference/sites)。

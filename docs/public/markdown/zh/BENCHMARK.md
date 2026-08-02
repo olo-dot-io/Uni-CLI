@@ -44,10 +44,10 @@ npm run bench:gate
 与主机动态发现命令不在下面的站点/命令总数中：
 
 - <span><!-- STATS:site_count -->326<!-- /STATS --></span> 个静态 adapter 站点。
-- <span><!-- STATS:command_count -->1829<!-- /STATS --></span> 条已注册 adapter 命令。
+- <span><!-- STATS:command_count -->1830<!-- /STATS --></span> 条已注册 adapter 命令。
 - <span><!-- STATS:adapter_count_yaml -->980<!-- /STATS --></span> 个 schema-v2 YAML adapter。
 - <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action（<span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> 个 registered + <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个 transport-native）。
-- <span><!-- STATS:test_count -->9984<!-- /STATS --></span> 个测试。
+- <span><!-- STATS:test_count -->9995<!-- /STATS --></span> 个测试。
 
 数字随开发更新，以 `npm run stats` 生成结果为准。
 

@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.0.2] — 2026-08-02 — Artemis · Glover
+
+### Added
+
+- Add `openreview conference`, a paced and resumable venue archive for public
+  submissions, review and rebuttal threads, decisions, note revisions, hosted
+  PDFs and supplementary files, artifact hashes, and external research links.
+- Add bilingual operator documentation for authenticated, sequential,
+  multi-year OpenReview archival and recovery.
+
+### Changed
+
+- Route every OpenReview command through one authenticated client that supports
+  API v2/v1 venue discovery, browser-derived sessions, bounded token refresh,
+  strict request spacing, rate-limit headers, transactional downloads, and
+  SHA-256 verification.
+- Resolve OpenReview venue tabs from each group's live `submission_id` and
+  `decision_heading_map`, removing conference-specific label assumptions.
+- Redesign the public product surface around one operation receipt and a denser,
+  responsive documentation layout while keeping semantic source content and
+  generated agent documents aligned.
+
+### Fixed
+
+- Preserve AT-SPI accessible names when nodes expose attributes separately from
+  their visible labels.
+- Make visual-observation evidence claims atomically single-use so concurrent
+  consumers cannot reuse the same claim.
+- Harden durable MCP task persistence on Windows with platform-aware replacement
+  and cleanup behavior.
+- Preserve actionable OpenReview authentication, challenge, rate-limit, and
+  transient upstream errors; interrupted archives resume from durable cursors
+  without replaying completed downloads.
+
 ## [1.0.1] — 2026-07-31 — Artemis · Glover
 
 > Published from annotated tag `v1.0.1` at commit `a317b32a` through GitHub

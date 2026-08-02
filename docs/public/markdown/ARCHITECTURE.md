@@ -17,11 +17,11 @@ manifest is a reproducible, parity-tested projection for cold discovery. It cont
 <span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites.
 
 Those sites expose
-<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
+<span><!-- STATS:command_count -->1830<!-- /STATS --></span> registered adapter
 commands.
 
 The catalog implements them across
-<span><!-- STATS:adapter_count_total -->1226<!-- /STATS --></span> adapters.
+<span><!-- STATS:adapter_count_total -->1227<!-- /STATS --></span> adapters.
 
 The pipeline surface contains
 <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> built-in
@@ -36,7 +36,7 @@ The remaining
 transport-native.
 
 Version 0.400.2 includes
-<span><!-- STATS:test_count -->9984<!-- /STATS --></span> tests in v1.0.1.
+<span><!-- STATS:test_count -->9995<!-- /STATS --></span> tests in v1.0.2.
 Fixed core and host-discovered commands are separate runtime surfaces and are
 not included in the static site or command totals.
 

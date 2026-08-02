@@ -55,6 +55,7 @@ const rootSidebarGroups: SiteGroup[] = [
     items: [
       { text: "Guide Index", link: "/guide/" },
       { text: "Adapters", link: "/guide/adapters" },
+      { text: "OpenReview Archive", link: "/guide/openreview-archive" },
       { text: "Self-Repair", link: "/guide/self-repair" },
     ],
   },
@@ -111,6 +112,7 @@ const zhSidebarGroups: SiteGroup[] = [
     items: [
       { text: "指南索引", link: "/guide/" },
       { text: "适配器", link: "/guide/adapters" },
+      { text: "OpenReview 归档", link: "/guide/openreview-archive" },
       { text: "自修复", link: "/guide/self-repair" },
     ],
   },

@@ -5,11 +5,11 @@ Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, 
 ## Operation Snapshot
 
 - Static adapter sites: 326
-- Registered adapter commands: 1829
+- Registered adapter commands: 1830
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1226 (980 YAML + 246 TypeScript)
+- Adapters: 1227 (980 YAML + 247 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 9984
+- Tests: 9995
 
 ## Agent Contract
 
@@ -36,6 +36,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 
 - [Guide Index](https://olo-dot-io.github.io/Uni-CLI/guide/) — guides page for guide index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
 - [Adapters](https://olo-dot-io.github.io/Uni-CLI/guide/adapters) — guides page for adapters. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
+- [OpenReview Archive](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) — guides page for openreview archive. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive.md
 - [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — guides page for self-repair. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
 
 ## Reference

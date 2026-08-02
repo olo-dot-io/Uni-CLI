@@ -87,10 +87,10 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 静态目录：
 
 - <!-- STATS:site_count -->326<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1829<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1226<!-- /STATS --> 个 adapters
+- <!-- STATS:command_count -->1830<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1227<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->9984<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->9995<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -105,7 +105,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 | 购物 | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | 开发 | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
 | AI | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
-| 学术 | 22 | 80 | [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
+| 学术 | 22 | 81 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | 专利 | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | 知识 | 12 | 48 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi) |
 | 音频 | 4 | 46 | [spotify](https://olo-dot-io.github.io/Uni-CLI/reference/sites#spotify), [netease-music](https://olo-dot-io.github.io/Uni-CLI/reference/sites#netease-music), [xiaoyuzhou](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoyuzhou), [apple-podcasts](https://olo-dot-io.github.io/Uni-CLI/reference/sites#apple-podcasts) |
@@ -129,10 +129,13 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 ```bash
 unicli search "下载最新的 computer use 论文" -f json
 unicli arxiv search "computer use agents" --limit 5 -f json
+unicli --auth-retry openreview conference "ICML.cc/2026/Conference" --rpm 20 -f json
 unicli extract https://example.com --max-chars 1200
 ```
 
 管道输出默认使用 Markdown。后续步骤需要稳定机器格式时，可以选择 `-f json`、`yaml`、`csv` 或 `compact`。
+[OpenReview 归档指南](https://olo-dot-io.github.io/Uni-CLI/zh/guide/openreview-archive)
+说明如何使用登录态建立可续传的会议和跨年度研究归档。
 
 ### MCP
 
@@ -258,7 +261,7 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 需要 Node.js 22.19 或更高版本。Adapter 和 engine 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-<p align="center"><sub>v1.0.1 — Artemis · Glover</sub></p>
+<p align="center"><sub>v1.0.2 — Artemis · Glover</sub></p>
 
 ## License
 

@@ -157,6 +157,25 @@
       ]
     },
     {
+      "title": "OpenReview Archive",
+      "locale": "root",
+      "routePath": "/guide/openreview-archive",
+      "markdownPath": "/markdown/guide/openreview-archive.md",
+      "sourceLink": "/guide/openreview-archive",
+      "sourcePath": "docs/guide/openreview-archive.md",
+      "section": "Guides",
+      "parent": {
+        "text": "Guides",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Guides",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
       "title": "Self-Repair",
       "locale": "root",
       "routePath": "/guide/self-repair",
@@ -511,6 +530,25 @@
       "markdownPath": "/markdown/zh/guide/adapters.md",
       "sourceLink": "/guide/adapters",
       "sourcePath": "docs/zh/guide/adapters.md",
+      "section": "指南",
+      "parent": {
+        "text": "指南",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "指南",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "OpenReview 归档",
+      "locale": "zh",
+      "routePath": "/zh/guide/openreview-archive",
+      "markdownPath": "/markdown/zh/guide/openreview-archive.md",
+      "sourceLink": "/guide/openreview-archive",
+      "sourcePath": "docs/zh/guide/openreview-archive.md",
       "section": "指南",
       "parent": {
         "text": "指南",

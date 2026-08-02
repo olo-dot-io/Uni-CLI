@@ -87,10 +87,10 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 Static catalog:
 
 - <!-- STATS:site_count -->326<!-- /STATS --> sites
-- <!-- STATS:command_count -->1829<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1226<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1830<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1227<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->9984<!-- /STATS --> tests
+- <!-- STATS:test_count -->9995<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -105,7 +105,7 @@ Fixed core and host-discovered commands join at runtime.
 | shopping | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | dev | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
 | ai | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
-| scholarly | 22 | 80 | [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
+| scholarly | 22 | 81 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | patent | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | reference | 12 | 48 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi) |
 | audio | 4 | 46 | [spotify](https://olo-dot-io.github.io/Uni-CLI/reference/sites#spotify), [netease-music](https://olo-dot-io.github.io/Uni-CLI/reference/sites#netease-music), [xiaoyuzhou](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoyuzhou), [apple-podcasts](https://olo-dot-io.github.io/Uni-CLI/reference/sites#apple-podcasts) |
@@ -129,10 +129,13 @@ The generated [operation catalog](https://olo-dot-io.github.io/Uni-CLI/reference
 ```bash
 unicli search "download the latest arXiv paper on computer use" -f json
 unicli arxiv search "computer use agents" --limit 5 -f json
+unicli --auth-retry openreview conference "ICML.cc/2026/Conference" --rpm 20 -f json
 unicli extract https://example.com --max-chars 1200
 ```
 
 Piped output defaults to Markdown. Use `-f json`, `yaml`, `csv`, or `compact` when the next step needs a stable machine format.
+The [OpenReview archive guide](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive)
+covers authenticated, resumable conference and multi-year research archives.
 
 ### MCP
 
@@ -258,7 +261,7 @@ npm run verify   # full E2E and adapter coverage; required before release
 
 Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter and engine conventions.
 
-<p align="center"><sub>v1.0.1 — Artemis · Glover</sub></p>
+<p align="center"><sub>v1.0.2 — Artemis · Glover</sub></p>
 
 ## License
 

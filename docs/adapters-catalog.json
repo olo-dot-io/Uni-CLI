@@ -1,8 +1,8 @@
 {
-  "source": "unicli@1.0.1",
-  "generated": "2026-07-31T15:38:34.223Z",
+  "source": "unicli@1.0.2",
+  "generated": "2026-08-02T12:06:59.087Z",
   "total_sites": 326,
-  "total_commands": 1829,
+  "total_commands": 1830,
   "adapters": [
     {
       "site": "12306",
@@ -44055,9 +44055,60 @@
       "site": "openreview",
       "type": "web-api",
       "domain": "openreview.net",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "commands": [
+        {
+          "name": "conference",
+          "description": "Create or resume an archive of every public paper, review thread, rebuttal, decision, edit revision, PDF, supplementary file, and code/data link for an OpenReview venue",
+          "when_to_use": "Create or resume an archive of every public paper, review thread, rebuttal, decision, edit revision, PDF, supplementary file, and code/data link for an OpenReview venue",
+          "command": "unicli openreview conference",
+          "auth": true,
+          "strategy": "cookie",
+          "browser": false,
+          "columns": [
+            "venue_id",
+            "api_version",
+            "status",
+            "submissions",
+            "replies",
+            "edits",
+            "downloaded_artifacts",
+            "external_links",
+            "path",
+            "manifest"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Venue group id or OpenReview group URL"
+            },
+            {
+              "name": "output",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Archive root directory"
+            },
+            {
+              "name": "rpm",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Strict maximum OpenReview requests per minute (1-180)"
+            },
+            {
+              "name": "metadata-only",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Archive notes, edits, and file/link metadata without binaries"
+            }
+          ]
+        },
         {
           "name": "search",
           "description": "Search OpenReview papers by free-text query",
@@ -44256,6 +44307,8 @@
             "title",
             "authors",
             "keywords",
+            "venue",
+            "venueid",
             "primary_area",
             "pdate",
             "pdf",

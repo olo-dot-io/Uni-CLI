@@ -177,7 +177,7 @@ plaintext JSON under `~/.unicli/cookies/`.
 
 Every registered adapter command rendered by the CLI formatter returns a v2
 AgentEnvelope with success and failure arms. Agents parse one schema across the static adapter
-catalog of <span><!-- STATS:command_count -->1829<!-- /STATS --></span>
+catalog of <span><!-- STATS:command_count -->1830<!-- /STATS --></span>
 commands; fixed core and host-discovered commands are listed separately at
 runtime.
 
@@ -302,7 +302,7 @@ That is the canonical full exposure path. Adapter operation contracts can also
 run through MCP profiles; ACP, HTTP, skills, and CI expose documented subsets.
 One command shape covers the static catalog of
 <span><!-- STATS:site_count -->326<!-- /STATS --></span> adapter sites and
-<span><!-- STATS:command_count -->1829<!-- /STATS --></span> registered adapter
+<span><!-- STATS:command_count -->1830<!-- /STATS --></span> registered adapter
 commands; fixed core and host-discovered commands join the native CLI at
 runtime. Rendered calls share the v2 success/error envelope shape; optional
 evidence and repair fields depend on the operation and failure class.
