@@ -2,6 +2,11 @@
 
 ## [1.0.2] — 2026-08-02 — Artemis · Glover
 
+> Published from annotated tag `v1.0.2` at commit `d6940a1c` through GitHub
+> Actions run `30747691291`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
 ### Added
 
 - Add `openreview conference`, a paced and resumable venue archive for public

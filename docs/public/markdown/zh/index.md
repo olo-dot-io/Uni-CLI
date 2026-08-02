@@ -63,7 +63,7 @@ Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、�
 
 ## 当前版本
 
-本地版本：v1.0.2 · Artemis · Glover。
+当前 latest：v1.0.2 · Artemis · Glover。
 
 ## Agent 索引
 
