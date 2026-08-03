@@ -19,6 +19,7 @@ import releaseInfo from "../../../release-info.json";
 import siteIndex from "../../../site-index.json";
 import stats from "../../../../stats.json";
 import OperationReceipt from "./OperationReceipt.vue";
+import OrbitalShowcase from "./OrbitalShowcase.vue";
 
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
@@ -68,13 +69,6 @@ const copy = computed(() =>
         copyFailed: "手动选择",
         brandLabel: "真实软件",
         brandTitle: "Agent 从这里开始工作。",
-        routeLabel: "01 · FIND",
-        routeTitle: "找到正确的 operation。",
-        routeLead: "输入意图，选择路径，拿到结构化结果。",
-        repairLabel: "02 · REPAIR",
-        repairTitle: "运行。检查。修复。",
-        repairLead: "Adapter 可读、可改、可继续执行。",
-        repairSteps: ["Run", "Inspect", "Repair"],
         surfaceLabel: "03 · SURFACES",
         surfaceTitle: "一套接口，抵达真实软件。",
         surfaces: [
@@ -114,13 +108,6 @@ const copy = computed(() =>
         copyFailed: "Select manually",
         brandLabel: "Real software",
         brandTitle: "Where agents start working.",
-        routeLabel: "01 · FIND",
-        routeTitle: "Find the right operation.",
-        routeLead: "State the intent. Select the route. Receive structure.",
-        repairLabel: "02 · REPAIR",
-        repairTitle: "Run. Inspect. Repair.",
-        repairLead: "Adapters stay readable, editable, and ready to run again.",
-        repairSteps: ["Run", "Inspect", "Repair"],
         surfaceLabel: "03 · SURFACES",
         surfaceTitle: "One interface. Real software.",
         surfaces: [
@@ -148,6 +135,14 @@ const copy = computed(() =>
         ],
       },
 );
+const titleWords = computed(() => {
+  let offset = 0;
+  return copy.value.title.split(" ").map((word) => {
+    const item = { characters: Array.from(word), offset };
+    offset += item.characters.length + 1;
+    return item;
+  });
+});
 
 async function copyHeroCommand() {
   let copied = false;
@@ -181,6 +176,11 @@ async function copyHeroCommand() {
   window.setTimeout(() => {
     copyState.value = "idle";
   }, 1600);
+}
+
+function setHeroMode(mode: "install" | "agent") {
+  heroMode.value = mode;
+  copyState.value = "idle";
 }
 </script>
 
@@ -225,7 +225,23 @@ async function copyHeroCommand() {
       <div class="uni-hero-copy">
         <header>
           <p class="uni-eyebrow">{{ copy.eyebrow }}</p>
-          <h1 id="uni-home-title">{{ copy.title }}</h1>
+          <h1 id="uni-home-title" :aria-label="copy.title">
+            <span
+              v-for="(word, wordIndex) in titleWords"
+              :key="`${word.characters.join('')}-${wordIndex}`"
+              class="uni-title-word"
+              aria-hidden="true"
+            >
+              <span
+                v-for="(character, characterIndex) in word.characters"
+                :key="`${character}-${characterIndex}`"
+                :style="{
+                  '--glyph-index': word.offset + characterIndex,
+                }"
+                >{{ character }}</span
+              >
+            </span>
+          </h1>
           <p class="uni-hero-lead">{{ copy.lead }}</p>
         </header>
 
@@ -233,33 +249,47 @@ async function copyHeroCommand() {
           <div class="uni-command-tabs" role="tablist">
             <button
               type="button"
+              id="uni-install-tab"
               role="tab"
+              aria-controls="uni-hero-command"
               :aria-selected="heroMode === 'install'"
-              @click="heroMode = 'install'"
+              @click="setHeroMode('install')"
             >
               {{ copy.installTab }}
             </button>
             <button
               type="button"
+              id="uni-agent-tab"
               role="tab"
+              aria-controls="uni-hero-command"
               :aria-selected="heroMode === 'agent'"
-              @click="heroMode = 'agent'"
+              @click="setHeroMode('agent')"
             >
               {{ copy.agentTab }}
             </button>
           </div>
-          <div class="uni-install-command">
-            <code>{{ heroCommand }}</code>
-            <button type="button" @click="copyHeroCommand">
-              {{
-                copyState === "copied"
-                  ? copy.copied
-                  : copyState === "failed"
-                    ? copy.copyFailed
-                    : copy.copyAction
-              }}
-            </button>
-          </div>
+          <Transition name="uni-command-swap" mode="out-in">
+            <div
+              id="uni-hero-command"
+              :key="heroMode"
+              class="uni-install-command"
+              role="tabpanel"
+              :aria-labelledby="
+                heroMode === 'install' ? 'uni-install-tab' : 'uni-agent-tab'
+              "
+            >
+              <code>{{ heroCommand }}</code>
+              <button type="button" @click="copyHeroCommand">
+                {{
+                  copyState === "copied"
+                    ? copy.copied
+                    : copyState === "failed"
+                      ? copy.copyFailed
+                      : copy.copyAction
+                }}
+              </button>
+            </div>
+          </Transition>
         </div>
 
         <a
@@ -308,33 +338,10 @@ async function copyHeroCommand() {
       </ul>
     </section>
 
-    <section id="route" class="uni-home-section uni-route-story">
-      <article class="uni-art-feature uni-art-feature-archive">
-        <img :src="withBase('/orbital-archive.webp')" alt="" />
-        <header class="uni-art-copy">
-          <p class="uni-eyebrow">{{ copy.routeLabel }}</p>
-          <h2>{{ copy.routeTitle }}</h2>
-          <p>{{ copy.routeLead }}</p>
-        </header>
-      </article>
-      <OperationReceipt />
-    </section>
+    <OrbitalShowcase />
 
-    <section class="uni-home-section uni-repair-story">
-      <article class="uni-art-feature uni-art-feature-repair">
-        <img :src="withBase('/orbital-repair.webp')" alt="" />
-        <header class="uni-art-copy">
-          <p class="uni-eyebrow">{{ copy.repairLabel }}</p>
-          <h2>{{ copy.repairTitle }}</h2>
-          <p>{{ copy.repairLead }}</p>
-          <ol class="uni-repair-steps">
-            <li v-for="(step, index) in copy.repairSteps" :key="step">
-              <span aria-hidden="true">0{{ index + 1 }}</span>
-              {{ step }}
-            </li>
-          </ol>
-        </header>
-      </article>
+    <section class="uni-home-section uni-route-receipt">
+      <OperationReceipt />
     </section>
 
     <section

@@ -52,7 +52,7 @@ Burnt orange appears only on the primary copy action and selected-result feedbac
 
 ## Components
 
-- The base radius is `14px`, matching Appica's `0.875rem` token.
+- Radius follows one four-step family: `12px` for compact marks, `16px` for controls, `28px` for cards, and `36px` for large panels. Nested surfaces step down exactly one level.
 - Buttons are 48px high on marketing surfaces and 40px in dense documentation controls.
 - Pressed controls use `scale(0.97)` with a short interruptible transition.
 - Grouped content uses a muted background or low, diffused shadow instead of a border line.
@@ -64,15 +64,15 @@ Burnt orange appears only on the primary copy action and selected-result feedbac
 
 The homepage hero is one full-viewport painted field. A compact floating navigation capsule belongs to the hero and scrolls away with it; documentation pages retain the standard VitePress navigation. Copy occupies the quiet left side while the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. There is no inset frame or pale perimeter. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster, and the VitePress home margin is removed so no canvas appears beneath it.
 
-The following story uses two full-image editorial panels instead of a feature table. The orbital archive frames discovery; the repair bay frames the inspect-and-repair loop. A compact strip of official product marks establishes the real software surface before these panels. Equal card geometry keeps surfaces, statistics, and entry paths calm and regular.
+The following story is a four-scene orbital sequence for find, select, run, and repair. Native scroll pins the viewport while the paintings rotate through one spatial ring, then the last scene expands to the full viewport before handing off to the structured receipt. A compact strip of official product marks establishes the real software surface before the sequence. The marks sit directly on the dark field without individual tiles.
 
-At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
+At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. The orbital sequence becomes four complete scroll-snapped cards rather than a constrained 3D stage. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
 
 Documentation keeps a 780px reading measure. Navigation, search, sidebars, tables, code blocks, version notices, catalog filters, and agent controls reuse the same tokens.
 
 ## Motion
 
-No component runs a continuous animation. The interface contains no breathing light, orbit, pulse, moving route, or decorative entrance sequence. Hover and press feedback change only the relevant color, shadow, or transform and finish within 160ms. `prefers-reduced-motion: reduce` removes transforms and transitions.
+No component runs an autonomous continuous animation. The hero title enters once with a short character stagger. In the orbital chapter, native scroll is the source of truth for scene position, image depth, card rotation, snapping, stacking, and the final expansion. Pointer velocity briefly reveals a masked duplicate through an SVG displacement filter; the turbulence source is never rendered as texture, so the paintings retain smooth color fields. Scroll and pointer work is coalesced through `requestAnimationFrame` and stops when input stops. `prefers-reduced-motion: reduce` presents the same four scenes as a static grid with no displacement or transform.
 
 ## Public assets
 
@@ -80,8 +80,10 @@ No component runs a continuous animation. The interface contains no breathing li
 - Open Graph preview: `docs/public/site-preview-og.jpg`
 - Homepage painting: `docs/public/green-observatory.webp`
 - Operation discovery painting: `docs/public/orbital-archive.webp`
+- Operation relay painting: `docs/public/orbital-relay.webp`
+- Structured memory painting: `docs/public/orbital-memory.webp`
 - Adapter repair painting: `docs/public/orbital-repair.webp`
 - Product marks: `docs/public/brands/*.svg`
 - Mascot: `docs/public/mascot-otter.png`
 
-The three homepage paintings are original generated assets with no embedded type, logo, or third-party artwork. Their shared art direction is a viridian 1960s orbital program rendered with smooth oil glazing, broad controlled brushwork, calm negative space, ivory planetary light, and restrained brass or orange accents. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. Product marks come from Simple Icons under CC0; trademarks remain with their owners. The preview and Open Graph image are generated from the production homepage after visual verification.
+The five homepage paintings are original generated assets with no embedded type, logo, or third-party artwork. Their shared art direction is a viridian 1960s orbital program rendered with smooth oil glazing, broad controlled brushwork, calm negative space, ivory planetary light, and restrained brass or orange accents. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. Product marks come from Simple Icons under CC0; trademarks remain with their owners. The preview and Open Graph image are generated from the production homepage after visual verification.
