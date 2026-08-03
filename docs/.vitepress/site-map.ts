@@ -28,10 +28,10 @@ type LocaleSiteMap = {
 };
 
 const rootTopNav = [
-  { text: "Start", link: "/guide/getting-started" },
+  { text: "Docs", link: "/guide/" },
   { text: "Operations", link: "/reference/sites" },
-  { text: "Guides", link: "/guide/" },
   { text: "Reference", link: "/reference/" },
+  { text: "Integrations", link: "/guide/integrations" },
   { text: "Architecture", link: "/ARCHITECTURE" },
 ];
 
@@ -85,10 +85,10 @@ const rootSidebarGroups: SiteGroup[] = [
 ];
 
 const zhTopNav = [
-  { text: "上手", link: "/guide/getting-started" },
+  { text: "文档", link: "/guide/" },
   { text: "操作目录", link: "/reference/sites" },
-  { text: "指南", link: "/guide/" },
   { text: "参考", link: "/reference/" },
+  { text: "接入", link: "/guide/integrations" },
   { text: "架构", link: "/ARCHITECTURE" },
 ];
 

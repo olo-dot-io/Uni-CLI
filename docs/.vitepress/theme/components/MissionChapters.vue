@@ -35,6 +35,7 @@ let launchFrame = 0;
 let launchFrameTime = 0;
 let fluidFrame = 0;
 let fluidStrength = 0;
+let fluidElement: HTMLElement | null = null;
 let lastPointerX = 0;
 let lastPointerY = 0;
 let lastPointerTime = 0;
@@ -174,11 +175,17 @@ function requestLaunchProgress() {
 function decayFluid() {
   fluidStrength *= 0.84;
   displacement.value?.setAttribute("scale", fluidStrength.toFixed(2));
+  fluidElement?.style.setProperty(
+    "--chapter-fluid-opacity",
+    clamp(fluidStrength / 11, 0, 0.46).toFixed(3),
+  );
   if (fluidStrength > 0.16) {
     fluidFrame = requestAnimationFrame(decayFluid);
   } else {
     fluidStrength = 0;
     displacement.value?.setAttribute("scale", "0");
+    fluidElement?.style.setProperty("--chapter-fluid-opacity", "0");
+    fluidElement = null;
     fluidFrame = 0;
   }
 }
@@ -186,6 +193,7 @@ function decayFluid() {
 function handlePointerMove(event: PointerEvent) {
   if (prefersReducedMotion.value || event.pointerType === "touch") return;
   const element = event.currentTarget as HTMLElement;
+  fluidElement = element;
   const bounds = element.getBoundingClientRect();
   const x = clamp((event.clientX - bounds.left) / bounds.width);
   const y = clamp((event.clientY - bounds.top) / bounds.height);
@@ -199,19 +207,23 @@ function handlePointerMove(event: PointerEvent) {
   element.style.setProperty("--chapter-mouse-y", `${(y * 100).toFixed(2)}%`);
   element.style.setProperty(
     "--chapter-shift-x",
-    `${((x - 0.5) * -1.8).toFixed(2)}%`,
+    `${((x - 0.5) * -0.7).toFixed(2)}%`,
   );
   element.style.setProperty(
     "--chapter-shift-y",
-    `${((y - 0.5) * -1.4).toFixed(2)}%`,
+    `${((y - 0.5) * -0.5).toFixed(2)}%`,
   );
-  fluidStrength = Math.max(fluidStrength, clamp(velocity * 11, 2, 14));
+  fluidStrength = Math.max(fluidStrength, clamp(velocity * 4, 0.8, 5));
   lastPointerX = event.clientX;
   lastPointerY = event.clientY;
   lastPointerTime = now;
 
   if (fluidFrame) cancelAnimationFrame(fluidFrame);
   displacement.value?.setAttribute("scale", fluidStrength.toFixed(2));
+  element.style.setProperty(
+    "--chapter-fluid-opacity",
+    clamp(fluidStrength / 11, 0, 0.46).toFixed(3),
+  );
   fluidFrame = requestAnimationFrame(decayFluid);
 }
 
@@ -221,6 +233,8 @@ function resetFluid(event: PointerEvent) {
   element.style.setProperty("--chapter-shift-y", "0%");
   fluidStrength = 0;
   displacement.value?.setAttribute("scale", "0");
+  element.style.setProperty("--chapter-fluid-opacity", "0");
+  fluidElement = null;
 }
 
 onMounted(() => {
@@ -291,7 +305,7 @@ onBeforeUnmount(() => {
       <div
         class="uni-atlas-panel uni-chapter-art"
         :style="{
-          '--chapter-scene-shift': `${(activeSurface - 2) * -0.65}%`,
+          '--chapter-scene-shift': `${(activeSurface - 2) * -0.25}%`,
         }"
         @pointermove="handlePointerMove"
         @pointerleave="resetFluid"
@@ -341,7 +355,6 @@ onBeforeUnmount(() => {
             :key="surface[0]"
             type="button"
             :aria-pressed="activeSurface === index"
-            @mouseenter="activeSurface = index"
             @focus="activeSurface = index"
             @click="activeSurface = index"
           >
@@ -376,7 +389,7 @@ onBeforeUnmount(() => {
           ref="launchPanel"
           class="uni-launch-panel uni-chapter-art"
           :style="{
-            '--chapter-scene-shift': `${(activeEntry - 1.5) * -0.55}%`,
+            '--chapter-scene-shift': `${(activeEntry - 1.5) * -0.2}%`,
           }"
           @pointermove="handlePointerMove"
           @pointerleave="resetFluid"
@@ -425,7 +438,6 @@ onBeforeUnmount(() => {
               <a
                 :href="withBase(entry[1])"
                 :aria-current="activeEntry === index ? 'step' : undefined"
-                @mouseenter="activeEntry = index"
                 @focus="activeEntry = index"
               >
                 <span>{{ String(index + 1).padStart(2, "0") }}</span>

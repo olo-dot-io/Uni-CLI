@@ -139,7 +139,7 @@ function renderScrollProgress(timestamp: number) {
   element.style.setProperty("--orbit-expand", expansion.value.toFixed(4));
   element.style.setProperty(
     "--orbit-parallax",
-    `${((progress.value - 0.5) * -10).toFixed(3)}%`,
+    `${((progress.value - 0.5) * -4).toFixed(3)}%`,
   );
 
   lastScrollTime = timestamp;
@@ -173,11 +173,16 @@ function requestScrollProgress() {
 function decayFluid() {
   fluidStrength *= 0.86;
   displacement.value?.setAttribute("scale", fluidStrength.toFixed(2));
+  stage.value?.style.setProperty(
+    "--orbit-fluid-opacity",
+    clamp(fluidStrength / 12, 0, 0.44).toFixed(3),
+  );
   if (fluidStrength > 0.18) {
     fluidFrame = requestAnimationFrame(decayFluid);
   } else {
     fluidStrength = 0;
     displacement.value?.setAttribute("scale", "0");
+    stage.value?.style.setProperty("--orbit-fluid-opacity", "0");
     fluidFrame = 0;
   }
 }
@@ -205,19 +210,23 @@ function handlePointerMove(event: PointerEvent) {
   element.style.setProperty("--orbit-mouse-y", `${(y * 100).toFixed(2)}%`);
   element.style.setProperty(
     "--orbit-tilt-x",
-    `${((0.5 - y) * 2.4).toFixed(2)}deg`,
+    `${((0.5 - y) * 0.7).toFixed(2)}deg`,
   );
   element.style.setProperty(
     "--orbit-tilt-y",
-    `${((x - 0.5) * 3.2).toFixed(2)}deg`,
+    `${((x - 0.5) * 0.9).toFixed(2)}deg`,
   );
-  fluidStrength = Math.max(fluidStrength, clamp(velocity * 12, 3, 16));
+  fluidStrength = Math.max(fluidStrength, clamp(velocity * 4, 0.8, 5));
   lastPointerX = event.clientX;
   lastPointerY = event.clientY;
   lastPointerTime = now;
 
   if (fluidFrame) cancelAnimationFrame(fluidFrame);
   displacement.value?.setAttribute("scale", fluidStrength.toFixed(2));
+  element.style.setProperty(
+    "--orbit-fluid-opacity",
+    clamp(fluidStrength / 12, 0, 0.44).toFixed(3),
+  );
   fluidFrame = requestAnimationFrame(decayFluid);
 }
 
@@ -226,6 +235,7 @@ function resetPointer() {
   stage.value?.style.setProperty("--orbit-tilt-y", "0deg");
   fluidStrength = 0;
   displacement.value?.setAttribute("scale", "0");
+  stage.value?.style.setProperty("--orbit-fluid-opacity", "0");
 }
 
 function scrollToScene(index: number) {

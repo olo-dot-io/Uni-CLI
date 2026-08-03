@@ -19,31 +19,31 @@
   color-scheme: light;
   --uni-font: "Geist Variable", sans-serif;
 
-  /* Appica UI default gray/base recipe */
-  --appica-foreground: oklch(0.446 0.03 256.802);
-  --appica-foreground-subtle: oklch(0.707 0.022 261.325);
-  --appica-foreground-muted: oklch(0.551 0.027 264.364);
-  --appica-foreground-strong: oklch(0.373 0.034 259.733);
-  --appica-foreground-emphasis: oklch(0.278 0.033 256.848);
-  --appica-foreground-intense: oklch(0.21 0.034 264.665);
-  --appica-foreground-inverse: oklch(1 0 0);
-  --appica-background: oklch(1 0 0);
-  --appica-background-subtle: oklch(0.985 0.002 247.839);
-  --appica-background-muted: oklch(0.967 0.003 264.542);
-  --appica-background-strong: oklch(0.928 0.006 264.531);
-  --appica-background-inverse: oklch(0.13 0.028 261.692);
-  --appica-primary: oklch(0.21 0.034 264.665);
-  --appica-primary-muted: oklch(0.373 0.034 259.733);
-  --appica-primary-foreground: oklch(1 0 0);
-  --appica-secondary: oklch(0.623 0.214 259.815);
-  --appica-secondary-subtle: oklch(0.623 0.214 259.815 / 10%);
-  --appica-secondary-soft: oklch(0.623 0.214 259.815 / 20%);
-  --appica-success: oklch(0.696 0.17 162.48);
-  --appica-success-subtle: oklch(0.696 0.17 162.48 / 10%);
-  --appica-error: oklch(0.637 0.237 25.331);
-  --appica-focus: oklch(0.623 0.214 259.815 / 30%);
-  --appica-shadow-color: oklch(0.551 0.027 264.364 / 18%);
-  --appica-selection: oklch(0.13 0.028 261.692 / 10%);
+  /* Viridian paper recipe shared by marketing and documentation. */
+  --appica-foreground: oklch(0.37 0.035 154);
+  --appica-foreground-subtle: oklch(0.69 0.026 135);
+  --appica-foreground-muted: oklch(0.52 0.038 153);
+  --appica-foreground-strong: oklch(0.3 0.05 157);
+  --appica-foreground-emphasis: oklch(0.235 0.052 157);
+  --appica-foreground-intense: oklch(0.17 0.055 158);
+  --appica-foreground-inverse: oklch(0.975 0.02 92);
+  --appica-background: oklch(0.975 0.018 92);
+  --appica-background-subtle: oklch(0.955 0.023 96);
+  --appica-background-muted: oklch(0.925 0.03 105);
+  --appica-background-strong: oklch(0.885 0.035 114);
+  --appica-background-inverse: oklch(0.16 0.05 158);
+  --appica-primary: oklch(0.215 0.06 158);
+  --appica-primary-muted: oklch(0.3 0.07 157);
+  --appica-primary-foreground: oklch(0.975 0.02 92);
+  --appica-secondary: oklch(0.65 0.15 47);
+  --appica-secondary-subtle: oklch(0.65 0.15 47 / 10%);
+  --appica-secondary-soft: oklch(0.65 0.15 47 / 18%);
+  --appica-success: oklch(0.57 0.12 157);
+  --appica-success-subtle: oklch(0.57 0.12 157 / 11%);
+  --appica-error: oklch(0.58 0.18 31);
+  --appica-focus: oklch(0.65 0.15 47 / 34%);
+  --appica-shadow-color: oklch(0.16 0.05 158 / 14%);
+  --appica-selection: oklch(0.3 0.07 157 / 14%);
   --appica-radius: 14px;
   --appica-radius-sm: 12px;
   --appica-radius-lg: 16px;
@@ -55,7 +55,7 @@
   --appica-shadow-lg: 0 8px 16px -4px var(--appica-shadow-color);
   --appica-shadow-xl: 0 12px 28px -6px var(--appica-shadow-color);
   --appica-shadow-2xl: 0 24px 32px -12px var(--appica-shadow-color);
-  --appica-ease: cubic-bezier(0.175, 0.885, 0.32, 1.15);
+  --appica-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Compatibility aliases used by existing documentation components. */
   --uni-paper: var(--appica-background);
@@ -67,13 +67,11 @@
   --uni-faint: var(--appica-foreground-subtle);
   --uni-rule: transparent;
   --uni-accent: var(--appica-primary);
-  --uni-accent-hover: var(--appica-primary-muted);
   --uni-success: var(--appica-success);
   --uni-link-visited: var(--appica-foreground-muted);
   --uni-focus: var(--appica-secondary);
   --uni-ease-out: var(--appica-ease);
   --uni-shadow-border: var(--appica-shadow-xs);
-  --uni-shadow-border-hover: var(--appica-shadow-md);
 
   --vp-font-family-base: var(--uni-font);
   --vp-font-family-mono: var(--uni-font);
@@ -98,30 +96,30 @@
 
 .dark {
   color-scheme: dark;
-  --appica-foreground: oklch(0.872 0.01 258.338);
-  --appica-foreground-subtle: oklch(0.551 0.027 264.364);
-  --appica-foreground-muted: oklch(0.707 0.022 261.325);
-  --appica-foreground-strong: oklch(0.928 0.006 264.531);
-  --appica-foreground-emphasis: oklch(0.967 0.003 264.542);
-  --appica-foreground-intense: oklch(1 0 0);
-  --appica-foreground-inverse: oklch(0.21 0.034 264.665);
-  --appica-background: oklch(0.13 0.028 261.692);
-  --appica-background-subtle: oklch(0.551 0.027 264.364 / 8%);
-  --appica-background-muted: oklch(0.21 0.034 264.665);
-  --appica-background-strong: oklch(0.278 0.033 256.848);
-  --appica-background-inverse: oklch(1 0 0);
-  --appica-primary: oklch(1 0 0);
-  --appica-primary-muted: oklch(0.928 0.006 264.531);
-  --appica-primary-foreground: oklch(0.21 0.034 264.665);
-  --appica-secondary: oklch(0.707 0.165 254.624);
-  --appica-secondary-subtle: oklch(0.623 0.214 259.815 / 14%);
-  --appica-secondary-soft: oklch(0.623 0.214 259.815 / 24%);
-  --appica-success: oklch(0.765 0.177 163.223);
-  --appica-success-subtle: oklch(0.696 0.17 162.48 / 12%);
-  --appica-error: oklch(0.704 0.191 22.216);
-  --appica-focus: oklch(0.623 0.214 259.815 / 50%);
-  --appica-shadow-color: oklch(0 0 0 / 30%);
-  --appica-selection: oklch(1 0 0 / 15%);
+  --appica-foreground: oklch(0.84 0.025 106);
+  --appica-foreground-subtle: oklch(0.55 0.04 145);
+  --appica-foreground-muted: oklch(0.69 0.035 122);
+  --appica-foreground-strong: oklch(0.9 0.025 98);
+  --appica-foreground-emphasis: oklch(0.945 0.022 94);
+  --appica-foreground-intense: oklch(0.975 0.02 92);
+  --appica-foreground-inverse: oklch(0.17 0.055 158);
+  --appica-background: oklch(0.145 0.04 158);
+  --appica-background-subtle: oklch(0.175 0.04 158);
+  --appica-background-muted: oklch(0.215 0.045 157);
+  --appica-background-strong: oklch(0.26 0.05 157);
+  --appica-background-inverse: oklch(0.975 0.02 92);
+  --appica-primary: oklch(0.94 0.025 96);
+  --appica-primary-muted: oklch(0.86 0.03 105);
+  --appica-primary-foreground: oklch(0.17 0.055 158);
+  --appica-secondary: oklch(0.72 0.14 54);
+  --appica-secondary-subtle: oklch(0.72 0.14 54 / 14%);
+  --appica-secondary-soft: oklch(0.72 0.14 54 / 24%);
+  --appica-success: oklch(0.72 0.12 153);
+  --appica-success-subtle: oklch(0.72 0.12 153 / 12%);
+  --appica-error: oklch(0.72 0.16 35);
+  --appica-focus: oklch(0.72 0.14 54 / 44%);
+  --appica-shadow-color: oklch(0.06 0.025 158 / 38%);
+  --appica-selection: oklch(0.94 0.025 96 / 14%);
 }
 
 * {
@@ -174,10 +172,10 @@ textarea:focus-visible {
 
 /* Navigation */
 .VPNav {
-  background: color-mix(in oklab, var(--appica-background) 94%, transparent);
+  height: 80px;
+  background: transparent;
   border: 0 !important;
-  box-shadow: var(--appica-shadow-xs);
-  backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: none;
 }
 
 .VPNavBar,
@@ -186,6 +184,35 @@ textarea:focus-visible {
 .VPNavBar.has-sidebar .title {
   border: 0 !important;
   background: transparent !important;
+}
+
+.VPNavBar {
+  height: 80px !important;
+  padding: 10px 18px 12px !important;
+}
+
+.VPNavBar .container {
+  width: min(1180px, 100%);
+  height: 58px;
+  margin: 0 auto;
+  padding: 0 12px;
+  border-radius: 22px;
+  background: color-mix(
+    in oklch,
+    var(--appica-background) 82%,
+    var(--appica-background-strong)
+  );
+  box-shadow: 0 12px 34px var(--appica-shadow-color);
+  backdrop-filter: blur(16px) saturate(112%);
+}
+
+.VPNavBar.has-sidebar .content-body {
+  height: 58px !important;
+  background: transparent !important;
+}
+
+.VPNavBar.has-sidebar .title {
+  height: 58px !important;
 }
 
 .VPNavBarTitle .title,
@@ -211,14 +238,17 @@ textarea:focus-visible {
 
 .VPNavBarMenuLink,
 .VPNavBarMenuGroup .button {
+  color: var(--appica-foreground-strong) !important;
   font-size: 14px;
   font-weight: 520;
 }
 
-.VPNavBarMenuLink:hover,
-.VPNavBarMenuLink.active,
-.VPNavBarMenuGroup .button:hover {
+.VPNavBarMenuLink.active {
   color: var(--appica-secondary) !important;
+}
+
+.VPNavBar .divider {
+  display: none !important;
 }
 
 .VPNavBarSearch .DocSearch-Button,
@@ -229,15 +259,6 @@ textarea:focus-visible {
   background: var(--appica-background-muted);
   color: var(--appica-foreground-muted);
   box-shadow: none;
-  transition:
-    background-color 200ms ease,
-    color 200ms ease;
-}
-
-.VPNavBarSearch .DocSearch-Button:hover,
-.VPNavBarSearch .VPNavBarSearchButton:hover {
-  background: var(--appica-background-strong);
-  color: var(--appica-foreground-intense);
 }
 
 .VPSocialLink,
@@ -265,13 +286,22 @@ textarea:focus-visible {
   background: var(--appica-background-subtle) !important;
 }
 
+.VPContent.has-sidebar,
+.VPDoc,
+.VPDoc .container {
+  background: var(--appica-background);
+}
+
+.VPDoc {
+  padding-top: 52px !important;
+}
+
 .VPSidebarItem .text {
   color: var(--appica-foreground-muted);
   font-size: 14px;
 }
 
-.VPSidebarItem.is-active > .item .link > .text,
-.VPSidebarItem .link:hover .text {
+.VPSidebarItem.is-active > .item .link > .text {
   color: var(--appica-foreground-intense);
 }
 
@@ -281,7 +311,7 @@ textarea:focus-visible {
 }
 
 .VPDoc .content-container {
-  max-width: 780px !important;
+  max-width: 820px !important;
 }
 
 .VPDoc .aside {
@@ -297,8 +327,7 @@ textarea:focus-visible {
   color: var(--appica-foreground-muted);
 }
 
-.VPDocAsideOutline .outline-link.active,
-.VPDocAsideOutline .outline-link:hover {
+.VPDocAsideOutline .outline-link.active {
   color: var(--appica-foreground-intense);
 }
 
@@ -355,11 +384,6 @@ textarea:focus-visible {
   text-underline-offset: 3px;
 }
 
-.vp-doc a:hover {
-  color: var(--appica-secondary);
-  text-decoration-color: currentColor;
-}
-
 .vp-doc a:visited {
   color: var(--appica-foreground-strong);
 }
@@ -383,6 +407,32 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
+.vp-doc div[class*="language-"] > button.copy {
+  top: 12px;
+  right: 12px;
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--appica-background-strong);
+  opacity: 1;
+}
+
+.vp-doc div[class*="language-"] > button.copy:hover,
+.vp-doc div[class*="language-"] > button.copy:hover.copied {
+  border: 0;
+  background-color: var(--appica-background-strong);
+  opacity: 1;
+  transform: none;
+}
+
+.vp-doc .header-anchor {
+  opacity: 0.42;
+}
+
+.vp-doc .has-focused-lines .line:not(.has-focus) {
+  filter: none;
+  opacity: 1;
+}
+
 .vp-doc div[class*="language-"] code {
   color: var(--appica-foreground-intense);
   font-family: var(--uni-font);
@@ -390,11 +440,11 @@ textarea:focus-visible {
 }
 
 .dark .vp-doc div[class*="language-"] {
-  background: var(--appica-background-muted);
+  background: oklch(0.215 0.045 157) !important;
 }
 
 .dark .vp-doc div[class*="language-"] code {
-  color: var(--appica-foreground-intense);
+  color: oklch(0.94 0.025 96);
 }
 
 .vp-doc blockquote,
@@ -449,11 +499,11 @@ textarea:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 48px;
-  padding: 10px;
+  margin-bottom: 56px;
+  padding: 12px;
   border: 0;
   border-radius: var(--appica-radius);
-  background: var(--appica-background-subtle);
+  background: var(--appica-background-muted);
 }
 
 .agent-doc-path {
@@ -533,8 +583,68 @@ textarea:focus-visible {
 }
 
 .agent-markdown-link {
-  background: var(--appica-background-muted);
+  background: var(--appica-background);
   color: var(--appica-foreground-emphasis) !important;
+}
+
+/* Hover is intentionally inert. State remains visible through focus, active,
+ * aria-selected and aria-current rather than pointer proximity. */
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuGroup .button:hover,
+.VPSocialLink:hover,
+.VPNavScreenMenuLink:hover,
+.VPSidebarItem .link:hover .text,
+.VPDocAsideOutline .outline-link:hover {
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.VPNavBarMenuLink:not(.active):hover,
+.VPNavBarMenuGroup .button:hover {
+  color: var(--appica-foreground-strong) !important;
+}
+
+.VPSocialLink:hover {
+  color: var(--appica-foreground-intense) !important;
+}
+
+.VPSidebarItem .link:hover .text,
+.VPDocAsideOutline .outline-link:hover {
+  color: var(--appica-foreground-muted) !important;
+}
+
+body:not(:has(.uni-docs-home)) .vp-doc a:hover,
+body:not(:has(.uni-docs-home)) .vp-doc .custom-block a:hover,
+body:not(:has(.uni-docs-home)) .vp-code-group label:hover {
+  color: var(--appica-foreground-intense) !important;
+  text-decoration-color: var(--appica-foreground-subtle) !important;
+}
+
+body:not(:has(.uni-docs-home)) .vp-doc a:visited:hover {
+  color: var(--appica-foreground-strong) !important;
+}
+
+body:not(:has(.uni-docs-home)) .vp-doc a:hover > code {
+  color: var(--appica-foreground-emphasis) !important;
+}
+
+body:not(:has(.uni-docs-home))
+  .vp-doc
+  [class*="language-"]:hover
+  .has-focused-lines
+  .line:not(.has-focus) {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.vp-sponsor-grid-item:hover,
+.dark .vp-sponsor-grid-item:hover,
+.vp-sponsor-grid-item:hover .vp-sponsor-grid-image {
+  background: inherit !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .agent-copy-button:active,
@@ -608,20 +718,20 @@ body:has(.uni-docs-home) .VPNav {
 .uni-home-nav {
   position: absolute;
   z-index: 20;
-  top: 18px;
+  top: 20px;
   left: 50%;
   display: grid;
-  width: min(980px, calc(100% - 36px));
-  min-height: 58px;
+  width: min(1180px, calc(100% - 40px));
+  min-height: 60px;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 24px;
-  padding: 7px 8px 7px 10px;
+  gap: 28px;
+  padding: 8px 10px;
   transform: translateX(-50%);
-  border-radius: var(--home-radius-card);
-  background: color-mix(in oklch, var(--home-ivory) 92%, transparent);
-  box-shadow: 0 16px 40px oklch(0.1 0.04 158 / 0.16);
-  backdrop-filter: blur(18px) saturate(120%);
+  border-radius: 24px;
+  background: color-mix(in oklch, var(--home-ivory) 94%, transparent);
+  box-shadow: 0 14px 38px oklch(0.1 0.04 158 / 0.18);
+  backdrop-filter: blur(16px) saturate(112%);
 }
 
 .uni-home-brand {
@@ -650,19 +760,11 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-home-nav-links a {
-  padding: 10px 13px;
-  border-radius: var(--home-radius-small);
+  padding: 10px 12px;
   color: var(--home-forest) !important;
   font-size: 13px;
   font-weight: 590;
   text-decoration: none !important;
-  transition:
-    background-color 150ms ease,
-    transform 150ms var(--appica-ease);
-}
-
-.uni-home-nav-links a:hover {
-  background: var(--home-sage);
 }
 
 .uni-home-nav-actions {
@@ -672,6 +774,7 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-home-nav-actions a,
+.uni-home-theme,
 .uni-footer-meta a {
   display: inline-flex;
   width: 44px;
@@ -679,29 +782,33 @@ body:has(.uni-docs-home) .VPNav {
   align-items: center;
   justify-content: center;
   border-radius: var(--home-radius-small);
+  border: 0;
   background: transparent;
-  transition:
-    opacity 150ms ease,
-    transform 150ms var(--appica-ease);
-}
-
-.uni-home-nav-actions a:hover,
-.uni-footer-meta a:hover {
-  opacity: 0.64;
-  transform: translateY(-1px);
+  color: var(--home-forest-deep);
+  cursor: pointer;
 }
 
 .uni-home-nav-actions a:active,
+.uni-home-theme:active,
 .uni-footer-meta a:active,
 .uni-home-nav-links a:active {
   transform: scale(0.96);
 }
 
 .uni-home-nav-actions img,
+.uni-home-theme svg,
 .uni-footer-meta img,
 .uni-footer-meta svg {
   width: 20px;
   max-height: 20px;
+}
+
+.uni-home-theme svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
 }
 
 .uni-home-nav-actions a:last-child img,
@@ -825,12 +932,30 @@ body:has(.uni-docs-home) .VPNav {
   line-height: 1.45;
 }
 
-.uni-install-panel {
-  width: min(560px, 100%);
-  padding: 12px;
-  border-radius: var(--home-radius-panel);
-  background: var(--home-ivory);
-  box-shadow: 0 22px 54px oklch(0.12 0.04 158 / 0.26);
+.uni-command-console {
+  width: min(590px, 100%);
+  overflow: hidden;
+  border-radius: 26px;
+  background: color-mix(in oklch, var(--home-forest-deep) 88%, transparent);
+  box-shadow: 0 24px 64px oklch(0.07 0.04 158 / 0.32);
+  backdrop-filter: blur(14px) saturate(108%);
+}
+
+.uni-command-head {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 10px 4px;
+}
+
+.uni-command-head > span {
+  padding-right: 10px;
+  color: color-mix(in oklch, var(--home-ivory) 45%, transparent);
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: 0.04em;
 }
 
 .uni-command-tabs {
@@ -842,25 +967,21 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-command-tabs button {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 13px;
   border: 0;
   border-radius: var(--home-radius-small);
   background: transparent;
-  color: color-mix(in oklch, var(--home-forest) 72%, var(--home-paper));
+  color: color-mix(in oklch, var(--home-ivory) 58%, transparent);
   font: inherit;
   font-size: 12px;
   font-weight: 620;
   cursor: pointer;
-  transition:
-    color 140ms ease,
-    background-color 140ms ease,
-    transform 140ms var(--appica-ease);
 }
 
 .uni-command-tabs button[aria-selected="true"] {
-  background: var(--home-forest);
-  color: var(--home-ivory);
+  background: var(--home-ivory);
+  color: var(--home-forest-deep);
 }
 
 .uni-command-tabs button:active,
@@ -871,11 +992,11 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-install-command {
   display: grid;
-  min-height: 66px;
-  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 78px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 12px 4px 4px 16px;
+  gap: 12px;
+  padding: 10px 12px 14px 20px;
 }
 
 .uni-command-swap-enter-active,
@@ -898,35 +1019,48 @@ body:has(.uni-docs-home) .VPNav {
 .vp-doc .uni-install-command code {
   min-width: 0;
   overflow: hidden;
-  color: var(--home-forest-deep) !important;
+  color: var(--home-ivory) !important;
   font-family: "Geist Variable", sans-serif;
   font-size: 14px;
   font-variant-ligatures: none;
   font-weight: 520;
   line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-wrap: pretty;
+  white-space: normal;
+}
+
+.uni-command-prompt {
+  color: var(--home-orange);
+  font-size: 15px;
+  font-weight: 680;
 }
 
 .uni-install-command button {
-  min-width: 82px;
-  min-height: 46px;
-  padding: 0 16px;
+  display: inline-flex;
+  min-width: 92px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
   border: 0;
   border-radius: var(--home-radius-control);
-  background: var(--home-orange);
-  color: var(--home-ivory);
+  background: var(--home-ivory);
+  color: var(--home-forest-deep);
   font: inherit;
   font-size: 13px;
   font-weight: 650;
   cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    transform 140ms var(--appica-ease);
 }
 
-.uni-install-command button:hover {
-  background: color-mix(in oklch, var(--home-orange) 86%, var(--home-forest));
+.uni-install-command button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .uni-hero-doc-link {
@@ -941,13 +1075,6 @@ body:has(.uni-docs-home) .VPNav {
   font-size: 14px;
   font-weight: 590;
   text-decoration: none !important;
-  transition:
-    background-color 160ms ease,
-    transform 140ms var(--appica-ease);
-}
-
-.uni-hero-doc-link:hover {
-  background: color-mix(in oklch, var(--home-ivory) 22%, transparent);
 }
 
 .uni-hero-doc-link svg,
@@ -1016,11 +1143,6 @@ body:has(.uni-docs-home) .VPNav {
   min-height: 56px;
   align-items: center;
   justify-content: center;
-  transition: transform 170ms var(--appica-ease);
-}
-
-.uni-brand-orbit li:hover {
-  transform: translateY(-3px);
 }
 
 .uni-brand-orbit img {
@@ -1326,14 +1448,6 @@ body:has(.uni-docs-home) .VPNav {
   padding: 22px;
   border-radius: var(--home-radius-card);
   background: var(--home-ivory);
-  transition:
-    background-color 160ms ease,
-    transform 160ms var(--appica-ease);
-}
-
-.uni-entry-list li:hover {
-  transform: translateY(-3px);
-  background: var(--home-paper);
 }
 
 .uni-entry-list a {
@@ -1367,6 +1481,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-chapter-art {
   --chapter-mouse-x: 50%;
   --chapter-mouse-y: 50%;
+  --chapter-fluid-opacity: 0;
   --chapter-shift-x: 0%;
   --chapter-shift-y: 0%;
   --chapter-scene-shift: 0%;
@@ -1382,9 +1497,10 @@ body:has(.uni-docs-home) .VPNav {
 .uni-chapter-image {
   position: absolute;
   z-index: -3;
-  inset: -4%;
-  width: 108%;
-  height: 108%;
+  inset: -8%;
+  width: 116%;
+  max-width: none !important;
+  height: 116%;
   object-fit: cover;
   object-position: center;
   transform: translate3d(
@@ -1392,9 +1508,9 @@ body:has(.uni-docs-home) .VPNav {
       var(--chapter-shift-y),
       0
     )
-    scale(1.045);
+    scale(1.018);
   transform-origin: var(--chapter-mouse-x) var(--chapter-mouse-y);
-  transition: transform 520ms var(--appica-ease);
+  transition: transform 240ms var(--appica-ease);
   will-change: transform;
 }
 
@@ -1407,14 +1523,10 @@ body:has(.uni-docs-home) .VPNav {
     black 32%,
     transparent 76%
   );
-  opacity: 0;
+  opacity: var(--chapter-fluid-opacity);
   transition:
     opacity 180ms ease,
-    transform 520ms var(--appica-ease);
-}
-
-.uni-chapter-art:hover .uni-chapter-fluid-image {
-  opacity: 0.72;
+    transform 240ms var(--appica-ease);
 }
 
 .uni-chapter-shade {
@@ -1511,7 +1623,6 @@ body:has(.uni-docs-home) .VPNav {
     transform 220ms var(--appica-ease);
 }
 
-.uni-atlas-selector button:hover,
 .uni-atlas-selector button:focus-visible,
 .uni-atlas-selector button[aria-pressed="true"] {
   color: var(--home-ivory);
@@ -1677,7 +1788,6 @@ body:has(.uni-docs-home) .VPNav {
     transform 220ms var(--appica-ease);
 }
 
-.uni-launch-routes a:hover,
 .uni-launch-routes a:focus-visible,
 .uni-launch-routes a[aria-current="step"] {
   background: color-mix(in oklch, var(--home-ivory) 11%, transparent);
@@ -1787,6 +1897,7 @@ body:has(.uni-docs-home) .VPNav {
   --orbit-parallax: 0%;
   --orbit-tilt-x: 0deg;
   --orbit-tilt-y: 0deg;
+  --orbit-fluid-opacity: 0;
   position: relative;
   height: 440svh;
   background: var(--home-forest-deep);
@@ -1877,12 +1988,13 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-orbit-image {
   position: absolute;
-  inset: -5%;
-  width: 110%;
-  height: 110%;
+  inset: -9%;
+  width: 118%;
+  max-width: none !important;
+  height: 118%;
   object-fit: cover;
   transform: translate3d(0, var(--orbit-parallax), 0)
-    rotateX(var(--orbit-tilt-x)) rotateY(var(--orbit-tilt-y)) scale(1.05);
+    rotateX(var(--orbit-tilt-x)) rotateY(var(--orbit-tilt-y)) scale(1.015);
   transform-origin: var(--orbit-mouse-x) var(--orbit-mouse-y);
   will-change: transform;
 }
@@ -1911,12 +2023,8 @@ body:has(.uni-docs-home) .VPNav {
     black 34%,
     transparent 76%
   );
-  opacity: 0;
+  opacity: var(--orbit-fluid-opacity);
   transition: opacity 180ms ease;
-}
-
-.uni-orbit-card.is-active:hover .uni-orbit-fluid-image {
-  opacity: 0.78;
 }
 
 .uni-orbit-card::after {
@@ -2010,7 +2118,6 @@ body:has(.uni-docs-home) .VPNav {
     transform 170ms var(--appica-ease);
 }
 
-.uni-orbit-index button:hover,
 .uni-orbit-index button[aria-current="step"] {
   color: var(--home-ivory);
   transform: translateY(-2px);
@@ -2193,10 +2300,6 @@ body:has(.uni-docs-home) .VPNav {
     transform 150ms var(--appica-ease),
     background-color 180ms ease,
     color 180ms ease;
-}
-
-.site-filter button:hover {
-  color: var(--appica-foreground-intense);
 }
 
 .site-filter button.active {
@@ -2547,9 +2650,9 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 14px;
+    grid-template-columns: 16px minmax(0, 1fr) 44px;
+    gap: 10px;
+    padding: 12px 14px 16px;
   }
 
   .vp-doc .uni-install-command code {
@@ -2562,7 +2665,14 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command button {
-    width: 100%;
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
+  .uni-install-command button span,
+  .uni-command-head > span {
+    display: none;
   }
 
   .uni-hero-actions {
@@ -2696,10 +2806,6 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 @media (max-width: 760px), (pointer: coarse) {
-  html:has(.uni-docs-home) {
-    scroll-snap-type: y proximity;
-  }
-
   .uni-orbit-stage {
     height: auto;
     padding: 76px 20px;
@@ -2738,7 +2844,6 @@ body:has(.uni-docs-home) .VPNav {
     border-radius: var(--home-radius-card);
     opacity: 1;
     pointer-events: auto;
-    scroll-snap-align: center;
     transform: none;
   }
 
@@ -2808,12 +2913,17 @@ body:has(.uni-docs-home) .VPNav {
     top: 12px;
     width: calc(100% - 24px);
     min-height: 56px;
-    grid-template-columns: 1fr auto;
-    gap: 12px;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
     border-radius: var(--home-radius-card);
   }
 
   .uni-home-nav-links {
+    display: flex;
+    justify-content: center;
+  }
+
+  .uni-home-nav-links a:not(:first-child) {
     display: none;
   }
 
@@ -2874,9 +2984,10 @@ body:has(.uni-docs-home) .VPNav {
     font-size: 14px;
   }
 
-  .uni-home-nav-actions a {
-    width: 40px;
-    height: 40px;
+  .uni-home-nav-actions a,
+  .uni-home-theme {
+    width: 36px;
+    height: 36px;
   }
 
   .uni-landing-hero {
@@ -2889,9 +3000,9 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 14px;
+    grid-template-columns: 16px minmax(0, 1fr) 44px;
+    gap: 10px;
+    padding: 12px 14px 16px;
   }
 
   .vp-doc .uni-install-command code {
@@ -2903,7 +3014,9 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command button {
-    width: 100%;
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
   }
 
   .uni-surface-list {

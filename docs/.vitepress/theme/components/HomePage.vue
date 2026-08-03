@@ -20,7 +20,7 @@ import MissionChapters from "./MissionChapters.vue";
 import OperationReceipt from "./OperationReceipt.vue";
 import OrbitalShowcase from "./OrbitalShowcase.vue";
 
-const { localeIndex } = useData();
+const { isDark, localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
 const copyState = ref<"idle" | "copied" | "failed">("idle");
 const heroMode = ref<"install" | "agent">("install");
@@ -48,7 +48,7 @@ const brands = [
 const copy = computed(() =>
   isZh.value
     ? {
-        nav: ["路径", "界面", "开始"],
+        nav: ["文档", "操作", "架构"],
         eyebrow: "Agent-Computer Interface",
         title: "把所有界面交给 Agent。",
         lead: "安装一次。搜索、执行、检查、修复。",
@@ -66,7 +66,7 @@ const copy = computed(() =>
         license: "Apache-2.0 许可证",
       }
     : {
-        nav: ["Route", "Surfaces", "Start"],
+        nav: ["Docs", "Operations", "Architecture"],
         eyebrow: "Agent-computer interface",
         title: "Give agents every interface.",
         lead: "Install once. Search, run, inspect, repair.",
@@ -131,6 +131,10 @@ function setHeroMode(mode: "install" | "agent") {
   heroMode.value = mode;
   copyState.value = "idle";
 }
+
+function toggleTheme() {
+  isDark.value = !isDark.value;
+}
 </script>
 
 <template>
@@ -141,11 +145,35 @@ function setHeroMode(mode: "install" | "agent") {
         <span>Uni-CLI</span>
       </a>
       <div class="uni-home-nav-links">
-        <a href="#route">{{ copy.nav[0] }}</a>
-        <a href="#surfaces">{{ copy.nav[1] }}</a>
-        <a href="#start">{{ copy.nav[2] }}</a>
+        <a :href="withBase(isZh ? '/zh/guide/' : '/guide/')">
+          {{ copy.nav[0] }}
+        </a>
+        <a :href="withBase(isZh ? '/zh/reference/sites' : '/reference/sites')">
+          {{ copy.nav[1] }}
+        </a>
+        <a :href="withBase(isZh ? '/zh/ARCHITECTURE' : '/ARCHITECTURE')">
+          {{ copy.nav[2] }}
+        </a>
       </div>
       <div class="uni-home-nav-actions">
+        <button
+          class="uni-home-theme"
+          type="button"
+          :aria-label="isDark ? 'Use light theme' : 'Use dark theme'"
+          @click="toggleTheme"
+        >
+          <svg v-if="isDark" aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+            />
+          </svg>
+          <svg v-else aria-hidden="true" viewBox="0 0 24 24">
+            <path
+              d="M20.3 15.2A8.5 8.5 0 0 1 8.8 3.7 8.5 8.5 0 1 0 20.3 15.2Z"
+            />
+          </svg>
+        </button>
         <a
           href="https://github.com/olo-dot-io/Uni-CLI"
           aria-label="GitHub"
@@ -194,28 +222,31 @@ function setHeroMode(mode: "install" | "agent") {
           <p class="uni-hero-lead">{{ copy.lead }}</p>
         </header>
 
-        <div class="uni-install-panel">
-          <div class="uni-command-tabs" role="tablist">
-            <button
-              type="button"
-              id="uni-install-tab"
-              role="tab"
-              aria-controls="uni-hero-command"
-              :aria-selected="heroMode === 'install'"
-              @click="setHeroMode('install')"
-            >
-              {{ copy.installTab }}
-            </button>
-            <button
-              type="button"
-              id="uni-agent-tab"
-              role="tab"
-              aria-controls="uni-hero-command"
-              :aria-selected="heroMode === 'agent'"
-              @click="setHeroMode('agent')"
-            >
-              {{ copy.agentTab }}
-            </button>
+        <div class="uni-command-console">
+          <div class="uni-command-head">
+            <div class="uni-command-tabs" role="tablist">
+              <button
+                type="button"
+                id="uni-install-tab"
+                role="tab"
+                aria-controls="uni-hero-command"
+                :aria-selected="heroMode === 'install'"
+                @click="setHeroMode('install')"
+              >
+                {{ copy.installTab }}
+              </button>
+              <button
+                type="button"
+                id="uni-agent-tab"
+                role="tab"
+                aria-controls="uni-hero-command"
+                :aria-selected="heroMode === 'agent'"
+                @click="setHeroMode('agent')"
+              >
+                {{ copy.agentTab }}
+              </button>
+            </div>
+            <span aria-hidden="true">unicli / quick start</span>
           </div>
           <Transition name="uni-command-swap" mode="out-in">
             <div
@@ -227,15 +258,24 @@ function setHeroMode(mode: "install" | "agent") {
                 heroMode === 'install' ? 'uni-install-tab' : 'uni-agent-tab'
               "
             >
+              <span class="uni-command-prompt" aria-hidden="true">$</span>
               <code>{{ heroCommand }}</code>
-              <button type="button" @click="copyHeroCommand">
-                {{
+              <button
+                type="button"
+                :aria-label="copy.copyAction"
+                @click="copyHeroCommand"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path v-if="copyState === 'copied'" d="m5 12 4 4L19 6" />
+                  <path v-else d="M9 8h10v11H9zM5 15V5h10" />
+                </svg>
+                <span>{{
                   copyState === "copied"
                     ? copy.copied
                     : copyState === "failed"
                       ? copy.copyFailed
                       : copy.copyAction
-                }}
+                }}</span>
               </button>
             </div>
           </Transition>
