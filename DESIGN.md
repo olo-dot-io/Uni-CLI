@@ -2,7 +2,7 @@
 
 ## Direction
 
-The public surface combines two layers. Functional controls retain the compact behavior of [Appica UI](https://appica.dev/ui), ported from `appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6` into VitePress and Vue. The campaign layer is **The Green Observatory**: a 1960s space-program future imagined through oil glazing, viridian landscape painting, restrained lithographic grain, and an asymmetric editorial composition. Appica's React runtime is not added. Its MIT license is preserved in `docs/.vitepress/theme/APPICA-UI-LICENSE.txt`.
+The public surface combines two layers. Functional controls retain the compact behavior of [Appica UI](https://appica.dev/ui), ported from `appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6` into VitePress and Vue. The campaign layer is **The Green Observatory**: a 1960s space-program future imagined through smooth oil glazing, continuous viridian color fields, and an asymmetric editorial composition. Appica's React runtime is not added. Its MIT license is preserved in `docs/.vitepress/theme/APPICA-UI-LICENSE.txt`.
 
 The homepage begins with a real copy target rather than explanatory prose. Visitors can copy either the npm installation command or a concise instruction for an agent. The observatory, telescope, and ringed planet carry the exploration metaphor; the interface remains modern and legible above the media plane. Each later section presents one action or one structured result. Decorative dividers, status dots, glowing traces, and ornamental diagrams are absent.
 
@@ -62,7 +62,7 @@ Burnt orange appears only on the primary copy action and selected-result feedbac
 
 ## Composition
 
-The homepage hero is one wide painted field. Copy occupies the quiet left side; the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster.
+The homepage hero is one full-viewport painted field beneath a matching forest navigation bar. Copy occupies the quiet left side; the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. There is no inset frame or pale perimeter. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster.
 
 At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
 
@@ -79,4 +79,4 @@ No component runs a continuous animation. The interface contains no breathing li
 - Homepage painting: `docs/public/green-observatory.webp`
 - Mascot: `docs/public/mascot-otter.png`
 
-The homepage painting is an original generated asset with no embedded type, logo, or third-party artwork. Its art direction is a viridian 1960s observatory landscape with oil glazing, lithographic grain, left-side negative space, a ringed planet, one telescope, and one astronomer. The preview and Open Graph image are generated from the production homepage after visual verification.
+The homepage painting is an original generated asset with no embedded type, logo, or third-party artwork. Its art direction is a viridian 1960s observatory landscape with smooth oil glazing, broad controlled brushwork, left-side negative space, a ringed planet, one telescope, and one astronomer. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. The preview and Open Graph image are generated from the production homepage after visual verification.

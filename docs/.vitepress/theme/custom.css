@@ -571,6 +571,9 @@ textarea:focus-visible {
   --home-paper: oklch(0.95 0.03 97);
   --home-ivory: oklch(0.975 0.022 91);
   --home-orange: oklch(0.66 0.16 46);
+  --home-radius-control: 14px;
+  --home-radius-card: 22px;
+  --home-radius-panel: 28px;
   width: 100%;
   overflow: hidden;
   background: var(--home-paper);
@@ -587,15 +590,49 @@ body:has(.uni-docs-home) .VPFooter {
   display: none;
 }
 
+body:has(.uni-docs-home) .VPNav {
+  --vp-c-bg: oklch(0.18 0.05 158);
+  --vp-c-bg-alt: oklch(0.2 0.055 158);
+  --vp-c-bg-soft: oklch(0.25 0.055 158);
+  --vp-c-text-1: oklch(0.975 0.022 91);
+  --vp-c-text-2: oklch(0.84 0.045 122);
+  --vp-c-divider: transparent;
+}
+
+body:has(.uni-docs-home) .VPNavBar {
+  border-bottom: 0 !important;
+  background: oklch(0.18 0.05 158) !important;
+  box-shadow: none !important;
+}
+
+body:has(.uni-docs-home) .VPNavBarTitle .title,
+body:has(.uni-docs-home) .VPNavBarMenuLink,
+body:has(.uni-docs-home) .VPNavBarTranslations .button,
+body:has(.uni-docs-home) .VPNavBarTranslations .text,
+body:has(.uni-docs-home) .VPSocialLink,
+body:has(.uni-docs-home) .VPNavBarHamburger {
+  color: oklch(0.975 0.022 91) !important;
+}
+
+body:has(.uni-docs-home) .VPNavBarSearch .DocSearch-Button {
+  border: 0 !important;
+  background: color-mix(in oklch, white 10%, transparent) !important;
+  color: oklch(0.84 0.045 122) !important;
+}
+
+body:has(.uni-docs-home) .VPNavBarHamburger .container span {
+  background: oklch(0.975 0.022 91) !important;
+}
+
 .uni-landing-hero {
   position: relative;
   display: flex;
-  width: min(1400px, calc(100% - 32px));
-  min-height: min(820px, calc(100svh - 82px));
+  width: 100%;
+  min-height: calc(100svh - 64px);
   align-items: center;
-  margin: 16px auto 0;
+  margin: 0;
   overflow: hidden;
-  border-radius: 24px;
+  border-radius: 0;
   background: var(--home-forest-deep);
   isolation: isolate;
 }
@@ -667,7 +704,7 @@ body:has(.uni-docs-home) .VPFooter {
 .uni-install-panel {
   width: min(560px, 100%);
   padding: 6px;
-  border-radius: 18px;
+  border-radius: var(--home-radius-panel);
   background: var(--home-ivory);
   box-shadow: 0 22px 54px oklch(0.12 0.04 158 / 0.26);
 }
@@ -677,7 +714,7 @@ body:has(.uni-docs-home) .VPFooter {
   width: fit-content;
   gap: 3px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: var(--home-radius-control);
   background: var(--home-sage);
 }
 
@@ -685,7 +722,7 @@ body:has(.uni-docs-home) .VPFooter {
   min-height: 32px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 11px;
   background: transparent;
   color: color-mix(in oklch, var(--home-forest) 72%, var(--home-paper));
   font: inherit;
@@ -736,7 +773,7 @@ body:has(.uni-docs-home) .VPFooter {
   min-height: 46px;
   padding: 0 16px;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--home-radius-control);
   background: var(--home-orange);
   color: var(--home-ivory);
   font: inherit;
@@ -763,7 +800,7 @@ body:has(.uni-docs-home) .VPFooter {
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  border-radius: 12px;
+  border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-ivory) 12%, transparent);
   color: var(--home-ivory) !important;
   font-size: 14px;
@@ -830,7 +867,7 @@ body:has(.uni-docs-home) .VPFooter {
   gap: 10px;
   padding: 10px;
   border: 0;
-  border-radius: 22px;
+  border-radius: var(--home-radius-panel);
   background: var(--home-sage);
   box-shadow: none;
 }
@@ -839,7 +876,7 @@ body:has(.uni-docs-home) .VPFooter {
   min-width: 0;
   padding: 28px;
   border: 0 !important;
-  border-radius: 14px;
+  border-radius: var(--home-radius-card);
   background: var(--home-ivory);
 }
 
@@ -886,7 +923,7 @@ body:has(.uni-docs-home) .VPFooter {
   gap: 4px 12px;
   padding: 14px;
   border: 0;
-  border-radius: 11px;
+  border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-sage) 48%, var(--home-ivory));
 }
 
@@ -941,7 +978,7 @@ body:has(.uni-docs-home) .VPFooter {
   grid-template-columns: 0.8fr 1fr;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-sage) 42%, var(--home-ivory));
 }
 
@@ -963,7 +1000,7 @@ body:has(.uni-docs-home) .VPFooter {
 .uni-receipt-result p {
   margin: 18px 0 0;
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-sage) 58%, var(--home-ivory));
   color: var(--home-forest);
   font-size: 12px;
@@ -998,7 +1035,7 @@ body:has(.uni-docs-home) .VPFooter {
   gap: 8px 16px;
   padding: 24px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--home-radius-card);
   background: color-mix(
     in oklch,
     var(--home-viridian) 78%,
@@ -1057,7 +1094,7 @@ body:has(.uni-docs-home) .VPFooter {
   min-width: 0;
   padding: 22px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--home-radius-card);
   background: var(--home-ivory);
 }
 
@@ -1107,7 +1144,7 @@ body:has(.uni-docs-home) .VPFooter {
   gap: 16px;
   padding: 24px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--home-radius-card);
   background: var(--home-ivory);
   box-shadow: none;
   transition:
@@ -1167,7 +1204,7 @@ body:has(.uni-docs-home) .VPFooter {
 
 .uni-footer-meta a {
   padding: 9px 12px;
-  border-radius: 10px;
+  border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-ivory) 10%, transparent);
   color: var(--home-ivory) !important;
   font-size: 13px;
@@ -1572,8 +1609,8 @@ body:has(.uni-docs-home) .VPFooter {
   }
 
   .uni-landing-hero {
-    width: calc(100% - 24px);
-    min-height: 720px;
+    width: 100%;
+    min-height: calc(100svh - 64px);
   }
 
   .uni-hero-copy {
@@ -1605,10 +1642,10 @@ body:has(.uni-docs-home) .VPFooter {
 
 @media (max-width: 760px) {
   .uni-landing-hero {
-    width: calc(100% - 24px);
-    min-height: 880px;
+    width: 100%;
+    min-height: max(880px, calc(100svh - 64px));
     align-items: flex-start;
-    border-radius: 20px;
+    border-radius: 0;
   }
 
   .uni-hero-painting {
@@ -1699,10 +1736,10 @@ body:has(.uni-docs-home) .VPFooter {
   }
 
   .uni-landing-hero {
-    width: calc(100% - 16px);
+    width: 100%;
     min-height: 850px;
-    margin-top: 8px;
-    border-radius: 16px;
+    margin-top: 0;
+    border-radius: 0;
   }
 
   .uni-hero-copy {
