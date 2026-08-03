@@ -5,8 +5,8 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>一个命令操作所有界面</strong><br>
-  搜索、执行并检查真实软件。
+  <strong>把所有界面交给 Agent</strong><br>
+  安装一次。搜索、执行、检查、修复。
 </p>
 
 <p align="center">
@@ -17,13 +17,13 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=3b82f6"></a>
-  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-0f172b?style=flat-square"></a>
-  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-3b82f6?style=flat-square">
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=0A6244"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-073F2B?style=flat-square"></a>
+  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-D86A35?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="docs/public/site-preview.webp" alt="Uni-CLI 将意图依次转换为搜索、选择、执行与结果" width="100%">
+  <img src="docs/public/site-preview.webp" alt="Uni-CLI 绿色天文台首页，支持一键复制 npm 命令与 Agent 指令" width="100%">
 </p>
 
 Uni-CLI 将意图转换为选定的 operation 和结构化结果，覆盖 Web、浏览器、桌面、本地工具与 MCP。

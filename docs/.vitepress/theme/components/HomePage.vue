@@ -15,7 +15,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useData, withBase } from "vitepress";
-import homeOperation from "../../../home-operation.json";
 import releaseInfo from "../../../release-info.json";
 import siteIndex from "../../../site-index.json";
 import stats from "../../../../stats.json";
@@ -24,28 +23,29 @@ import OperationReceipt from "./OperationReceipt.vue";
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
 const copyState = ref<"idle" | "copied" | "failed">("idle");
+const heroMode = ref<"install" | "agent">("install");
 const installCommand = "npm install -g @zenalexa/unicli";
-const searchCommand = computed(
-  () =>
-    `unicli search "${isZh.value ? homeOperation.intent.zh : homeOperation.intent.en.toLowerCase()}"`,
+const agentInstruction = computed(() =>
+  isZh.value
+    ? '安装 @zenalexa/unicli；使用浏览器工具前，先运行 unicli search "<意图>"。'
+    : 'Install @zenalexa/unicli. Before browser tools, run unicli search "<intent>".',
 );
-
+const heroCommand = computed(() =>
+  heroMode.value === "install" ? installCommand : agentInstruction.value,
+);
 const copy = computed(() =>
   isZh.value
     ? {
-        eyebrow: "开放式智能体界面",
-        title: "一个命令。所有界面。",
-        primary: "安装 Uni-CLI",
+        eyebrow: "Agent-Computer Interface",
+        title: "把所有界面交给 Agent。",
+        lead: "安装一次。搜索、执行、检查、修复。",
+        installTab: "npm",
+        agentTab: "Agent 指令",
+        copyAction: "复制",
         secondary: "打开文档",
+        github: "GitHub",
         copied: "已复制",
         copyFailed: "手动选择",
-        commandLabel: "意图",
-        stages: [
-          ["01", "搜索", `${siteIndex.total_commands} operations`],
-          ["02", "选择", homeOperation.candidates.zh[0]],
-          ["03", "执行", homeOperation.selected.operator],
-          ["04", "结果", "结构化输出"],
-        ],
         flowLabel: "实时路径",
         flowTitle: "意图进入，结果返回。",
         surfaceLabel: "可操作范围",
@@ -64,6 +64,8 @@ const copy = computed(() =>
           [String(stats.test_count), "tests"],
         ],
         startLabel: "开始",
+        footerLabel: "开放式 Agent-Computer Interface",
+        license: "Apache-2.0 许可证",
         entries: [
           ["安装运行", "/zh/guide/getting-started"],
           ["浏览 operation", "/zh/reference/sites"],
@@ -72,19 +74,16 @@ const copy = computed(() =>
         ],
       }
     : {
-        eyebrow: "Open agent interface",
-        title: "One command. Every interface.",
-        primary: "Install Uni-CLI",
+        eyebrow: "Agent-computer interface",
+        title: "Give agents every interface.",
+        lead: "Install once. Search, run, inspect, repair.",
+        installTab: "npm",
+        agentTab: "Agent prompt",
+        copyAction: "Copy",
         secondary: "Open docs",
+        github: "GitHub",
         copied: "Copied",
         copyFailed: "Select manually",
-        commandLabel: "Intent",
-        stages: [
-          ["01", "Search", `${siteIndex.total_commands} operations`],
-          ["02", "Select", homeOperation.candidates.en[0]],
-          ["03", "Run", homeOperation.selected.operator],
-          ["04", "Receipt", "structured output"],
-        ],
         flowLabel: "Live route",
         flowTitle: "Intent in. Receipt out.",
         surfaceLabel: "Operating surface",
@@ -103,6 +102,8 @@ const copy = computed(() =>
           [String(stats.test_count), "tests"],
         ],
         startLabel: "Start",
+        footerLabel: "Open Agent-Computer Interface",
+        license: "Apache-2.0 License",
         entries: [
           ["Install & run", "/guide/getting-started"],
           ["Browse operations", "/reference/sites"],
@@ -112,15 +113,30 @@ const copy = computed(() =>
       },
 );
 
-async function copyInstallCommand() {
-  if (!navigator.clipboard) {
-    copyState.value = "failed";
-    return;
+async function copyHeroCommand() {
+  let copied = false;
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(heroCommand.value);
+      copied = true;
+    } catch {
+      copied = false;
+    }
   }
 
-  try {
-    await navigator.clipboard.writeText(installCommand);
-  } catch {
+  if (!copied) {
+    const fallback = document.createElement("textarea");
+    fallback.value = heroCommand.value;
+    fallback.setAttribute("readonly", "");
+    fallback.style.position = "fixed";
+    fallback.style.opacity = "0";
+    document.body.append(fallback);
+    fallback.select();
+    copied = document.execCommand("copy");
+    fallback.remove();
+  }
+
+  if (!copied) {
     copyState.value = "failed";
     return;
   }
@@ -135,65 +151,73 @@ async function copyInstallCommand() {
 <template>
   <main class="uni-docs-home">
     <section class="uni-landing-hero" aria-labelledby="uni-home-title">
-      <header class="uni-hero-copy">
-        <p class="uni-eyebrow">{{ copy.eyebrow }}</p>
-        <h1 id="uni-home-title">{{ copy.title }}</h1>
-      </header>
+      <img
+        class="uni-hero-painting"
+        :src="withBase('/green-observatory.webp')"
+        alt=""
+        aria-hidden="true"
+      />
 
-      <div class="uni-hero-actions">
-        <button
-          type="button"
-          class="uni-link-primary"
-          @click="copyInstallCommand"
-        >
-          {{ copy.primary }}
-        </button>
-        <a
-          class="uni-link-secondary"
-          :href="
-            withBase(
-              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
-            )
-          "
-        >
-          {{ copy.secondary }} <span aria-hidden="true">↗</span>
-        </a>
-      </div>
+      <div class="uni-hero-copy">
+        <header>
+          <p class="uni-eyebrow">{{ copy.eyebrow }}</p>
+          <h1 id="uni-home-title">{{ copy.title }}</h1>
+          <p class="uni-hero-lead">{{ copy.lead }}</p>
+        </header>
 
-      <div class="uni-product-window">
-        <div class="uni-window-bar">
+        <div class="uni-install-panel">
+          <div class="uni-command-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="heroMode === 'install'"
+              @click="heroMode = 'install'"
+            >
+              {{ copy.installTab }}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              :aria-selected="heroMode === 'agent'"
+              @click="heroMode = 'agent'"
+            >
+              {{ copy.agentTab }}
+            </button>
+          </div>
+          <div class="uni-install-command">
+            <code>{{ heroCommand }}</code>
+            <button type="button" @click="copyHeroCommand">
+              {{
+                copyState === "copied"
+                  ? copy.copied
+                  : copyState === "failed"
+                    ? copy.copyFailed
+                    : copy.copyAction
+              }}
+            </button>
+          </div>
+        </div>
+
+        <div class="uni-hero-actions">
           <a
-            class="uni-window-brand"
-            href="https://github.com/olo-dot-io/Uni-CLI"
-            aria-label="Uni-CLI on GitHub"
+            :href="
+              withBase(
+                isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+              )
+            "
           >
-            <span translate="no">Uni-CLI</span>
-            <small>v{{ releaseInfo.version }}</small>
+            {{ copy.secondary }} <span aria-hidden="true">↗</span>
+          </a>
+          <a href="https://github.com/olo-dot-io/Uni-CLI">
+            {{ copy.github }} <span aria-hidden="true">↗</span>
           </a>
         </div>
-
-        <div class="uni-window-body">
-          <div class="uni-command-composer">
-            <span class="uni-composer-label">{{ copy.commandLabel }}</span>
-            <code>{{ searchCommand }}</code>
-            <a
-              :href="
-                withBase(isZh ? '/zh/reference/sites' : '/reference/sites')
-              "
-              :aria-label="copy.secondary"
-            >
-              <span aria-hidden="true">↑</span>
-            </a>
-          </div>
-
-          <ol class="uni-stage-list">
-            <li v-for="stage in copy.stages" :key="stage[0]">
-              <strong>{{ stage[1] }}</strong>
-              <small>{{ stage[2] }}</small>
-            </li>
-          </ol>
-        </div>
       </div>
+
+      <p class="uni-hero-plate" aria-hidden="true">
+        <span>OBSERVATORY 01</span>
+        <span>v{{ releaseInfo.version }}</span>
+      </p>
       <span class="uni-sr-only" role="status" aria-live="polite">
         {{
           copyState === "idle"
@@ -256,5 +280,29 @@ async function copyInstallCommand() {
         </li>
       </ol>
     </section>
+
+    <footer class="uni-home-footer">
+      <div class="uni-footer-meta">
+        <p>{{ copy.footerLabel }}</p>
+        <nav aria-label="Footer">
+          <a href="https://github.com/olo-dot-io/Uni-CLI">GitHub</a>
+          <a href="https://www.npmjs.com/package/@zenalexa/unicli">npm</a>
+          <a
+            :href="
+              withBase(
+                isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+              )
+            "
+          >
+            Docs
+          </a>
+        </nav>
+      </div>
+      <p class="uni-footer-word" translate="no">Uni-CLI</p>
+      <div class="uni-footer-base">
+        <span>{{ copy.license }}</span>
+        <span>v{{ releaseInfo.version }}</span>
+      </div>
+    </footer>
   </main>
 </template>

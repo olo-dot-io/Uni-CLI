@@ -5,8 +5,8 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>One command for every interface</strong><br>
-  Search, run, and inspect real software.
+  <strong>Give agents every interface</strong><br>
+  Install once. Search, run, inspect, repair.
 </p>
 
 <p align="center">
@@ -17,13 +17,13 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm version" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=3b82f6"></a>
-  <a href="./LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-0f172b?style=flat-square"></a>
-  <img alt="Node 22.19 or newer" src="https://img.shields.io/badge/node-22.19%2B-3b82f6?style=flat-square">
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm version" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=0A6244"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-073F2B?style=flat-square"></a>
+  <img alt="Node 22.19 or newer" src="https://img.shields.io/badge/node-22.19%2B-D86A35?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="docs/public/site-preview.webp" alt="Uni-CLI intent search moving through Search, Select, Run, and Receipt" width="100%">
+  <img src="docs/public/site-preview.webp" alt="Uni-CLI green observatory hero with one-click npm and agent prompt copy" width="100%">
 </p>
 
 Uni-CLI turns intent into a selected operation and a structured receipt across web, browser, desktop, local, and MCP surfaces.

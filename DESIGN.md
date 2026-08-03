@@ -2,22 +2,22 @@
 
 ## Direction
 
-The public surface uses the component language of [Appica UI](https://appica.dev/ui): quiet neutral canvases, navy ink, blue interaction color, compact controls, soft grouped surfaces, and short state feedback. The implementation ports the official tokens and behavior from `appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6` into the existing VitePress and Vue boundary. Appica's React runtime is not added to the documentation bundle. Its MIT license is preserved in `docs/.vitepress/theme/APPICA-UI-LICENSE.txt`.
+The public surface combines two layers. Functional controls retain the compact behavior of [Appica UI](https://appica.dev/ui), ported from `appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6` into VitePress and Vue. The campaign layer is **The Green Observatory**: a 1960s space-program future imagined through oil glazing, viridian landscape painting, restrained lithographic grain, and an asymmetric editorial composition. Appica's React runtime is not added. Its MIT license is preserved in `docs/.vitepress/theme/APPICA-UI-LICENSE.txt`.
 
-Each section presents one action or one structured result. Spacing, background contrast, and radius create hierarchy. Decorative dividers, status dots, glowing traces, gradients, and ornamental diagrams are absent. Authored copy stays short.
+The homepage begins with a real copy target rather than explanatory prose. Visitors can copy either the npm installation command or a concise instruction for an agent. The observatory, telescope, and ringed planet carry the exploration metaphor; the interface remains modern and legible above the media plane. Each later section presents one action or one structured result. Decorative dividers, status dots, glowing traces, and ornamental diagrams are absent.
 
 ## Typography
 
 Geist Sans is the only authored public typeface. The variable WOFF2 build and its OFL license remain vendored. Interface labels, prose, code, and numbers share the same family; browsers provide glyph fallback only when Geist has no matching glyph.
 
-| Role             | Size                     | Line height | Weight    |
-| ---------------- | ------------------------ | ----------- | --------- |
-| Hero             | `clamp(36px, 4vw, 48px)` | `1.04`      | `620`     |
-| Homepage section | `clamp(30px, 3vw, 38px)` | `1.1`       | `610`     |
-| Document title   | `clamp(34px, 4vw, 42px)` | `1.1`       | `620`     |
-| Body             | `16px`                   | `1.6`       | `400`     |
-| Interface        | `14px`                   | `1.45`      | `500–600` |
-| Label            | `12px`                   | `1.35`      | `540–600` |
+| Role             | Size                       | Line height | Weight    |
+| ---------------- | -------------------------- | ----------- | --------- |
+| Hero             | `clamp(46px, 5.4vw, 72px)` | `0.98`      | `650`     |
+| Homepage section | `clamp(30px, 4vw, 42px)`   | `1.08`      | `650`     |
+| Document title   | `clamp(34px, 4vw, 42px)`   | `1.1`       | `620`     |
+| Body             | `16px`                     | `1.6`       | `400`     |
+| Interface        | `14px`                     | `1.45`      | `500–600` |
+| Label            | `12px`                     | `1.35`      | `540–600` |
 
 The scale follows Appica's compact steps and prevents large jumps between adjacent roles. Headlines use balanced wrapping. Long-form text stays within 68 characters. Numeric data uses tabular figures. Inputs remain at least 16px on mobile.
 
@@ -25,7 +25,17 @@ The scale follows Appica's compact steps and prevents large jumps between adjace
 
 ## Color
 
-The site maps Appica's OKLCH primitives to semantic tokens. The light surface is white with cool gray grouping; the dark surface is deep navy rather than neutral black.
+Documentation maps Appica's OKLCH primitives to semantic tokens. The homepage uses a fixed campaign palette in both appearances so the painting and product identity do not change when documentation switches theme.
+
+| Homepage role | Value                   |
+| ------------- | ----------------------- |
+| Deep forest   | `oklch(0.20 0.055 158)` |
+| Viridian      | `oklch(0.42 0.09 158)`  |
+| Moss          | `oklch(0.64 0.075 130)` |
+| Sage          | `oklch(0.84 0.045 122)` |
+| Paper         | `oklch(0.95 0.03 97)`   |
+| Ivory         | `oklch(0.975 0.022 91)` |
+| Burnt orange  | `oklch(0.66 0.16 46)`   |
 
 | Role             | Light                    | Dark                     |
 | ---------------- | ------------------------ | ------------------------ |
@@ -38,7 +48,7 @@ The site maps Appica's OKLCH primitives to semantic tokens. The light surface is
 | Secondary action | `oklch(0.623 0.188 259)` | `oklch(0.707 0.165 255)` |
 | Success          | `oklch(0.696 0.17 162)`  | `oklch(0.765 0.177 163)` |
 
-Filled emphasis appears once per decision context. Blue indicates interaction. Green is reserved for successful or selected runtime state. Contrast is tuned independently for each appearance.
+Burnt orange appears only on the primary copy action and selected-result feedback. Contrast is tuned independently for documentation appearances.
 
 ## Components
 
@@ -52,9 +62,9 @@ Filled emphasis appears once per decision context. Blue indicates interaction. G
 
 ## Composition
 
-The homepage uses a centered 960px working surface. The hero contains one intent composer and four equally weighted stages. Later sections repeat the same grid, radius, spacing, and text hierarchy for the live route, operating surfaces, data, and starting points.
+The homepage hero is one wide painted field. Copy occupies the quiet left side; the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster.
 
-At 960px the receipt and surface grids reduce columns. At 760px the receipt stacks and entry points become one column. At 640px controls become full width where useful and the hero stages form a balanced 2×2 grid. No content exceeds the viewport.
+At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
 
 Documentation keeps a 780px reading measure. Navigation, search, sidebars, tables, code blocks, version notices, catalog filters, and agent controls reuse the same tokens.
 
@@ -66,6 +76,7 @@ No component runs a continuous animation. The interface contains no breathing li
 
 - README preview: `docs/public/site-preview.webp`
 - Open Graph preview: `docs/public/site-preview-og.jpg`
+- Homepage painting: `docs/public/green-observatory.webp`
 - Mascot: `docs/public/mascot-otter.png`
 
-The preview and Open Graph image are generated from the production homepage after visual verification.
+The homepage painting is an original generated asset with no embedded type, logo, or third-party artwork. Its art direction is a viridian 1960s observatory landscape with oil glazing, lithographic grain, left-side negative space, a ringed planet, one telescope, and one astronomer. The preview and Open Graph image are generated from the production homepage after visual verification.

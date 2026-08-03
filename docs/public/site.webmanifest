@@ -1,11 +1,11 @@
 {
   "name": "Uni-CLI",
   "short_name": "Uni-CLI",
-  "description": "One command for every interface.",
+  "description": "Give agents every interface.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#eeeedc",
+  "theme_color": "#073f2b",
   "icons": [
     {
       "src": "favicon.png",

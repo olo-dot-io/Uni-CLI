@@ -1,7 +1,7 @@
 {
   "name": "@zenalexa/unicli",
   "version": "1.0.2",
-  "description": "One command for every interface—search, run, and inspect real software across APIs, browsers, desktops, local tools, and MCP.",
+  "description": "Give agents every interface—install once to search, run, inspect, and repair real software across APIs, browsers, desktops, local tools, and MCP.",
   "packageManager": "npm@11.14.0",
   "type": "module",
   "main": "dist/main.js",

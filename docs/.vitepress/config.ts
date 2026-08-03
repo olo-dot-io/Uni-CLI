@@ -46,9 +46,9 @@ const siteBase = configuredSiteBase
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
 const publicDescription =
-  "One command for every interface—search, run, and inspect real software across APIs, browsers, desktops, local tools, and MCP.";
+  "Give agents every interface—install once to search, run, inspect, and repair real software across APIs, browsers, desktops, local tools, and MCP.";
 const zhDescription =
-  "一个命令操作所有界面：跨越 API、浏览器、桌面、本地工具与 MCP，搜索、执行并检查真实软件。";
+  "把所有界面交给 Agent：安装一次，即可跨越 API、浏览器、桌面、本地工具与 MCP 搜索、执行、检查并修复。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Geist Variable, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -508,7 +508,7 @@ export default defineConfig({
       "meta",
       {
         name: "theme-color",
-        content: "#ffffff",
+        content: "#073f2b",
         media: "(prefers-color-scheme: light)",
       },
     ],
@@ -516,7 +516,7 @@ export default defineConfig({
       "meta",
       {
         name: "theme-color",
-        content: "#020617",
+        content: "#073f2b",
         media: "(prefers-color-scheme: dark)",
       },
     ],
