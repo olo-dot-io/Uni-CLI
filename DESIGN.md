@@ -1,107 +1,76 @@
 # Uni-CLI Public Design System
 
-## Direction: Operational Cartography
+## Direction: interface, not explanation
 
-Uni-CLI presents software control as a field of explicit routes. The visual system borrows the spatial discipline of infrastructure maps and architectural models: quiet terrain, precise relays, one highlighted path, and enough empty space for a decision to remain legible.
+The public site presents Uni-CLI as working software. The homepage opens on one product window where an intent becomes a selected operation, an execution route, and a receipt. Supporting sections use live data, aligned rows, and direct entry points. Prose appears only when the interface cannot carry the meaning itself.
 
-The direction rejects generic terminal dashboards and neon AI imagery. A command remains visible when it explains a real operation. Decoration never pretends to be telemetry.
-
-## Brand Materials
-
-| Role             | Token              | Value     |
-| ---------------- | ------------------ | --------- |
-| Night field      | `--uni-night`      | `#11130f` |
-| Warm paper       | `--uni-paper`      | `#f2ede2` |
-| Deep paper       | `--uni-paper-deep` | `#e6decd` |
-| Ivory text       | `--uni-ivory`      | `#f3ecd9` |
-| Primary ink      | `--uni-ink`        | `#20231d` |
-| Brass route      | `--uni-brass`      | `#d1ad68` |
-| Cyan signal      | `--uni-signal`     | `#8fcbd0` |
-| Muted night text | `--uni-muted`      | `#bbb39f` |
-
-Brass identifies primary paths and calls to action. Cyan marks live signals, selected state, and focus. Semantic error and warning colors stay available inside product feedback, but they do not become brand decoration.
-
-Surfaces use flat material transitions, thin separators, and restrained grain from the hero artwork. Avoid glass cards, broad glow, purple-blue gradients, excessive rounding, and stacked panels that repeat the same hierarchy.
+The visual lineage follows contemporary tool interfaces: a quiet textured field, one centered working surface, warm paper, dense black ink, restrained orange interaction color, fine separators, and soft elevation. It avoids generic terminal dashboards, card mosaics, decorative icon circles, violet gradients, oversized marketing copy, and repeated feature summaries.
 
 ## Typography
 
-All public font files ship with the site.
+Geist Sans is the only authored public typeface. It serves display, interface, code, numbers, and Latin text; browsers supply glyph fallback only where Geist has no character coverage. The pinned variable WOFF2 build is vendored with its OFL license.
 
-| Role                  | Family                       | Use                                          |
-| --------------------- | ---------------------------- | -------------------------------------------- |
-| Display and interface | Bricolage Grotesque Variable | Headlines, navigation, section titles, stats |
-| Simplified Chinese    | Noto Sans SC Variable        | Chinese display and prose                    |
-| Technical notation    | IBM Plex Mono                | Commands, receipts, labels, metadata         |
+| Role           | Size                       | Line height | Weight    |
+| -------------- | -------------------------- | ----------- | --------- |
+| Hero           | `clamp(46px, 6.2vw, 76px)` | `0.97`      | `610`     |
+| Section title  | `clamp(44px, 6vw, 78px)`   | `0.98`      | `600`     |
+| Document title | `clamp(40px, 5vw, 58px)`   | `1.02`      | `620`     |
+| Body           | `16px`                     | `1.65`      | `400`     |
+| Interface      | `14px`                     | `1.4`       | `500–580` |
+| Label          | `12px`                     | `1.25`      | `520–560` |
 
-Display type uses condensed width, moderate weight, and tight tracking. Body copy stays compact and readable. Monospace labels are short, uppercase, and functional. Long technical prose remains sans-serif.
+Headlines use tight tracking and balanced wrapping. Descriptions use pretty wrapping. Long-form text stays within 68 characters. Changing values use tabular numbers. Links take underline metrics from Geist. Inputs remain at least 16px on mobile.
 
-`@chenglou/pretext@0.0.6` runs at the text-layout boundary. Semantic DOM remains the source of content and accessibility.
+`@chenglou/pretext@0.0.6` remains pinned at the text-layout boundary. Semantic DOM remains authoritative.
+
+## Color
+
+Colors are semantic OKLCH tokens. Orange identifies interaction. Green identifies successful runtime state. Neutral ink and paper carry structure; decorative color never borrows an interactive meaning.
+
+| Role           | Token                | Light                   |
+| -------------- | -------------------- | ----------------------- |
+| Canvas         | `--uni-paper`        | `oklch(0.978 0.009 88)` |
+| Raised surface | `--uni-paper-raised` | `oklch(0.994 0.004 88)` |
+| Primary text   | `--uni-ink`          | `oklch(0.205 0.008 75)` |
+| Secondary text | `--uni-muted`        | `oklch(0.49 0.012 75)`  |
+| Separator      | `--uni-rule`         | `oklch(0.895 0.012 84)` |
+| Interaction    | `--uni-accent`       | `oklch(0.61 0.15 39)`   |
+| Success        | `--uni-success`      | `oklch(0.66 0.16 148)`  |
+
+Dark appearance is tuned independently. `prefers-contrast: more` widens lightness gaps. Visited links use a separate muted plum token. Filled emphasis appears once per decision context.
+
+## Surfaces
+
+- Use borders for dividers, tables, form outlines, and selected state.
+- Use layered translucent shadows for elevation and container edges.
+- Product windows use a 24px outer radius. A surface inset by 10px uses a 14px inner radius.
+- Images receive a 1px inner outline: pure black at 10% in light appearance and pure white at 10% in dark appearance.
+- Cards appear only for real adapter, release, or statistic objects.
+- Controls are at least 42px tall on marketing surfaces and 38px in dense documentation controls.
 
 ## Composition
 
-- Landing surfaces use a 12-column field with a maximum working width of 1380px.
-- The hero places copy in the quiet left field and routing artwork on the right.
-- Section transitions alternate night, paper, brass, and deep paper to establish pace without adding containers.
-- Section headlines can span 6–9 columns. Explanatory copy stays below 680px.
-- Desktop sections use 84–150px vertical space. Mobile sections use 78px and 20px horizontal padding.
-- Lists express comparison through aligned rows and separators. Cards appear only when the content has a real object boundary.
+- The hero fills `calc(100svh - 64px)` and centers one product window.
+- Working width is 1240px; documentation measure is 780px.
+- Sections have one job: route, surface, or entry.
+- Lists and receipts use aligned rows and separators rather than decorative containers.
+- At 760px the receipt stacks, surface rows collapse to label/detail pairs, and hero stages become a 2×2 grid.
+- At 640px header utilities move behind the menu, controls become full width where needed, and no content exceeds the viewport.
 
-The GitHub README shares the generated hero asset and the same hierarchy: identity, first route, task routing, contract, surfaces, receipts, repair, and trust.
+## Interaction
 
-## Core Public Components
-
-### Landing hero
-
-The hero contains one declarative promise, one short explanation, two entry points, a first command, and generated runtime counts. The artwork contains no embedded text, logo, terminal, or fictional UI.
-
-### Task routing table
-
-The operation catalog handles discovery and contracts. The routing sequence below selects the execution operator:
-
-1. structured API for public data and stable service contracts;
-2. local runtime for file, process, and OS boundaries;
-3. browser protocol for authenticated or private web contracts;
-4. semantic browser for page-only web flows;
-5. accessibility tree for native desktop applications;
-6. visual computer use for pixel-only or unstructured interfaces.
-
-The table describes selection order. It must not imply hidden fallback.
-
-### Operation receipt
-
-A concrete receipt uses a live-verified public operation. It shows intent, ranked registry candidates, one selected operation, operator, effect, strategy, and structured outcome. Candidate operations remain visible so the product distinction is understandable without an interactive demo or a large JavaScript island.
-
-### Documentation
-
-Documentation uses the same typography and materials with a narrower 800px reading column. Generated catalogs use filter rows, flat cards, and visible operation names. Code blocks retain VitePress behavior and use IBM Plex Mono.
-
-## Interaction And Motion
-
-- Entrances use opacity and vertical translation over 600–950ms with a decelerating curve.
-- Hero artwork settles once through a small scale change.
-- Hover feedback stays within 180–200ms and uses color, border, or a 2px translation.
-- No continuous animation, shader, cursor follower, or requestAnimationFrame decoration.
-- `prefers-reduced-motion: reduce` removes entrances, translations, and smooth scrolling.
-- Focus rings use the cyan signal token and remain visible on night and paper fields.
-- Copy controls report success and failure through visible `aria-live` text.
-
-## Responsive Behavior
-
-At 840px the field becomes stacked, the route table becomes a two-column label/detail list, and the operation receipt uses two columns. At 640px every primary section and receipt becomes one column. Theme, social, and language controls move out of the narrow nav bar so search and the menu button remain inside the viewport.
-
-Every release screenshot must verify:
-
-- no horizontal overflow at 390px;
-- the command remains selectable and copy state is announced;
-- hero text keeps contrast over the artwork;
-- the operation receipt preserves its selected state;
-- reduced-motion styles remove nonessential motion;
-- English and Chinese homepages share the same information architecture.
+- Pressable controls use `scale(0.96)` with a 150ms interruptible transition.
+- Hover changes use explicit color, shadow, or transform properties; `transition: all` is prohibited.
+- The first-load product window uses one 520ms opacity/blur/12px translation sequence. Actions follow after 120ms.
+- High-frequency navigation and filtering use instant state changes or transitions no longer than 150ms.
+- `prefers-reduced-motion: reduce` removes entrance and transform effects.
+- Focus rings remain visible in light and dark appearance. Copy status is announced through a stable polite live region.
 
 ## Assets
 
-- Landing and README hero: `docs/public/operation-field.webp`
-- Open Graph crop: `docs/public/operation-field-og.jpg`
+- Homepage field: `docs/public/interface-field.webp`
+- README preview: `docs/public/site-preview.webp`
+- Open Graph preview: `docs/public/site-preview-og.jpg`
 - Mascot: `assets/mascot-otter.png`
 
-The routing artwork can evolve while the left-side negative space, brass/cyan material language, and absence of embedded text remain stable.
+The homepage field is an original project asset. It contains no embedded text, product UI, logo, or third-party artwork.

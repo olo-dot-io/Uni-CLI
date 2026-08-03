@@ -46,11 +46,11 @@ const siteBase = configuredSiteBase
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
 const publicDescription =
-  "Operation-first Agent-Computer Interface for real software—discover one executable path across APIs, browsers, desktops, local tools, and MCP; inspect its result and repair drift.";
+  "One command for every interface—search, run, and inspect real software across APIs, browsers, desktops, local tools, and MCP.";
 const zhDescription =
-  "面向真实软件的 operation-first Agent-Computer Interface：发现一条可执行路径，跨越 API、浏览器、桌面、本地工具与 MCP，并检查结果、修复漂移。";
+  "一个命令操作所有界面：跨越 API、浏览器、桌面、本地工具与 MCP，搜索、执行并检查真实软件。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
-const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
+const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Geist Variable, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
 const socialLinks = [
   { icon: "github", link: "https://github.com/olo-dot-io/Uni-CLI" },
@@ -504,7 +504,7 @@ export default defineConfig({
       { rel: "icon", type: "image/png", href: `${siteBase}favicon.png` },
     ],
     ["link", { rel: "manifest", href: `${siteBase}site.webmanifest` }],
-    ["meta", { name: "theme-color", content: "#11130f" }],
+    ["meta", { name: "theme-color", content: "#faf8f3" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: "Uni-CLI" }],
     [
@@ -519,7 +519,7 @@ export default defineConfig({
       "meta",
       {
         property: "og:image",
-        content: `${publicSiteUrl}operation-field-og.jpg`,
+        content: `${publicSiteUrl}site-preview-og.jpg`,
       },
     ],
     ["meta", { name: "twitter:card", content: "summary_large_image" }],

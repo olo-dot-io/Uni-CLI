@@ -5,8 +5,8 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>一个接口。跨越多种软件边界。</strong><br>
-  面向真实软件的 operation-first Agent-Computer Interface。
+  <strong>一个命令操作所有界面</strong><br>
+  搜索、执行并检查真实软件。
 </p>
 
 <p align="center">
@@ -17,16 +17,16 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=805522"></a>
-  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-20231d?style=flat-square"></a>
-  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-805522?style=flat-square">
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=d9572d"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-181715?style=flat-square"></a>
+  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-d9572d?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="docs/public/operation-field.webp" alt="一条被选中的 operation 穿越软件边界的雕塑化 routing field" width="100%">
+  <img src="docs/public/site-preview.webp" alt="Uni-CLI 将意图依次转换为搜索、选择、执行与结果" width="100%">
 </p>
 
-Uni-CLI 按意图发现可执行 operation，由调用方选择一条已声明的 substrate，并返回可检查的结果。目录覆盖 API、登录态浏览器、桌面应用、本地命令、文件、操作系统服务与 Agent 协议，各条能力保留自身的结构和边界。
+Uni-CLI 将意图转换为选定的 operation 和结构化结果，覆盖 Web、浏览器、桌面、本地工具与 MCP。
 
 ```bash
 npm install -g @zenalexa/unicli

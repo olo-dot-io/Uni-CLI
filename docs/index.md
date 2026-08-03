@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: Operation-first Agent-Computer Interface for real software—discover one executable path across APIs, browsers, desktops, local tools, and MCP; inspect its result and repair drift.
+description: One command for every interface—search, run, and inspect real software across APIs, browsers, desktops, local tools, and MCP.
 ---
 
 <HomePage />

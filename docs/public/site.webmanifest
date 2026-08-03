@@ -1,11 +1,11 @@
 {
   "name": "Uni-CLI",
   "short_name": "Uni-CLI",
-  "description": "Operations substrate for agents that use real software.",
+  "description": "One command for every interface.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#11100f",
-  "theme_color": "#11100f",
+  "background_color": "#faf8f3",
+  "theme_color": "#faf8f3",
   "icons": [
     {
       "src": "favicon.png",

@@ -114,45 +114,39 @@ const replaySteps: ReplayStep[] = [
   margin: 24px 0;
   display: grid;
   gap: 14px;
-  --cursor-ink: #17130f;
-  --cursor-paper: #f6f0e3;
-  --cursor-brass: #c19a52;
-  --cursor-graphite: #3c3832;
-  --cursor-signal: #6f8f72;
-  --cursor-fault: #a64d3b;
+  --cursor-ink: var(--uni-ink);
+  --cursor-paper: var(--uni-paper-raised);
+  --cursor-brass: var(--uni-accent);
+  --cursor-graphite: var(--uni-muted);
+  --cursor-signal: var(--uni-success);
+  --cursor-fault: oklch(0.58 0.17 28);
 }
 
 .demo-stage {
   position: relative;
   min-height: 360px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--cursor-graphite), transparent 68%);
-  border-radius: 8px;
-  background:
-    linear-gradient(135deg, #25231f, #34302a),
-    repeating-linear-gradient(
-      90deg,
-      rgba(246, 240, 227, 0.045) 0,
-      rgba(246, 240, 227, 0.045) 1px,
-      transparent 1px,
-      transparent 24px
-    );
-  box-shadow: inset 0 1px 0 rgba(246, 240, 227, 0.06);
+  border: 0;
+  border-radius: 18px;
+  background: oklch(0.19 0.008 75);
+  box-shadow:
+    0 0 0 1px oklch(0 0 0 / 0.12),
+    0 18px 44px -30px oklch(0 0 0 / 0.42);
 }
 
 .demo-toolbar {
   display: flex;
   gap: 7px;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(246, 240, 227, 0.08);
-  background: rgba(246, 240, 227, 0.035);
+  border-bottom: 1px solid oklch(1 0 0 / 0.09);
+  background: oklch(1 0 0 / 0.035);
 }
 
 .demo-toolbar span {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: #8d806c;
+  background: oklch(0.62 0.01 75);
 }
 
 .demo-toolbar span:nth-child(2) {
@@ -168,10 +162,12 @@ const replaySteps: ReplayStep[] = [
   inset: 58px 28px 28px;
   display: grid;
   grid-template-columns: 86px 1fr;
-  border: 1px solid rgba(23, 19, 15, 0.12);
-  border-radius: 8px;
-  background: #ede7da;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+  border: 0;
+  border-radius: 14px;
+  background: var(--cursor-paper);
+  box-shadow:
+    0 0 0 1px oklch(0 0 0 / 0.09),
+    0 24px 70px oklch(0 0 0 / 0.3);
 }
 
 .demo-sidebar {
@@ -179,14 +175,14 @@ const replaySteps: ReplayStep[] = [
   display: grid;
   align-content: start;
   gap: 12px;
-  border-right: 1px solid rgba(23, 19, 15, 0.13);
-  background: #2f2b25;
+  border-right: 1px solid oklch(0 0 0 / 0.13);
+  background: var(--cursor-ink);
 }
 
 .demo-sidebar span {
   height: 10px;
   border-radius: 4px;
-  background: rgba(246, 240, 227, 0.22);
+  background: oklch(1 0 0 / 0.22);
 }
 
 .demo-content {
@@ -200,9 +196,9 @@ const replaySteps: ReplayStep[] = [
 .demo-search {
   width: min(420px, 100%);
   height: 34px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #ded5c5, #f7f0e4);
-  box-shadow: inset 0 0 0 1px rgba(23, 19, 15, 0.08);
+  border-radius: 10px;
+  background: var(--uni-paper-muted);
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.08);
 }
 
 .demo-grid {
@@ -214,9 +210,9 @@ const replaySteps: ReplayStep[] = [
 
 .demo-grid span {
   height: 44px;
-  border-radius: 6px;
-  background: #faf4e8;
-  box-shadow: inset 0 0 0 1px rgba(23, 19, 15, 0.08);
+  border-radius: 10px;
+  background: var(--cursor-paper);
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.08);
 }
 
 .demo-target {
@@ -226,13 +222,13 @@ const replaySteps: ReplayStep[] = [
   min-width: 86px;
   height: 40px;
   border: 0;
-  border-radius: 6px;
-  color: #17130f;
+  border-radius: 10px;
+  color: var(--uni-paper-raised);
   font-weight: 720;
-  background: linear-gradient(135deg, #e9cf8d, #f6f0e3);
+  background: var(--cursor-ink);
   box-shadow:
-    0 10px 24px rgba(109, 78, 28, 0.18),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    0 10px 24px oklch(0 0 0 / 0.18),
+    inset 0 0 0 1px oklch(1 0 0 / 0.14);
 }
 
 .demo-route {
@@ -241,8 +237,8 @@ const replaySteps: ReplayStep[] = [
   top: var(--route-top);
   width: var(--route-width);
   height: var(--route-height);
-  border-top: 1px solid rgba(193, 154, 82, 0.52);
-  border-right: 1px solid rgba(193, 154, 82, 0.42);
+  border-top: 1px solid oklch(0.61 0.15 39 / 0.52);
+  border-right: 1px solid oklch(0.61 0.15 39 / 0.42);
   border-radius: 0 68px 0 0;
   opacity: 0.68;
 }
@@ -267,8 +263,8 @@ const replaySteps: ReplayStep[] = [
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(23, 19, 15, 0.2),
-    rgba(193, 154, 82, 0.52)
+    oklch(0 0 0 / 0.2),
+    oklch(0.61 0.15 39 / 0.52)
   );
   transform-origin: right center;
   animation: trace-breathe 7.2s ease-out infinite;
@@ -277,8 +273,8 @@ const replaySteps: ReplayStep[] = [
 .cursor-arrow {
   position: absolute;
   inset: 0;
-  filter: drop-shadow(0 9px 10px rgba(23, 19, 15, 0.28))
-    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.42));
+  filter: drop-shadow(0 9px 10px oklch(0 0 0 / 0.28))
+    drop-shadow(0 1px 0 oklch(1 0 0 / 0.42));
 }
 
 .cursor-arrow-outline,
@@ -310,7 +306,7 @@ const replaySteps: ReplayStep[] = [
 .cursor-arrow-outline {
   width: 46px;
   height: 58px;
-  background: rgba(23, 19, 15, 0.92);
+  background: oklch(0.205 0.008 75 / 0.92);
 }
 
 .cursor-arrow-fill {
@@ -319,8 +315,13 @@ const replaySteps: ReplayStep[] = [
   width: 38px;
   height: 49px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), transparent 34%),
-    linear-gradient(160deg, #ffffff 0%, #f6f0e3 62%, #d7c9ad 100%);
+    linear-gradient(145deg, oklch(1 0 0 / 0.92), transparent 34%),
+    linear-gradient(
+      160deg,
+      oklch(1 0 0) 0%,
+      oklch(0.97 0.01 88) 62%,
+      oklch(0.85 0.025 82) 100%
+    );
 }
 
 .cursor-arrow-highlight {
@@ -328,7 +329,7 @@ const replaySteps: ReplayStep[] = [
   top: 7px;
   width: 18px;
   height: 32px;
-  border-left: 1px solid rgba(255, 255, 255, 0.86);
+  border-left: 1px solid oklch(1 0 0 / 0.86);
   transform: skewY(-18deg);
   opacity: 0.8;
 }
@@ -339,8 +340,8 @@ const replaySteps: ReplayStep[] = [
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(193, 154, 82, 0.86);
-  box-shadow: 0 0 0 2px rgba(23, 19, 15, 0.24);
+  background: oklch(0.61 0.15 39 / 0.86);
+  box-shadow: 0 0 0 2px oklch(0 0 0 / 0.24);
   opacity: 0.78;
 }
 
@@ -350,7 +351,7 @@ const replaySteps: ReplayStep[] = [
   width: 30px;
   height: 30px;
   opacity: 0;
-  border: 1.5px solid rgba(193, 154, 82, 0.82);
+  border: 1.5px solid oklch(0.61 0.15 39 / 0.82);
   border-radius: 999px;
   animation: pressure-ring 7.2s ease-out infinite;
 }
@@ -363,8 +364,8 @@ const replaySteps: ReplayStep[] = [
   opacity: 0;
   border-radius: 999px;
   border: 1px solid transparent;
-  border-top-color: rgba(246, 240, 227, 0.82);
-  border-left-color: rgba(193, 154, 82, 0.56);
+  border-top-color: oklch(0.97 0.01 88 / 0.82);
+  border-left-color: oklch(0.61 0.15 39 / 0.56);
   animation: wait-busy-orbit 7.2s linear infinite;
 }
 
@@ -410,7 +411,7 @@ const replaySteps: ReplayStep[] = [
   grid-column: 2;
   min-width: 0;
   color: var(--vp-c-text-2);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -429,7 +430,7 @@ const replaySteps: ReplayStep[] = [
 }
 
 .step-dot.wait {
-  background: #8d806c;
+  background: oklch(0.62 0.01 75);
 }
 
 .step-dot.success {

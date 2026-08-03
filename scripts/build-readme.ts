@@ -138,7 +138,7 @@ export function inject(
 
 function requiredCount(
   stats: Record<string, unknown>,
-  key: "site_count" | "adapter_count_yaml" | "command_count",
+  key: "site_count" | "command_count",
 ): number {
   const value = stats[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
@@ -151,9 +151,8 @@ function requiredCount(
 
 export function buildServerDescription(stats: Record<string, unknown>): string {
   const sites = requiredCount(stats, "site_count");
-  const yamlAdapters = requiredCount(stats, "adapter_count_yaml");
   const commands = requiredCount(stats, "command_count");
-  return `Operation-first Agent-Computer Interface for real software, with a static catalog of ${String(sites)} adapter sites, ${String(yamlAdapters)} declarative YAML adapters, and ${String(commands)} registered adapter commands. Native CLI also loads fixed core and host-discovered commands; MCP default, deferred, and expanded profiles project adapter commands. Structured errors can name the owning adapter, and bounded repair verification reruns the exact original command without hidden mutation.`;
+  return `One command for every interface—search ${String(sites)} sites and tools through ${String(commands)} declared operations across web, browser, desktop, local, and MCP surfaces.`;
 }
 
 function syncServerDescription(stats: Record<string, unknown>): boolean {

@@ -16,7 +16,6 @@ type PreparedEntry = {
 
 const typographySelector = [
   ".uni-landing-hero h1",
-  ".uni-hero-lead",
   ".uni-hero-body",
   ".uni-section-head h2",
   ".uni-section-head > p:last-child",

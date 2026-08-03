@@ -533,7 +533,7 @@ path for the Agent-Computer Interface loop.
 
 First viewport priorities:
 
-1. State the product: operation-first Agent-Computer Interface for real software.
+1. State the product: one command for every interface.
 2. Show the smallest real command path.
 3. Expose catalog scale without making command count the main claim.
 4. Send users to install, catalog, repair, and agent integration routes.

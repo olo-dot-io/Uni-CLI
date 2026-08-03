@@ -5,8 +5,8 @@
 <h1 align="center">Uni-CLI</h1>
 
 <p align="center">
-  <strong>One interface. Across real software.</strong><br>
-  Operation-first Agent-Computer Interface for real software.
+  <strong>One command for every interface</strong><br>
+  Search, run, and inspect real software.
 </p>
 
 <p align="center">
@@ -17,16 +17,16 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm version" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=805522"></a>
-  <a href="./LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-20231d?style=flat-square"></a>
-  <img alt="Node 22.19 or newer" src="https://img.shields.io/badge/node-22.19%2B-805522?style=flat-square">
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm version" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=d9572d"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 license" src="https://img.shields.io/badge/license-Apache--2.0-181715?style=flat-square"></a>
+  <img alt="Node 22.19 or newer" src="https://img.shields.io/badge/node-22.19%2B-d9572d?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="docs/public/operation-field.webp" alt="A sculptural routing field representing one selected operation across software boundaries" width="100%">
+  <img src="docs/public/site-preview.webp" alt="Uni-CLI intent search moving through Search, Select, Run, and Receipt" width="100%">
 </p>
 
-Uni-CLI discovers executable operations by intent, lets the caller select one declared substrate, and returns an inspectable result. Its catalog reaches APIs, logged-in browsers, desktop applications, local commands, files, operating-system services, and agent protocols without flattening them into one oversized tool.
+Uni-CLI turns intent into a selected operation and a structured receipt across web, browser, desktop, local, and MCP surfaces.
 
 ```bash
 npm install -g @zenalexa/unicli

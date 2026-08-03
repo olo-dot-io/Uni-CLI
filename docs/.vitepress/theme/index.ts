@@ -1,9 +1,5 @@
 import DefaultTheme from "vitepress/theme-without-fonts";
 import type { Theme } from "vitepress";
-import "@fontsource-variable/bricolage-grotesque";
-import "@fontsource-variable/noto-sans-sc";
-import "@fontsource/ibm-plex-mono/400.css";
-import "@fontsource/ibm-plex-mono/500.css";
 import Layout from "./components/Layout.vue";
 import ComputeCursorDemo from "./components/ComputeCursorDemo.vue";
 import HomePage from "./components/HomePage.vue";
