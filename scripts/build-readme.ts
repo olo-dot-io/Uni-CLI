@@ -152,7 +152,7 @@ function requiredCount(
 export function buildServerDescription(stats: Record<string, unknown>): string {
   const sites = requiredCount(stats, "site_count");
   const commands = requiredCount(stats, "command_count");
-  return `One command for every interface—search ${String(sites)} sites and tools through ${String(commands)} declared operations across web, browser, desktop, local, and MCP surfaces.`;
+  return `Give agents every interface—search ${String(sites)} sites and tools through ${String(commands)} declared operations across web, browser, desktop, local, and MCP surfaces.`;
 }
 
 function syncServerDescription(stats: Record<string, unknown>): boolean {

@@ -545,6 +545,7 @@ textarea:focus-visible {
 /* Homepage */
 .VPHome {
   padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .VPHome .VPContent,
@@ -564,16 +565,16 @@ textarea:focus-visible {
 
 .uni-docs-home {
   --home-forest: oklch(0.27 0.07 157);
-  --home-forest-deep: oklch(0.2 0.055 158);
-  --home-viridian: oklch(0.42 0.09 158);
+  --home-forest-deep: oklch(0.185 0.052 158);
+  --home-viridian: oklch(0.41 0.088 158);
   --home-moss: oklch(0.64 0.075 130);
   --home-sage: oklch(0.84 0.045 122);
   --home-paper: oklch(0.95 0.03 97);
   --home-ivory: oklch(0.975 0.022 91);
   --home-orange: oklch(0.66 0.16 46);
   --home-radius-control: 14px;
-  --home-radius-card: 22px;
-  --home-radius-panel: 28px;
+  --home-radius-card: 24px;
+  --home-radius-panel: 30px;
   width: 100%;
   overflow: hidden;
   background: var(--home-paper);
@@ -586,49 +587,138 @@ textarea:focus-visible {
   background: transparent;
 }
 
-body:has(.uni-docs-home) .VPFooter {
-  display: none;
+body:has(.uni-docs-home),
+body:has(.uni-docs-home) .Layout,
+body:has(.uni-docs-home) .VPContent,
+body:has(.uni-docs-home) .VPHome {
+  background: var(--appica-background);
 }
 
+body:has(.uni-docs-home) .VPContent {
+  padding-top: 0 !important;
+}
+
+body:has(.uni-docs-home) .VPFooter,
 body:has(.uni-docs-home) .VPNav {
-  --vp-c-bg: oklch(0.18 0.05 158);
-  --vp-c-bg-alt: oklch(0.2 0.055 158);
-  --vp-c-bg-soft: oklch(0.25 0.055 158);
-  --vp-c-text-1: oklch(0.975 0.022 91);
-  --vp-c-text-2: oklch(0.84 0.045 122);
-  --vp-c-divider: transparent;
+  display: none !important;
 }
 
-body:has(.uni-docs-home) .VPNavBar {
-  border-bottom: 0 !important;
-  background: oklch(0.18 0.05 158) !important;
-  box-shadow: none !important;
+.uni-home-nav {
+  position: absolute;
+  z-index: 20;
+  top: 18px;
+  left: 50%;
+  display: grid;
+  width: min(980px, calc(100% - 36px));
+  min-height: 58px;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+  padding: 7px 8px 7px 10px;
+  transform: translateX(-50%);
+  border-radius: 22px;
+  background: color-mix(in oklch, var(--home-ivory) 92%, transparent);
+  box-shadow: 0 16px 40px oklch(0.1 0.04 158 / 0.16);
+  backdrop-filter: blur(18px) saturate(120%);
 }
 
-body:has(.uni-docs-home) .VPNavBarTitle .title,
-body:has(.uni-docs-home) .VPNavBarMenuLink,
-body:has(.uni-docs-home) .VPNavBarTranslations .button,
-body:has(.uni-docs-home) .VPNavBarTranslations .text,
-body:has(.uni-docs-home) .VPSocialLink,
-body:has(.uni-docs-home) .VPNavBarHamburger {
-  color: oklch(0.975 0.022 91) !important;
+.uni-home-brand {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 4px;
+  color: var(--home-forest-deep) !important;
+  font-size: 15px;
+  font-weight: 670;
+  text-decoration: none !important;
 }
 
-body:has(.uni-docs-home) .VPNavBarSearch .DocSearch-Button {
-  border: 0 !important;
-  background: color-mix(in oklch, white 10%, transparent) !important;
-  color: oklch(0.84 0.045 122) !important;
+.uni-home-brand img {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
 }
 
-body:has(.uni-docs-home) .VPNavBarHamburger .container span {
-  background: oklch(0.975 0.022 91) !important;
+.uni-home-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uni-home-nav-links a {
+  padding: 10px 13px;
+  border-radius: 12px;
+  color: var(--home-forest) !important;
+  font-size: 13px;
+  font-weight: 590;
+  text-decoration: none !important;
+  transition:
+    background-color 150ms ease,
+    transform 150ms var(--appica-ease);
+}
+
+.uni-home-nav-links a:hover {
+  background: var(--home-sage);
+}
+
+.uni-home-nav-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.uni-home-nav-actions a,
+.uni-footer-meta a {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: var(--home-sage);
+  transition:
+    background-color 150ms ease,
+    transform 150ms var(--appica-ease);
+}
+
+.uni-home-nav-actions a:hover,
+.uni-footer-meta a:hover {
+  background: color-mix(in oklch, var(--home-sage) 72%, var(--home-ivory));
+}
+
+.uni-home-nav-actions a:active,
+.uni-footer-meta a:active,
+.uni-home-nav-links a:active {
+  transform: scale(0.96);
+}
+
+.uni-home-nav-actions img,
+.uni-footer-meta img,
+.uni-footer-meta svg {
+  width: 20px;
+  max-height: 20px;
+}
+
+.uni-home-nav-actions a:last-child img,
+.uni-footer-meta a:nth-child(2) img {
+  width: 23px;
+}
+
+.uni-footer-meta svg {
+  fill: none;
+  stroke: var(--home-forest-deep);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .uni-landing-hero {
   position: relative;
   display: flex;
   width: 100%;
-  min-height: calc(100svh - 64px);
+  min-height: 100svh;
   align-items: center;
   margin: 0;
   overflow: hidden;
@@ -649,11 +739,11 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
 
 .uni-hero-copy {
   display: flex;
-  width: min(590px, 48%);
+  width: min(620px, 49%);
   flex-direction: column;
   align-items: flex-start;
   gap: 30px;
-  padding: clamp(44px, 6vw, 88px);
+  padding: clamp(140px, 13vw, 180px) clamp(44px, 6vw, 92px) 88px;
   color: var(--home-ivory);
 }
 
@@ -673,21 +763,21 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   background: var(--home-sage);
   color: var(--home-forest-deep);
   font-size: 12px;
-  font-weight: 620;
-  letter-spacing: 0.01em;
+  font-weight: 630;
+  letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
 }
 
 .uni-hero-copy .uni-eyebrow {
-  background: color-mix(in oklch, var(--home-ivory) 90%, transparent);
+  background: color-mix(in oklch, var(--home-ivory) 92%, transparent);
 }
 
 .uni-hero-copy h1 {
   max-width: 10ch;
   margin: 26px 0 0;
   color: var(--home-ivory);
-  font-size: clamp(46px, 5.4vw, 72px);
+  font-size: clamp(48px, 5.3vw, 74px);
   font-weight: 650;
   letter-spacing: -0.06em;
   line-height: 0.98;
@@ -742,7 +832,7 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
 
 .uni-command-tabs button:active,
 .uni-install-command button:active,
-.uni-hero-actions a:active {
+.uni-hero-doc-link:active {
   transform: scale(0.97);
 }
 
@@ -789,30 +879,36 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   background: color-mix(in oklch, var(--home-orange) 86%, var(--home-forest));
 }
 
-.uni-hero-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.uni-hero-actions a {
+.uni-hero-doc-link {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 44px;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   padding: 0 16px;
   border-radius: var(--home-radius-control);
-  background: color-mix(in oklch, var(--home-ivory) 12%, transparent);
+  background: color-mix(in oklch, var(--home-ivory) 13%, transparent);
   color: var(--home-ivory) !important;
   font-size: 14px;
-  font-weight: 580;
+  font-weight: 590;
   text-decoration: none !important;
   transition:
     background-color 160ms ease,
     transform 140ms var(--appica-ease);
 }
 
-.uni-hero-actions a:hover {
+.uni-hero-doc-link:hover {
   background: color-mix(in oklch, var(--home-ivory) 22%, transparent);
+}
+
+.uni-hero-doc-link svg,
+.uni-entry-list svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .vp-doc .uni-hero-plate {
@@ -829,36 +925,139 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   letter-spacing: 0.08em;
 }
 
-.uni-home-section {
-  width: 100%;
-  padding: 108px max(24px, calc((100vw - 1180px) / 2));
+.uni-brand-orbit {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) 1.3fr;
+  align-items: center;
+  gap: 56px;
+  padding: 68px max(24px, calc((100vw - 1180px) / 2));
+  background: var(--home-forest-deep);
+  color: var(--home-ivory);
 }
 
-.uni-section-head {
+.uni-brand-orbit header {
   display: flex;
-  max-width: 720px;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18px;
-  margin-bottom: 44px;
+  gap: 16px;
 }
 
-.uni-section-head h2 {
-  max-width: 22ch;
+.uni-brand-orbit h2 {
+  max-width: 15ch;
+  margin: 0;
+  color: var(--home-ivory);
+  font-size: 28px;
+  font-weight: 640;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.uni-brand-orbit ul {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
   padding: 0;
-  border: 0;
-  color: var(--home-forest-deep);
-  font-size: clamp(30px, 4vw, 42px);
+  list-style: none;
+}
+
+.uni-brand-orbit li {
+  display: flex;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: var(--home-sage);
+  transition:
+    transform 170ms var(--appica-ease),
+    background-color 170ms ease;
+}
+
+.uni-brand-orbit li:hover {
+  transform: translateY(-3px);
+  background: var(--home-ivory);
+}
+
+.uni-brand-orbit img {
+  width: 28px;
+  max-height: 28px;
+}
+
+.uni-home-section {
+  width: 100%;
+  padding: 104px max(24px, calc((100vw - 1180px) / 2));
+}
+
+.uni-route-story {
+  background: var(--home-paper);
+}
+
+.uni-repair-story {
+  padding-top: 0;
+  background: var(--home-paper);
+}
+
+.uni-art-feature {
+  position: relative;
+  min-height: 620px;
+  overflow: hidden;
+  border-radius: var(--home-radius-panel);
+  background: var(--home-forest-deep);
+  isolation: isolate;
+}
+
+.uni-art-feature > img {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uni-art-feature-archive > img {
+  object-position: center;
+}
+
+.uni-art-copy {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  width: min(410px, calc(100% - 56px));
+  padding: 28px;
+  border-radius: var(--home-radius-card);
+  background: color-mix(in oklch, var(--home-forest-deep) 91%, transparent);
+  color: var(--home-ivory);
+  box-shadow: 0 20px 52px oklch(0.09 0.04 158 / 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.uni-art-feature-repair .uni-art-copy {
+  right: 28px;
+  left: auto;
+}
+
+.uni-art-copy h2 {
+  max-width: 14ch;
+  margin: 22px 0 0;
+  color: var(--home-ivory);
+  font-size: clamp(32px, 4vw, 44px);
   font-weight: 650;
-  letter-spacing: -0.05em;
-  line-height: 1.08;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
   text-wrap: balance;
 }
 
-.uni-workflow {
-  background: var(--home-paper);
-  color: var(--home-forest-deep);
+.vp-doc .uni-art-copy > p:last-of-type {
+  max-width: 38ch;
+  margin: 18px 0 0;
+  color: color-mix(in oklch, var(--home-ivory) 76%, var(--home-moss));
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.uni-route-story .uni-operation-receipt {
+  margin-top: 14px;
 }
 
 .uni-operation-receipt {
@@ -1007,13 +1206,59 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   line-height: 1.5;
 }
 
+.uni-repair-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.uni-repair-steps li {
+  display: flex;
+  min-height: 64px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in oklch, var(--home-ivory) 12%, transparent);
+  color: var(--home-ivory);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.uni-repair-steps span {
+  color: var(--home-moss);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.uni-section-head {
+  display: flex;
+  max-width: 720px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 44px;
+}
+
+.uni-section-head h2 {
+  max-width: 22ch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--home-forest-deep);
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
 .uni-surfaces {
   background: var(--home-forest-deep);
   color: var(--home-ivory);
-}
-
-.uni-surfaces .uni-eyebrow {
-  background: var(--home-sage);
 }
 
 .uni-surfaces .uni-section-head h2 {
@@ -1022,80 +1267,66 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
 
 .uni-surface-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .uni-surface-list > div {
   display: grid;
   min-width: 0;
-  min-height: 144px;
-  grid-template-columns: 1fr auto;
+  min-height: 170px;
   align-content: end;
-  gap: 8px 16px;
-  padding: 24px;
-  border: 0;
+  gap: 8px;
+  padding: 22px;
   border-radius: var(--home-radius-card);
   background: color-mix(
     in oklch,
-    var(--home-viridian) 78%,
+    var(--home-viridian) 77%,
     var(--home-forest-deep)
   );
 }
 
-.uni-surface-list > div:first-child {
-  grid-column: span 2;
-  background: var(--home-moss);
-}
-
-.uni-surface-list > div > span {
-  display: none;
+.uni-surface-list svg {
+  width: 24px;
+  height: 24px;
+  margin-bottom: auto;
+  fill: none;
+  stroke: var(--home-sage);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .uni-surface-list strong {
   color: var(--home-ivory);
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 650;
 }
 
-.vp-doc .uni-surface-list > div:first-child strong,
-.vp-doc .uni-surface-list > div:first-child code,
-.vp-doc .uni-surface-list > div:first-child i {
-  color: var(--home-forest-deep) !important;
-}
-
 .vp-doc .uni-surface-list code {
-  grid-column: 1 / -1;
   overflow: hidden;
   color: color-mix(
     in oklch,
-    var(--home-ivory) 88%,
+    var(--home-ivory) 78%,
     var(--home-moss)
   ) !important;
-  font-size: 13px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.uni-surface-list i {
-  color: var(--home-sage);
-  font-size: 15px;
-  font-style: normal;
 }
 
 .uni-stat-list {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0 0;
+  gap: 10px;
+  margin: 10px 0 0;
 }
 
 .uni-stat-list div {
   min-width: 0;
   padding: 22px;
-  border: 0;
   border-radius: var(--home-radius-card);
-  background: var(--home-ivory);
+  background: var(--home-sage);
 }
 
 .uni-stat-list dd,
@@ -1121,61 +1352,54 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   background: var(--home-sage);
 }
 
-.uni-entry-list > .uni-eyebrow {
-  margin-bottom: 28px;
+.uni-entry-list > .uni-section-head .uni-eyebrow {
   background: var(--home-forest);
   color: var(--home-ivory);
 }
 
 .uni-entry-list ol {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .uni-entry-list li {
-  display: grid;
-  min-height: 104px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  display: flex;
+  min-height: 132px;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 16px;
-  padding: 24px;
-  border: 0;
+  padding: 22px;
   border-radius: var(--home-radius-card);
   background: var(--home-ivory);
-  box-shadow: none;
   transition:
     background-color 160ms ease,
     transform 160ms var(--appica-ease);
 }
 
 .uni-entry-list li:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   background: var(--home-paper);
-}
-
-.uni-entry-list li > span {
-  display: none;
 }
 
 .uni-entry-list a {
   color: var(--home-forest-deep) !important;
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 650;
   letter-spacing: -0.03em;
   text-decoration: none !important;
 }
 
-.uni-entry-list b {
+.uni-entry-list svg {
+  flex: 0 0 auto;
   color: var(--home-viridian);
-  font-size: 16px;
-  font-weight: 500;
 }
 
 .uni-home-footer {
+  min-height: min(680px, 72svh);
   padding: 72px max(24px, calc((100vw - 1320px) / 2)) 28px;
   overflow: hidden;
   background: var(--home-forest-deep);
@@ -1199,32 +1423,15 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
 
 .uni-footer-meta nav {
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 
 .uni-footer-meta a {
-  padding: 9px 12px;
-  border-radius: var(--home-radius-control);
-  background: color-mix(in oklch, var(--home-ivory) 10%, transparent);
-  color: var(--home-ivory) !important;
-  font-size: 13px;
-  font-weight: 580;
-  text-decoration: none !important;
-  transition:
-    background-color 160ms ease,
-    transform 140ms var(--appica-ease);
-}
-
-.uni-footer-meta a:hover {
-  background: color-mix(in oklch, var(--home-ivory) 18%, transparent);
-}
-
-.uni-footer-meta a:active {
-  transform: scale(0.97);
+  background: var(--home-sage);
 }
 
 .vp-doc .uni-home-footer .uni-footer-word {
-  margin: clamp(88px, 12vw, 160px) 0 clamp(72px, 9vw, 120px);
+  margin: clamp(84px, 10vw, 132px) 0 clamp(70px, 8vw, 102px);
   color: var(--home-sage) !important;
   font-size: clamp(92px, 19vw, 270px) !important;
   font-weight: 680;
@@ -1239,6 +1446,7 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
 }
 
 /* Version notice */
+
 .uni-version-notice {
   margin: 40px 0;
   padding: 8px;
@@ -1856,5 +2064,207 @@ body:has(.uni-docs-home) .VPNavBarHamburger .container span {
   *::after {
     animation: none !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Homepage responsive refinement */
+@media (max-width: 960px) {
+  .uni-home-nav {
+    width: calc(100% - 28px);
+  }
+
+  .uni-landing-hero {
+    min-height: 100svh;
+  }
+
+  .uni-hero-copy {
+    width: 58%;
+    padding: 136px 48px 72px;
+  }
+
+  .uni-brand-orbit {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .uni-brand-orbit h2 {
+    max-width: none;
+  }
+
+  .uni-brand-orbit ul {
+    grid-template-columns: repeat(8, minmax(58px, 1fr));
+  }
+
+  .uni-art-feature {
+    min-height: 560px;
+  }
+
+  .uni-surface-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .uni-entry-list ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .uni-home-nav {
+    top: 12px;
+    width: calc(100% - 24px);
+    min-height: 56px;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    border-radius: 20px;
+  }
+
+  .uni-home-nav-links {
+    display: none;
+  }
+
+  .uni-landing-hero {
+    min-height: 930px;
+  }
+
+  .uni-hero-painting {
+    top: auto;
+    height: 48%;
+    object-position: 74% center;
+  }
+
+  .uni-hero-copy {
+    width: 100%;
+    min-height: 530px;
+    gap: 24px;
+    padding: 116px 30px 40px;
+    background: var(--home-forest-deep);
+  }
+
+  .uni-brand-orbit {
+    padding: 62px 20px;
+  }
+
+  .uni-brand-orbit ul {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .uni-home-section {
+    padding: 72px 20px;
+  }
+
+  .uni-repair-story {
+    padding-top: 0;
+  }
+
+  .uni-art-feature {
+    min-height: 650px;
+  }
+
+  .uni-art-feature-archive > img {
+    object-position: 62% center;
+  }
+
+  .uni-art-feature-repair > img {
+    object-position: 38% center;
+  }
+
+  .uni-operation-receipt {
+    grid-template-columns: 1fr;
+  }
+
+  .uni-operation-receipt > div:last-child {
+    grid-column: 1;
+  }
+
+  .uni-surface-list,
+  .uni-stat-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .uni-entry-list ol {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .uni-home-brand span {
+    font-size: 14px;
+  }
+
+  .uni-home-nav-actions a {
+    width: 40px;
+    height: 40px;
+  }
+
+  .uni-landing-hero {
+    min-height: 900px;
+  }
+
+  .uni-hero-copy {
+    min-height: 540px;
+    padding: 108px 22px 34px;
+  }
+
+  .uni-install-command {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .vp-doc .uni-install-command code {
+    min-height: 42px;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .uni-install-command button {
+    width: 100%;
+  }
+
+  .uni-art-feature {
+    min-height: 620px;
+    border-radius: 24px;
+  }
+
+  .uni-art-copy,
+  .uni-art-feature-repair .uni-art-copy {
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+    padding: 22px;
+    border-radius: 20px;
+  }
+
+  .uni-art-copy h2 {
+    font-size: 34px;
+  }
+
+  .uni-surface-list {
+    grid-template-columns: 1fr;
+  }
+
+  .uni-stat-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .uni-entry-list ol {
+    grid-template-columns: 1fr;
+  }
+
+  .uni-entry-list li {
+    min-height: 106px;
+  }
+
+  .uni-home-footer {
+    min-height: 0;
+    padding: 58px 20px 24px;
+  }
+
+  .vp-doc .uni-home-footer .uni-footer-word {
+    margin: 88px 0 78px;
+    font-size: 22vw !important;
   }
 }

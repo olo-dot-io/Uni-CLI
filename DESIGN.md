@@ -12,8 +12,8 @@ Geist Sans is the only authored public typeface. The variable WOFF2 build and it
 
 | Role             | Size                       | Line height | Weight    |
 | ---------------- | -------------------------- | ----------- | --------- |
-| Hero             | `clamp(46px, 5.4vw, 72px)` | `0.98`      | `650`     |
-| Homepage section | `clamp(30px, 4vw, 42px)`   | `1.08`      | `650`     |
+| Hero             | `clamp(48px, 5.3vw, 74px)` | `0.98`      | `650`     |
+| Homepage section | `clamp(32px, 4vw, 44px)`   | `1.05`      | `650`     |
 | Document title   | `clamp(34px, 4vw, 42px)`   | `1.1`       | `620`     |
 | Body             | `16px`                     | `1.6`       | `400`     |
 | Interface        | `14px`                     | `1.45`      | `500–600` |
@@ -27,15 +27,15 @@ The scale follows Appica's compact steps and prevents large jumps between adjace
 
 Documentation maps Appica's OKLCH primitives to semantic tokens. The homepage uses a fixed campaign palette in both appearances so the painting and product identity do not change when documentation switches theme.
 
-| Homepage role | Value                   |
-| ------------- | ----------------------- |
-| Deep forest   | `oklch(0.20 0.055 158)` |
-| Viridian      | `oklch(0.42 0.09 158)`  |
-| Moss          | `oklch(0.64 0.075 130)` |
-| Sage          | `oklch(0.84 0.045 122)` |
-| Paper         | `oklch(0.95 0.03 97)`   |
-| Ivory         | `oklch(0.975 0.022 91)` |
-| Burnt orange  | `oklch(0.66 0.16 46)`   |
+| Homepage role | Value                    |
+| ------------- | ------------------------ |
+| Deep forest   | `oklch(0.185 0.052 158)` |
+| Viridian      | `oklch(0.41 0.088 158)`  |
+| Moss          | `oklch(0.64 0.075 130)`  |
+| Sage          | `oklch(0.84 0.045 122)`  |
+| Paper         | `oklch(0.95 0.03 97)`    |
+| Ivory         | `oklch(0.975 0.022 91)`  |
+| Burnt orange  | `oklch(0.66 0.16 46)`    |
 
 | Role             | Light                    | Dark                     |
 | ---------------- | ------------------------ | ------------------------ |
@@ -62,7 +62,9 @@ Burnt orange appears only on the primary copy action and selected-result feedbac
 
 ## Composition
 
-The homepage hero is one full-viewport painted field beneath a matching forest navigation bar. Copy occupies the quiet left side; the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. There is no inset frame or pale perimeter. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster.
+The homepage hero is one full-viewport painted field. A compact floating navigation capsule belongs to the hero and scrolls away with it; documentation pages retain the standard VitePress navigation. Copy occupies the quiet left side while the observatory and planet establish a diagonal on the right. The installation component sits at the handoff between headline and image and remains the primary action. There is no inset frame or pale perimeter. The large `Uni-CLI` footer closes the page like the bottom of a printed campaign poster, and the VitePress home margin is removed so no canvas appears beneath it.
+
+The following story uses two full-image editorial panels instead of a feature table. The orbital archive frames discovery; the repair bay frames the inspect-and-repair loop. A compact strip of official product marks establishes the real software surface before these panels. Equal card geometry keeps surfaces, statistics, and entry paths calm and regular.
 
 At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
 
@@ -77,6 +79,9 @@ No component runs a continuous animation. The interface contains no breathing li
 - README preview: `docs/public/site-preview.webp`
 - Open Graph preview: `docs/public/site-preview-og.jpg`
 - Homepage painting: `docs/public/green-observatory.webp`
+- Operation discovery painting: `docs/public/orbital-archive.webp`
+- Adapter repair painting: `docs/public/orbital-repair.webp`
+- Product marks: `docs/public/brands/*.svg`
 - Mascot: `docs/public/mascot-otter.png`
 
-The homepage painting is an original generated asset with no embedded type, logo, or third-party artwork. Its art direction is a viridian 1960s observatory landscape with smooth oil glazing, broad controlled brushwork, left-side negative space, a ringed planet, one telescope, and one astronomer. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. The preview and Open Graph image are generated from the production homepage after visual verification.
+The three homepage paintings are original generated assets with no embedded type, logo, or third-party artwork. Their shared art direction is a viridian 1960s orbital program rendered with smooth oil glazing, broad controlled brushwork, calm negative space, ivory planetary light, and restrained brass or orange accents. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. Product marks come from Simple Icons under CC0; trademarks remain with their owners. The preview and Open Graph image are generated from the production homepage after visual verification.

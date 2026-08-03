@@ -33,9 +33,30 @@ const agentInstruction = computed(() =>
 const heroCommand = computed(() =>
   heroMode.value === "install" ? installCommand : agentInstruction.value,
 );
+
+const brands = [
+  ["googlechrome", "Chrome"],
+  ["github", "GitHub"],
+  ["discord", "Discord"],
+  ["reddit", "Reddit"],
+  ["notion", "Notion"],
+  ["linear", "Linear"],
+  ["figma", "Figma"],
+  ["docker", "Docker"],
+];
+
+const surfaceIcons = [
+  "M4 5h16v11H4zM8 20h8M12 16v4",
+  "M5 4h14v16H5zM5 9h14M8 6h.01M11 6h.01",
+  "M4 7h16v10H4zM8 17v3h8v-3",
+  "M7 4h10v5h3v11H4V9h3zM9 8h6M8 13h8M8 16h5",
+  "M12 3l2.2 4.4L19 8l-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 8l4.8-.6z",
+];
+
 const copy = computed(() =>
   isZh.value
     ? {
+        nav: ["路径", "界面", "开始"],
         eyebrow: "Agent-Computer Interface",
         title: "把所有界面交给 Agent。",
         lead: "安装一次。搜索、执行、检查、修复。",
@@ -43,13 +64,19 @@ const copy = computed(() =>
         agentTab: "Agent 指令",
         copyAction: "复制",
         secondary: "打开文档",
-        github: "GitHub",
         copied: "已复制",
         copyFailed: "手动选择",
-        flowLabel: "实时路径",
-        flowTitle: "意图进入，结果返回。",
-        surfaceLabel: "可操作范围",
-        surfaceTitle: "真实软件，一套接口。",
+        brandLabel: "真实软件",
+        brandTitle: "Agent 从这里开始工作。",
+        routeLabel: "01 · FIND",
+        routeTitle: "找到正确的 operation。",
+        routeLead: "输入意图，选择路径，拿到结构化结果。",
+        repairLabel: "02 · REPAIR",
+        repairTitle: "运行。检查。修复。",
+        repairLead: "Adapter 可读、可改、可继续执行。",
+        repairSteps: ["Run", "Inspect", "Repair"],
+        surfaceLabel: "03 · SURFACES",
+        surfaceTitle: "一套接口，抵达真实软件。",
         surfaces: [
           ["Web", "API · DOM · Cookie"],
           ["Browser", "CDP · Network · Snapshot"],
@@ -63,7 +90,8 @@ const copy = computed(() =>
           [String(stats.pipeline_step_count), "pipeline actions"],
           [String(stats.test_count), "tests"],
         ],
-        startLabel: "开始",
+        startLabel: "04 · START",
+        startTitle: "选一个入口。",
         footerLabel: "开放式 Agent-Computer Interface",
         license: "Apache-2.0 许可证",
         entries: [
@@ -74,6 +102,7 @@ const copy = computed(() =>
         ],
       }
     : {
+        nav: ["Route", "Surfaces", "Start"],
         eyebrow: "Agent-computer interface",
         title: "Give agents every interface.",
         lead: "Install once. Search, run, inspect, repair.",
@@ -81,13 +110,19 @@ const copy = computed(() =>
         agentTab: "Agent prompt",
         copyAction: "Copy",
         secondary: "Open docs",
-        github: "GitHub",
         copied: "Copied",
         copyFailed: "Select manually",
-        flowLabel: "Live route",
-        flowTitle: "Intent in. Receipt out.",
-        surfaceLabel: "Operating surface",
-        surfaceTitle: "Real software. One interface.",
+        brandLabel: "Real software",
+        brandTitle: "Where agents start working.",
+        routeLabel: "01 · FIND",
+        routeTitle: "Find the right operation.",
+        routeLead: "State the intent. Select the route. Receive structure.",
+        repairLabel: "02 · REPAIR",
+        repairTitle: "Run. Inspect. Repair.",
+        repairLead: "Adapters stay readable, editable, and ready to run again.",
+        repairSteps: ["Run", "Inspect", "Repair"],
+        surfaceLabel: "03 · SURFACES",
+        surfaceTitle: "One interface. Real software.",
         surfaces: [
           ["Web", "API · DOM · Cookie"],
           ["Browser", "CDP · Network · Snapshot"],
@@ -101,7 +136,8 @@ const copy = computed(() =>
           [String(stats.pipeline_step_count), "pipeline actions"],
           [String(stats.test_count), "tests"],
         ],
-        startLabel: "Start",
+        startLabel: "04 · START",
+        startTitle: "Choose an entry.",
         footerLabel: "Open Agent-Computer Interface",
         license: "Apache-2.0 License",
         entries: [
@@ -150,6 +186,34 @@ async function copyHeroCommand() {
 
 <template>
   <main class="uni-docs-home">
+    <nav class="uni-home-nav" aria-label="Homepage">
+      <a class="uni-home-brand" :href="withBase(isZh ? '/zh/' : '/')">
+        <img :src="withBase('/favicon.png')" alt="" />
+        <span>Uni-CLI</span>
+      </a>
+      <div class="uni-home-nav-links">
+        <a href="#route">{{ copy.nav[0] }}</a>
+        <a href="#surfaces">{{ copy.nav[1] }}</a>
+        <a href="#start">{{ copy.nav[2] }}</a>
+      </div>
+      <div class="uni-home-nav-actions">
+        <a
+          href="https://github.com/olo-dot-io/Uni-CLI"
+          aria-label="GitHub"
+          title="GitHub"
+        >
+          <img :src="withBase('/brands/github.svg')" alt="" />
+        </a>
+        <a
+          href="https://www.npmjs.com/package/@zenalexa/unicli"
+          aria-label="npm"
+          title="npm"
+        >
+          <img :src="withBase('/brands/npm.svg')" alt="" />
+        </a>
+      </div>
+    </nav>
+
     <section class="uni-landing-hero" aria-labelledby="uni-home-title">
       <img
         class="uni-hero-painting"
@@ -198,20 +262,19 @@ async function copyHeroCommand() {
           </div>
         </div>
 
-        <div class="uni-hero-actions">
-          <a
-            :href="
-              withBase(
-                isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
-              )
-            "
-          >
-            {{ copy.secondary }} <span aria-hidden="true">↗</span>
-          </a>
-          <a href="https://github.com/olo-dot-io/Uni-CLI">
-            {{ copy.github }} <span aria-hidden="true">↗</span>
-          </a>
-        </div>
+        <a
+          class="uni-hero-doc-link"
+          :href="
+            withBase(
+              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+            )
+          "
+        >
+          {{ copy.secondary }}
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M7 17 17 7M8 7h9v9" />
+          </svg>
+        </a>
       </div>
 
       <p class="uni-hero-plate" aria-hidden="true">
@@ -229,18 +292,53 @@ async function copyHeroCommand() {
       </span>
     </section>
 
-    <section
-      class="uni-home-section uni-workflow"
-      aria-labelledby="uni-flow-title"
-    >
-      <header class="uni-section-head">
-        <p class="uni-eyebrow">{{ copy.flowLabel }}</p>
-        <h2 id="uni-flow-title">{{ copy.flowTitle }}</h2>
+    <section class="uni-brand-orbit" aria-labelledby="uni-brand-title">
+      <header>
+        <p class="uni-eyebrow">{{ copy.brandLabel }}</p>
+        <h2 id="uni-brand-title">{{ copy.brandTitle }}</h2>
       </header>
+      <ul>
+        <li v-for="brand in brands" :key="brand[0]">
+          <img
+            :src="withBase(`/brands/${brand[0]}.svg`)"
+            :alt="brand[1]"
+            :title="brand[1]"
+          />
+        </li>
+      </ul>
+    </section>
+
+    <section id="route" class="uni-home-section uni-route-story">
+      <article class="uni-art-feature uni-art-feature-archive">
+        <img :src="withBase('/orbital-archive.webp')" alt="" />
+        <header class="uni-art-copy">
+          <p class="uni-eyebrow">{{ copy.routeLabel }}</p>
+          <h2>{{ copy.routeTitle }}</h2>
+          <p>{{ copy.routeLead }}</p>
+        </header>
+      </article>
       <OperationReceipt />
     </section>
 
+    <section class="uni-home-section uni-repair-story">
+      <article class="uni-art-feature uni-art-feature-repair">
+        <img :src="withBase('/orbital-repair.webp')" alt="" />
+        <header class="uni-art-copy">
+          <p class="uni-eyebrow">{{ copy.repairLabel }}</p>
+          <h2>{{ copy.repairTitle }}</h2>
+          <p>{{ copy.repairLead }}</p>
+          <ol class="uni-repair-steps">
+            <li v-for="(step, index) in copy.repairSteps" :key="step">
+              <span aria-hidden="true">0{{ index + 1 }}</span>
+              {{ step }}
+            </li>
+          </ol>
+        </header>
+      </article>
+    </section>
+
     <section
+      id="surfaces"
       class="uni-home-section uni-surfaces"
       aria-labelledby="uni-surfaces-title"
     >
@@ -251,10 +349,11 @@ async function copyHeroCommand() {
 
       <div class="uni-surface-list">
         <div v-for="(surface, index) in copy.surfaces" :key="surface[0]">
-          <span>0{{ index + 1 }}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path :d="surfaceIcons[index]" />
+          </svg>
           <strong>{{ surface[0] }}</strong>
           <code>{{ surface[1] }}</code>
-          <i aria-hidden="true">↗</i>
         </div>
       </div>
 
@@ -267,16 +366,20 @@ async function copyHeroCommand() {
     </section>
 
     <section
+      id="start"
       class="uni-home-section uni-entry-list"
       aria-labelledby="uni-start-title"
     >
-      <p class="uni-eyebrow">{{ copy.startLabel }}</p>
-      <h2 id="uni-start-title" class="uni-sr-only">{{ copy.startLabel }}</h2>
+      <header class="uni-section-head">
+        <p class="uni-eyebrow">{{ copy.startLabel }}</p>
+        <h2 id="uni-start-title">{{ copy.startTitle }}</h2>
+      </header>
       <ol>
-        <li v-for="(entry, index) in copy.entries" :key="entry[1]">
-          <span>0{{ index + 1 }}</span>
+        <li v-for="entry in copy.entries" :key="entry[1]">
           <a :href="withBase(entry[1])">{{ entry[0] }}</a>
-          <b aria-hidden="true">↗</b>
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M7 17 17 7M8 7h9v9" />
+          </svg>
         </li>
       </ol>
     </section>
@@ -285,16 +388,34 @@ async function copyHeroCommand() {
       <div class="uni-footer-meta">
         <p>{{ copy.footerLabel }}</p>
         <nav aria-label="Footer">
-          <a href="https://github.com/olo-dot-io/Uni-CLI">GitHub</a>
-          <a href="https://www.npmjs.com/package/@zenalexa/unicli">npm</a>
+          <a
+            href="https://github.com/olo-dot-io/Uni-CLI"
+            aria-label="GitHub"
+            title="GitHub"
+          >
+            <img :src="withBase('/brands/github.svg')" alt="" />
+          </a>
+          <a
+            href="https://www.npmjs.com/package/@zenalexa/unicli"
+            aria-label="npm"
+            title="npm"
+          >
+            <img :src="withBase('/brands/npm.svg')" alt="" />
+          </a>
           <a
             :href="
               withBase(
                 isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
               )
             "
+            aria-label="Docs"
+            title="Docs"
           >
-            Docs
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path
+                d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4zM9 20V8a4 4 0 0 1 4-4"
+              />
+            </svg>
           </a>
         </nav>
       </div>
