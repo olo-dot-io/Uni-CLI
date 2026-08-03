@@ -66,13 +66,17 @@ The homepage hero is one full-viewport painted field. A compact floating navigat
 
 The following story is a four-scene orbital sequence for find, select, run, and repair. Native scroll pins the viewport while the paintings rotate through one spatial ring, then the last scene expands to the full viewport before handing off to the structured receipt. A compact strip of official product marks establishes the real software surface before the sequence. The marks sit directly on the dark field without individual tiles.
 
-At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. The orbital sequence becomes four complete scroll-snapped cards rather than a constrained 3D stage. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
+The final chapters stay inside the same observatory rather than returning to a generic card grid. The interface atlas places five substrates and live catalog counts over one panoramic instrument gallery. The launch deck then stacks over that scene and expands from an inset painted panel to the full viewport as the visitor continues scrolling. Entry routes remain ordinary links inside the composition. The footer returns to paper and fills the `Uni-CLI` letterforms with the atlas painting, producing an image-cut wordmark instead of a solid display line.
+
+At 760px the composition becomes a two-part poster: a solid forest command field above and a cropped observatory painting below. The orbital sequence becomes four complete proximity-snapped cards rather than a constrained 3D stage. The atlas and launch deck become long-form painted panels with controls in normal document flow. At 640px the command and copy action stack without hiding either mode. Receipt and entry layouts collapse to one column. No content exceeds the viewport.
 
 Documentation keeps a 780px reading measure. Navigation, search, sidebars, tables, code blocks, version notices, catalog filters, and agent controls reuse the same tokens.
 
 ## Motion
 
-No component runs an autonomous continuous animation. The hero title enters once with a short character stagger. In the orbital chapter, native scroll is the source of truth for scene position, image depth, card rotation, snapping, stacking, and the final expansion. Pointer velocity briefly reveals a masked duplicate through an SVG displacement filter; the turbulence source is never rendered as texture, so the paintings retain smooth color fields. Scroll and pointer work is coalesced through `requestAnimationFrame` and stops when input stops. `prefers-reduced-motion: reduce` presents the same four scenes as a static grid with no displacement or transform.
+No component runs an autonomous continuous animation. The hero and chapter titles enter once with a short character stagger. In the desktop orbital chapter, native scroll is the source of truth and a 68ms time-based damper only interpolates its visual progress. The document has no root snap points and no midpoint scene lock; position, depth, rotation, copy opacity, and the final expansion stay continuous and reversible. Mobile cards use proximity snapping because every target is a complete static scene.
+
+Pointer velocity briefly reveals a masked duplicate through an SVG displacement filter; the turbulence source is never rendered as texture, so the paintings retain smooth color fields. The atlas and launch deck add low-amplitude image depth, while the launch panel uses a transform-only scroll expansion. Scroll and pointer work is coalesced through `requestAnimationFrame` and stops when input stops. `prefers-reduced-motion: reduce` presents the scenes as static panels with no displacement, stagger, or transform.
 
 ## Public assets
 
@@ -83,7 +87,9 @@ No component runs an autonomous continuous animation. The hero title enters once
 - Operation relay painting: `docs/public/orbital-relay.webp`
 - Structured memory painting: `docs/public/orbital-memory.webp`
 - Adapter repair painting: `docs/public/orbital-repair.webp`
+- Interface atlas painting: `docs/public/interface-atlas.webp`
+- Launch deck painting: `docs/public/launch-deck.webp`
 - Product marks: `docs/public/brands/*.svg`
 - Mascot: `docs/public/mascot-otter.png`
 
-The five homepage paintings are original generated assets with no embedded type, logo, or third-party artwork. Their shared art direction is a viridian 1960s orbital program rendered with smooth oil glazing, broad controlled brushwork, calm negative space, ivory planetary light, and restrained brass or orange accents. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. Product marks come from Simple Icons under CC0; trademarks remain with their owners. The preview and Open Graph image are generated from the production homepage after visual verification.
+The seven homepage paintings are original generated assets with no embedded type, logo, or third-party artwork. Their shared art direction is a viridian 1960s orbital program rendered with smooth oil glazing, broad controlled brushwork, calm negative space, ivory planetary light, and restrained brass or orange accents. Speckled dots, tiling texture, repetitive grime, stippling, halftone, dithering, microdots, canvas weave, and film grain are excluded at generation time. Product marks come from Simple Icons under CC0; trademarks remain with their owners. The preview and Open Graph image are generated from the production homepage after visual verification.

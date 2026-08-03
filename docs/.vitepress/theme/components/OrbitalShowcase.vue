@@ -24,6 +24,8 @@ const progress = ref(0);
 const activeScene = ref(0);
 const prefersReducedMotion = ref(false);
 let scrollFrame = 0;
+let targetProgress = 0;
+let lastScrollTime = 0;
 let fluidFrame = 0;
 let fluidStrength = 0;
 let lastPointerX = 0;
@@ -116,17 +118,22 @@ function cardStyle(index: number) {
     "--orbit-delta": delta.toFixed(4),
     "--orbit-distance": distance.toFixed(4),
     "--orbit-opacity": String(clamp(1.12 - distance * 0.54, 0, 1)),
+    "--orbit-copy-opacity": String(clamp(1 - distance * 2.2, 0, 1)),
     "--orbit-z": String(40 - Math.round(distance * 10)),
   };
 }
 
-function updateScrollProgress() {
-  scrollFrame = 0;
+function renderScrollProgress(timestamp: number) {
   const element = stage.value;
   if (!element || prefersReducedMotion.value) return;
-  const bounds = element.getBoundingClientRect();
-  const travel = Math.max(1, bounds.height - window.innerHeight);
-  progress.value = clamp(-bounds.top / travel);
+
+  const elapsed = lastScrollTime
+    ? Math.min(timestamp - lastScrollTime, 40)
+    : 16;
+  const damping = 1 - Math.exp(-elapsed / 68);
+  const next = progress.value + (targetProgress - progress.value) * damping;
+  progress.value =
+    Math.abs(targetProgress - next) < 0.0001 ? targetProgress : next;
   activeScene.value = Math.round(position.value);
   element.style.setProperty("--orbit-progress", progress.value.toFixed(4));
   element.style.setProperty("--orbit-expand", expansion.value.toFixed(4));
@@ -134,10 +141,33 @@ function updateScrollProgress() {
     "--orbit-parallax",
     `${((progress.value - 0.5) * -10).toFixed(3)}%`,
   );
+
+  lastScrollTime = timestamp;
+  if (progress.value !== targetProgress) {
+    scrollFrame = requestAnimationFrame(renderScrollProgress);
+  } else {
+    scrollFrame = 0;
+    lastScrollTime = 0;
+  }
 }
 
-function requestScrollUpdate() {
-  if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollProgress);
+function readScrollProgress(immediate = false) {
+  const element = stage.value;
+  if (!element || prefersReducedMotion.value) return;
+  const bounds = element.getBoundingClientRect();
+  const travel = Math.max(1, bounds.height - window.innerHeight);
+  targetProgress = clamp(-bounds.top / travel);
+
+  if (immediate) {
+    progress.value = targetProgress;
+    lastScrollTime = 0;
+  }
+
+  if (!scrollFrame) scrollFrame = requestAnimationFrame(renderScrollProgress);
+}
+
+function requestScrollProgress() {
+  readScrollProgress();
 }
 
 function decayFluid() {
@@ -158,9 +188,13 @@ function handlePointerMove(event: PointerEvent) {
     return;
   }
 
-  const bounds = element.getBoundingClientRect();
+  const activeCard = element.querySelector<HTMLElement>(
+    ".uni-orbit-card.is-active",
+  );
+  const bounds =
+    activeCard?.getBoundingClientRect() ?? element.getBoundingClientRect();
   const x = clamp((event.clientX - bounds.left) / bounds.width);
-  const y = clamp(event.clientY / window.innerHeight);
+  const y = clamp((event.clientY - bounds.top) / bounds.height);
   const now = performance.now();
   const elapsed = Math.max(16, now - lastPointerTime);
   const velocity =
@@ -209,14 +243,14 @@ onMounted(() => {
   prefersReducedMotion.value = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
-  updateScrollProgress();
-  window.addEventListener("scroll", requestScrollUpdate, { passive: true });
-  window.addEventListener("resize", requestScrollUpdate, { passive: true });
+  readScrollProgress(true);
+  window.addEventListener("scroll", requestScrollProgress, { passive: true });
+  window.addEventListener("resize", requestScrollProgress, { passive: true });
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("scroll", requestScrollUpdate);
-  window.removeEventListener("resize", requestScrollUpdate);
+  window.removeEventListener("scroll", requestScrollProgress);
+  window.removeEventListener("resize", requestScrollProgress);
   if (scrollFrame) cancelAnimationFrame(scrollFrame);
   if (fluidFrame) cancelAnimationFrame(fluidFrame);
 });
@@ -304,13 +338,5 @@ onBeforeUnmount(() => {
         </button>
       </nav>
     </div>
-
-    <span
-      v-for="(_, index) in scenes"
-      :key="index"
-      class="uni-orbit-stop"
-      :style="{ '--orbit-stop': index / (scenes.length - 1) }"
-      aria-hidden="true"
-    />
   </section>
 </template>

@@ -16,8 +16,7 @@
 import { computed, ref } from "vue";
 import { useData, withBase } from "vitepress";
 import releaseInfo from "../../../release-info.json";
-import siteIndex from "../../../site-index.json";
-import stats from "../../../../stats.json";
+import MissionChapters from "./MissionChapters.vue";
 import OperationReceipt from "./OperationReceipt.vue";
 import OrbitalShowcase from "./OrbitalShowcase.vue";
 
@@ -46,14 +45,6 @@ const brands = [
   ["docker", "Docker"],
 ];
 
-const surfaceIcons = [
-  "M4 5h16v11H4zM8 20h8M12 16v4",
-  "M5 4h14v16H5zM5 9h14M8 6h.01M11 6h.01",
-  "M4 7h16v10H4zM8 17v3h8v-3",
-  "M7 4h10v5h3v11H4V9h3zM9 8h6M8 13h8M8 16h5",
-  "M12 3l2.2 4.4L19 8l-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 8l4.8-.6z",
-];
-
 const copy = computed(() =>
   isZh.value
     ? {
@@ -69,31 +60,10 @@ const copy = computed(() =>
         copyFailed: "手动选择",
         brandLabel: "真实软件",
         brandTitle: "Agent 从这里开始工作。",
-        surfaceLabel: "03 · SURFACES",
-        surfaceTitle: "一套接口，抵达真实软件。",
-        surfaces: [
-          ["Web", "API · DOM · Cookie"],
-          ["Browser", "CDP · Network · Snapshot"],
-          ["Desktop", "AX · UIA · AT-SPI"],
-          ["System", "File · Process · CLI"],
-          ["Agents", "MCP · ACP · Skills"],
-        ],
-        stats: [
-          [String(siteIndex.total_sites), "站点与工具"],
-          [String(siteIndex.total_commands), "operations"],
-          [String(stats.pipeline_step_count), "pipeline actions"],
-          [String(stats.test_count), "tests"],
-        ],
-        startLabel: "04 · START",
-        startTitle: "选一个入口。",
+        receiptLabel: "02 · RECEIPT",
+        receiptTitle: "结构化结果返回。",
         footerLabel: "开放式 Agent-Computer Interface",
         license: "Apache-2.0 许可证",
-        entries: [
-          ["安装运行", "/zh/guide/getting-started"],
-          ["浏览 operation", "/zh/reference/sites"],
-          ["接入 Agent", "/zh/guide/integrations"],
-          ["修复 adapter", "/zh/guide/self-repair"],
-        ],
       }
     : {
         nav: ["Route", "Surfaces", "Start"],
@@ -108,31 +78,10 @@ const copy = computed(() =>
         copyFailed: "Select manually",
         brandLabel: "Real software",
         brandTitle: "Where agents start working.",
-        surfaceLabel: "03 · SURFACES",
-        surfaceTitle: "One interface. Real software.",
-        surfaces: [
-          ["Web", "API · DOM · Cookie"],
-          ["Browser", "CDP · Network · Snapshot"],
-          ["Desktop", "AX · UIA · AT-SPI"],
-          ["System", "File · Process · CLI"],
-          ["Agents", "MCP · ACP · Skills"],
-        ],
-        stats: [
-          [String(siteIndex.total_sites), "sites & tools"],
-          [String(siteIndex.total_commands), "operations"],
-          [String(stats.pipeline_step_count), "pipeline actions"],
-          [String(stats.test_count), "tests"],
-        ],
-        startLabel: "04 · START",
-        startTitle: "Choose an entry.",
+        receiptLabel: "02 · RECEIPT",
+        receiptTitle: "Structure comes back.",
         footerLabel: "Open Agent-Computer Interface",
         license: "Apache-2.0 License",
-        entries: [
-          ["Install & run", "/guide/getting-started"],
-          ["Browse operations", "/reference/sites"],
-          ["Connect agents", "/guide/integrations"],
-          ["Repair adapters", "/guide/self-repair"],
-        ],
       },
 );
 const titleWords = computed(() => {
@@ -340,56 +289,18 @@ function setHeroMode(mode: "install" | "agent") {
 
     <OrbitalShowcase />
 
-    <section class="uni-home-section uni-route-receipt">
+    <section
+      class="uni-home-section uni-route-receipt"
+      aria-labelledby="uni-receipt-title"
+    >
+      <header class="uni-section-head uni-receipt-head">
+        <p class="uni-eyebrow">{{ copy.receiptLabel }}</p>
+        <h2 id="uni-receipt-title">{{ copy.receiptTitle }}</h2>
+      </header>
       <OperationReceipt />
     </section>
 
-    <section
-      id="surfaces"
-      class="uni-home-section uni-surfaces"
-      aria-labelledby="uni-surfaces-title"
-    >
-      <header class="uni-section-head">
-        <p class="uni-eyebrow">{{ copy.surfaceLabel }}</p>
-        <h2 id="uni-surfaces-title">{{ copy.surfaceTitle }}</h2>
-      </header>
-
-      <div class="uni-surface-list">
-        <div v-for="(surface, index) in copy.surfaces" :key="surface[0]">
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path :d="surfaceIcons[index]" />
-          </svg>
-          <strong>{{ surface[0] }}</strong>
-          <code>{{ surface[1] }}</code>
-        </div>
-      </div>
-
-      <dl class="uni-stat-list">
-        <div v-for="stat in copy.stats" :key="stat[1]">
-          <dd>{{ stat[0] }}</dd>
-          <dt>{{ stat[1] }}</dt>
-        </div>
-      </dl>
-    </section>
-
-    <section
-      id="start"
-      class="uni-home-section uni-entry-list"
-      aria-labelledby="uni-start-title"
-    >
-      <header class="uni-section-head">
-        <p class="uni-eyebrow">{{ copy.startLabel }}</p>
-        <h2 id="uni-start-title">{{ copy.startTitle }}</h2>
-      </header>
-      <ol>
-        <li v-for="entry in copy.entries" :key="entry[1]">
-          <a :href="withBase(entry[1])">{{ entry[0] }}</a>
-          <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M7 17 17 7M8 7h9v9" />
-          </svg>
-        </li>
-      </ol>
-    </section>
+    <MissionChapters />
 
     <footer class="uni-home-footer">
       <div class="uni-footer-meta">
@@ -426,7 +337,15 @@ function setHeroMode(mode: "install" | "agent") {
           </a>
         </nav>
       </div>
-      <p class="uni-footer-word" translate="no">Uni-CLI</p>
+      <p
+        class="uni-footer-word"
+        translate="no"
+        :style="{
+          backgroundImage: `url(${withBase('/interface-atlas.webp')})`,
+        }"
+      >
+        Uni-CLI
+      </p>
       <div class="uni-footer-base">
         <span>{{ copy.license }}</span>
         <span>v{{ releaseInfo.version }}</span>

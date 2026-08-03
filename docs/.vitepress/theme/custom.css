@@ -1349,12 +1349,380 @@ body:has(.uni-docs-home) .VPNav {
   color: var(--home-viridian);
 }
 
-.uni-home-footer {
-  min-height: min(680px, 72svh);
-  padding: 72px max(24px, calc((100vw - 1320px) / 2)) 28px;
+/* Art-led interface atlas and launch chapters */
+.uni-mission-flow {
+  position: relative;
+  background: var(--home-forest-deep);
+}
+
+.uni-atlas-chapter {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  height: 100svh;
+  padding: 18px;
+  background: var(--home-forest-deep);
+}
+
+.uni-chapter-art {
+  --chapter-mouse-x: 50%;
+  --chapter-mouse-y: 50%;
+  --chapter-shift-x: 0%;
+  --chapter-shift-y: 0%;
+  --chapter-scene-shift: 0%;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 42px;
+  background: var(--home-forest);
+  box-shadow: 0 28px 76px oklch(0.08 0.045 158 / 0.3);
+  isolation: isolate;
+}
+
+.uni-chapter-image {
+  position: absolute;
+  z-index: -3;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  object-position: center;
+  transform: translate3d(
+      calc(var(--chapter-shift-x) + var(--chapter-scene-shift)),
+      var(--chapter-shift-y),
+      0
+    )
+    scale(1.045);
+  transform-origin: var(--chapter-mouse-x) var(--chapter-mouse-y);
+  transition: transform 520ms var(--appica-ease);
+  will-change: transform;
+}
+
+.uni-chapter-fluid-image {
+  z-index: -2;
+  filter: url("#uni-chapter-fluid");
+  mask-image: radial-gradient(
+    circle 210px at var(--chapter-mouse-x) var(--chapter-mouse-y),
+    black 0,
+    black 32%,
+    transparent 76%
+  );
+  opacity: 0;
+  transition:
+    opacity 180ms ease,
+    transform 520ms var(--appica-ease);
+}
+
+.uni-chapter-art:hover .uni-chapter-fluid-image {
+  opacity: 0.72;
+}
+
+.uni-chapter-shade {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      oklch(0.11 0.035 158 / 0.9) 0,
+      oklch(0.12 0.038 158 / 0.65) 28%,
+      transparent 63%
+    ),
+    linear-gradient(0deg, oklch(0.1 0.035 158 / 0.82) 0, transparent 42%);
+  pointer-events: none;
+}
+
+.uni-chapter-heading {
+  position: absolute;
+  z-index: 4;
+  top: clamp(72px, 9vh, 104px);
+  left: clamp(34px, 5vw, 76px);
+  max-width: min(620px, 48vw);
+}
+
+.uni-chapter-heading h2 {
+  max-width: 13ch;
+  margin: 20px 0 0;
+  color: var(--home-ivory);
+  font-size: clamp(34px, 4vw, 48px);
+  font-weight: 650;
+  letter-spacing: -0.058em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.uni-chapter-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.uni-chapter-word.has-trailing-space {
+  margin-right: 0.22em;
+}
+
+.uni-chapter-word > span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.75em) rotateX(-14deg);
+  transform-origin: 50% 100%;
+}
+
+.is-visible .uni-chapter-word > span {
+  animation: uni-chapter-glyph-enter 640ms var(--appica-ease) both;
+  animation-delay: calc(70ms + var(--chapter-glyph) * 20ms);
+}
+
+@keyframes uni-chapter-glyph-enter {
+  to {
+    opacity: 1;
+    transform: translateY(0) rotateX(0);
+  }
+}
+
+.uni-atlas-selector {
+  position: absolute;
+  z-index: 5;
+  bottom: clamp(32px, 5vh, 54px);
+  left: clamp(28px, 4vw, 64px);
+  display: grid;
+  width: min(720px, calc(100% - 470px));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.uni-atlas-selector button {
+  display: grid;
+  min-width: 0;
+  min-height: 78px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: color-mix(in oklch, var(--home-ivory) 52%, transparent);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 220ms var(--appica-ease);
+}
+
+.uni-atlas-selector button:hover,
+.uni-atlas-selector button:focus-visible,
+.uni-atlas-selector button[aria-pressed="true"] {
+  color: var(--home-ivory);
+  transform: translateY(-4px);
+}
+
+.uni-atlas-selector button:focus-visible {
+  outline: 2px solid var(--home-ivory);
+  outline-offset: 2px;
+}
+
+.uni-atlas-selector svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.65;
+}
+
+.uni-atlas-selector button[aria-pressed="true"] svg {
+  color: var(--home-orange);
+}
+
+.uni-atlas-selector span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.uni-atlas-selector strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.vp-doc .uni-atlas-selector code {
+  overflow: hidden;
+  color: color-mix(in oklch, var(--home-ivory) 66%, transparent) !important;
+  font-family: "Geist Variable", sans-serif;
+  font-size: 14px;
+  font-weight: 510;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uni-atlas-stats {
+  position: absolute;
+  z-index: 5;
+  right: clamp(32px, 5vw, 76px);
+  bottom: clamp(36px, 5vh, 58px);
+  display: grid;
+  width: min(360px, 29vw);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 24px;
+  margin: 0;
+}
+
+.uni-atlas-stats div {
+  min-width: 0;
+}
+
+.uni-atlas-stats dd,
+.uni-atlas-stats dt {
+  margin: 0;
+}
+
+.uni-atlas-stats dd {
+  color: var(--home-ivory);
+  font-size: clamp(20px, 2.3vw, 32px);
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.uni-atlas-stats dt {
+  margin-top: 6px;
+  overflow: hidden;
+  color: color-mix(in oklch, var(--home-ivory) 62%, transparent);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uni-launch-chapter {
+  position: relative;
+  z-index: 2;
+  height: 180svh;
+  background: transparent;
+}
+
+.uni-launch-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
   overflow: hidden;
   background: var(--home-forest-deep);
-  color: var(--home-ivory);
+}
+
+.uni-launch-panel {
+  --launch-scale: 0.955;
+  position: absolute;
+  inset: 0;
+  height: auto;
+  border-radius: 42px;
+  transform: scale(var(--launch-scale));
+  transition: border-radius 180ms ease;
+  will-change: transform;
+}
+
+.uni-launch-panel .uni-chapter-image {
+  object-position: center;
+}
+
+.uni-launch-panel .uni-chapter-shade {
+  background: linear-gradient(
+    90deg,
+    oklch(0.09 0.028 158 / 0.94) 0,
+    oklch(0.1 0.03 158 / 0.72) 31%,
+    transparent 62%
+  );
+}
+
+.uni-launch-routes {
+  position: absolute;
+  z-index: 5;
+  bottom: clamp(34px, 5vh, 60px);
+  left: clamp(28px, 4vw, 64px);
+  display: grid;
+  width: min(470px, 42vw);
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vp-doc .uni-launch-routes {
+  list-style: none !important;
+}
+
+.uni-launch-routes li {
+  margin: 0;
+}
+
+.vp-doc .uni-launch-routes li::marker {
+  content: "";
+}
+
+.uni-launch-routes a {
+  display: grid;
+  min-height: 50px;
+  grid-template-columns: 34px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 18px;
+  color: color-mix(in oklch, var(--home-ivory) 62%, transparent) !important;
+  text-decoration: none !important;
+  transition:
+    background-color 190ms ease,
+    color 190ms ease,
+    transform 220ms var(--appica-ease);
+}
+
+.uni-launch-routes a:hover,
+.uni-launch-routes a:focus-visible,
+.uni-launch-routes a[aria-current="step"] {
+  background: color-mix(in oklch, var(--home-ivory) 11%, transparent);
+  color: var(--home-ivory) !important;
+  transform: translateX(6px);
+}
+
+.uni-launch-routes a:focus-visible {
+  outline: 2px solid var(--home-ivory);
+  outline-offset: 2px;
+}
+
+.uni-launch-routes span {
+  color: var(--home-orange);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.uni-launch-routes strong {
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.uni-launch-routes svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.uni-home-footer {
+  position: relative;
+  z-index: 4;
+  min-height: min(720px, 76svh);
+  padding: 64px max(24px, calc((100vw - 1320px) / 2)) 28px;
+  overflow: hidden;
+  background: var(--home-paper);
+  color: var(--home-forest-deep);
+  container-type: inline-size;
 }
 
 .uni-footer-meta,
@@ -1368,8 +1736,8 @@ body:has(.uni-docs-home) .VPNav {
 .vp-doc .uni-footer-meta p,
 .uni-footer-base {
   margin: 0;
-  color: color-mix(in oklch, var(--home-ivory) 68%, var(--home-moss));
-  font-size: 13px;
+  color: color-mix(in oklch, var(--home-forest) 74%, var(--home-paper));
+  font-size: 14px;
 }
 
 .uni-footer-meta nav {
@@ -1378,18 +1746,24 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-footer-meta a {
-  background: var(--home-sage);
+  background: transparent;
 }
 
 .vp-doc .uni-home-footer .uni-footer-word {
-  margin: clamp(84px, 10vw, 132px) 0 clamp(70px, 8vw, 102px);
-  color: var(--home-sage) !important;
-  font-size: clamp(92px, 19vw, 270px) !important;
+  margin: clamp(84px, 9vw, 124px) 0 clamp(70px, 7vw, 96px);
+  background-position: center 47%;
+  background-size: cover;
+  color: transparent !important;
+  font-size: min(20cqw, 286px) !important;
   font-weight: 680;
-  letter-spacing: -0.085em;
-  line-height: 0.7;
+  letter-spacing: -0.09em;
+  line-height: 0.72;
   text-align: center;
   white-space: nowrap;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px
+    color-mix(in oklch, var(--home-forest) 24%, transparent);
 }
 
 .uni-footer-base {
@@ -1397,9 +1771,6 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 /* Orbital scroll chapter */
-html:has(.uni-docs-home) {
-  scroll-snap-type: y proximity;
-}
 
 .uni-fluid-defs {
   position: absolute;
@@ -1420,7 +1791,6 @@ html:has(.uni-docs-home) {
   height: 440svh;
   background: var(--home-forest-deep);
   color: var(--home-ivory);
-  scroll-snap-align: start;
 }
 
 .uni-orbit-sticky {
@@ -1514,7 +1884,6 @@ html:has(.uni-docs-home) {
   transform: translate3d(0, var(--orbit-parallax), 0)
     rotateX(var(--orbit-tilt-x)) rotateY(var(--orbit-tilt-y)) scale(1.05);
   transform-origin: var(--orbit-mouse-x) var(--orbit-mouse-y);
-  transition: transform 320ms var(--appica-ease);
   will-change: transform;
 }
 
@@ -1543,9 +1912,7 @@ html:has(.uni-docs-home) {
     transparent 76%
   );
   opacity: 0;
-  transition:
-    opacity 180ms ease,
-    transform 320ms var(--appica-ease);
+  transition: opacity 180ms ease;
 }
 
 .uni-orbit-card.is-active:hover .uni-orbit-fluid-image {
@@ -1577,12 +1944,7 @@ html:has(.uni-docs-home) {
   align-items: end;
   gap: 8px 24px;
   color: var(--home-ivory);
-  opacity: 1;
-  transition: opacity 160ms ease;
-}
-
-.uni-orbit-card:not(.is-active) .uni-orbit-card-copy {
-  opacity: 0;
+  opacity: var(--orbit-copy-opacity);
 }
 
 .vp-doc .uni-orbit-card-copy p,
@@ -1659,20 +2021,9 @@ html:has(.uni-docs-home) {
   font-variant-numeric: tabular-nums;
 }
 
-.uni-orbit-stop {
-  position: absolute;
-  top: calc(var(--orbit-stop) * 340svh);
-  left: 0;
-  width: 1px;
-  height: 1px;
-  scroll-snap-align: start;
-  pointer-events: none;
-}
-
 .uni-route-receipt {
   position: relative;
   z-index: 2;
-  scroll-snap-align: start;
 }
 
 /* Version notice */
@@ -2396,8 +2747,7 @@ html:has(.uni-docs-home) {
   }
 
   .uni-orbit-fluid-image,
-  .uni-orbit-index,
-  .uni-orbit-stop {
+  .uni-orbit-index {
     display: none;
   }
 }
@@ -2448,8 +2798,7 @@ html:has(.uni-docs-home) {
   }
 
   .uni-orbit-fluid-image,
-  .uni-orbit-index,
-  .uni-orbit-stop {
+  .uni-orbit-index {
     display: none;
   }
 }
@@ -2581,5 +2930,188 @@ html:has(.uni-docs-home) {
   .vp-doc .uni-home-footer .uni-footer-word {
     margin: 88px 0 78px;
     font-size: 22vw !important;
+  }
+}
+
+/* Homepage art chapters: responsive and motion-safe overrides */
+.uni-receipt-head {
+  margin-bottom: 42px;
+}
+
+@media (max-width: 960px) {
+  .uni-atlas-chapter {
+    padding: 14px;
+  }
+
+  .uni-chapter-art,
+  .uni-launch-panel {
+    border-radius: 36px;
+  }
+
+  .uni-atlas-selector {
+    width: min(610px, calc(100% - 340px));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .uni-atlas-selector button {
+    min-height: 60px;
+  }
+
+  .uni-atlas-stats {
+    width: min(280px, 30vw);
+    gap: 14px;
+  }
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .uni-atlas-chapter {
+    position: relative;
+    height: auto;
+    padding: 12px;
+  }
+
+  .uni-chapter-art {
+    display: flex;
+    min-height: 980px;
+    flex-direction: column;
+    padding: 38px 24px 28px;
+    border-radius: 32px;
+  }
+
+  .uni-chapter-heading {
+    position: relative;
+    top: auto;
+    left: auto;
+    max-width: 540px;
+  }
+
+  .uni-chapter-heading h2 {
+    font-size: clamp(34px, 8vw, 46px);
+  }
+
+  .uni-atlas-selector {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: auto;
+  }
+
+  .uni-atlas-selector button {
+    min-height: 66px;
+    padding: 10px 6px;
+  }
+
+  .uni-atlas-stats {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  .uni-launch-chapter {
+    height: auto;
+    padding: 0 12px 12px;
+    background: var(--home-forest-deep);
+  }
+
+  .uni-launch-sticky {
+    position: relative;
+    height: auto;
+    overflow: visible;
+  }
+
+  .uni-launch-panel {
+    position: relative;
+    inset: auto;
+    min-height: 900px;
+    transform: none;
+  }
+
+  .uni-launch-routes {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  .uni-chapter-fluid-image {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .uni-chapter-art {
+    min-height: 940px;
+    padding: 32px 18px 22px;
+  }
+
+  .uni-chapter-heading h2 {
+    max-width: 11ch;
+    font-size: 36px;
+  }
+
+  .uni-atlas-selector {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .uni-atlas-selector button {
+    min-height: 56px;
+  }
+
+  .vp-doc .uni-atlas-selector code {
+    font-size: 10px;
+  }
+
+  .uni-launch-panel {
+    min-height: 860px;
+  }
+
+  .uni-launch-routes a {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uni-atlas-chapter {
+    position: relative;
+    height: auto;
+    padding: 18px;
+  }
+
+  .uni-atlas-panel {
+    min-height: 760px;
+  }
+
+  .uni-launch-chapter {
+    height: auto;
+    padding: 0 18px 18px;
+    background: var(--home-forest-deep);
+  }
+
+  .uni-launch-sticky {
+    position: relative;
+    height: auto;
+    overflow: visible;
+  }
+
+  .uni-launch-panel {
+    position: relative;
+    inset: auto;
+    min-height: 760px;
+    transform: none;
+  }
+
+  .uni-chapter-word > span {
+    opacity: 1;
+    transform: none;
+  }
+
+  .uni-chapter-fluid-image {
+    display: none;
   }
 }
