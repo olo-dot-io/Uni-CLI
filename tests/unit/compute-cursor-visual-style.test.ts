@@ -34,18 +34,22 @@ describe("compute cursor visual style", () => {
     );
   });
 
-  it("renders the docs demo as an arrow pointer skin instead of a circle HUD", () => {
+  it("renders the docs demo as a static Appica-style pointer card", () => {
     const component = readFileSync(
       join(repoRoot, "docs/.vitepress/theme/components/ComputeCursorDemo.vue"),
       "utf8",
     );
 
-    expect(component).toContain("mac-glass-pointer-v1");
+    expect(component).toContain("compute-cursor-demo");
+    expect(component).toContain("--appica-background-muted");
     expect(component).toContain("cursor-arrow");
     expect(component).toContain("cursor-arrow-fill");
     expect(component).toContain("cursor-arrow-outline");
-    expect(component).toContain("cursor-hotspot");
-    expect(component).toContain("cursor-pressure");
+    expect(component).not.toContain("@keyframes");
+    expect(component).not.toContain("animation:");
+    expect(component).not.toContain("cursor-trace");
+    expect(component).not.toContain("demo-route");
+    expect(component).not.toContain("step-dot");
     expect(component).not.toContain("cursor-aperture");
     expect(component).not.toContain("cursor-brackets");
     expect(component).not.toContain("compute-cursor-fill");

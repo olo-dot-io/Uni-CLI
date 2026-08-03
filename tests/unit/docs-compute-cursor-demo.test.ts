@@ -42,7 +42,7 @@ describe("docs compute cursor demo", () => {
       'from "../fixtures/compute-visual-action.json"',
     );
     expect(component).toContain("replaySteps");
-    expect(component).toContain("pointerStyle");
+    expect(component).toContain("pointerPlan");
   });
 
   it("documents the native system overlay evidence path honestly", () => {

@@ -1,76 +1,71 @@
 # Uni-CLI Public Design System
 
-## Direction: interface, not explanation
+## Direction
 
-The public site presents Uni-CLI as working software. The homepage opens on one product window where an intent becomes a selected operation, an execution route, and a receipt. Supporting sections use live data, aligned rows, and direct entry points. Prose appears only when the interface cannot carry the meaning itself.
+The public surface uses the component language of [Appica UI](https://appica.dev/ui): quiet neutral canvases, navy ink, blue interaction color, compact controls, soft grouped surfaces, and short state feedback. The implementation ports the official tokens and behavior from `appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6` into the existing VitePress and Vue boundary. Appica's React runtime is not added to the documentation bundle. Its MIT license is preserved in `docs/.vitepress/theme/APPICA-UI-LICENSE.txt`.
 
-The visual lineage follows contemporary tool interfaces: a quiet textured field, one centered working surface, warm paper, dense black ink, restrained orange interaction color, fine separators, and soft elevation. It avoids generic terminal dashboards, card mosaics, decorative icon circles, violet gradients, oversized marketing copy, and repeated feature summaries.
+Each section presents one action or one structured result. Spacing, background contrast, and radius create hierarchy. Decorative dividers, status dots, glowing traces, gradients, and ornamental diagrams are absent. Authored copy stays short.
 
 ## Typography
 
-Geist Sans is the only authored public typeface. It serves display, interface, code, numbers, and Latin text; browsers supply glyph fallback only where Geist has no character coverage. The pinned variable WOFF2 build is vendored with its OFL license.
+Geist Sans is the only authored public typeface. The variable WOFF2 build and its OFL license remain vendored. Interface labels, prose, code, and numbers share the same family; browsers provide glyph fallback only when Geist has no matching glyph.
 
-| Role           | Size                       | Line height | Weight    |
-| -------------- | -------------------------- | ----------- | --------- |
-| Hero           | `clamp(46px, 6.2vw, 76px)` | `0.97`      | `610`     |
-| Section title  | `clamp(44px, 6vw, 78px)`   | `0.98`      | `600`     |
-| Document title | `clamp(40px, 5vw, 58px)`   | `1.02`      | `620`     |
-| Body           | `16px`                     | `1.65`      | `400`     |
-| Interface      | `14px`                     | `1.4`       | `500–580` |
-| Label          | `12px`                     | `1.25`      | `520–560` |
+| Role             | Size                     | Line height | Weight    |
+| ---------------- | ------------------------ | ----------- | --------- |
+| Hero             | `clamp(36px, 4vw, 48px)` | `1.04`      | `620`     |
+| Homepage section | `clamp(30px, 3vw, 38px)` | `1.1`       | `610`     |
+| Document title   | `clamp(34px, 4vw, 42px)` | `1.1`       | `620`     |
+| Body             | `16px`                   | `1.6`       | `400`     |
+| Interface        | `14px`                   | `1.45`      | `500–600` |
+| Label            | `12px`                   | `1.35`      | `540–600` |
 
-Headlines use tight tracking and balanced wrapping. Descriptions use pretty wrapping. Long-form text stays within 68 characters. Changing values use tabular numbers. Links take underline metrics from Geist. Inputs remain at least 16px on mobile.
+The scale follows Appica's compact steps and prevents large jumps between adjacent roles. Headlines use balanced wrapping. Long-form text stays within 68 characters. Numeric data uses tabular figures. Inputs remain at least 16px on mobile.
 
-`@chenglou/pretext@0.0.6` remains pinned at the text-layout boundary. Semantic DOM remains authoritative.
+`@chenglou/pretext@0.0.6` is pinned at the text-layout boundary. Semantic DOM remains authoritative.
 
 ## Color
 
-Colors are semantic OKLCH tokens. Orange identifies interaction. Green identifies successful runtime state. Neutral ink and paper carry structure; decorative color never borrows an interactive meaning.
+The site maps Appica's OKLCH primitives to semantic tokens. The light surface is white with cool gray grouping; the dark surface is deep navy rather than neutral black.
 
-| Role           | Token                | Light                   |
-| -------------- | -------------------- | ----------------------- |
-| Canvas         | `--uni-paper`        | `oklch(0.978 0.009 88)` |
-| Raised surface | `--uni-paper-raised` | `oklch(0.994 0.004 88)` |
-| Primary text   | `--uni-ink`          | `oklch(0.205 0.008 75)` |
-| Secondary text | `--uni-muted`        | `oklch(0.49 0.012 75)`  |
-| Separator      | `--uni-rule`         | `oklch(0.895 0.012 84)` |
-| Interaction    | `--uni-accent`       | `oklch(0.61 0.15 39)`   |
-| Success        | `--uni-success`      | `oklch(0.66 0.16 148)`  |
+| Role             | Light                    | Dark                     |
+| ---------------- | ------------------------ | ------------------------ |
+| Canvas           | `oklch(1 0 0)`           | `oklch(0.13 0.02 263)`   |
+| Muted surface    | `oklch(0.967 0.003 264)` | `oklch(0.21 0.02 263)`   |
+| Strong surface   | `oklch(0.928 0.006 264)` | `oklch(0.278 0.02 263)`  |
+| Primary text     | `oklch(0.21 0.02 263)`   | `oklch(0.985 0.002 248)` |
+| Secondary text   | `oklch(0.446 0.018 256)` | `oklch(0.707 0.018 256)` |
+| Primary action   | `oklch(0.21 0.02 263)`   | `oklch(0.985 0.002 248)` |
+| Secondary action | `oklch(0.623 0.188 259)` | `oklch(0.707 0.165 255)` |
+| Success          | `oklch(0.696 0.17 162)`  | `oklch(0.765 0.177 163)` |
 
-Dark appearance is tuned independently. `prefers-contrast: more` widens lightness gaps. Visited links use a separate muted plum token. Filled emphasis appears once per decision context.
+Filled emphasis appears once per decision context. Blue indicates interaction. Green is reserved for successful or selected runtime state. Contrast is tuned independently for each appearance.
 
-## Surfaces
+## Components
 
-- Use borders for dividers, tables, form outlines, and selected state.
-- Use layered translucent shadows for elevation and container edges.
-- Product windows use a 24px outer radius. A surface inset by 10px uses a 14px inner radius.
-- Images receive a 1px inner outline: pure black at 10% in light appearance and pure white at 10% in dark appearance.
-- Cards appear only for real adapter, release, or statistic objects.
-- Controls are at least 42px tall on marketing surfaces and 38px in dense documentation controls.
+- The base radius is `14px`, matching Appica's `0.875rem` token.
+- Buttons are 48px high on marketing surfaces and 40px in dense documentation controls.
+- Pressed controls use `scale(0.97)` with a short interruptible transition.
+- Grouped content uses a muted background or low, diffused shadow instead of a border line.
+- Cards represent a real operation, candidate, receipt, surface, statistic, or route.
+- Tables use row spacing and surface contrast rather than drawn separators.
+- Focus rings remain visible in light and dark appearance.
 
 ## Composition
 
-- The hero fills `calc(100svh - 64px)` and centers one product window.
-- Working width is 1240px; documentation measure is 780px.
-- Sections have one job: route, surface, or entry.
-- Lists and receipts use aligned rows and separators rather than decorative containers.
-- At 760px the receipt stacks, surface rows collapse to label/detail pairs, and hero stages become a 2×2 grid.
-- At 640px header utilities move behind the menu, controls become full width where needed, and no content exceeds the viewport.
+The homepage uses a centered 960px working surface. The hero contains one intent composer and four equally weighted stages. Later sections repeat the same grid, radius, spacing, and text hierarchy for the live route, operating surfaces, data, and starting points.
 
-## Interaction
+At 960px the receipt and surface grids reduce columns. At 760px the receipt stacks and entry points become one column. At 640px controls become full width where useful and the hero stages form a balanced 2×2 grid. No content exceeds the viewport.
 
-- Pressable controls use `scale(0.96)` with a 150ms interruptible transition.
-- Hover changes use explicit color, shadow, or transform properties; `transition: all` is prohibited.
-- The first-load product window uses one 520ms opacity/blur/12px translation sequence. Actions follow after 120ms.
-- High-frequency navigation and filtering use instant state changes or transitions no longer than 150ms.
-- `prefers-reduced-motion: reduce` removes entrance and transform effects.
-- Focus rings remain visible in light and dark appearance. Copy status is announced through a stable polite live region.
+Documentation keeps a 780px reading measure. Navigation, search, sidebars, tables, code blocks, version notices, catalog filters, and agent controls reuse the same tokens.
 
-## Assets
+## Motion
 
-- Homepage field: `docs/public/interface-field.webp`
+No component runs a continuous animation. The interface contains no breathing light, orbit, pulse, moving route, or decorative entrance sequence. Hover and press feedback change only the relevant color, shadow, or transform and finish within 160ms. `prefers-reduced-motion: reduce` removes transforms and transitions.
+
+## Public assets
+
 - README preview: `docs/public/site-preview.webp`
 - Open Graph preview: `docs/public/site-preview-og.jpg`
-- Mascot: `assets/mascot-otter.png`
+- Mascot: `docs/public/mascot-otter.png`
 
-The homepage field is an original project asset. It contains no embedded text, product UI, logo, or third-party artwork.
+The preview and Open Graph image are generated from the production homepage after visual verification.

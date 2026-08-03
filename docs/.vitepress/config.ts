@@ -504,7 +504,22 @@ export default defineConfig({
       { rel: "icon", type: "image/png", href: `${siteBase}favicon.png` },
     ],
     ["link", { rel: "manifest", href: `${siteBase}site.webmanifest` }],
-    ["meta", { name: "theme-color", content: "#faf8f3" }],
+    [
+      "meta",
+      {
+        name: "theme-color",
+        content: "#ffffff",
+        media: "(prefers-color-scheme: light)",
+      },
+    ],
+    [
+      "meta",
+      {
+        name: "theme-color",
+        content: "#020617",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:title", content: "Uni-CLI" }],
     [

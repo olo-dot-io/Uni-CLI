@@ -4,8 +4,8 @@
   "description": "One command for every interface.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#faf8f3",
-  "theme_color": "#faf8f3",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "favicon.png",

@@ -34,7 +34,7 @@ const copy = computed(() =>
   isZh.value
     ? {
         eyebrow: "开放式智能体界面",
-        title: "一个命令操作所有界面",
+        title: "一个命令。所有界面。",
         primary: "安装 Uni-CLI",
         secondary: "打开文档",
         copied: "已复制",
@@ -70,11 +70,10 @@ const copy = computed(() =>
           ["接入 Agent", "/zh/guide/integrations"],
           ["修复 adapter", "/zh/guide/self-repair"],
         ],
-        indexText: "智能体索引",
       }
     : {
         eyebrow: "Open agent interface",
-        title: "One command Every interface",
+        title: "One command. Every interface.",
         primary: "Install Uni-CLI",
         secondary: "Open docs",
         copied: "Copied",
@@ -110,7 +109,6 @@ const copy = computed(() =>
           ["Connect agents", "/guide/integrations"],
           ["Repair adapters", "/guide/self-repair"],
         ],
-        indexText: "Agent index",
       },
 );
 
@@ -137,15 +135,30 @@ async function copyInstallCommand() {
 <template>
   <main class="uni-docs-home">
     <section class="uni-landing-hero" aria-labelledby="uni-home-title">
-      <img
-        class="uni-hero-art"
-        :src="withBase('/interface-field.webp')"
-        alt=""
-        width="1920"
-        height="1201"
-        fetchpriority="high"
-      />
-      <div class="uni-hero-wash" aria-hidden="true" />
+      <header class="uni-hero-copy">
+        <p class="uni-eyebrow">{{ copy.eyebrow }}</p>
+        <h1 id="uni-home-title">{{ copy.title }}</h1>
+      </header>
+
+      <div class="uni-hero-actions">
+        <button
+          type="button"
+          class="uni-link-primary"
+          @click="copyInstallCommand"
+        >
+          {{ copy.primary }}
+        </button>
+        <a
+          class="uni-link-secondary"
+          :href="
+            withBase(
+              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+            )
+          "
+        >
+          {{ copy.secondary }} <span aria-hidden="true">↗</span>
+        </a>
+      </div>
 
       <div class="uni-product-window">
         <div class="uni-window-bar">
@@ -160,11 +173,6 @@ async function copyInstallCommand() {
         </div>
 
         <div class="uni-window-body">
-          <header class="uni-hero-copy">
-            <p class="uni-eyebrow">{{ copy.eyebrow }}</p>
-            <h1 id="uni-home-title">{{ copy.title }}</h1>
-          </header>
-
           <div class="uni-command-composer">
             <span class="uni-composer-label">{{ copy.commandLabel }}</span>
             <code>{{ searchCommand }}</code>
@@ -185,26 +193,6 @@ async function copyInstallCommand() {
             </li>
           </ol>
         </div>
-      </div>
-
-      <div class="uni-hero-actions">
-        <button
-          type="button"
-          class="uni-link-primary"
-          @click="copyInstallCommand"
-        >
-          {{ copy.primary }}
-        </button>
-        <a
-          class="uni-link-secondary"
-          :href="
-            withBase(
-              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
-            )
-          "
-        >
-          {{ copy.secondary }} <span aria-hidden="true">↗</span>
-        </a>
       </div>
       <span class="uni-sr-only" role="status" aria-live="polite">
         {{
@@ -268,12 +256,5 @@ async function copyInstallCommand() {
         </li>
       </ol>
     </section>
-
-    <footer class="uni-index-line">
-      <span>{{ copy.indexText }}</span>
-      <a :href="withBase('/llms.txt')">llms.txt</a>
-      <a :href="withBase('/llms-full.txt')">llms-full.txt</a>
-      <a href="https://github.com/olo-dot-io/Uni-CLI">GitHub ↗</a>
-    </footer>
   </main>
 </template>

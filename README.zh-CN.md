@@ -10,16 +10,16 @@
 </p>
 
 <p align="center">
-  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/">网站</a> ·
-  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites">Operation 目录</a> ·
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli">npm</a> ·
+  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/">网站</a>&nbsp;&nbsp;
+  <a href="https://olo-dot-io.github.io/Uni-CLI/zh/reference/sites">Operation 目录</a>&nbsp;&nbsp;
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli">npm</a>&nbsp;&nbsp;
   <a href="./README.md">English</a>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=d9572d"></a>
-  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-181715?style=flat-square"></a>
-  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-d9572d?style=flat-square">
+  <a href="https://www.npmjs.com/package/@zenalexa/unicli"><img alt="npm 版本" src="https://img.shields.io/npm/v/@zenalexa/unicli?style=flat-square&color=3b82f6"></a>
+  <a href="./LICENSE"><img alt="Apache 2.0 许可证" src="https://img.shields.io/badge/license-Apache--2.0-0f172b?style=flat-square"></a>
+  <img alt="Node 22.19 或更高版本" src="https://img.shields.io/badge/node-22.19%2B-3b82f6?style=flat-square">
 </p>
 
 <p align="center">
