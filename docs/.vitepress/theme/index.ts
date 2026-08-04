@@ -7,6 +7,7 @@ import SiteCatalog from "./components/SiteCatalog.vue";
 import SiteStats from "./components/SiteStats.vue";
 import VersionNotice from "./components/VersionNotice.vue";
 import { installPretextTypography } from "./pretext-typography";
+import "lenis/dist/lenis.css";
 import "./custom.css";
 
 export default {

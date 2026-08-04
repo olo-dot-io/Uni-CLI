@@ -1,21 +1,23 @@
 <!--
 @owner docs/.vitepress/theme/components/HomePage.vue
 @does Render the bilingual public landing page as a compact, product-led interface.
-@needs docs/release-info.json, docs/site-index.json, stats.json, VitePress locale/base data, browser Clipboard API
+@needs docs/release-info.json, docs/site-index.json, stats.json, VitePress locale/base data, Lenis, browser Clipboard API
 @feeds English and Chinese documentation homepages
 @breaks Stale product claims or generated counts misrepresent the public Agent-Computer Interface surface.
 @invariants English and Chinese copy share one information architecture and all displayed counts come from generated sources.
-@side-effects Copies the install command on explicit user action and updates local reactive state.
-@perf O(1) over static copy and generated scalar counts per render.
+@side-effects Interpolates homepage wheel scrolling, copies the install command on explicit user action, and updates local reactive state.
+@perf One Lenis requestAnimationFrame loop while the homepage is mounted; O(1) over static copy and generated scalar counts per render.
 @concurrency Browser-main-thread Vue reactivity; clipboard completion may resolve asynchronously.
 @test npm run docs:build verifies the compiled public surface
 @stability stable
 @since 2026-08-02
 -->
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import Lenis from "lenis";
+import { computed, onBeforeUnmount, onMounted, provide, ref } from "vue";
 import { useData, withBase } from "vitepress";
 import releaseInfo from "../../../release-info.json";
+import { homeScrollToKey } from "../home-scroll";
 import MissionChapters from "./MissionChapters.vue";
 import OperationReceipt from "./OperationReceipt.vue";
 import OrbitalShowcase from "./OrbitalShowcase.vue";
@@ -24,6 +26,7 @@ const { isDark, localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
 const copyState = ref<"idle" | "copied" | "failed">("idle");
 const heroMode = ref<"install" | "agent">("install");
+let homepageScroll: Lenis | undefined;
 const installCommand = "npm install -g @zenalexa/unicli";
 const agentInstruction = computed(() =>
   isZh.value
@@ -49,7 +52,7 @@ const copy = computed(() =>
   isZh.value
     ? {
         nav: ["文档", "操作", "架构"],
-        eyebrow: "Agent-Computer Interface",
+        eyebrow: "开放式 Agent-Computer Interface",
         title: "把所有界面交给 Agent。",
         lead: "安装一次。搜索、执行、检查、修复。",
         installTab: "npm",
@@ -67,7 +70,7 @@ const copy = computed(() =>
       }
     : {
         nav: ["Docs", "Operations", "Architecture"],
-        eyebrow: "Agent-computer interface",
+        eyebrow: "Open agent-computer interface",
         title: "Give agents every interface.",
         lead: "Install once. Search, run, inspect, repair.",
         installTab: "npm",
@@ -135,6 +138,36 @@ function setHeroMode(mode: "install" | "agent") {
 function toggleTheme() {
   isDark.value = !isDark.value;
 }
+
+provide(homeScrollToKey, (top) => {
+  if (homepageScroll) {
+    homepageScroll.scrollTo(top);
+    return;
+  }
+
+  window.scrollTo({
+    top,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth",
+  });
+});
+
+onMounted(() => {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  homepageScroll = new Lenis({
+    autoRaf: true,
+    lerp: 0.09,
+    smoothWheel: true,
+    syncTouch: false,
+  });
+});
+
+onBeforeUnmount(() => {
+  homepageScroll?.destroy();
+  homepageScroll = undefined;
+});
 </script>
 
 <template>
@@ -246,7 +279,6 @@ function toggleTheme() {
                 {{ copy.agentTab }}
               </button>
             </div>
-            <span aria-hidden="true">unicli / quick start</span>
           </div>
           <Transition name="uni-command-swap" mode="out-in">
             <div

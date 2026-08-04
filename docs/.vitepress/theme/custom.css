@@ -826,10 +826,13 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-landing-hero {
   position: relative;
-  display: flex;
+  display: grid;
   width: 100%;
   min-height: 100svh;
-  align-items: center;
+  grid-template-columns:
+    minmax(24px, 1fr) minmax(0, 1180px)
+    minmax(24px, 1fr);
+  align-items: stretch;
   margin: 0;
   overflow: hidden;
   border-radius: 0;
@@ -849,11 +852,14 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-hero-copy {
   display: flex;
-  width: min(620px, 49%);
+  width: min(540px, 50%);
+  min-height: 100svh;
+  grid-column: 2;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
-  gap: 30px;
-  padding: clamp(140px, 13vw, 180px) clamp(44px, 6vw, 92px) 88px;
+  gap: 28px;
+  padding: 112px 0 64px;
   color: var(--home-ivory);
 }
 
@@ -884,10 +890,10 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-hero-copy h1 {
-  max-width: 10ch;
-  margin: 26px 0 0;
+  max-width: 9.75ch;
+  margin: 24px 0 0;
   color: var(--home-ivory);
-  font-size: clamp(48px, 5.3vw, 74px);
+  font-size: clamp(50px, 5.15vw, 72px);
   font-weight: 650;
   letter-spacing: -0.06em;
   line-height: 0.98;
@@ -926,16 +932,16 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .vp-doc .uni-hero-lead {
-  margin: 20px 0 0;
+  margin: 18px 0 0;
   color: color-mix(in oklch, var(--home-ivory) 78%, var(--home-moss));
   font-size: 17px;
   line-height: 1.45;
 }
 
 .uni-command-console {
-  width: min(590px, 100%);
+  width: 100%;
   overflow: hidden;
-  border-radius: 26px;
+  border-radius: 24px;
   background: color-mix(in oklch, var(--home-forest-deep) 88%, transparent);
   box-shadow: 0 24px 64px oklch(0.07 0.04 158 / 0.32);
   backdrop-filter: blur(14px) saturate(108%);
@@ -945,17 +951,9 @@ body:has(.uni-docs-home) .VPNav {
   display: flex;
   min-height: 48px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 18px;
   padding: 8px 10px 4px;
-}
-
-.uni-command-head > span {
-  padding-right: 10px;
-  color: color-mix(in oklch, var(--home-ivory) 45%, transparent);
-  font-size: 11px;
-  font-weight: 560;
-  letter-spacing: 0.04em;
 }
 
 .uni-command-tabs {
@@ -2670,8 +2668,7 @@ body:has(.uni-docs-home) .VPNav {
     padding: 0;
   }
 
-  .uni-install-command button span,
-  .uni-command-head > span {
+  .uni-install-command button span {
     display: none;
   }
 
@@ -2769,8 +2766,8 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-hero-copy {
-    width: 58%;
-    padding: 136px 48px 72px;
+    width: min(520px, 58%);
+    padding: 112px 0 60px;
   }
 
   .uni-brand-orbit {
@@ -2928,7 +2925,9 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-landing-hero {
+    display: block;
     min-height: 930px;
+    grid-template-columns: none;
   }
 
   .uni-hero-painting {
@@ -2940,7 +2939,9 @@ body:has(.uni-docs-home) .VPNav {
   .uni-hero-copy {
     width: 100%;
     min-height: 530px;
+    grid-column: auto;
     gap: 24px;
+    justify-content: flex-start;
     padding: 116px 30px 40px;
     background: var(--home-forest-deep);
   }

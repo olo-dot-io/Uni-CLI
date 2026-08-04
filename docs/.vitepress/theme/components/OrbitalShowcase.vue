@@ -4,7 +4,7 @@
 @needs VitePress locale/base data, browser scroll and pointer events, docs/public/orbital-*.webp
 @feeds English and Chinese documentation homepages
 @breaks Missing artwork or unbounded animation work would leave a blank or sluggish homepage chapter.
-@invariants Native scrolling remains authoritative; reduced-motion and coarse-pointer users receive a static readable sequence.
+@invariants Native scroll position remains authoritative; reduced-motion and coarse-pointer users receive a static readable sequence.
 @side-effects Updates component-local CSS variables and one SVG displacement attribute while the scene is active.
 @perf One requestAnimationFrame per scroll or pointer frame, O(4) card transforms.
 @concurrency Browser-main-thread events are coalesced through requestAnimationFrame.
@@ -13,8 +13,9 @@
 @since 2026-08-03
 -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import { useData, withBase } from "vitepress";
+import { homeScrollToKey } from "../home-scroll";
 
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
@@ -23,6 +24,7 @@ const displacement = ref<SVGElement | null>(null);
 const progress = ref(0);
 const activeScene = ref(0);
 const prefersReducedMotion = ref(false);
+const scrollToHomePosition = inject(homeScrollToKey, undefined);
 let scrollFrame = 0;
 let targetProgress = 0;
 let lastScrollTime = 0;
@@ -243,8 +245,14 @@ function scrollToScene(index: number) {
   if (!element) return;
   const top = window.scrollY + element.getBoundingClientRect().top;
   const travel = element.offsetHeight - window.innerHeight;
+  const target = top + (travel * index) / (scenes.value.length - 1);
+  if (scrollToHomePosition) {
+    scrollToHomePosition(target);
+    return;
+  }
+
   window.scrollTo({
-    top: top + (travel * index) / (scenes.value.length - 1),
+    top: target,
     behavior: prefersReducedMotion.value ? "auto" : "smooth",
   });
 }
