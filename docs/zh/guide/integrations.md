@@ -1,221 +1,96 @@
-# 集成方式
+---
+title: 接入 Agent
+description: 从 Shell Agent、MCP 客户端和 ACP 客户端调用 Uni-CLI。
+---
 
-Uni-CLI 的首选入口是 shell。Native CLI 是完整 command surface。需要 protocol
-server 的客户端可以用 MCP profile 调用 adapter operation；ACP 与生成的平台配置
-暴露各自记录过的子集。不能根据 catalog visibility 推断逐命令 parity。
+# 接入 Agent
 
-## 选哪条路
+按 Agent 主机支持的方式连接。Shell 可以使用完整 CLI；MCP 和 ACP 提供协议入口。
 
-| 客户端需要什么                 | 用什么                                           |
-| ------------------------------ | ------------------------------------------------ |
-| 能运行 shell 命令              | 原生 `unicli` CLI                                |
-| 需要 MCP tool calls            | `unicli mcp serve`                               |
-| 需要 ACP prompt/session frames | `unicli acp`                                     |
-| 需要生成平台配置               | `unicli agents generate`                         |
-| 需要选择运行后端               | `unicli agents matrix` / `recommend`             |
-| 需要本地 skills 发现           | `unicli skills export` / `unicli skills publish` |
+## Shell
 
-如果智能体有 shell 权限，优先用原生 CLI。它发现命令更懒加载，输出更小，也保留 Unix 组合能力。
-
-## 原生 CLI
+任何能启动进程的 Agent 都可以调用 Uni-CLI。
 
 ```bash
-unicli search "hacker news frontpage"
-unicli hackernews top --limit 5 -f json
+npm install -g @zenalexa/unicli
+unicli search "列出 Hacker News 最新文章" -f json
 ```
 
-可以把这段短合同放进 `AGENTS.md`、`CLAUDE.md` 或等价的 agent context 文件：
+给 Agent 加入这段简短指令：
 
-```markdown
-Use `unicli search "intent"` before choosing a command. Run commands as
-`unicli SITE COMMAND [args]`. Prefer `-f json` for scripts and structured
-Markdown for human-readable agent output.
+```text
+操作网站、App 或本地工具前，先运行 unicli search "<意图>"。
+用 unicli describe <site> <command> 查看参数。
+选中命令后用 -f json 运行。
 ```
 
-高风险命令可以先检查：
-
-```bash
-unicli describe SITE COMMAND
-unicli SITE COMMAND --dry-run
-unicli SITE COMMAND --record
-```
+Codex CLI、Claude Code、OpenCode、OpenClaw、Cursor Agent 和 CI 都可以使用这条路径。
 
 ## MCP
 
-启动 stdio server：
-
-```bash
-npx @zenalexa/unicli mcp serve
-```
-
-启动 Streamable HTTP server：
-
-```bash
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-```
-
-旧版 SSE 兼容：
-
-```bash
-npx @zenalexa/unicli mcp serve --transport sse --port 19826
-```
-
-`sse` 是 Streamable transport 的旧别名，新配置优先使用
-`--transport streamable`。
-
-远程部署可以打开 OAuth 2.1 PKCE：
-
-```bash
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
-```
-
-默认 MCP tools：
-
-| Tool             | 用途                     |
-| ---------------- | ------------------------ |
-| `unicli_search`  | 按自然语言意图搜索命令。 |
-| `unicli_run`     | 运行选中的站点命令。     |
-| `unicli_list`    | 列出站点和命令。         |
-| `unicli_explore` | 写 adapter 前检查页面。  |
-
-按客户端上下文预算选择 catalog 暴露方式：
-
-```bash
-unicli mcp serve                    # 4 个 compact discovery/run meta-tool
-unicli mcp serve --profile deferred # 每个 adapter operation 一个轻量 stub
-unicli mcp serve --expanded         # 每个 adapter operation 一份完整 schema
-unicli mcp health -f json           # 实时 profile 与 catalog 数量
-```
-
-deferred 和 expanded 的规模随已加载 adapter catalog 变化，不要把固定 tool 数量复制进客户端配置。
-
-`unicli_list` 除 adapter operation 外也包含固定 core discovery entry；
-`unicli_run` 当前只 dispatch adapter operation。`unicli architecture audit` 一类
-固定 core command 应通过 native CLI 调用。
-
-`mcp serve` 和 `acp` 保持原始 stdio 协议行为。常规命令面返回 v2 `AgentEnvelope`。
-
-本地 computer control 使用专用 profile：
-
-```bash
-npx @zenalexa/unicli mcp serve --profile computer-use
-```
-
-stdio 配置示例：
+使用 `npx` 启动服务：
 
 ```json
 {
   "mcpServers": {
     "unicli": {
       "command": "npx",
-      "args": ["@zenalexa/unicli", "mcp", "serve"]
+      "args": ["-y", "@zenalexa/unicli-mcp"]
     }
   }
 }
 ```
 
-TOML 配置示例：
+对应的终端命令是：
 
-```toml
-[mcp_servers.unicli]
-command = "npx"
-args = ["@zenalexa/unicli", "mcp", "serve"]
+```bash
+npx -y @zenalexa/unicli mcp serve
 ```
+
+查看当前 profile 暴露的工具：
+
+```bash
+unicli mcp health -f json
+```
+
+默认 profile 保持较小的发现面。客户端需要每条 adapter command 都成为 MCP tool 时，使用 `--expanded`。
 
 ## ACP
 
-ACP 是编辑器兼容路径。结构化 tool calls 走 MCP，prompt/session frames 走 ACP。
+启动 Agent Client Protocol 服务：
 
 ```bash
-unicli acp
+unicli acp serve
 ```
 
-最小 provider 示例：
+用下面的命令查看参数：
 
-```lua
-require("avante").setup({
-  providers = {
-    {
-      name = "unicli",
-      command = "unicli",
-      args = { "acp" },
-      type = "acp",
-    },
-  },
-})
+```bash
+unicli help acp
 ```
 
-ACP prompt 里最好直接给命令：
+## 登录
+
+在 Agent 主机使用的同一用户和环境中完成认证：
+
+```bash
+unicli auth setup <site>
+unicli browser profiles --json
+unicli auth import <site> --browser chrome
+```
+
+详情见[登录与认证](./authentication)。
+
+## 验证连接
+
+让客户端完成一次只读调用：
 
 ```text
-Show the top 10 HN posts:
-unicli hackernews top --limit 10
+使用 Uni-CLI 列出三条 Hacker News 热门文章，并返回 JSON。
 ```
 
-## Agent 平台配方
-
-能生成配置时，不要手写：
+对应命令为：
 
 ```bash
-unicli agents matrix
-unicli agents recommend codex
-unicli agents generate --for claude
-unicli agents generate --for codex
-unicli agents generate --for opencode
-```
-
-后端推荐会显式建模 native CLI、JSON stream、MCP、ACP、HTTP API、OpenAI-compatible routes、bridge CLIs 和 Visual candidates。
-
-## Skills
-
-当 agent runtime 有本地 skills 目录时，可以把 adapter 命令导出成 `SKILL.md`：
-
-```bash
-unicli skills export
-unicli skills publish --to ~/.cursor/skills/uni-cli/
-unicli skills catalog --out /tmp/unicli-skills.json
-```
-
-生成文件包含命令名、使用场景、认证提示和调用示例。它适合和运行时搜索一起使用。
-
-手动示例：
-
-```bash
-claude mcp add unicli -- npx @zenalexa/unicli mcp serve
-```
-
-```jsonc
-{
-  "mcp": {
-    "unicli": {
-      "type": "local",
-      "command": ["npx", "-y", "@zenalexa/unicli", "mcp", "serve"],
-      "enabled": true,
-    },
-  },
-}
-```
-
-## 认证
-
-所有集成路径都使用同一套 CLI 凭据策略：
-
-```bash
-unicli auth setup SITE
-unicli auth check SITE
-```
-
-live browser/CDP Cookie 默认只在本次进程内存；用户显式 import/export 后的
-plaintext 存储路径：
-
-```text
-~/.unicli/cookies/SITE.json
-```
-
-## 验证
-
-```bash
-unicli list
-unicli search "hacker news frontpage"
-unicli hackernews top --limit 5
+unicli hackernews top --limit 3 -f json
 ```

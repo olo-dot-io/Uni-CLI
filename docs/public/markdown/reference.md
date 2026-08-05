@@ -1,23 +1,21 @@
 <!-- Generated from docs/reference/index.md. Do not edit this copy directly. -->
 
-# Reference Index
+# Reference Overview
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/reference/
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
 - Section: Reference
 
-Use these pages when you need exact behavior, fields, commands, or release
-rules.
+Use these pages when you need the exact command or data contract.
 
-| Contract              | Page                               |
-| --------------------- | ---------------------------------- |
-| Adapter schema        | [Adapter Format](/ADAPTER-FORMAT)  |
-| Supported sites       | [Sites Catalog](/reference/sites)           |
-| Pipeline step catalog | [Pipeline Steps](/reference/pipeline)       |
-| Process exit behavior | [Exit Codes](/reference/exit-codes)         |
-| Maintenance commands  | [Maintenance Tools](/reference/maintenance) |
-| Plugin public API     | [Plugin Authoring](/PLUGIN)        |
-| Release mechanics     | [Release](/reference/release)               |
+| Need                           | Reference                         |
+| ------------------------------ | --------------------------------- |
+| Core command syntax            | [CLI commands](/reference/cli)             |
+| Available sites and operations | [Operation catalog](/reference/sites)      |
+| Process status                 | [Exit codes](/reference/exit-codes)        |
+| Adapter schema                 | [Adapter format](/ADAPTER-FORMAT) |
+| Adapter actions                | [Pipeline steps](/reference/pipeline)      |
+| Extension API                  | [Plugin authoring](/PLUGIN)       |
+| Product terminology            | [Glossary](/glossary)             |
 
-The reference section should stay terse and scan-friendly. Put task walkthroughs
-in [Guides](/guide/) and broader rationale in the explanation pages.
+For a single installed command, `unicli describe <site> <command>` is the most current reference.

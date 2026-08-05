@@ -1,3 +1,8 @@
+---
+title: Operation catalog
+description: Browse the current generated catalog by interface, site, command, and authentication mode.
+---
+
 # Operation Catalog
 
 Uni-CLI publishes the same generated operation manifest to the docs site that

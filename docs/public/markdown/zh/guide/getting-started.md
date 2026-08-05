@@ -1,258 +1,104 @@
 <!-- 由 docs/zh/guide/getting-started.md 生成。不要直接编辑此副本。 -->
 
-# 安装运行
+# 快速开始
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/guide/getting-started
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/guide/getting-started.md
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 把网站、登录态浏览器、桌面应用、服务、本地工具、文件、协议入口、外部 CLI、操作系统能力和视觉证据变成可治理的操作。智能体可以搜索、运行、记录和修复这些操作。
+安装 Uni-CLI，描述想要的结果，再运行选中的操作。
 
-一条操作就是控制真实软件的稳定合同。参数、认证姿态、已声明的行动 substrate、
-输出形状、权限 profile 和错误处理都在同一个地方；支持的 operation 还可以发出
-recording 或 post-state evidence。外部页面、App、API 或本地边界变了，失败结果也会
-指向可修复的 source path 和 step。
+## 准备工作
 
-## 安装
+- Node.js 22.19 或更新版本
+- npm
+
+## 1. 安装
 
 ```bash
 npm install -g @zenalexa/unicli
+```
+
+确认版本：
+
+```bash
 unicli --version
 ```
 
-需要 Node.js 22.19 或更高版本。
-
-所有命令都长成同一种形状：
+## 2. 按意图搜索
 
 ```bash
-unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
+unicli search "查看 Hacker News 热门文章"
 ```
 
-默认输出是 Markdown，适合智能体和人一起读。脚本或程序要消费结果时，用 `-f json`。
+结果会显示匹配的命令、接口类型、操作效果和目标。
 
-## 先理解执行链路
-
-精简的 Agent-Computer Interface 叙事与可执行 runtime 的对应关系如下：
-
-1. **发现**：`unicli search` 用自然语言找到候选操作，但不执行外部动作。
-2. **选择**：Agent 选择一条已声明 strategy 和 substrate 的 operation。Runtime
-   尚不会在全部 API、文件、CLI、browser、desktop、protocol 与 visual 替代项之间自动仲裁。
-3. **治理和执行**：`unicli SITE COMMAND` 只运行选中的操作，参数、认证边界和权限策略在执行前可检查。
-4. **观察**：每次渲染结果都返回区分成功/错误并带 timing metadata 的 v2
-   `AgentEnvelope`。Artifact、recording 与 post-state evidence 只在 operation
-   明确发出时出现。
-5. **记录**：`--record` 或 `UNICLI_RECORD_RUN=1` 可以把 append-only run trace 写到 `~/.unicli/runs`，方便复盘和调试。
-6. **修复**：结构化错误会给出 source path、失败 step 或边界、建议、是否可重试和替代路径。
-
-浏览器、CDP、a11y、本地命令、服务接口、MCP、ACP 和 Visual 是行动或暴露
-substrate。Native CLI 是完整规范 command surface；MCP default/deferred/expanded
-profile 投影 adapter operation，固定 core command parity 仍是路线图工作。
-
-## 找命令
+## 3. 查看参数
 
 ```bash
-unicli search "hacker news frontpage"
-unicli search "github trending"
-unicli list --site hackernews
+unicli describe hackernews top
 ```
 
-`search` 接受自然语言。你不需要先记住站点名和命令名。
+`describe` 会给出可用参数和调用示例，适合让 Agent 在执行前准备好参数。
 
-搜索结果用于缩小候选范围。真正要跑之前，仍然应该看清命令名、参数、认证要求和接口类型。这样 Agent 不需要把整个站点目录塞进上下文，也不会把“找到了可能的操作”和“已经执行操作”混在一起。
-
-## 运行命令
+## 4. 运行操作
 
 ```bash
-unicli hackernews top --limit 5
+unicli hackernews top --limit 5 -f json
 ```
 
-这条命令默认返回 Markdown，里面包含数据、上下文和下一步建议。非 TTY 或 agent UA 环境下也会优先给可读 Markdown，便于在聊天记录和终端日志里审阅。
+成功结果使用 v2 envelope：
 
-脚本里使用 JSON：
-
-```bash
-unicli hackernews top --limit 5 -f json | jq '.[0]'
+```json
+{
+  "ok": true,
+  "schema_version": "2",
+  "command": "hackernews.top",
+  "data": [{ "rank": "1", "title": "...", "url": "https://..." }],
+  "error": null
+}
 ```
 
-支持的输出格式和自动选择顺序：
+## 交给 Agent 使用
 
-```bash
-unicli hackernews top -f md
-unicli hackernews top -f json
-unicli hackernews top -f yaml
-unicli hackernews top -f csv
-unicli hackernews top -f compact
-```
-
-优先级是 `-f` 参数、`UNICLI_OUTPUT`、agent / non-TTY 检测、Markdown。Agent UA 环境变量包括 `CLAUDE_CODE`、`CODEX_CLI`、`OPENCODE`、`HERMES_AGENT` 和 `UNICLI_AGENT`。
-
-## 认证
-
-有些 adapter 需要本地 Cookie：
-
-```bash
-unicli auth setup bilibili
-unicli auth check bilibili
-unicli bilibili feed
-```
-
-默认情况下，登录态从本地 browser/CDP 读入本次进程内存，不落盘。显式执行
-`unicli auth import SITE` 才会在 `~/.unicli/cookies/SITE.json` 写入
-plaintext JSON（POSIX owner-only 权限）。认证失败返回退出码 `77`，错误信封给出下一步动作。
-
-## 修复坏掉的命令
-
-命令失败时，先读结构化错误。它会指出需要关注的 adapter 文件和 pipeline step。
-
-```bash
-unicli repair SITE COMMAND
-```
-
-常见循环：
+把下面这段话发给能运行 Shell 的 Agent：
 
 ```text
-1. 读取 error.adapter_path 和 error.step。
-2. 修改 YAML adapter。
-3. 保存到 ~/.unicli/adapters/SITE/COMMAND.yaml 作为本地覆盖。
-4. 重新运行 unicli repair SITE COMMAND。
+用 npm install -g @zenalexa/unicli 安装 Uni-CLI。
+操作网站、App 或本地工具前，先运行 unicli search "<意图>"。
+用 unicli describe <site> <command> 查看参数，再用 -f json 运行。
+遇到登录要求时，执行 error envelope 中的 suggestion。
 ```
 
-修复的目标是让命令重新符合公开输出形状。YAML adapter 通常只有几十行，适合 Agent 读取、修改、diff 和验证；需要复杂运行时代码时再使用 TypeScript adapter。
+MCP、Claude Desktop、Cursor、Codex 等客户端的配置见[接入 Agent](/zh/guide/integrations)。
 
-## 浏览器自动化
+## 网站需要登录时
 
-当 HTTP 不够用时，browser adapter 会通过 Chrome/CDP 操作页面。
+先按错误结果中的建议设置认证：
 
 ```bash
-unicli operate goto "https://example.com"
-unicli operate snapshot
-unicli operate click --ref 42
-unicli operate type --ref 7 --text "hello"
-unicli operate screenshot --path ./page.png
+unicli auth setup <site>
+unicli auth import <site> --browser chrome
+unicli auth check <site>
 ```
 
-默认 managed provider 隐藏运行，并由机器级 Browser Runtime Broker 复用。若要在
-不为默认 profile 开启 CDP 的情况下控制已经打开且有登录态的 Chromium 浏览器，先
-安装 Native Messaging 注册，再一次性加载随包发布的扩展：
+浏览器操作使用 Uni-CLI 的 profile 和 session。详情见[登录与认证](/zh/guide/authentication)和[浏览器与桌面](/zh/guide/browser-desktop)。
+
+## 操作失效时
+
+错误结果可能带上源文件、失败步骤和修复命令。
 
 ```bash
-unicli browser native-host install --browser chrome
-unicli browser native-host extension-path
-unicli browser native-host status --browser chrome --json
+unicli repair <site> <command> --dry-run
+unicli repair <site> <command>
 ```
 
-把 `extension-path` 输出的目录作为 unpacked extension 加载到所选浏览器。控制现有
-Chrome 时必须显式使用 `--background` 或 `--focus`；background 动作只创建或认领
-inactive tab，并验证 active tab 与前台窗口没有变化。broker、status 和 session probe
-不会分配 target，也不会打开浏览器窗口。Windows 安装和升级会在运行中的 host 旁边
-发布架构匹配的新 native-host generation，而不是替换正在执行的文件。
-
-浏览器动作可以附带前后证据、stale-ref 细节、移动维度、watchdog 结果、
-session lease、tab 目标身份、cookie 姿态和 render-aware 读取，方便审查。
-设置分数阈值时，replay 和 compare 会输出 `gate` 对象，里面有阈值、实际分数和失败的 gate。
-score 里也会列出失败或未知的 behavior/context check 名字。
-evidence 覆盖也算 context：少了截图、operator 记录或 result envelope，会直接出现在 evidence check 名字里。
-`unicli runs list` 也会显示 `evidence_count` 和 `evidence_by_type`，Agent 可以先挑有证据的 run 再打开 trace。
-
-```bash
-unicli browser evidence --render-aware --expect-domain example.com
-unicli browser extract --render-aware --expect-domain example.com --no-screenshot
-unicli runs list
-unicli runs show <run_id>
-unicli runs probe <run_id>
-unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1 --min-context-score 1 --min-overall-score 1
-unicli runs compare <run_id> <replay_run_id> --min-score 1 --min-context-score 1 --min-overall-score 1
-unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
-unicli approvals list
-unicli approvals revoke <approval_key>
-```
-
-记住的审批会绑定命令 capability 和稳定资源 metadata，比如域名、应用、账号面和路径参数槽。
-原始运行参数不会写进 approval store。
-
-需要让某台机器只允许边界明确的操作时，使用 deny 优先的本地策略。支持 JSON、
-`.yaml` 和 `.yml`：
-
-```yaml
-schema_version: "2"
-default: deny
-rules:
-  - id: deny-public-posting
-    decision: deny
-    match:
-      effect: publish_content
-    reason: 这台机器禁用公开发布
-  - id: allow-short-compute-input
-    decision: allow
-    match:
-      site: compute
-      command: type
-      arguments:
-        text:
-          max_length: 200
-          pattern: "^[^\\p{Cc}]+$"
-```
-
-文件保存到 `~/.unicli/permission-rules.json`，也可以用
-`UNICLI_PERMISSION_RULES_PATH` 指到其他位置。显式指定的文件缺失或格式错误时会
-fail closed；未创建默认文件时，这一层保持关闭。schema v1 继续兼容 deny-only、
-default-allow 行为。
-
-schema v2 先评估所有匹配的 deny，再评估 allow；都不匹配时由 `default` 决定。
-参数约束采用 AND 语义，支持闭区间数字 `min`/`max`、按 Unicode code point 计数的
-`max_length`、线性时间 RE2 `pattern`，以及精确 JSON 值 `allowed` 列表。运行参数会
-参与判断，但不会写入 approval memory。
-
-调用内核、直接 `browser`/`operate`、直接 `compute` 和 computer-use MCP 工具都会
-先授权，再获取 browser target、transport、overlay，或触发文件、剪贴板和桌面副作用。
-
-同一套规则也会进入 pipeline 运行时。被 deny 的域名会在 `fetch`、`fetch_text`、
-`download` 和浏览器 `navigate` 发请求前停下；被 deny 的路径会在下载或命令输出创建目录、
-写文件前停下；被 deny 的可执行文件会在 `exec` 启动子进程前停下。
-
-## 协议服务
-
-MCP：
-
-```bash
-npx @zenalexa/unicli mcp serve
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
-```
-
-`--transport sse` 仍然是 Streamable 的旧别名，但新部署优先使用
-`--transport streamable`。
-
-ACP：
-
-```bash
-unicli acp
-```
-
-ACP 是编辑器兼容网关。coding-agent 运行时路由优先看：
-
-```bash
-unicli agents matrix
-unicli agents recommend codex
-unicli agents generate --for codex
-```
-
-## 退出码
-
-| 代码 | 含义       | 智能体该怎么做                |
-| ---- | ---------- | ----------------------------- |
-| 0    | 成功       | 使用返回数据                  |
-| 66   | 空结果     | 换参数再试                    |
-| 69   | 服务不可用 | 稍后重试                      |
-| 75   | 临时失败   | 退避重试                      |
-| 77   | 需要认证   | 运行 `unicli auth setup SITE` |
-| 78   | 配置错误   | 读取错误信封和 adapter YAML   |
+完整流程见[自修复](/zh/guide/self-repair)。
 
 ## 下一步
 
-- [适配器](/zh/guide/adapters)
-- [集成方式](/zh/guide/integrations)
-- [自修复](/zh/guide/self-repair)
-- [管线步骤](/zh/reference/pipeline)
-- [退出码](/zh/reference/exit-codes)
+- [查找操作](./)
+- [接入 Agent](/zh/guide/integrations)
+- [常用场景](/zh/RECIPES)
+- [操作目录](/zh/reference/sites)

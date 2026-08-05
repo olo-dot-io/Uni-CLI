@@ -4,329 +4,108 @@
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/RECIPES
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
-- Section: Start
-- Parent: Start (/)
+- Section: Use Uni-CLI
+- Parent: Use Uni-CLI (/guide/)
 
-Worked examples showing how agents chain Uni-CLI commands to solve real
-end-user tasks.
+Each recipe starts with discovery and ends with data another program or agent can read.
 
-All examples assume:
+## Read a public site
 
-- Uni-CLI is on `$PATH` (`npm install -g @zenalexa/unicli`)
-- Commands that feed `jq` or shell scripts pass `-f json` explicitly
-
-## 1. Triage your morning inbox — list iMessages + Notes in one JSON blob
-
-**Use-case.** An agent needs a single structured view of "what the user
-might be behind on" across iMessage and Apple Notes before drafting a
-stand-up update.
-
-### Command sequence
+Find the command:
 
 ```bash
-# Recent messages from the last hour (take the top 10 for brevity)
-unicli imessage recent --limit 10 -f json > /tmp/recent-msgs.json
-
-# Your "Work" notes folder (titles only — body fetch is a separate call)
-unicli apple-notes list --folder "Work" -f json > /tmp/work-notes.json
-
-# Merge client-side (bash):
-jq -n --slurpfile m /tmp/recent-msgs.json \
-      --slurpfile n /tmp/work-notes.json \
-      '{messages: $m[0], notes: $n[0]}'
+unicli search "top Hacker News stories"
 ```
 
-### Expected output
-
-```json
-{
-  "messages": [
-    {
-      "ts": "2026-04-15 08:42:11",
-      "is_from_me": 0,
-      "handle_id": "+14155550123",
-      "text": "Standup at 10?"
-    }
-  ],
-  "notes": [
-    { "stdout": "Roadmap Q2\nFollow-ups from design review\nOKR draft" }
-  ]
-}
-```
-
-### Troubleshooting
-
-- `imessage recent` returns `[]` on non-macOS hosts. The adapter gates
-  on `uname = Darwin` and exits cleanly.
-- If you see `OSError: Operation not permitted`, grant your terminal
-  Full Disk Access under **System Settings → Privacy & Security → Full
-  Disk Access**.
-- `apple-notes list` returns an empty `stdout` when the folder does not
-  exist. AppleScript does not distinguish "empty folder" from "missing
-  folder" — confirm with `unicli apple-notes list` (default "Notes"
-  folder) first.
-
-## 2. Auto-file a Linear bug from a user iMessage
-
-**Use-case.** The agent scans recent iMessage for the phrase "bug:" and
-opens a Linear issue so nothing slips through.
-
-### Command sequence
+Inspect its arguments, then request five items:
 
 ```bash
-# Step 1 — search iMessage for the phrase
-unicli imessage search "bug:" --limit 5 -f json > /tmp/bug-msgs.json
-
-# Step 2 — extract the first message body (agent logic in jq)
-TITLE=$(jq -r '.[0].text' /tmp/bug-msgs.json | head -c 120)
-
-# Step 3 — file the Linear issue
-export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
-unicli linear issue-create "$TITLE" \
-  --team ENG \
-  --description "Auto-filed from iMessage on $(date -Iseconds)" \
-  -f json
+unicli describe hackernews top
+unicli hackernews top --limit 5 -f json
 ```
 
-### Expected output
-
-```json
-[
-  {
-    "identifier": "ENG-742",
-    "title": "bug: settings page 500s when language=zh-hk",
-    "url": "https://linear.app/my-team/issue/ENG-742"
-  }
-]
-```
-
-### Troubleshooting
-
-- If `LINEAR_API_KEY` is unset, the Linear API returns `401
-Authentication required` — the adapter surfaces this as a structured
-  error with `exit_code: 77` (AUTH_REQUIRED).
-- Omitting `--team` works if your workspace has a default team.
-  Otherwise Linear returns a GraphQL error telling you which field is
-  missing; Uni-CLI emits that verbatim in `stderr`.
-- Linear's Authorization header is the API key itself, **not** `Bearer
-KEY`. If you see `403 Forbidden`, double-check you didn't prepend
-  `Bearer`.
-
-## 3. Close a Linear issue from a note you just wrote
-
-**Use-case.** You finish a task, write a "done: ENG-123" note, and want
-the Linear state flipped to Done without leaving the terminal.
-
-### Command sequence
+Use `jq` to select the fields you need:
 
 ```bash
-# Step 1 — search notes for the completion marker
-unicli apple-notes search "done: ENG-" -f json > /tmp/done-notes.json
-
-# Step 2 — extract the Linear identifier from the first match (agent
-# logic). Here we assume the note body is a single line "done: ENG-123".
-ID=$(jq -r '.[0].stdout' /tmp/done-notes.json \
-     | grep -oE 'ENG-[0-9]+' | head -1)
-
-# Step 3 — flip the state
-export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
-unicli linear issue-update "$ID" --state "Done" -f json
+unicli hackernews top --limit 5 -f json |
+  jq '.data[] | {title, url, score}'
 ```
 
-### Expected output
+## Search and read a paper
 
-```json
-[
-  {
-    "identifier": "ENG-123",
-    "title": "Ship adapter coverage",
-    "url": "https://linear.app/my-team/issue/ENG-123"
-  }
-]
-```
-
-### Troubleshooting
-
-- `issue-update` makes three HTTP calls (fetch issue → resolve state →
-  apply update). If any step returns an empty result, the final
-  mutation silently does nothing. Use `-f json` to inspect the
-  intermediate pipeline via `unicli dev` — see
-  `docs/guide/getting-started.md`.
-- State names are case-sensitive and team-scoped. "Done" in one team
-  might be "Shipped" in another; list states per team with
-  `unicli linear issue-list --state Done --limit 1` to confirm a
-  working name.
-
-## 4. Stand-up digest — what changed since yesterday?
-
-**Use-case.** Generate a one-page summary for your daily stand-up
-combining: yesterday's Linear Done issues + any iMessage threads
-mentioning them.
-
-### Command sequence
+Search arXiv:
 
 ```bash
-export LINEAR_API_KEY=lin_api_xxxxxxxxxxxx
-
-# Step 1 — Linear issues in "Done" state, top 10
-unicli linear issue-list --state "Done" --limit 10 -f json > /tmp/done-issues.json
-
-# Step 2 — for each issue, search iMessage for its identifier
-for ID in $(jq -r '.[].id' /tmp/done-issues.json); do
-  echo "=== $ID ==="
-  unicli imessage search "$ID" --limit 3 -f json
-done > /tmp/digest.json
-
-# Step 3 — hand the blob to your LLM of choice, which can now cite
-# specific messages that corroborate each shipped issue.
+unicli arxiv search "agent computer interfaces" --limit 5 --sort submittedDate -f json
 ```
 
-### Expected output
-
-Mixed `=== ENG-42 ===` headers followed by JSON arrays of messages
-mentioning `ENG-42`. Consumers typically pipe this to an LLM that
-summarises in 3-5 bullets.
-
-### Troubleshooting
-
-- `issue-list` returns only issues you have access to — API key scope
-  matters. A read-only key will not list other users' private projects.
-- iMessage `search` is `LIKE` over the full `chat.db`. For large
-  databases (>100K messages) a query takes 1-3 seconds. Avoid running
-  it in a tight loop with >50 iterations.
-
-## 5. Paper workflow — search, download, and read a PDF locally
-
-**Use-case.** An agent needs to collect a paper, keep the PDF on disk,
-and read only the relevant pages before summarizing or comparing it.
-
-### Command sequence
+After selecting an ID, download the PDF and read its opening pages:
 
 ```bash
-# Step 1 — search arXiv for a topic
-unicli arxiv search "retrieval augmented generation" --limit 5 -f json > /tmp/arxiv.json
-
-# Step 2 — choose an ID and download the PDF locally
-ID=$(jq -r '.[0].id' /tmp/arxiv.json)
-unicli arxiv download "$ID" --output ./papers -f json
-
-# Step 3 — read the opening pages from the local PDF
-unicli pdf read "./papers/$ID.pdf" --first_page 1 --last_page 3 -f json
+unicli arxiv download 1706.03762 --output ./papers -f json
+unicli pdf read ./papers/1706.03762.pdf --first_page 1 --last_page 3 -f json
 ```
 
-### Troubleshooting
+Run `unicli describe arxiv download` if the downloaded filename differs from the ID.
 
-- If the downloaded filename differs from `<id>.pdf`, inspect the
-  `arxiv download` JSON output and pass that path to `pdf read`.
-- `pdf read` works on local files. If the remote site only exposes a
-  landing page, download the actual PDF first instead of passing the web
-  URL to the reader.
+## Set up a signed-in site
 
-## 6. ACG character discovery — from intent to wiki and catalog sources
-
-**Use-case.** The user asks for a character such as `Sparkle`, meaning
-the Honkai: Star Rail character rather than a generic word. The agent
-should search by entity intent, then verify on structured ACG sources.
-
-### Command sequence
+Start with the operation. The error envelope will identify missing authentication.
 
 ```bash
-# Step 1 — let the catalog rank likely command surfaces
-unicli search "Sparkle Honkai Star Rail character" --limit 8
-
-# Step 2 — check a general anime/character index
-unicli anilist characters "Sparkle" --limit 5 -f json
-
-# Step 3 — check a Chinese ACG wiki surface
-unicli moegirl search "Sparkle Honkai Star Rail" --limit 5 -f json
-
-# Step 4 — inspect booru tag vocabulary for image search follow-up
-unicli danbooru tags sparkle --limit 10 -f json
+unicli <site> <command> -f json
+unicli auth setup <site>
+unicli browser profiles --json
+unicli auth import <site> --browser chrome
+unicli auth check <site>
 ```
 
-### Troubleshooting
+Retry the original command after `auth check` succeeds.
 
-- Use source names or franchise terms (`Honkai Star Rail`, `Star Rail`,
-  `Sparkle character`) when a character name is ambiguous.
-- Prefer tag commands before post searches on booru sites; they reveal the
-  canonical tag spelling that search commands expect.
+## Work with a browser page
 
-## 7. Booru tag workflow — confirm tags, then search posts
-
-**Use-case.** The agent needs tagged illustration results and should
-avoid guessing the exact tag form.
-
-### Command sequence
+Read browser health, start a provider, and inspect the page before acting:
 
 ```bash
-# Confirm the tag spelling first
-unicli safebooru tags blue_archive --limit 5 -f json
-unicli danbooru tags blue_archive --limit 5 -f json
-
-# Then search posts with an explicit tag query
-unicli safebooru search "blue_archive rating:safe" --limit 10 -f json
-unicli danbooru search "blue_archive rating:safe" --limit 10 -f json
-
-# Use detail/download commands only after selecting a concrete post ID
-unicli danbooru detail 123456 -f json
+unicli browser doctor --json
+unicli browser start
+unicli browser open https://example.com
+unicli browser state -f json
 ```
 
-### Troubleshooting
-
-- Safebooru search expects Moebooru-style tag syntax such as
-  `blue_archive rating:safe`; it is not a free-form Japanese sentence
-  search.
-- Some booru sources use underscores and romanized tags. Let `tags` or
-  `wiki` commands confirm the spelling before fetching posts.
-
-## 8. Visual novel and 2024-2026 media lookup
-
-**Use-case.** The user asks for a studio, game, or recent ACG trend such
-as `Yuzusoft` or a 2024-2026 title. The agent should combine catalog
-search with source-native filters and sort orders.
-
-### Command sequence
+Use refs from `browser state`:
 
 ```bash
-# Discover the best source first
-unicli search "Yuzusoft visual novel games" --limit 8
-
-# Query visual-novel and anime/game catalogs directly
-unicli vndb search "Yuzusoft" --limit 10 -f json
-unicli bangumi game "Gakuen Idolmaster" --year 2024 --sort rank -f json
-unicli anilist anime "2026" --year 2026 --sort trending --limit 10 -f json
-
-# Cross-check wiki-style context when the entity is ambiguous
-unicli moegirl search "Yuzusoft" --limit 5 -f json
+unicli browser click <ref>
+unicli browser type <ref> "search text"
 ```
 
-### Troubleshooting
+Take a screenshot when the task needs visual confirmation:
 
-- Search with Japanese, romaji, Chinese, and English aliases when a source
-  has localized titles.
-- Use source-supported sort values. If a command rejects a sort, run
-  `unicli describe <site> <command> -f json` and use the enum in
-  `args_schema`.
+```bash
+unicli browser screenshot ./page.png
+```
 
-## Common flags
+## Archive an OpenReview venue
 
-All current adapters support:
+Inspect the command and start a resumable archive:
 
-| Flag             | What it does                                      |
-| ---------------- | ------------------------------------------------- |
-| `-f json`        | Machine output (auto-on when stdout is not a TTY) |
-| `-f yaml` / `md` | Human-readable alternatives                       |
-| `--limit N`      | Caps row count where applicable                   |
+```bash
+unicli describe openreview conference
+unicli openreview conference <venue-group-or-url> \
+  --output ./openreview-archives \
+  --rpm 20
+```
 
-Exit codes follow `sysexits.h`:
+Use `--metadata-only` to collect submissions, reviews, decisions, edit history, and file metadata before downloading binaries. See [Archive an OpenReview conference](/guide/openreview-archive) for the archive layout.
 
-| Code | Meaning                                  |
-| ---- | ---------------------------------------- |
-| 0    | Success                                  |
-| 66   | Empty result (not an error)              |
-| 69   | Service unavailable (non-darwin, no key) |
-| 77   | Auth required (`LINEAR_API_KEY` unset)   |
-| 78   | Config error (malformed adapter)         |
+## Preview a write
 
-See `docs/reference/exit-codes.md` for how agents detect and handle each
-exit code.
+Use `describe` to review the effect and arguments. Add `--dry-run` to preview the resolved plan:
+
+```bash
+unicli describe <site> <command> --full -f json
+unicli <site> <command> [args] --dry-run -f json
+```
+
+For commands covered by the local permission policy, Uni-CLI will return the exact approval step with the planned arguments.

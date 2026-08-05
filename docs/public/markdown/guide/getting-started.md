@@ -1,293 +1,104 @@
 <!-- Generated from docs/guide/getting-started.md. Do not edit this copy directly. -->
 
-# First Run
+# Quickstart
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/getting-started
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
 - Section: Start
 - Parent: Start (/)
 
-Uni-CLI turns websites, logged-in browsers, desktop apps, services, local
-tools, files, protocols, external CLIs, operating-system capabilities, and
-visual evidence into governed operations agents can search, run, record, and
-repair.
+Install Uni-CLI, search for the result you want, then run the selected operation.
 
-An operation is a stable contract for controlling real software. It keeps
-arguments, auth posture, declared action substrate, output shape, permission
-profile, and error handling in one place. Supporting operations can also emit
-recordings or post-state evidence. When an external page, app, API, or
-local boundary changes, the failure points back to a repairable source path and
-step.
+## Prerequisites
 
-## Install
+- Node.js 22.19 or later
+- npm
+
+## 1. Install
 
 ```bash
 npm install -g @zenalexa/unicli
+```
+
+Confirm the version:
+
+```bash
 unicli --version
 ```
 
-Requires Node.js 22.19 or later.
-
-Every command follows the same shape:
+## 2. Search by intent
 
 ```bash
-unicli SITE COMMAND [args] [-f json|md|yaml|csv|compact]
+unicli search "top Hacker News stories"
 ```
 
-Markdown is the default output format. Use `-f json` when a script or other
-machine-oriented consumer needs JSON.
+Uni-CLI ranks matching operations and shows the command, interface, effect, and target surface.
 
-## Understand The Flow
-
-The compact Agent-Computer Interface story maps onto the executable runtime as
-follows:
-
-1. **Discover**: `unicli search` finds candidate operations from natural language
-   without touching the external surface.
-2. **Select**: the agent chooses an operation whose contract declares the
-   strategy and substrate. The runtime does not yet arbitrate every API, file,
-   CLI, browser, desktop, protocol, and visual alternative automatically.
-3. **Govern and execute**: `unicli SITE COMMAND` runs the selected operation with
-   inspectable arguments, auth boundaries, and permission policy.
-4. **Observe**: every rendered result returns a v2 `AgentEnvelope` that
-   distinguishes success from error and includes timing metadata. Artifacts,
-   recordings, and post-state evidence appear only when the operation emits them.
-5. **Record**: `--record` or `UNICLI_RECORD_RUN=1` can write append-only run
-   traces under `~/.unicli/runs` for review and debugging.
-6. **Repair**: structured failures include the source path, failing
-   step or boundary, suggestion, retryability, and alternatives.
-
-Browser automation, CDP, accessibility trees, subprocesses, service APIs, MCP,
-ACP, and Visual are action or exposure substrates. Native CLI is the canonical
-full command surface. MCP default/deferred/expanded profiles project adapter
-operations; fixed-core command parity remains roadmap work.
-
-## Find A Command
+## 3. Inspect the match
 
 ```bash
-unicli search "hacker news frontpage"
-unicli search "github trending"
-unicli list --site hackernews
+unicli describe hackernews top
 ```
 
-Search narrows the candidate set. Before execution, the agent can still inspect
-the command name, arguments, auth requirements, and surface type. That keeps
-"found a possible operation" separate from "performed the operation."
+`describe` shows the accepted arguments and an example invocation. It is the fastest way to prepare a reliable agent call.
 
-## Run A Command
-
-Run the selected command:
+## 4. Run the operation
 
 ```bash
-unicli hackernews top --limit 5
+unicli hackernews top --limit 5 -f json
 ```
 
-The default Markdown output contains data, context, and suggested next actions.
-It is meant to stay readable in terminals, chat transcripts, and agent logs.
+A successful call returns a v2 envelope:
 
-Use JSON when a script needs it:
-
-```bash
-unicli hackernews top --limit 5 -f json | jq '.[0]'
+```json
+{
+  "ok": true,
+  "schema_version": "2",
+  "command": "hackernews.top",
+  "data": [{ "rank": "1", "title": "...", "url": "https://..." }],
+  "error": null
+}
 ```
 
-Supported formats and automatic selection:
+## Use Uni-CLI from an agent
 
-```bash
-unicli hackernews top -f md
-unicli hackernews top -f json
-unicli hackernews top -f yaml
-unicli hackernews top -f csv
-unicli hackernews top -f compact
-```
-
-Priority is `-f` flag, then `UNICLI_OUTPUT`, then agent/non-TTY detection, then
-Markdown. Agent UA variables include `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`,
-`HERMES_AGENT`, and `UNICLI_AGENT`.
-
-## Authentication
-
-Some adapters need local cookies:
-
-```bash
-unicli auth setup bilibili
-unicli auth check bilibili
-unicli bilibili feed
-```
-
-By default a logged-in local browser/CDP session is read into process memory and
-is not persisted. `unicli auth import SITE` explicitly writes plaintext JSON at
-`~/.unicli/cookies/SITE.json` with owner-only POSIX permissions. Auth failures
-return exit code `77` and a structured next action.
-
-## Repair A Broken Command
-
-When a command fails, read the structured error. It includes the adapter path
-and pipeline step that need attention.
-
-```bash
-unicli repair SITE COMMAND
-```
-
-Typical loop:
+Paste this into an agent that can run shell commands:
 
 ```text
-1. Read error.adapter_path and error.step.
-2. Patch the YAML adapter.
-3. Save a local override under ~/.unicli/adapters/SITE/COMMAND.yaml.
-4. Re-run unicli repair SITE COMMAND.
+Install Uni-CLI with npm install -g @zenalexa/unicli.
+Before using a website, app, or local tool, run unicli search "<intent>".
+Inspect the selected command with unicli describe <site> <command>, then run it with -f json.
+If authentication is required, follow the suggestion in the error envelope.
 ```
 
-The goal is not to retry until it works. The goal is to make the command match
-its public output shape again. YAML adapters are usually short enough for agents
-to read, patch, diff, and verify; use TypeScript adapters only when the runtime
-logic cannot stay declarative.
+For MCP, Claude Desktop, Cursor, Codex, and other clients, continue to [Connect an agent](/guide/integrations).
 
-## Browser Automation
+## When a site needs login
 
-Browser adapters use Chrome/CDP when HTTP is not enough.
+The error envelope names the next command. A typical setup is:
 
 ```bash
-unicli operate goto "https://example.com"
-unicli operate snapshot
-unicli operate click --ref 42
-unicli operate type --ref 7 --text "hello"
-unicli operate screenshot --path ./page.png
+unicli auth setup <site>
+unicli auth import <site> --browser chrome
+unicli auth check <site>
 ```
 
-The default managed provider is hidden and shared by the machine-scoped Browser
-Runtime Broker. To control an already open, signed-in Chromium browser without
-enabling CDP on its default profile, install the Native Messaging registration
-and load the shipped extension once:
+Browser-backed operations use Uni-CLI browser profiles and sessions. See [Authentication](/guide/authentication) and [Browser and desktop](/guide/browser-desktop).
+
+## When an operation breaks
+
+Read the error first. Adapter failures can include the source file, failed step, and a repair command.
 
 ```bash
-unicli browser native-host install --browser chrome
-unicli browser native-host extension-path
-unicli browser native-host status --browser chrome --json
+unicli repair <site> <command> --dry-run
+unicli repair <site> <command>
 ```
 
-Load the directory printed by `extension-path` as an unpacked extension in the
-selected browser. Existing-Chrome actions require explicit `--background` or
-`--focus`; background actions create or claim an inactive tab and verify that
-the active tab and focused window did not change. Broker/status/session probes
-allocate no target and open no browser window. On Windows, install and upgrade
-publish architecture-matched native-host generations beside a running host
-rather than replacing its executable.
+See [Self-repair](/guide/self-repair) for the complete workflow.
 
-Browser actions can attach before/after evidence, stale-ref detail, movement
-dimensions, watchdog results, session lease metadata, tab target identity,
-cookie posture, and render-aware reads when a command needs reviewable proof.
-When score thresholds are set, replay and compare output a `gate` object with
-the thresholds, actual scores, and failed gates.
-The score block also lists failed or unknown behavior and context check names.
-Evidence coverage is context too: missing screenshots, operator logs, or result
-envelopes show up as evidence check names.
-`unicli runs list` also shows `evidence_count` and `evidence_by_type`, so an
-agent can pick runs with reviewable proof before opening the trace.
+## Next steps
 
-```bash
-unicli browser evidence --render-aware --expect-domain example.com
-unicli browser extract --render-aware --expect-domain example.com --no-screenshot
-unicli runs list
-unicli runs show <run_id>
-unicli runs probe <run_id>
-unicli runs replay <run_id> --permission-profile confirm --yes --min-score 1 --min-context-score 1 --min-overall-score 1
-unicli runs compare <run_id> <replay_run_id> --min-score 1 --min-context-score 1 --min-overall-score 1
-unicli --permission-profile locked --yes --remember-approval word set-font "Inter"
-unicli approvals list
-unicli approvals revoke <approval_key>
-```
-
-Remembered approvals are bound to the command capability and stable resource
-metadata, such as domain, app, account surface, and path argument slots. Runtime
-argument values stay out of the approval store.
-
-Use a deny-first local policy when a machine should allow only bounded
-operations. JSON, `.yaml`, and `.yml` are supported:
-
-```yaml
-schema_version: "2"
-default: deny
-rules:
-  - id: deny-public-posting
-    decision: deny
-    match:
-      effect: publish_content
-    reason: Publishing is disabled on this machine
-  - id: allow-short-compute-input
-    decision: allow
-    match:
-      site: compute
-      command: type
-      arguments:
-        text:
-          max_length: 200
-          pattern: "^[^\\p{Cc}]+$"
-```
-
-Save the file as `~/.unicli/permission-rules.json`, or point
-`UNICLI_PERMISSION_RULES_PATH` at it. An explicit missing path or malformed
-policy fails closed; an absent implicit default file leaves this layer
-disabled. Schema v1 remains compatible as deny-only/default-allow.
-
-Schema v2 evaluates all matching deny rules before allow rules. If no rule
-matches, `default` decides. Argument constraints are conjunctive and support
-inclusive numeric `min`/`max`, Unicode-code-point `max_length`, linear-time RE2
-`pattern`, and exact JSON-value `allowed` lists. Actual argument values are
-evaluated but never written to approval memory.
-
-The invocation kernel, direct `browser`/`operate` commands, direct `compute`
-commands, and computer-use MCP tools all authorize before acquiring a browser
-target, transport, overlay, file, clipboard, or desktop side effect.
-
-The same rules run again inside the pipeline for runtime resources. A denied
-domain stops `fetch`, `fetch_text`, `download`, and browser `navigate` before
-the request is sent. A denied path stops downloads and command output files
-before the directory or file is created. A denied executable stops `exec` before
-the subprocess starts.
-
-## Protocol Servers
-
-MCP:
-
-```bash
-npx @zenalexa/unicli mcp serve
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
-```
-
-`--transport sse` still works as a legacy alias for Streamable, but new
-deployments should use `--transport streamable`.
-
-ACP:
-
-```bash
-unicli acp
-```
-
-ACP is an editor compatibility gateway. For coding-agent runtime routing:
-
-```bash
-unicli agents matrix
-unicli agents recommend codex
-unicli agents generate --for codex
-```
-
-## Exit Codes
-
-| Code | Meaning             | Agent action                             |
-| ---- | ------------------- | ---------------------------------------- |
-| 0    | Success             | Use the data                             |
-| 66   | Empty result        | Try different parameters                 |
-| 69   | Service unavailable | Retry later                              |
-| 75   | Temporary failure   | Retry with backoff                       |
-| 77   | Auth required       | Run `unicli auth setup SITE`             |
-| 78   | Config error        | Read the error envelope and adapter YAML |
-
-## Next Steps
-
-- [Adapters](/guide/adapters)
-- [Integrations](/guide/integrations)
-- [Self-Repair](/guide/self-repair)
-- [Pipeline Steps](/reference/pipeline)
-- [Exit Codes](/reference/exit-codes)
+- [Find an operation](./)
+- [Connect an agent](/guide/integrations)
+- [Try common recipes](/RECIPES)
+- [Browse the operation catalog](/reference/sites)

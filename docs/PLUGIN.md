@@ -1,154 +1,119 @@
-# Plugin Author Guide
-
-This document is the stability contract for `@zenalexa/unicli` subpath imports
-and describes the supported ways to extend Uni-CLI from a third-party package.
-
-Plugins let you register custom pipeline steps, transports, and adapters
-without forking the project. The surface is a small, versioned set of
-subpath imports — pick the ones you need, import them, and avoid the
-non-exported implementation details.
-
+---
+title: Plugin authoring
+description: Package adapters, pipeline steps, and runtime extensions for Uni-CLI.
 ---
 
-## 1. Stability contract
+# Plugin authoring
 
-Uni-CLI exposes 27 subpaths from `package.json` `exports`. Each subpath is
-labelled **Stable**, **Beta**, or **Experimental**. The label governs how
-quickly we may break the API.
+A plugin groups adapters and optional JavaScript extensions outside the main repository. Installed plugins live under `~/.unicli/plugins/` and join the runtime catalog at startup.
 
-| Subpath                                    | Source                                  | Status       |
-| ------------------------------------------ | --------------------------------------- | ------------ |
-| `@zenalexa/unicli`                         | `src/main.ts`                           | Stable       |
-| `@zenalexa/unicli/index`                   | `src/index.ts`                          | Stable       |
-| `@zenalexa/unicli/registry`                | `src/registry.ts`                       | Stable       |
-| `@zenalexa/unicli/errors`                  | `src/errors.ts`                         | Stable       |
-| `@zenalexa/unicli/types`                   | `src/types.ts`                          | Stable       |
-| `@zenalexa/unicli/output`                  | `src/output/formatter.ts`               | Stable       |
-| `@zenalexa/unicli/engine`                  | `src/engine/executor.ts`                | Stable       |
-| `@zenalexa/unicli/engine/registry`         | `src/engine/step-registry.ts`           | Stable       |
-| `@zenalexa/unicli/transport`               | `src/transport/bus.ts`                  | Stable       |
-| `@zenalexa/unicli/transport/http`          | `src/transport/adapters/http.ts`        | Stable       |
-| `@zenalexa/unicli/protocol/mcp`            | `src/mcp/schema.ts`                     | Stable       |
-| `@zenalexa/unicli/protocol/acp`            | `src/protocol/acp.ts`                   | Stable       |
-| `@zenalexa/unicli/pipeline`                | alias of `engine`                       | Stable       |
-| `@zenalexa/unicli/download`                | `src/engine/download.ts`                | Stable       |
-| `@zenalexa/unicli/engine/steps`            | `src/engine/steps/index.ts`             | Beta         |
-| `@zenalexa/unicli/transport/visual`        | `src/transport/adapters/visual.ts`      | Beta         |
-| `@zenalexa/unicli/transport/desktop-ax`    | `src/transport/adapters/desktop-ax.ts`  | Beta         |
-| `@zenalexa/unicli/transport/subprocess`    | `src/transport/adapters/subprocess.ts`  | Beta         |
-| `@zenalexa/unicli/transport/cdp-browser`   | `src/transport/adapters/cdp-browser.ts` | Beta         |
-| `@zenalexa/unicli/compute/visual-timeline` | `src/compute/visual-timeline.ts`        | Beta         |
-| `@zenalexa/unicli/agents/backends`         | `src/agents/backends.ts`                | Beta         |
-| `@zenalexa/unicli/protocol/skill`          | `src/protocol/skill.ts`                 | Beta         |
-| `@zenalexa/unicli/registry-v2`             | `src/core/registry.ts`                  | Experimental |
-| `@zenalexa/unicli/browser/cdp`             | `src/browser/cdp-client.ts`             | Experimental |
-| `@zenalexa/unicli/browser/page`            | `src/browser/page.ts`                   | Experimental |
-| `@zenalexa/unicli/browser/runtime`         | `src/browser/runtime-client.ts`         | Experimental |
-| `@zenalexa/unicli/browser/utils`           | `src/browser/dom-helpers.ts`            | Experimental |
+## Create a plugin
 
-**Stable** — Breaking changes require a major bump and a deprecation
-warning for at least one full release prior.
+```bash
+unicli plugin create astronomy
+cd unicli-plugin-astronomy
+```
 
-**Beta** — Shape of the module is likely right, but concrete types, field
-names, and handler signatures can shift in any minor release. Safe to
-depend on; pin to an exact minor to avoid surprise upgrades.
+The scaffold contains:
 
-**Experimental** — Low-level modules we export so the plugin ecosystem can
-prototype. May break in any release, including patch releases. Use at your
-own risk and prefer stable alternatives where they exist.
+```text
+unicli-plugin-astronomy/
+├── unicli-plugin.json
+├── README.md
+├── adapters/
+└── steps/
+```
 
----
+## Manifest
 
-## 2. Versioning policy
+```json
+{
+  "name": "astronomy",
+  "version": "1.0.0",
+  "unicli": ">=0.206.0",
+  "description": "Astronomy operations for Uni-CLI",
+  "adapters": "adapters/",
+  "steps": "steps/",
+  "main": "dist/index.js"
+}
+```
 
-Uni-CLI follows Semantic Versioning (`MAJOR.MINOR.PATCH`). Applied to
-exports:
+`adapters`, `steps`, and `main` are paths inside the plugin directory. Include the entries your package uses.
 
-- **Stable subpath, breaking change** → requires a `MAJOR` bump, a
-  deprecation warning emitted at least one `MINOR` prior, and a changelog
-  entry under "Breaking changes".
-- **Beta subpath, breaking change** → allowed in any `MINOR`. A changelog
-  entry is still required.
-- **Experimental subpath, breaking change** → allowed in any release,
-  including `PATCH`. No changelog entry required (but encouraged).
-- **Adding a new subpath** → `MINOR` bump, never `PATCH`.
-- **Removing a Stable or Beta subpath** → only during a `MAJOR` bump with a
-  deprecation window. Experimental subpaths follow the Experimental policy.
+## Add adapters
 
-The CI gate `scripts/check-exports-count.ts` enforces a floor of 20
-subpaths so we never silently amputate the plugin surface.
+Plugin YAML uses the same schema as packaged adapters:
 
----
+```yaml
+site: observatory
+name: objects
+description: Search the observatory object catalog
+type: web-api
+strategy: public
+operation_effect: read
+execution_operator: structured-api
+operation_family: search
 
-## 3. Writing a plugin
+args:
+  query:
+    type: str
+    required: true
+    positional: true
 
-The simplest plugin registers a custom pipeline step and ships as an ESM
-side-effect import. Consumers add one import to their YAML runner host
-(or to a wrapper script) and the step becomes callable.
+pipeline:
+  - fetch:
+      url: https://example.org/api/objects
+      params:
+        q: ${{ args.query }}
+  - select: data
 
-```ts
-// my-plugin/src/index.ts
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2
+```
+
+See [Adapter format](/ADAPTER-FORMAT) for all fields.
+
+## Add a pipeline step
+
+Import the public step registry from `@zenalexa/unicli/engine/registry` and register the step from the plugin entry point.
+
+```typescript
 import { registerStep } from "@zenalexa/unicli/engine/registry";
 
-registerStep("reverse", async (ctx, _config) => {
-  return {
-    ...ctx,
-    data: Array.isArray(ctx.data) ? [...ctx.data].reverse() : ctx.data,
-  };
+registerStep("astronomy_normalize", (ctx, config) => {
+  return { ...ctx, data: normalizeCatalog(ctx.data, config) };
 });
 ```
 
-Then in any YAML adapter:
-
-```yaml
-site: example
-name: demo
-type: web-api
-strategy: public
-pipeline:
-  - fetch: { url: "https://example.com/api/items" }
-  - select: { path: "data" }
-  - reverse: {}
-columns: [title]
-```
-
-See `examples/plugin-example/` in the repository for a complete working
-template including `package.json`, `tsconfig.json`, and a README.
-
----
-
-## 4. Loading plugins
-
-Uni-CLI does not auto-discover third-party plugins. You load them via
-Node's preload flag:
+List loaded custom steps:
 
 ```bash
-node --import @zenalexa/my-plugin $(which unicli) example demo
+unicli plugin steps
 ```
 
-Or for a script-only host, pure ESM side-effect import works:
+## Public package imports
 
-```ts
-import "@zenalexa/my-plugin";
-import { runPipeline } from "@zenalexa/unicli/engine";
+Uni-CLI publishes versioned subpaths for registry, errors, types, output, engine, transports, browser helpers, protocol schemas, and downloads. Examples:
 
-await runPipeline([{ fetch: { url: "https://example.com" } }, { reverse: {} }]);
+```typescript
+import { cli } from "@zenalexa/unicli/registry";
+import { err, ok } from "@zenalexa/unicli/errors";
+import type { AdapterCommand } from "@zenalexa/unicli/types";
+import { registerStep } from "@zenalexa/unicli/engine/registry";
+import { getTransportBus } from "@zenalexa/unicli/transport";
 ```
 
-A first-class `--plugin` CLI flag is tracked for a future minor release.
-Until then, preload-import is the supported pattern.
+Use package exports rather than `dist/` paths so the import tracks the supported public surface.
 
----
+## Broker-owned browser invocation pattern
 
-## 5. Broker-owned browser invocation pattern
+Browser-aware plugins share Uni-CLI's machine-level Browser Runtime Broker. The broker owns browser processes, ports, runtime reuse, login partitions, and target serialization. A plugin supplies the Agent identity and provider policy for each call.
 
-Browser-aware plugins use one machine-level Browser Runtime Broker. They do
-not allocate ports, spawn a caller-owned browser service, probe arbitrary CDP endpoints, or
-own Chrome processes. Declare Agent identity and provider policy at the call
-boundary; the broker reuses runtimes and login partitions while keeping each
-Agent target independently owned and serialized.
-
-```ts
+```typescript
 import {
   BrowserBridge,
   createBrowserInvocationContext,
@@ -162,6 +127,7 @@ const context = createBrowserInvocationContext({
   turnId: hostTurnId,
   profilePartitionId: "team-login",
 });
+
 const scope = createBrowserInvocationScope({
   context,
   provider: "managed",
@@ -169,79 +135,36 @@ const scope = createBrowserInvocationScope({
   profilePartitionId: "team-login",
 });
 
-await runBrowserInvocation(scope, async () => {
+const snapshot = await runBrowserInvocation(scope, async () => {
   const page = await new BrowserBridge().connect();
   await page.goto("https://example.com");
   return page.snapshot({ interactive: true });
 });
 ```
 
-Use `provider: "chrome", visibility: "background"` only when the native host
-and extension should control an explicit existing Chrome tab without
-activation. Foreground Chrome requires `visibility: "foreground"`. Remote CDP
-is explicit with `provider: "remote", visibility: "hidden"` and
-`UNICLI_CDP_ENDPOINT`; no provider silently falls back to another.
+Use `managed` with `hidden` for the managed provider, `chrome` with `background` or `foreground` for an existing Chrome session, and `remote` with `hidden` for a configured remote provider. `probeBrowserRuntimeBroker()` reads current broker state. `ensureBrowserRuntimeBroker()` starts the windowless control plane; the selected browser provider starts when the first page command needs it.
 
-`probeBrowserRuntimeBroker()` is report-only. `ensureBrowserRuntimeBroker()`
-starts only the windowless control plane; browser providers remain lazy until
-a page command needs one. Importing the module performs no process, socket, or
-filesystem side effect.
+## Install and manage
 
----
+```bash
+unicli plugin install ./unicli-plugin-astronomy
+unicli plugin install github:owner/repository
+unicli plugin list
+unicli plugin update astronomy
+unicli plugin uninstall astronomy
+```
 
-## 6. Allowed operations per subpath
+After installation, verify the new catalog entries:
 
-One-line summary of what a plugin can legitimately do with each subpath.
+```bash
+unicli search "search observatory objects"
+unicli describe observatory objects
+```
 
-- `registry` — register v1 adapters via `cli({...})`.
-- `registry-v2` — register v2 adapters via the schema-typed API (experimental).
-- `errors` — catch `PipelineError`, `NoTransportForStepError`; construct envelope errors.
-- `types` — reuse `PipelineStep`, `AdapterType`, `Strategy`, `ExitCode` etc. in plugin types.
-- `output` — format plugin-produced rows via the shared `formatter` (table/json/yaml/csv/md).
-- `engine` — call `runPipeline` from external hosts; catch `PipelineError`.
-- `engine/registry` — `registerStep`, `getStep`, `listSteps`; this is the primary extension point.
-- `engine/steps` — reference built-in step handlers (beta — handler signatures may move).
-- `transport` — register custom `TransportAdapter` instances on the shared bus.
-- `transport/http` — compose on top of the HTTP transport (retries, cookies, CSRF).
-- `transport/cdp-browser` — access CDP-backed browser transport for custom steps.
-- `transport/subprocess` — spawn helper binaries under the subprocess transport.
-- `transport/desktop-ax` — drive native UI via the macOS AX / Windows UIA bridge.
-- `transport/visual` — access the Computer-Use Agent transport surface.
-- `browser/cdp` — low-level raw CDP client (experimental — prefer `browser/page`).
-- `browser/page` — direct high-level `BrowserPage` API for provider authors; plugins should prefer `browser/runtime`.
-- `browser/runtime` — broker-backed invocation identity, provider/visibility policy, page access, lifecycle probes, and typed errors.
-- `browser/utils` — shared DOM helpers for snapshot normalisation and ref resolution.
-- `protocol/mcp` — MCP schema builders (`buildInputSchema`, `buildToolName`, etc.).
-- `protocol/acp` — embed an ACP server that reuses the Uni-CLI pipeline runner.
-- `protocol/skill` — load and validate SKILL.md packs.
-- `download` — enqueue downloads through the shared `download` step runtime.
-- `pipeline` — alias of `engine`; prefer whichever name reads better in your codebase.
+## Package checklist
 
----
-
-## 7. Forbidden
-
-These are not supported. A plugin that relies on any of them will break
-without notice:
-
-- **Deep imports into non-exported paths.** `@zenalexa/unicli/dist/engine/runtime.js`
-  or any path not listed in `package.json` `exports` is private.
-- **Importing symbols prefixed with `_`.** These are test-only or transitional
-  helpers (e.g. `_resetTransportBusForTests`) and can change or disappear in
-  any release, including patch releases. Calling
-  the public `getBus().register(...)` API is the supported way to extend
-  the transport surface.
-- **Monkeypatching exports.** Rewriting `PipelineError.prototype` or
-  overwriting an existing step via a direct `Map.set` on a non-exported
-  registry is unsupported — call `registerStep` instead, which performs
-  the right validation.
-- **Depending on non-exported types that leak through public modules.** If a
-  type is only visible because TypeScript structurally surfaces it, treat
-  it as private. Import only from named, documented type exports.
-- **Side effects beyond registration.** A plugin must not open sockets,
-  spawn processes, or write files at import time. Register handlers; let
-  the host CLI invoke them.
-
-If you need something in the Forbidden list, open an issue describing the
-use case. Most requests resolve with a new stable export, not a private
-hook.
+- Set a semantic version and Uni-CLI compatibility range.
+- Give every adapter a user-facing description and current schema-v2 metadata.
+- Keep credentials in Uni-CLI auth storage or the host environment.
+- Test custom steps and adapter behavior through the public imports.
+- Document installation, commands, authentication, and one working example.

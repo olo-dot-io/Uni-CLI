@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Uni-CLI
-description: Give agents every interface—install once to search, run, inspect, and repair real software across APIs, browsers, desktops, local tools, and MCP.
+description: One command interface for agents to search and operate websites, browsers, desktop apps, local tools, files, and MCP.
 ---
 
 <HomePage />

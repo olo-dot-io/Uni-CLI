@@ -171,8 +171,8 @@ const rules: Rule[] = [
   },
   {
     file: "docs/ROADMAP.md",
-    pattern: /^> Current: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
-    replacement: `> Current: v${version} — ${codename}.`,
+    pattern: /^Current release: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
+    replacement: `Current release: v${version} — ${codename}.`,
     description: "ROADMAP.md current version",
   },
   {
@@ -195,14 +195,14 @@ const rules: Rule[] = [
   },
   {
     file: "docs/zh/ROADMAP.md",
-    pattern: /^> Current: v[\d.]+(?:\s+—\s+[^.]+)?\./m,
-    replacement: `> Current: v${version} — ${codename}.`,
+    pattern: /^当前版本：v[\d.]+(?:\s+—\s+[^。]+)?。/m,
+    replacement: `当前版本：v${version} — ${codename}。`,
     description: "docs/zh/ROADMAP.md current version",
   },
   {
     file: "docs/ARCHITECTURE.md",
-    pattern: /\bin\s+v[\d.]+\./,
-    replacement: `in v${version}.`,
+    pattern: /\bruntime in v[\d.]+\./,
+    replacement: `runtime in v${version}.`,
     description: "docs/ARCHITECTURE.md version pin",
   },
   {

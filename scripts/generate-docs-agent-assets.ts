@@ -21,6 +21,7 @@ import {
 
 type PageIndexEntry = {
   title: string;
+  description: string;
   locale: LocaleKey;
   routePath: string;
   markdownPath: string;
@@ -32,6 +33,7 @@ type PageIndexEntry = {
 };
 
 type Frontmatter = {
+  description?: string;
   hero?: {
     text?: string;
     tagline?: string;
@@ -370,44 +372,33 @@ function renderHomePageMarkdown(
   const transportSteps = stats.pipeline_transport_step_count ?? "?";
   if (locale === "zh") {
     return [
-      "## 面向真实软件的开源 Agent-Computer Interface 运行时",
+      "## Agent 操作真实软件的一条命令入口",
       "",
-      "Uni-CLI 在 Agent 与网站、登录态浏览器、桌面应用、本地工具、文件、MCP 服务、accessibility、visual control 和系统能力之间提供一个可搜索边界。它按意图排序已编目 operation，通过选中 operation 已声明的 substrate 按支持的策略运行，返回稳定的成功/错误 envelope，并让支持的失败路径可修复。",
+      "Uni-CLI 让 Agent 用同一套命令搜索并操作网站、浏览器会话、桌面应用、本地工具、文件和协议服务。",
       "",
-      "## 运行时合同",
-      "",
-      "- Intent discovery",
-      "- Declared substrates",
-      "- Policy-aware execution",
-      "- Structured envelopes",
-      "- MCP + ACP",
-      "- Browser + Desktop",
-      "- Repairable paths",
-      "",
-      "## 第一条命令",
+      "## 第一次运行",
       "",
       "```bash",
       "npm install -g @zenalexa/unicli",
-      'unicli do "找 Hacker News 首页"',
-      "unicli extract https://example.com --max-chars 1200",
-      "unicli compute snapshot --app Calculator --format compact",
-      "unicli mcp serve --transport streamable --port 19826",
+      'unicli search "查看 Hacker News 热门文章"',
+      "unicli describe hackernews top",
+      "unicli hackernews top --limit 5 -f json",
       "```",
       "",
-      "## 定位",
+      "## 使用方式",
       "",
-      "Uni-CLI 是 Agent-Computer Interface runtime，不是 Agent model、planner、浏览器 Agent 或 MCP 平台。CLI 是原生完整进程入口；MCP 投影 adapter operation；API、文件、CLI、browser、desktop、protocol 和 visual 是 operation 可声明的 substrate。精简闭环是发现、选择、治理、行动、观察、修复。",
+      "1. 用 `unicli search` 描述想完成的任务。",
+      "2. 用 `unicli describe` 查看参数、认证方式和输出。",
+      "3. 运行选中的命令，Agent 场景优先使用 `-f json`。",
+      "4. 命令失败时读取 stderr 中的结构化错误，再运行 `unicli repair` 检查修复路径。",
       "",
-      "- **发现。** BM25 双语搜索只取当前任务相关的操作、参数、认证姿态和风险字段。",
-      "- **选择与治理。** Agent 选择已声明 strategy/substrate 的 operation；执行前可检查当前覆盖的 capability scope、effect、risk 和 approval。",
-      "- **行动与观察。** Adapter kernel 调用选中的 operation；AgentEnvelope 区分成功与错误，支持的 operation 可附加 artifact、recording 或 post-state evidence。",
-      "- **修复。** 结构化错误始终带 code/message，并在适用时提供 source path、失败边界、retryability、suggestion 或 alternatives。",
+      "## 可操作的界面",
       "",
-      "## 常见任务",
-      "",
-      "- `unicli search` 和 `unicli do` 先查本地操作目录，操作选定后再读取参数、认证、风险和输出字段。",
-      "- 页面、接口、App 或本地边界失效时，owned failure 可在 error envelope 中指出 source path、失败 step 或边界。",
-      "- Native CLI 是完整 command surface；MCP default/deferred/expanded profile 投影 adapter operation，固定 core 与其他 integration parity 仍在路线图中。",
+      "- 网站与公开 API",
+      "- 已登录浏览器会话",
+      "- 桌面应用与 macOS 能力",
+      "- 本地 CLI、文件与协议服务",
+      "- MCP 与 ACP 客户端",
       "",
       "## 覆盖范围",
       "",
@@ -416,14 +407,15 @@ function renderHomePageMarkdown(
       `- Built-in action：${pipelineSteps}（${registeredSteps} registered + ${transportSteps} transport-native）`,
       `- 测试：${stats.test_count}`,
       "",
-      "站点与操作数字来自静态 adapter catalog；固定 core 与主机动态发现命令在运行时单独加入。operation、adapter、built-in action、测试和 substrate 都由本地构建流程计数。",
+      "这些数字来自当前静态适配器目录。核心命令和主机动态发现的工具会在运行时加入。",
       "",
       "## 入口",
       "",
-      "- [安装运行](/zh/guide/getting-started)：安装、搜索、执行、认证、输出格式和退出码。",
-      "- [操作目录](/zh/reference/sites)：按站点、substrate、认证方式和操作样例检索。",
-      "- [适配器](/zh/guide/adapters)：YAML 格式、pipeline step、自修复流程和验证方式。",
-      "- [接入 Agent](/zh/guide/integrations)：原生 CLI、MCP、ACP 和可消费输出的取舍。",
+      "- [快速开始](/zh/guide/getting-started)：安装并完成第一条命令。",
+      "- [接入 Agent](/zh/guide/integrations)：选择 CLI、MCP 或 ACP。",
+      "- [操作目录](/zh/reference/sites)：查找当前站点与命令。",
+      "- [创建适配器](/zh/guide/adapters)：把新的软件界面接入 Uni-CLI。",
+      "- [CLI 参考](/zh/reference/cli)：查看完整命令入口。",
       "",
       "## 当前版本",
       "",
@@ -439,44 +431,33 @@ function renderHomePageMarkdown(
   }
 
   return [
-    "## The open Agent-Computer Interface runtime for real software",
+    "## One command interface for agents",
     "",
-    "Uni-CLI provides one searchable boundary between agents and websites, logged-in browsers, desktop apps, local tools, files, MCP servers, accessibility, visual control, and system capabilities. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under supported policy, returns a stable success/error envelope, and keeps supported failure paths repairable.",
+    "Uni-CLI gives agents one command model for searching and operating websites, browser sessions, desktop apps, local tools, files, and protocol services.",
     "",
-    "## Runtime Contract",
-    "",
-    "- Intent discovery",
-    "- Declared substrates",
-    "- Policy-aware execution",
-    "- Structured envelopes",
-    "- MCP + ACP",
-    "- Browser + Desktop",
-    "- Repairable paths",
-    "",
-    "## First Command",
+    "## First Run",
     "",
     "```bash",
     "npm install -g @zenalexa/unicli",
-    'unicli do "find the Hacker News frontpage"',
-    "unicli extract https://example.com --max-chars 1200",
-    "unicli compute snapshot --app Calculator --format compact",
-    "unicli mcp serve --transport streamable --port 19826",
+    'unicli search "list the top Hacker News stories"',
+    "unicli describe hackernews top",
+    "unicli hackernews top --limit 5 -f json",
     "```",
     "",
-    "## Positioning",
+    "## How It Works",
     "",
-    "Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, browser agent, or MCP platform. CLI is the native full process entry point; MCP projects adapter operations; APIs, files, CLIs, browsers, desktops, protocols, and visual control are declared substrates. The compact loop is discover, select, govern, act, observe, and repair.",
+    "1. Describe the result with `unicli search`.",
+    "2. Inspect arguments, authentication, and output with `unicli describe`.",
+    "3. Run the selected command. Use `-f json` for agents and scripts.",
+    "4. If a command fails, read the structured error on stderr and use `unicli repair` to inspect the repair path.",
     "",
-    "- **Discover.** Bilingual BM25 search retrieves only the operations, arguments, auth posture, and risk fields relevant to the task.",
-    "- **Select and govern.** The agent selects an operation with a declared strategy/substrate; currently covered capability scope, effect, risk, and approval remain inspectable before execution.",
-    "- **Act and observe.** The adapter kernel invokes the selected operation; AgentEnvelope distinguishes success from error, and supporting operations can add artifacts, recordings, or post-state evidence.",
-    "- **Repair.** Structured errors always include code/message and add source path, failed boundary, retryability, suggestion, or alternatives when applicable.",
+    "## Interfaces",
     "",
-    "## Common Tasks",
-    "",
-    "- `unicli search` and `unicli do` read the local operation catalog first, then execution can inspect operation, args, auth, risk, and output fields.",
-    "- When a page, API, app, or local boundary changes, an owned failure can name the source path and failing step or boundary in its error envelope.",
-    "- Native CLI is the complete command surface; MCP default/deferred/expanded profiles project adapter operations, while fixed-core and other integration parity remain roadmap work.",
+    "- Websites and public APIs",
+    "- Logged-in browser sessions",
+    "- Desktop apps and macOS capabilities",
+    "- Local CLIs, files, and protocol services",
+    "- MCP and ACP clients",
     "",
     "## Coverage",
     "",
@@ -485,14 +466,15 @@ function renderHomePageMarkdown(
     `- Built-in actions: ${pipelineSteps} (${registeredSteps} registered + ${transportSteps} transport-native)`,
     `- Tests: ${stats.test_count}`,
     "",
-    "Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.",
+    "These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.",
     "",
     "## Entrypoints",
     "",
-    "- [First Run](/guide/getting-started): install, search, execute, authenticate, choose output formats, and read exit codes.",
-    "- [Operation Catalog](/reference/sites): browse by site, substrate, auth strategy, and examples.",
-    "- [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.",
-    "- [Integrations](/guide/integrations): native CLI, MCP, ACP, and output modes for agent runtimes.",
+    "- [Quickstart](/guide/getting-started): install Uni-CLI and run the first command.",
+    "- [Connect an Agent](/guide/integrations): choose CLI, MCP, or ACP.",
+    "- [Operation Catalog](/reference/sites): browse the current sites and commands.",
+    "- [Create an Adapter](/guide/adapters): add a new software interface.",
+    "- [CLI Reference](/reference/cli): see the complete command entry points.",
     "",
     "## Current Version",
     "",
@@ -602,11 +584,7 @@ function absoluteUrl(path: string): string {
 }
 
 function pageDescription(page: PageIndexEntry): string {
-  if (page.routePath === "/") {
-    return "overview, install path, capability map, and agent entry points";
-  }
-
-  return `${page.section.toLowerCase()} page for ${page.title.toLowerCase()}`;
+  return page.description;
 }
 
 function groupedPages(pages: PageIndexEntry[]): Map<string, PageIndexEntry[]> {
@@ -627,7 +605,7 @@ function renderLlmsTxt(
   const lines = [
     "# Uni-CLI",
     "",
-    "Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, select, govern, act through, observe, and repair operations across websites, logged-in browsers, desktop apps, files, local tools, external CLIs, MCP servers, accessibility, visual control, and agent backends.",
+    "Uni-CLI gives AI agents one command model for searching and operating websites, browser sessions, desktop apps, files, local tools, external CLIs, MCP servers, accessibility, and visual control.",
     "",
     "## Operation Snapshot",
     "",
@@ -642,8 +620,8 @@ function renderLlmsTxt(
     "",
     '- Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.',
     "- Prefer `-f json` for scripts and `-f md` for agent-readable prose.",
-    "- On failure, read the v2 error envelope, open the source path or `error.adapter_path`, patch the named step or boundary, then run `unicli repair <site> <command>`.",
-    "- Native CLI is the complete process surface. MCP default/deferred/expanded profiles project adapter operations; fixed-core and other integration parity remain roadmap work.",
+    "- On failure, read the v2 error envelope, update the source named by `error.adapter_path`, then run `unicli repair <site> <command>`.",
+    "- Native CLI exposes the complete process surface. MCP provides compact, deferred, and expanded profiles from the same operation catalog.",
     "",
     "## Markdown Companions",
     "",
@@ -657,7 +635,7 @@ function renderLlmsTxt(
     lines.push(`## ${section}`, "");
     for (const page of entries) {
       lines.push(
-        `- [${page.title}](${absoluteUrl(page.routePath)}) — ${pageDescription(page)}. Markdown: ${absoluteUrl(page.markdownPath)}`,
+        `- [${page.title}](${absoluteUrl(page.routePath)}) — ${pageDescription(page)} Markdown: ${absoluteUrl(page.markdownPath)}`,
       );
     }
     lines.push("");
@@ -723,9 +701,15 @@ function main() {
       const sourceLink = page.sourceLink;
       const breadcrumbs = page.parent ? [page.parent] : [];
       const sourcePath = sourcePathForRoute(sourceLink, locale);
+      const { frontmatter } = splitFrontmatter(
+        readFileSync(sourcePath, "utf-8"),
+      );
 
       return {
         title: page.text,
+        description:
+          frontmatter.description ??
+          `${page.section} documentation for ${page.text}.`,
         locale,
         routePath,
         markdownPath,

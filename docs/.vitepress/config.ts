@@ -17,6 +17,10 @@ import { defineConfig } from "vitepress";
 import { readFileSync } from "node:fs";
 import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
+function sidebarForNavigation(groups: typeof sidebarGroups) {
+  return groups.map(({ text, items }) => ({ text, items }));
+}
+
 function normalizeSiteBase(siteBase: string): string {
   const trimmedBase = siteBase.trim();
 
@@ -46,9 +50,9 @@ const siteBase = configuredSiteBase
 const siteOrigin = "https://olo-dot-io.github.io";
 const publicSiteUrl = `${siteOrigin}${siteBase}`;
 const publicDescription =
-  "Give agents every interface—install once to search, run, inspect, and repair real software across APIs, browsers, desktops, local tools, and MCP.";
+  "One command interface for agents to search and operate websites, browsers, desktop apps, local tools, files, and MCP.";
 const zhDescription =
-  "把所有界面交给 Agent：安装一次，即可跨越 API、浏览器、桌面、本地工具与 MCP 搜索、执行、检查并修复。";
+  "让 Agent 用统一命令搜索并操作网站、浏览器、桌面应用、本地工具、文件与 MCP。";
 const npmPackageUrl = "https://www.npmjs.com/package/@zenalexa/unicli";
 const npmIcon = `<svg viewBox="0 0 48 24" aria-hidden="true"><rect x="1" y="5" width="46" height="15" rx="1" fill="#cb3837"/><text x="6" y="17" fill="#fff" font-family="Geist Variable, sans-serif" font-size="13" font-weight="700" letter-spacing="-1">npm</text></svg>`;
 
@@ -81,9 +85,6 @@ const releaseInfo = readJson<ReleaseInfo>(
   new URL("../release-info.json", import.meta.url),
 );
 const commandCount = siteStats.command_count.toLocaleString("en-US");
-const adapterCount = siteStats.adapter_count_total.toLocaleString("en-US");
-const testCount = siteStats.test_count.toLocaleString("en-US");
-const releaseLabel = `v${releaseInfo.version}`;
 
 const rootThemeConfig = {
   siteTitle: "Uni-CLI",
@@ -113,7 +114,7 @@ const rootThemeConfig = {
       },
     },
   },
-  sidebar: sidebarGroups,
+  sidebar: sidebarForNavigation(sidebarGroups),
   editLink: {
     pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
     text: "Edit this page on GitHub",
@@ -132,7 +133,7 @@ const rootThemeConfig = {
 const zhThemeConfig = {
   ...rootThemeConfig,
   nav: localizedSiteMaps.zh.topNav,
-  sidebar: localizedSiteMaps.zh.sidebarGroups,
+  sidebar: sidebarForNavigation(localizedSiteMaps.zh.sidebarGroups),
   editLink: {
     pattern: "https://github.com/olo-dot-io/Uni-CLI/edit/main/docs/:path",
     text: "在 GitHub 上编辑本页",
@@ -207,47 +208,43 @@ function escapeMustacheInFence(md: any) {
 const homeFaqs: { q: string; a: string }[] = [
   {
     q: "What is Uni-CLI?",
-    a: `Uni-CLI is the open Agent-Computer Interface runtime for real software. It gives agents one searchable boundary across ${siteStats.site_count} websites and tools, browser sessions, desktop apps, local CLIs, files, MCP servers, accessibility, and visual control. It ranks executable operations by intent, runs the selected operation through its declared substrate under supported policy, returns a stable success/error envelope, and keeps supported failure paths repairable.`,
+    a: "Uni-CLI is an open-source command runtime for AI agents. It gives agents one way to search and operate websites, browser sessions, desktop applications, local tools, files, and protocol servers.",
   },
   {
-    q: "How is Uni-CLI different from a browser automation library?",
-    a: "Browser automation is one execution substrate. The catalog can contain API, file, local CLI, page-native, browser-semantic, desktop-accessibility, and visual operations. Each operation declares its own strategy and substrate; the agent currently selects among candidates. Adapter commands share the adapter kernel and envelope shape, while evidence and repair detail are operation-specific.",
+    q: "What should I run first?",
+    a: "Install @zenalexa/unicli, run unicli search with the result you want, inspect the match with unicli describe, then run the selected command with -f json.",
   },
   {
-    q: "How is Uni-CLI different from a computer-use sandbox?",
-    a: "A computer-use sandbox provides an isolated environment, screen, mouse, keyboard, and often benchmark hooks. Uni-CLI is the interface runtime rather than the sandbox: it can call sandboxed or local boundaries, cross GUI and structured interfaces, and return one operation receipt without claiming local execution is sandbox-isolated.",
+    q: "Which agents can use Uni-CLI?",
+    a: "Any agent that can start a process can use the CLI. Uni-CLI also provides MCP and ACP servers for clients that prefer protocol connections.",
   },
   {
-    q: "Why a CLI instead of an MCP server?",
-    a: "CLI is Uni-CLI's native, inspectable, full command surface: it composes with files, pipes, exit codes, CI, and local tools without a resident server. MCP is a first-class protocol/exposure substrate when a host needs stateful sessions or protocol-native discovery, and current clients can defer tool schemas. Compact, deferred, and expanded profiles project adapter operations; fixed core commands remain canonical on native CLI until command-level parity lands.",
+    q: "How many operations are included?",
+    a: `v${releaseInfo.version} ships ${siteStats.site_count} sites and ${commandCount} registered commands in the static adapter catalog. Core commands and host-discovered tools join the catalog at runtime.`,
   },
   {
-    q: "How does self-repair work in Uni-CLI?",
-    a: "When an owned adapter path fails, Uni-CLI emits structured error JSON and can include source path, failing step or boundary, retryability, alternatives, and a suggestion. An agent can patch the YAML or code at that path, then verify with unicli repair or a bounded delivery check. Fields that do not apply remain absent.",
+    q: "How does authentication work?",
+    a: "Each operation declares its connection strategy. Uni-CLI can use public endpoints, saved site credentials, or a managed or existing browser session. The auth and browser doctor commands report the setup for the current machine.",
   },
   {
-    q: "Which AI agent platforms work with Uni-CLI?",
-    a: "Claude Code, Codex CLI, OpenCode, Cursor, OpenClaw, and any runtime that can spawn a subprocess. Uni-CLI also exposes an MCP server, an ACP gateway, and an AGENTS.md discovery surface so agents pick it up without manual configuration.",
+    q: "What output does Uni-CLI return?",
+    a: "Successful data goes to stdout. Structured errors go to stderr with a meaningful process exit code. Markdown is the terminal default; JSON, YAML, CSV, and compact formats are available.",
   },
   {
-    q: "How many sites and commands does Uni-CLI ship?",
-    a: `${releaseLabel} ships a generated operation catalog with ${siteStats.site_count} sites, ${commandCount} commands, ${adapterCount} adapters, ${siteStats.pipeline_step_count} pipeline steps, and ${testCount} tests. The headline is one Agent-Computer Interface product boundary for discovering, selecting, governing, acting through, observing, and repairing operations across web, browser, desktop, local tools, files, and protocols.`,
+    q: "What happens when a site changes?",
+    a: "Adapter failures can name the source file and failed step. After the adapter is updated, unicli repair reruns the original operation to verify the change.",
   },
   {
-    q: "Can I add a new site to Uni-CLI without writing TypeScript?",
-    a: "Yes. The preferred contribution format is a short YAML adapter that names the site, command, strategy, and pipeline. YAML is an authoring format below the operation contract, not the product identity.",
+    q: "Can I add a site?",
+    a: "Yes. unicli init creates a YAML adapter, and unicli dev reloads it during development. Plugins can add pipeline steps, transports, and adapters from a third-party package.",
   },
   {
-    q: "Does Uni-CLI handle authenticated sites?",
-    a: "Yes. Operations explicitly declare public, cookie, header, intercept, or ui. Where a probe URL exists, the bounded HTTP probe tries only public, cookie, then header; it does not auto-escalate into browser-backed intercept or ui. Live browser/CDP cookies remain in process memory; only explicit auth import or browser cookies commands persist them under ~/.unicli/cookies/.",
-  },
-  {
-    q: "How does Uni-CLI compare to MCP for token cost?",
-    a: "docs/BENCHMARK.md measures representative Uni-CLI list-style calls at 364-423 tokens (median 412); it does not benchmark third-party MCP clients. Expanded MCP can load a large catalog, while deferred profiles and modern tool search load schemas on demand. Uni-CLI supports native CLI plus compact, deferred, and expanded MCP so teams can measure the surface their host actually uses.",
+    q: "Should I use the CLI or MCP?",
+    a: "Use the CLI for process-based agents, pipes, files, and complete command coverage. Use MCP when the client manages tools through an MCP server. Both read from the same operation catalog.",
   },
   {
     q: "Is Uni-CLI free and open source?",
-    a: "Yes. Uni-CLI is Apache-2.0 on GitHub at olo-dot-io/Uni-CLI and on npm as @zenalexa/unicli. There are no paid features, no gated commands, and no telemetry. YAML adapters and pipeline steps are agent-readable and agent-editable.",
+    a: "Yes. Uni-CLI uses the Apache-2.0 license and is published on npm as @zenalexa/unicli.",
   },
 ];
 
@@ -383,7 +380,7 @@ const howToLdJson = {
       "@type": "HowToStep",
       position: 1,
       name: "Install via npm",
-      text: "Run `npm install -g @zenalexa/unicli` to install the global binary. Requires Node.js 20 or later.",
+      text: "Run `npm install -g @zenalexa/unicli` to install the global binary. Requires Node.js 22.19 or later.",
     },
     {
       "@type": "HowToStep",
@@ -411,7 +408,17 @@ export default defineConfig({
   lang: localizedSiteMaps.root.lang,
   description: publicDescription,
   base: siteBase,
-  srcExclude: ["public/markdown/**/*.md", "demo/README.md"],
+  srcExclude: [
+    "public/markdown/**/*.md",
+    "demo/README.md",
+    "mcp/clients/**/*.md",
+    "operate/**/*.md",
+    "skills/**/*.md",
+    "reference/maintenance.md",
+    "reference/release.md",
+    "zh/reference/maintenance.md",
+    "zh/reference/release.md",
+  ],
   cleanUrls: true,
   lastUpdated: true,
   ignoreDeadLinks: [/\.rs$/, /\.ts$/],

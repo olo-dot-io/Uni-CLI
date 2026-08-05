@@ -301,12 +301,23 @@ textarea:focus-visible {
   font-size: 14px;
 }
 
+.VPSidebarItem.level-0 + .VPSidebarItem.level-0 {
+  margin-top: 30px;
+}
+
+.VPSidebarItem.level-0 > .item .text {
+  color: var(--appica-foreground-intense);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
 .VPSidebarItem.is-active > .item .link > .text {
   color: var(--appica-foreground-intense);
 }
 
-.VPSidebarItem.is-active > .item {
-  border-radius: 8px;
+.VPSidebarItem.level-1.is-active > .item {
+  border-radius: 10px;
   background: var(--appica-background-muted);
 }
 
@@ -424,8 +435,16 @@ textarea:focus-visible {
   transform: none;
 }
 
+.vp-doc div[class*="language-"] > span.lang {
+  display: none;
+}
+
 .vp-doc .header-anchor {
-  opacity: 0.42;
+  opacity: 0;
+}
+
+.vp-doc .header-anchor:focus-visible {
+  opacity: 1;
 }
 
 .vp-doc .has-focused-lines .line:not(.has-focus) {

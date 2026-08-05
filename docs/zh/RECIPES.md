@@ -1,149 +1,109 @@
-# 常用配方
+---
+title: 常用场景
+description: 复制即可使用的 Uni-CLI 工作流，覆盖网页数据、论文、登录站点和浏览器 session。
+---
 
-这些配方覆盖最常见的使用路径。命令保持英文，因为它们就是实际 CLI 合同。
+# 常用场景
 
-## 找一个命令并运行
+每个示例先查找操作，最后得到程序或 Agent 可以继续读取的数据。
 
-```bash
-unicli search "github trending"
-unicli github-trending daily --limit 10
-```
+## 读取公开网站
 
-脚本里用 JSON：
-
-```bash
-unicli github-trending daily --limit 10 -f json
-```
-
-## 给智能体一个短合同
-
-把这段放进项目的 agent 指令：
-
-```markdown
-Use `unicli search "intent"` before choosing a command. Run commands as
-`unicli SITE COMMAND [args]`. Prefer `-f json` for scripts and structured
-Markdown for human-readable output.
-```
-
-## 设置认证
+先找命令：
 
 ```bash
-unicli auth setup SITE
-unicli auth check SITE
+unicli search "查看 Hacker News 热门文章"
 ```
 
-显式 import/export 后的 plaintext Cookie 文件（默认 browser/CDP 获取不落盘）：
-
-```text
-~/.unicli/cookies/SITE.json
-```
-
-## 修复命令
+查看参数，再读取五条结果：
 
 ```bash
-unicli SITE COMMAND
-unicli repair SITE COMMAND
+unicli describe hackernews top
+unicli hackernews top --limit 5 -f json
 ```
 
-修复时看错误信封：
-
-- `error.adapter_path`
-- `error.step`
-- `error.suggestion`
-- `error.alternatives`
-
-## 浏览器操作
+用 `jq` 选择需要的字段：
 
 ```bash
-unicli operate goto "https://example.com"
-unicli operate snapshot
-unicli operate click --ref 42
-unicli operate type --ref 7 --text "hello"
+unicli hackernews top --limit 5 -f json |
+  jq '.data[] | {title, url, score}'
 ```
 
-适合临时探索页面，或者为 browser adapter 找 selector。
+## 搜索并阅读论文
 
-## MCP 服务
+搜索 arXiv：
 
 ```bash
-npx @zenalexa/unicli mcp serve
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
+unicli arxiv search "agent computer interfaces" --limit 5 --sort submittedDate -f json
 ```
 
-## ACP 网关
+选中 ID 后下载 PDF，并读取开头几页：
 
 ```bash
-unicli acp
+unicli arxiv download 1706.03762 --output ./papers -f json
+unicli pdf read ./papers/1706.03762.pdf --first_page 1 --last_page 3 -f json
 ```
 
-ACP 只是一条兼容路径。能直接跑 shell 时，优先用 `unicli` 命令。
+如果实际文件名与 ID 不同，用 `unicli describe arxiv download` 查看返回字段。
 
-## 列出能力
+## 设置登录站点
+
+先运行目标操作，error envelope 会指出缺少的认证。
 
 ```bash
-unicli list
-unicli list --site macos
-unicli list --category desktop
-unicli search "office insert image"
+unicli <site> <command> -f json
+unicli auth setup <site>
+unicli browser profiles --json
+unicli auth import <site> --browser chrome
+unicli auth check <site>
 ```
 
-## 论文工作流：搜索、下载、读取 PDF
+`auth check` 成功后，重新运行原命令。
+
+## 操作浏览器页面
+
+读取浏览器状态，启动 provider，再查看页面：
 
 ```bash
-unicli arxiv search "retrieval augmented generation" --limit 5 -f json > /tmp/arxiv.json
-ID=$(jq -r '.[0].id' /tmp/arxiv.json)
-unicli arxiv download "$ID" --output ./papers -f json
-unicli pdf read "./papers/$ID.pdf" --first_page 1 --last_page 3 -f json
+unicli browser doctor --json
+unicli browser start
+unicli browser open https://example.com
+unicli browser state -f json
 ```
 
-如果下载后的文件名不是 `<id>.pdf`，以 `arxiv download` JSON 输出里的实际路径为准，再传给 `pdf read`。
-
-## ACG 角色发现：先搜意图，再落来源
+使用 `browser state` 返回的 ref：
 
 ```bash
-unicli search "花火 星穹铁道 character" --limit 8
-unicli anilist characters "Sparkle" --limit 5 -f json
-unicli moegirl search "花火 星穹铁道" --limit 5 -f json
-unicli danbooru tags sparkle --limit 10 -f json
+unicli browser click <ref>
+unicli browser type <ref> "搜索内容"
 ```
 
-角色名容易撞词时，把作品名、日文名、英文名、罗马音一起放进查询。booru 搜索前先跑 `tags` 或 `wiki`，确认目标站点采用的标准 tag 写法。
-
-## Booru tag 工作流
+需要视觉确认时保存截图：
 
 ```bash
-unicli safebooru tags blue_archive --limit 5 -f json
-unicli danbooru tags blue_archive --limit 5 -f json
-unicli safebooru search "blue_archive rating:safe" --limit 10 -f json
-unicli danbooru search "blue_archive rating:safe" --limit 10 -f json
-unicli danbooru detail 123456 -f json
+unicli browser screenshot ./page.png
 ```
 
-Safebooru 搜索使用 `blue_archive rating:safe` 这种 Moebooru tag 语法，不是任意日文句子搜索。遇到下划线、罗马音、别名差异时，先查 tag 再查 post。
+## 归档 OpenReview venue
 
-## 美少女游戏与 2024-2026 媒体检索
+先查看参数，再启动可续传归档：
 
 ```bash
-unicli search "Yuzusoft visual novel games" --limit 8
-unicli vndb search "Yuzusoft" --limit 10 -f json
-unicli bangumi game "学園アイドルマスター" --year 2024 --sort rank -f json
-unicli anilist anime "2026" --year 2026 --sort trending --limit 10 -f json
-unicli moegirl search "柚子社" --limit 5 -f json
+unicli describe openreview conference
+unicli openreview conference <venue-group-or-url> \
+  --output ./openreview-archives \
+  --rpm 20
 ```
 
-同一个作品在不同来源里可能是日文、罗马音、中文译名或英文名。排序和筛选以 `unicli describe <site> <command> -f json` 里的 `args_schema` 为准。
+`--metadata-only` 会先收集投稿、评审、决定、编辑历史和文件元数据。目录结构见[归档 OpenReview conference](/zh/guide/openreview-archive)。
 
-## 检查项目健康
+## 预览写操作
+
+用 `describe` 查看 effect 和参数，`--dry-run` 会显示解析后的计划：
 
 ```bash
-npm run verify
-npm run docs:build
+unicli describe <site> <command> --full -f json
+unicli <site> <command> [args] --dry-run -f json
 ```
 
-改 adapter 后至少跑：
-
-```bash
-npm run lint:adapters
-npm run lint:schema-v2
-npm run test:adapter
-```
+命中本机权限策略的命令会返回明确的批准步骤和计划参数。

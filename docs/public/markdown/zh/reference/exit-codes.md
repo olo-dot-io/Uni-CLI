@@ -7,71 +7,37 @@
 - 栏目: 参考
 - 上级: 参考 (/zh/reference/)
 
-Uni-CLI 用退出码告诉智能体下一步该做什么。stdout/stderr 里仍然会有结构化 `AgentEnvelope`，退出码只是快速路由信号。
+Uni-CLI 在 stderr 中同时返回进程退出码和结构化错误 envelope。`error.code` 表示具体原因，`error.suggestion` 给出下一条命令。
 
-## 总览
+| 代码 | 名称                    | 含义                                  | 常见下一步                              |
+| ---: | ----------------------- | ------------------------------------- | --------------------------------------- |
+|    0 | success                 | 操作完成                              | 读取 `data`                             |
+|    1 | generic error           | 运行时出现意外错误                    | 阅读 envelope 与日志                    |
+|    2 | usage error             | 命令或参数无效                        | 运行 `unicli describe` 或 `unicli help` |
+|   66 | empty result            | 请求完成，但没有匹配项                | 调整查询或标识符                        |
+|   69 | service unavailable     | 需要的服务、provider 或工具当前不可用 | 执行 `error.suggestion`                 |
+|   75 | temporary failure       | 出现超时、限流或网络错误              | 按建议等待后重试                        |
+|   77 | authentication required | 需要登录或权限                        | 运行返回的认证或授权命令                |
+|   78 | configuration error     | adapter 或本地配置需要调整            | 查看结果中标明的源文件                  |
 
-| Code | 名称        | 含义              | 智能体动作                                     |
-| ---- | ----------- | ----------------- | ---------------------------------------------- |
-| 0    | ok          | 成功              | 使用 `data`。                                  |
-| 66   | empty       | 没有结果          | 换查询、分页或参数。                           |
-| 69   | unavailable | 上游不可用        | 稍后重试，或换替代命令。                       |
-| 75   | temp-fail   | 临时失败          | 退避重试。                                     |
-| 77   | auth        | 需要认证或权限    | 运行 `unicli auth setup SITE` 或检查权限策略。 |
-| 78   | config      | 配置/adapter 错误 | 读错误信封，修 adapter。                       |
-
-## 成功
-
-退出码 `0` 表示命令完成。输出里通常有：
-
-```yaml
-ok: true
-schema_version: "2"
-command: "hackernews.top"
-data:
-  - title: "..."
-error: null
-```
-
-## 空结果
-
-退出码 `66` 不是崩溃。它说明命令跑完了，但没有匹配数据。
-
-常见动作：
-
-- 放宽搜索词。
-- 调整 `--limit` 或分页 cursor。
-- 换一个更宽的命令。
-
-## 服务不可用
-
-退出码 `69` 表示当前接口或本地应用不可用。可能是网络、上游、桌面应用未启动、平台能力缺失。
-
-先看 `error.retryable`。如果为 `true`，可以重试；如果为 `false`，优先看 `error.suggestion`。
-
-## 临时失败
-
-退出码 `75` 适合自动退避重试。不要无限重试，给自己设上限。
-
-## 认证失败
-
-退出码 `77` 表示需要登录、Cookie、token，或被本地权限策略挡住。
+## Shell 示例
 
 ```bash
-unicli auth setup SITE
-unicli auth check SITE
+if output=$(unicli hackernews top --limit 5 -f json); then
+  printf '%s\n' "$output" | jq '.data'
+else
+  status=$?
+  printf 'Uni-CLI exited with %s\n' "$status" >&2
+fi
 ```
 
-如果错误码是 `permission_denied`，看 `error.suggestion`，再检查
-`~/.unicli/permission-rules.json`。
+## Agent 示例
 
-## 配置错误
+```text
+用 -f json 运行命令。
+退出码为 0 时读取 data。
+退出码为 75 时等待后重试。
+其他失败读取 error.code、error.suggestion 和 error.remedy.command。
+```
 
-退出码 `78` 表示 adapter、schema 或本地配置有问题。读这些字段：
-
-- `error.adapter_path`
-- `error.step`
-- `error.suggestion`
-- `error.alternatives`
-
-然后进入 [自修复](/zh/guide/self-repair)。
+退出码常量定义在 `src/core/envelope.ts`。

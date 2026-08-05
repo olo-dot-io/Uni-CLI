@@ -1,6 +1,6 @@
 # Uni-CLI
 
-Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, select, govern, act through, observe, and repair operations across websites, logged-in browsers, desktop apps, files, local tools, external CLIs, MCP servers, accessibility, visual control, and agent backends.
+Uni-CLI gives AI agents one command model for searching and operating websites, browser sessions, desktop apps, files, local tools, external CLIs, MCP servers, accessibility, and visual control.
 
 ## Operation Snapshot
 
@@ -15,8 +15,8 @@ Uni-CLI is the open Agent-Computer Interface runtime for AI agents to discover, 
 
 - Start with `unicli search "your intent"`, then run `unicli <site> <command> [args]`.
 - Prefer `-f json` for scripts and `-f md` for agent-readable prose.
-- On failure, read the v2 error envelope, open the source path or `error.adapter_path`, patch the named step or boundary, then run `unicli repair <site> <command>`.
-- Native CLI is the complete process surface. MCP default/deferred/expanded profiles project adapter operations; fixed-core and other integration parity remain roadmap work.
+- On failure, read the v2 error envelope, update the source named by `error.adapter_path`, then run `unicli repair <site> <command>`.
+- Native CLI exposes the complete process surface. MCP provides compact, deferred, and expanded profiles from the same operation catalog.
 
 ## Markdown Companions
 
@@ -24,37 +24,41 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 
 ## Start
 
-- [Overview](https://olo-dot-io.github.io/Uni-CLI/) — overview, install path, capability map, and agent entry points. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
-- [First Run](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — start page for first run. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
-- [How It Works](https://olo-dot-io.github.io/Uni-CLI/how-it-works) — start page for how it works. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
-- [Integrations](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — start page for integrations. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
-- [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — start page for recipes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
-- [FAQ](https://olo-dot-io.github.io/Uni-CLI/faq) — start page for faq. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/faq.md
-- [Glossary](https://olo-dot-io.github.io/Uni-CLI/glossary) — start page for glossary. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
+- [Overview](https://olo-dot-io.github.io/Uni-CLI/) — One command interface for agents to search and operate websites, browsers, desktop apps, local tools, files, and MCP. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
+- [Quickstart](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — Install Uni-CLI, find an operation, and run your first command in a few minutes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
+- [Connect An Agent](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — Use Uni-CLI from shell-based agents, MCP clients, and ACP clients. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
+- [How Uni-CLI Works](https://olo-dot-io.github.io/Uni-CLI/how-it-works) — Follow an intent from local discovery to execution, structured output, and repair. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
 
-## Guides
+## Use Uni-CLI
 
-- [Guide Index](https://olo-dot-io.github.io/Uni-CLI/guide/) — guides page for guide index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
-- [Adapters](https://olo-dot-io.github.io/Uni-CLI/guide/adapters) — guides page for adapters. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
-- [OpenReview Archive](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) — guides page for openreview archive. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive.md
-- [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — guides page for self-repair. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+- [Find An Operation](https://olo-dot-io.github.io/Uni-CLI/guide/) — Search Uni-CLI by intent, inspect the matching command, and run it with structured output. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
+- [Authentication](https://olo-dot-io.github.io/Uni-CLI/guide/authentication) — Set up site credentials, import a browser session, and diagnose login state. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/authentication.md
+- [Browser And Desktop](https://olo-dot-io.github.io/Uni-CLI/guide/browser-desktop) — Choose a browser session, inspect page state, and control desktop applications through Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/browser-desktop.md
+- [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — Short, copyable Uni-CLI workflows for web data, research papers, authenticated sites, and browser sessions. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
+- [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — Read an adapter failure, update the named source, and verify the original operation. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+- [Archive OpenReview](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) — Create a resumable local archive of a public OpenReview venue. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive.md
+
+## Build
+
+- [Create An Adapter](https://olo-dot-io.github.io/Uni-CLI/guide/adapters) — Add a site or tool to Uni-CLI with a YAML adapter and test it locally. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
+- [Adapter Format](https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT) — Complete field reference for Uni-CLI YAML adapters and the TypeScript registration path. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
+- [Pipeline Steps](https://olo-dot-io.github.io/Uni-CLI/reference/pipeline) — Built-in actions available to YAML adapters, with common shapes and the complete current action list. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
+- [Plugin Authoring](https://olo-dot-io.github.io/Uni-CLI/PLUGIN) — Package adapters, pipeline steps, and runtime extensions for Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
 
 ## Reference
 
-- [Reference Index](https://olo-dot-io.github.io/Uni-CLI/reference/) — reference page for reference index. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
-- [Operation Catalog](https://olo-dot-io.github.io/Uni-CLI/reference/sites) — reference page for operation catalog. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
-- [Adapter Format](https://olo-dot-io.github.io/Uni-CLI/ADAPTER-FORMAT) — reference page for adapter format. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ADAPTER-FORMAT.md
-- [Pipeline Steps](https://olo-dot-io.github.io/Uni-CLI/reference/pipeline) — reference page for pipeline steps. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/pipeline.md
-- [Exit Codes](https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes) — reference page for exit codes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md
-- [Maintenance Tools](https://olo-dot-io.github.io/Uni-CLI/reference/maintenance) — reference page for maintenance tools. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/maintenance.md
-- [Plugin Authoring](https://olo-dot-io.github.io/Uni-CLI/PLUGIN) — reference page for plugin authoring. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
-- [Release](https://olo-dot-io.github.io/Uni-CLI/reference/release) — reference page for release. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/release.md
+- [Reference Overview](https://olo-dot-io.github.io/Uni-CLI/reference/) — Exact command, output, adapter, and pipeline references for Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference.md
+- [CLI Commands](https://olo-dot-io.github.io/Uni-CLI/reference/cli) — Core Uni-CLI commands for discovery, execution, authentication, browsers, repair, and protocol servers. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/cli.md
+- [Operation Catalog](https://olo-dot-io.github.io/Uni-CLI/reference/sites) — Browse the current generated catalog by interface, site, command, and authentication mode. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/sites.md
+- [Exit Codes](https://olo-dot-io.github.io/Uni-CLI/reference/exit-codes) — Map Uni-CLI process status to the next action in scripts and agents. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/reference/exit-codes.md
+- [Glossary](https://olo-dot-io.github.io/Uni-CLI/glossary) — Plain-language definitions for the terms used in Uni-CLI commands and adapter documentation. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/glossary.md
 
-## Explanation
+## Project
 
-- [Architecture](https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE) — explanation page for architecture. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
-- [Benchmarks](https://olo-dot-io.github.io/Uni-CLI/BENCHMARK) — explanation page for benchmarks. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
-- [Roadmap](https://olo-dot-io.github.io/Uni-CLI/ROADMAP) — explanation page for roadmap. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
+- [Architecture](https://olo-dot-io.github.io/Uni-CLI/ARCHITECTURE) — The components that turn an agent intent into a validated Uni-CLI operation and structured result. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
+- [Benchmarks](https://olo-dot-io.github.io/Uni-CLI/BENCHMARK) — Reproducible startup, catalog-size, and response-budget measurements for Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/BENCHMARK.md
+- [Roadmap](https://olo-dot-io.github.io/Uni-CLI/ROADMAP) — Shipped foundations and the next engineering priorities for Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
+- [FAQ](https://olo-dot-io.github.io/Uni-CLI/faq) — Direct answers about installation, supported interfaces, authentication, MCP, output, repair, and contributing. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/faq.md
 
 ## Full Context
 

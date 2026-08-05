@@ -28,11 +28,11 @@ type LocaleSiteMap = {
 };
 
 const rootTopNav = [
-  { text: "Docs", link: "/guide/" },
+  { text: "Docs", link: "/guide/getting-started" },
   { text: "Operations", link: "/reference/sites" },
-  { text: "Reference", link: "/reference/" },
   { text: "Integrations", link: "/guide/integrations" },
-  { text: "Architecture", link: "/ARCHITECTURE" },
+  { text: "Build", link: "/guide/adapters" },
+  { text: "Reference", link: "/reference/" },
 ];
 
 const rootSidebarGroups: SiteGroup[] = [
@@ -41,55 +41,62 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/",
     items: [
       { text: "Overview", link: "/" },
-      { text: "First Run", link: "/guide/getting-started" },
-      { text: "How It Works", link: "/how-it-works" },
-      { text: "Integrations", link: "/guide/integrations" },
-      { text: "Recipes", link: "/RECIPES" },
-      { text: "FAQ", link: "/faq" },
-      { text: "Glossary", link: "/glossary" },
+      { text: "Quickstart", link: "/guide/getting-started" },
+      { text: "Connect An Agent", link: "/guide/integrations" },
+      { text: "How Uni-CLI Works", link: "/how-it-works" },
     ],
   },
   {
-    text: "Guides",
+    text: "Use Uni-CLI",
     link: "/guide/",
     items: [
-      { text: "Guide Index", link: "/guide/" },
-      { text: "Adapters", link: "/guide/adapters" },
-      { text: "OpenReview Archive", link: "/guide/openreview-archive" },
+      { text: "Find An Operation", link: "/guide/" },
+      { text: "Authentication", link: "/guide/authentication" },
+      { text: "Browser And Desktop", link: "/guide/browser-desktop" },
+      { text: "Recipes", link: "/RECIPES" },
       { text: "Self-Repair", link: "/guide/self-repair" },
+      { text: "Archive OpenReview", link: "/guide/openreview-archive" },
+    ],
+  },
+  {
+    text: "Build",
+    link: "/guide/adapters",
+    items: [
+      { text: "Create An Adapter", link: "/guide/adapters" },
+      { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
+      { text: "Pipeline Steps", link: "/reference/pipeline" },
+      { text: "Plugin Authoring", link: "/PLUGIN" },
     ],
   },
   {
     text: "Reference",
     link: "/reference/",
     items: [
-      { text: "Reference Index", link: "/reference/" },
+      { text: "Reference Overview", link: "/reference/" },
+      { text: "CLI Commands", link: "/reference/cli" },
       { text: "Operation Catalog", link: "/reference/sites" },
-      { text: "Adapter Format", link: "/ADAPTER-FORMAT" },
-      { text: "Pipeline Steps", link: "/reference/pipeline" },
       { text: "Exit Codes", link: "/reference/exit-codes" },
-      { text: "Maintenance Tools", link: "/reference/maintenance" },
-      { text: "Plugin Authoring", link: "/PLUGIN" },
-      { text: "Release", link: "/reference/release" },
+      { text: "Glossary", link: "/glossary" },
     ],
   },
   {
-    text: "Explanation",
+    text: "Project",
     link: "/ARCHITECTURE",
     items: [
       { text: "Architecture", link: "/ARCHITECTURE" },
       { text: "Benchmarks", link: "/BENCHMARK" },
       { text: "Roadmap", link: "/ROADMAP" },
+      { text: "FAQ", link: "/faq" },
     ],
   },
 ];
 
 const zhTopNav = [
-  { text: "文档", link: "/guide/" },
+  { text: "文档", link: "/guide/getting-started" },
   { text: "操作目录", link: "/reference/sites" },
-  { text: "参考", link: "/reference/" },
   { text: "接入", link: "/guide/integrations" },
-  { text: "架构", link: "/ARCHITECTURE" },
+  { text: "扩展", link: "/guide/adapters" },
+  { text: "参考", link: "/reference/" },
 ];
 
 const zhSidebarGroups: SiteGroup[] = [
@@ -98,45 +105,52 @@ const zhSidebarGroups: SiteGroup[] = [
     link: "/",
     items: [
       { text: "概览", link: "/" },
-      { text: "安装运行", link: "/guide/getting-started" },
-      { text: "工作原理", link: "/how-it-works" },
+      { text: "快速开始", link: "/guide/getting-started" },
       { text: "接入 Agent", link: "/guide/integrations" },
-      { text: "常用场景", link: "/RECIPES" },
-      { text: "常见问题", link: "/faq" },
-      { text: "术语表", link: "/glossary" },
+      { text: "工作原理", link: "/how-it-works" },
     ],
   },
   {
-    text: "指南",
+    text: "使用 Uni-CLI",
     link: "/guide/",
     items: [
-      { text: "指南索引", link: "/guide/" },
-      { text: "适配器", link: "/guide/adapters" },
-      { text: "OpenReview 归档", link: "/guide/openreview-archive" },
+      { text: "查找操作", link: "/guide/" },
+      { text: "登录与认证", link: "/guide/authentication" },
+      { text: "浏览器与桌面", link: "/guide/browser-desktop" },
+      { text: "常用场景", link: "/RECIPES" },
       { text: "自修复", link: "/guide/self-repair" },
+      { text: "归档 OpenReview", link: "/guide/openreview-archive" },
+    ],
+  },
+  {
+    text: "扩展",
+    link: "/guide/adapters",
+    items: [
+      { text: "创建适配器", link: "/guide/adapters" },
+      { text: "适配器格式", link: "/ADAPTER-FORMAT" },
+      { text: "管线步骤", link: "/reference/pipeline" },
+      { text: "插件开发", link: "/PLUGIN" },
     ],
   },
   {
     text: "参考",
     link: "/reference/",
     items: [
-      { text: "参考索引", link: "/reference/" },
+      { text: "参考概览", link: "/reference/" },
+      { text: "CLI 命令", link: "/reference/cli" },
       { text: "操作目录", link: "/reference/sites" },
-      { text: "适配器格式", link: "/ADAPTER-FORMAT" },
-      { text: "管线步骤", link: "/reference/pipeline" },
       { text: "退出码", link: "/reference/exit-codes" },
-      { text: "维护工具", link: "/reference/maintenance" },
-      { text: "插件开发", link: "/PLUGIN" },
-      { text: "发布", link: "/reference/release" },
+      { text: "术语表", link: "/glossary" },
     ],
   },
   {
-    text: "解释",
+    text: "项目",
     link: "/ARCHITECTURE",
     items: [
       { text: "架构", link: "/ARCHITECTURE" },
       { text: "基准", link: "/BENCHMARK" },
       { text: "路线图", link: "/ROADMAP" },
+      { text: "常见问题", link: "/faq" },
     ],
   },
 ];

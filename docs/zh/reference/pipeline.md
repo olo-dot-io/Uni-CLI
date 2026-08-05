@@ -1,169 +1,173 @@
-# 管线步骤
+---
+title: Pipeline steps
+description: YAML adapter 可用的 built-in action、常见写法与当前完整 action 列表。
+---
 
-Pipeline step 是 adapter 的执行积木。YAML adapter 通过一串步骤完成请求、解析、筛选、映射、浏览器操作、本地命令和断言。
+# Pipeline steps
 
-字段名不要翻译：`fetch`、`select`、`map`、`exec` 等都是实际 schema 名称。中文解释只说明怎么用。
+YAML pipeline 会把每个 action 的输出传给下一步。Uni-CLI 当前有 <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action。
 
-## 基本形状
+其中 <span><!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --></span> 个属于 registered pipeline action。
+
+另外 <span><!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --></span> 个属于 transport-native action。
+
+## 基本结构
 
 ```yaml
 pipeline:
   - fetch:
-      url: "https://api.example.com/items"
+      url: https://api.example.com/items
   - select: data.items
   - map:
-      title: "${{ item.title }}"
-      url: "${{ item.url }}"
-  - limit: 20
+      title: ${{ item.title }}
+      url: ${{ item.url }}
+  - limit: ${{ args.limit }}
 ```
 
-每一步接收上一步输出，返回下一步输入。
+## HTTP 与内容
 
-## API steps
-
-| Step         | 用途                    |
-| ------------ | ----------------------- |
-| `fetch`      | 请求 JSON API。         |
-| `fetch_text` | 请求文本或 HTML。       |
-| `parse_rss`  | 解析 RSS/Atom。         |
-| `html_to_md` | 把 HTML 转成 Markdown。 |
-| `websocket`  | 连接 WebSocket 服务。   |
-
-`fetch` 示例：
+| Action         | 用途                             |
+| -------------- | -------------------------------- |
+| `fetch`        | 请求 JSON 或其他结构化 HTTP 响应 |
+| `fetch_text`   | 请求原始文字或 HTML              |
+| `parse_rss`    | 解析 RSS 或 Atom                 |
+| `html_to_md`   | 把 HTML 转为 Markdown            |
+| `download`     | 保存远程文件                     |
+| `oauth2-token` | 请求并存储 OAuth 2 token         |
+| `websocket`    | 通过 WebSocket 交换消息          |
 
 ```yaml
 - fetch:
-    url: "https://api.example.com/search"
+    url: https://api.example.com/search
+    method: GET
     params:
-      q: "${{ args.query }}"
-      limit: "${{ args.limit }}"
+      q: ${{ args.query }}
+    headers:
+      Accept: application/json
 ```
 
-## Transform steps
+## 数据转换
 
-| Step     | 用途                       |
-| -------- | -------------------------- |
-| `select` | 用 JSONPath 或路径取子树。 |
-| `map`    | 把 item 映射成稳定输出。   |
-| `filter` | 过滤列表。                 |
-| `sort`   | 排序。                     |
-| `limit`  | 限制数量。                 |
-| `set`    | 设置临时字段。             |
-
-`map` 示例：
+| Action       | 用途                             |
+| ------------ | -------------------------------- |
+| `select`     | 从当前值中读取路径               |
+| `select-xml` | 从 XML 中选择数据                |
+| `extract`    | 从 HTML 或 DOM 提取字段          |
+| `map`        | 把 item 映射为新对象             |
+| `filter`     | 保留匹配 item                    |
+| `sort`       | 排序列表                         |
+| `limit`      | 保留前 N 项                      |
+| `to_entries` | 把 object 转为 key/value entries |
+| `split_text` | 拆分文本                         |
+| `set`        | 保存命名值                       |
+| `append`     | 向列表追加值                     |
+| `assert`     | 验证结果条件                     |
 
 ```yaml
 - map:
-    title: "${{ item.title }}"
-    author: "${{ item.by }}"
-    url: "${{ item.url }}"
+    title: ${{ item.title }}
+    author: ${{ item.by }}
+- filter: item.title && !item.deleted
+- sort:
+    by: score
+    order: desc
+- limit: 10
 ```
 
-## Control steps
+## Control flow
 
-| Step         | 用途                                |
-| ------------ | ----------------------------------- |
-| `if`         | 条件分支。                          |
-| `each`       | 遍历列表，并可并发执行子 pipeline。 |
-| `parallel`   | 并行执行多个分支。                  |
-| `retry`      | 对易失败步骤重试。                  |
-| `rate_limit` | 控制请求节奏。                      |
-| `assert`     | 明确校验输出。                      |
-| `append`     | 追加结果。                          |
-
-并发抓详情页：
+| Action       | 用途                            |
+| ------------ | ------------------------------- |
+| `if`         | 条件匹配时运行分支              |
+| `each`       | 为每个 item 运行 child pipeline |
+| `parallel`   | 并发运行独立分支                |
+| `rate_limit` | 控制一个域名或资源的节奏        |
+| `wait`       | 等待时间或目标条件              |
 
 ```yaml
 - each:
-    parallel: 10
+    parallel: 4
     pipeline:
       - fetch:
-          url: "https://api.example.com/item/${{ item.id }}"
+          url: https://api.example.com/items/${{ item.id }}
 ```
 
-## Browser steps
+## 浏览器
 
-| Step         | 用途                            |
-| ------------ | ------------------------------- |
-| `navigate`   | 打开页面。                      |
-| `wait`       | 等待 selector、时间或页面状态。 |
-| `click`      | 点击元素。                      |
-| `type`       | 输入文本。                      |
-| `press`      | 发送按键。                      |
-| `scroll`     | 滚动页面。                      |
-| `snapshot`   | 读取页面结构或可交互元素。      |
-| `extract`    | 从 DOM 抽取内容。               |
-| `intercept`  | 捕获网络请求。                  |
-| `screenshot` | 截图。                          |
-
-浏览器步骤适合没有稳定 API 的页面：
+| Action      | 用途                       |
+| ----------- | -------------------------- |
+| `navigate`  | 打开 URL                   |
+| `evaluate`  | 运行页面 JavaScript        |
+| `click`     | 点击选中元素               |
+| `type`      | 输入文字                   |
+| `press`     | 发送按键                   |
+| `scroll`    | 滚动页面                   |
+| `snapshot`  | 读取页面 snapshot 与 ref   |
+| `tap`       | 激活 ref                   |
+| `intercept` | 捕获匹配的 browser request |
 
 ```yaml
 - navigate:
-    url: "https://example.com"
-    waitUntil: networkidle
-- wait: "#search"
-- type:
-    selector: "#search"
-    text: "${{ args.query }}"
-- press: Enter
-- snapshot: { interactive: false }
+    url: https://example.com
+- snapshot:
+    interactive: true
+- click:
+    selector: "#sign-in"
 ```
 
-## Desktop / subprocess steps
+## 本地与桌面 orchestration
 
-| Step         | 用途                           |
-| ------------ | ------------------------------ |
-| `exec`       | 运行本地命令。                 |
-| `write_temp` | 写临时文件，常用于脚本型工具。 |
-| `download`   | 下载文件。                     |
+| Action       | 用途                                                                       |
+| ------------ | -------------------------------------------------------------------------- |
+| `exec`       | 用 argv array 启动可执行程序                                               |
+| `write_temp` | 为后续 action 创建临时文件                                                 |
+| `compute_*`  | 通过 compute 路由 snapshot、input、screenshot、assertion 和 session action |
 
-示例：
+常用 compute action 包括 `compute_snapshot`、`compute_find`、`compute_click`、`compute_type`、`compute_press`、`compute_scroll`、`compute_screenshot`、`compute_assert`、`compute_session_start`、`compute_session_state` 和 `compute_session_end`。
 
 ```yaml
 - exec:
-    command: "ffprobe"
-    args: ["-v", "quiet", "-print_format", "json", "${{ args.file }}"]
+    command: ffprobe
+    args: ["-v", "quiet", "-print_format", "json", ${{ args.file }}]
     parse: json
+    timeout: 30000
 ```
 
-## 变量
+## Registered actions
 
-常见变量：
+当前 registered action 名称：
 
-| 变量                 | 含义               |
-| -------------------- | ------------------ |
-| `${{ args.name }}`   | 命令参数。         |
-| `${{ item.field }}`  | 当前 item 的字段。 |
-| `${{ env.NAME }}`    | 环境变量。         |
-| `${{ step.output }}` | 前面步骤的输出。   |
-
-变量是模板语法，不要在中文文档里改写。
-
-## 断言
-
-`assert` 用来防止“看似成功”的坏输出。
-
-```yaml
-- assert:
-    path: data.items
-    minLength: 1
-    message: "Expected at least one item"
+```text
+append, assert, click, compute_apps, compute_assert, compute_cdp_attach,
+compute_click, compute_drag, compute_evaluate, compute_find, compute_launch,
+compute_observe, compute_point_click, compute_point_scroll, compute_press,
+compute_screenshot, compute_scroll, compute_session_end,
+compute_session_escalate, compute_session_start, compute_session_state,
+compute_snapshot, compute_text, compute_type, compute_wait, compute_windows,
+download, each, evaluate, exec, extract, fetch, fetch_text, filter,
+html_to_md, if, intercept, limit, map, navigate, oauth2-token, parallel,
+parse_rss, press, rate_limit, scroll, select, select-xml, set, snapshot,
+sort, split_text, tap, to_entries, type, wait, websocket, write_temp
 ```
 
-如果页面或 API 变了，断言能把问题变成结构化错误，方便智能体修复。
+## Transport-native actions
 
-## 设计建议
+Transport adapter 还提供 macOS AX、Windows UIA、Linux AT-SPI、clipboard、application 与 visual action：
 
-- 能用 `web-api` 就不要先上浏览器。
-- 能用 YAML 就不要先写 TypeScript。
-- 每一步只做一件事。
-- 失败时让错误指向具体 step。
-- 输出字段保持稳定，字段名不要随意改。
-
-完整字段仍以 schema 和 adapter lint 为准：
-
-```bash
-npm run lint:schema-v2
-npm run lint:adapters
+```text
+applescript, ax_*, uia_*, atspi_*, clipboard_read, clipboard_write,
+focus_window, launch_app, visual_*
 ```
+
+这些 action 通过选中的 transport provider 与 capability row 执行。`src/engine/step-surface.ts` 会从 step registry 和 transport handler table 推导完整列表。
+
+## 模板
+
+| 表达式              | 值             |
+| ------------------- | -------------- |
+| `${{ args.name }}`  | 命令参数       |
+| `${{ item.field }}` | 当前 item 字段 |
+| `${{ index }}`      | 当前列表 index |
+| `${{ env.NAME }}`   | 环境变量       |
+
+Step schema 与实现在 `src/engine/steps/` 中。修改 pipeline 后运行 `npm run lint:adapters`。

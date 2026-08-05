@@ -1,247 +1,96 @@
-# Integrations
+---
+title: Connect an agent
+description: Use Uni-CLI from shell-based agents, MCP clients, and ACP clients.
+---
 
-Uni-CLI is designed to be called directly from a shell. Native CLI is the full
-command surface. Agent clients that need a protocol server can use MCP profiles
-for adapter operations; ACP and generated platform configurations expose their
-documented subsets. Do not infer command-by-command parity from catalog visibility.
+# Connect an agent
 
-## Choose A Path
+Choose the connection that matches your agent host. Shell execution exposes the complete CLI. MCP and ACP provide protocol-native entry points.
 
-| Client need                         | Use                                              |
-| ----------------------------------- | ------------------------------------------------ |
-| Any agent can run shell commands    | Native `unicli` CLI                              |
-| Tool-calling clients that speak MCP | `unicli mcp serve`                               |
-| Editor clients that speak ACP       | `unicli acp`                                     |
-| Platform-specific setup             | `unicli agents generate`                         |
-| Runtime/backend selection           | `unicli agents matrix` / `recommend`             |
-| Skill-native adapter discovery      | `unicli skills export` / `unicli skills publish` |
+## Shell
 
-Prefer the native CLI when the agent has shell access. It keeps discovery lazy,
-outputs compact, and preserves Unix composition.
-
-## Native CLI
+Any agent that can start a process can call Uni-CLI.
 
 ```bash
-unicli search "hacker news frontpage"
-unicli hackernews top --limit 5 -f json
+npm install -g @zenalexa/unicli
+unicli search "list the latest Hacker News stories" -f json
 ```
 
-Add this short contract to `AGENTS.md`, `CLAUDE.md`, or the equivalent agent
-context file:
+Give the agent this short instruction:
 
-```markdown
-Use `unicli search "intent"` before choosing a command. Run commands as
-`unicli SITE COMMAND [args]`. Prefer `-f json` for scripts and structured
-Markdown for human-readable agent output.
+```text
+Use unicli search "<intent>" before operating a website, app, or local tool.
+Use unicli describe <site> <command> to inspect arguments.
+Run the selected command with -f json.
 ```
 
-For higher-risk runs, inspect before execution:
-
-```bash
-unicli describe SITE COMMAND
-unicli SITE COMMAND --dry-run
-unicli SITE COMMAND --record
-```
+This path works well with Codex CLI, Claude Code, OpenCode, OpenClaw, Cursor agents, and CI jobs.
 
 ## MCP
 
-Start a stdio server:
-
-```bash
-npx @zenalexa/unicli mcp serve
-```
-
-Start a Streamable HTTP server:
-
-```bash
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826
-```
-
-Legacy SSE compatibility:
-
-```bash
-npx @zenalexa/unicli mcp serve --transport sse --port 19826
-```
-
-`sse` is a deprecated alias for the Streamable transport. Use
-`--transport streamable` for new setups.
-
-Remote deployments can enable OAuth 2.1 PKCE:
-
-```bash
-npx @zenalexa/unicli mcp serve --transport streamable --port 19826 --auth
-```
-
-Default MCP tools:
-
-| Tool             | Purpose                                     |
-| ---------------- | ------------------------------------------- |
-| `unicli_search`  | Search commands by natural-language intent. |
-| `unicli_run`     | Run a selected site command.                |
-| `unicli_list`    | List sites and commands.                    |
-| `unicli_explore` | Inspect a page before authoring an adapter. |
-
-Choose catalog exposure deliberately:
-
-```bash
-unicli mcp serve                    # 4 compact discovery/run meta-tools
-unicli mcp serve --profile deferred # lightweight stub per adapter operation
-unicli mcp serve --expanded         # full schema per adapter operation
-unicli mcp health -f json           # live profile and catalog counts
-```
-
-Deferred and expanded sizes follow the loaded adapter catalog; do not copy a
-fixed tool count into client configuration.
-
-`unicli_list` includes fixed-core discovery entries as well as adapter
-operations. `unicli_run` currently dispatches adapter operations only; invoke a
-fixed core command such as `unicli architecture audit` through native CLI.
-
-`mcp serve` and `acp` keep raw stdio protocol behavior. Normal command surfaces
-return the v2 `AgentEnvelope`.
-
-For local computer control, start the dedicated profile:
-
-```bash
-npx @zenalexa/unicli mcp serve --profile computer-use
-```
-
-It exposes the `computer-use.*` tool set backed by `unicli compute`. Client
-snippets are available for [Claude Desktop](../mcp/clients/claude-desktop.md),
-[Claude Code](../mcp/clients/claude-code.md),
-[Codex](../mcp/clients/codex.md), [Cursor](../mcp/clients/cursor.md), and
-[Gemini CLI](../mcp/clients/gemini-cli.md).
-
-Claude-style stdio config:
+Start the server with `npx`:
 
 ```json
 {
   "mcpServers": {
     "unicli": {
       "command": "npx",
-      "args": ["@zenalexa/unicli", "mcp", "serve"]
+      "args": ["-y", "@zenalexa/unicli-mcp"]
     }
   }
 }
 ```
 
-Codex CLI config:
+The equivalent terminal command is:
 
-```toml
-[mcp_servers.unicli]
-command = "npx"
-args = ["@zenalexa/unicli", "mcp", "serve"]
+```bash
+npx -y @zenalexa/unicli mcp serve
 ```
+
+Check the tools exposed by the selected profile:
+
+```bash
+unicli mcp health -f json
+```
+
+The default profile keeps discovery compact. Use `--expanded` when the client needs one MCP tool per adapter command.
 
 ## ACP
 
-ACP is an editor compatibility path for clients such as avante.nvim and Zed.
-MCP fits structured tool calls. ACP fits prompt/session frames.
+Start the Agent Client Protocol server:
 
 ```bash
-unicli acp
+unicli acp serve
 ```
 
-Minimal avante.nvim provider:
+Inspect available options with:
 
-```lua
-require("avante").setup({
-  providers = {
-    {
-      name = "unicli",
-      command = "unicli",
-      args = { "acp" },
-      type = "acp",
-    },
-  },
-})
+```bash
+unicli help acp
 ```
 
-ACP prompts should include an explicit command:
+## Authentication
+
+Run authentication setup in the same user account and environment as the agent host:
+
+```bash
+unicli auth setup <site>
+unicli browser profiles --json
+unicli auth import <site> --browser chrome
+```
+
+See [Authentication](./authentication) for stored credentials and live browser sessions.
+
+## Verify the connection
+
+Ask the client to perform a read-only call:
 
 ```text
-Show the top 10 HN posts:
-unicli hackernews top --limit 10
+Use Uni-CLI to list the top three Hacker News stories and return JSON.
 ```
 
-## Agent Platform Recipes
-
-Generate config where possible instead of hand-writing it:
+The expected command is:
 
 ```bash
-unicli agents matrix
-unicli agents recommend codex
-unicli agents generate --for claude
-unicli agents generate --for codex
-unicli agents generate --for opencode
-```
-
-Backend recommendations model native CLI, JSON stream, MCP, ACP, HTTP API,
-OpenAI-compatible routes, bridge CLIs, and Visual candidates explicitly.
-
-## Skills
-
-Export adapter commands as `SKILL.md` files when the agent runtime has a local
-skills directory:
-
-```bash
-unicli skills export
-unicli skills publish --to ~/.cursor/skills/uni-cli/
-unicli skills catalog --out /tmp/unicli-skills.json
-```
-
-The generated files include command name, when-to-use text, auth notes, and a
-call example. They complement runtime discovery for agents that load skills at
-startup.
-
-Manual examples:
-
-```bash
-# Claude Code MCP
-claude mcp add unicli -- npx @zenalexa/unicli mcp serve
-```
-
-```jsonc
-// OpenCode
-{
-  "mcp": {
-    "unicli": {
-      "type": "local",
-      "command": ["npx", "-y", "@zenalexa/unicli", "mcp", "serve"],
-      "enabled": true,
-    },
-  },
-}
-```
-
-```yaml
-# Hermes Agent
-mcp_servers:
-  unicli:
-    command: "npx"
-    args: ["-y", "@zenalexa/unicli", "mcp", "serve"]
-```
-
-## Auth
-
-All integration paths use the same CLI credential policy:
-
-```bash
-unicli auth setup SITE
-unicli auth check SITE
-```
-
-Live browser/CDP cookies stay in process memory unless the user explicitly runs
-an import/export command. Explicit plaintext storage path:
-
-```text
-~/.unicli/cookies/SITE.json
-```
-
-## Verify
-
-```bash
-unicli list
-unicli search "hacker news frontpage"
-unicli hackernews top --limit 5
+unicli hackernews top --limit 3 -f json
 ```

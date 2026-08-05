@@ -1,56 +1,27 @@
-# Uni-CLI — Agent-Native Command Budget
+---
+title: Benchmarks
+description: Reproducible startup, catalog-size, and response-budget measurements for Uni-CLI.
+---
 
-> Honest measurement of the context budget behind `unicli SITE CMD`.
-> Numbers in the "Results" section below are produced by `npm run bench`
-> and are reproducible in CI fixture mode and on a dev machine in live mode.
+# Benchmarks
 
-## Why This File Exists
+The benchmark suite measures costs an agent sees directly: cold CLI startup, full-catalog size, and representative operation response size.
 
-Agent-native infrastructure should publish real cost numbers. Uni-CLI measures
-both the command invocation and the response body so public claims stay tied to
-the current code, fixtures, and output contract.
+## Run the suite
 
-The generated results below measure v2 `AgentEnvelope` response bodies for
-representative `--limit 5` calls and measure the current full catalog directly.
-`unicli list` is intentionally much larger than one adapter call; no catalog
-count or latency from an older run is presented as current truth.
+```bash
+npm run bench
+```
 
-This file ships real numbers or says `TODO:` -- nothing in between.
+Use fixture mode for deterministic CI output:
 
-## How We Measure
+```bash
+BENCH_FIXTURES_ONLY=1 npm run bench
+```
 
-1. Build the CLI (`npm run build`) so `dist/main.js` is current.
-2. Run each `(site, command)` pair at fixed inputs (default args, `--limit 5`
-   unless noted). Capture stdout as JSON.
-3. Tokenise the piped `stdout` via an `o200k_base` heuristic approximator
-   (`bench/tokens.ts`). The heuristic matches real `tiktoken` counts within
-   roughly 6-8% on English and compact JSON; rounding to tens of tokens is
-   honest at this precision.
-4. Record p50 and p95 across the configured number of iterations
-   (`BENCH_RUNS`, default 50). Root metadata and catalog startup always use new
-   subprocesses. Adapter fixture timing is in-process parsing/tokenisation;
-   adapter live timing includes a real subprocess and network.
-5. Also capture the invocation-string token count so the agent-side command cost
-   is visible.
+Each root CLI measurement starts a new process. Adapter fixture timing covers in-process parsing and formatting. Live mode adds the subprocess and network path used by the command.
 
-The harness lives under `bench/` and is wired into `npm run bench`.
-
-| Mode    | Command                               | Network | Use                                                         |
-| ------- | ------------------------------------- | ------- | ----------------------------------------------------------- |
-| live    | `npm run bench`                       | yes     | Dev-machine sanity check, refreshes fixtures.               |
-| fixture | `BENCH_FIXTURES_ONLY=1 npm run bench` | no      | CI and reproducible reports. Reads `bench/fixtures/*.json`. |
-
-Fixture files are committed under `bench/fixtures/` alongside the scripts.
-Legacy fixture payloads are normalized into the current v2 `AgentEnvelope` shape
-before token counting, so the benchmark tracks the current public output
-contract even when source fixtures predate the envelope migration.
-
-There is no generic "warm CLI" number: each native CLI call is a new process.
-Persistent MCP and Browser Runtime Broker sessions have different ownership/lifetime
-boundaries and require their own benchmark; this report does not infer those
-numbers from fixture or cold-start results.
-
-## Results
+## Latest generated results
 
 <!-- BENCH:begin -->
 
@@ -95,34 +66,23 @@ numbers from fixture or cold-start results.
 
 <!-- BENCH:end -->
 
-## Public Budget
+## Reading the results
 
-The public operating target is straightforward:
+- `unicli --help` and `unicli --version` measure the smallest process startup paths.
+- `unicli list -f json` measures catalog loading and serialization.
+- Adapter cases use `--limit 5`, which reflects a common agent retrieval call.
+- Full catalog output is available on request; search and describe provide the smaller everyday path.
 
-- common list-style calls should stay under **600 total tokens** at `--limit 5`;
-- failure envelopes should stay compact enough for an agent to repair without
-  loading unrelated documentation;
-- full-catalog output should remain explicit, not automatic.
+The public response target for common list operations is 600 total tokens or less at `--limit 5`. Commands with larger results should expose a limit, pagination, or compact output.
 
-The current fixture suite clears that bar. If a future command class needs a
-larger payload, it should expose pagination, `--limit`, or `--compact`.
+## Files
 
-## Reproducibility
+| File                    | Purpose                               |
+| ----------------------- | ------------------------------------- |
+| `bench/cold-start.ts`   | Root command process timing           |
+| `bench/adapter-call.ts` | Representative operation measurements |
+| `bench/tokens.ts`       | Token estimator                       |
+| `bench/report.ts`       | Report generation                     |
+| `bench/fixtures/`       | Deterministic response fixtures       |
 
-The `bench/` directory is self-contained:
-
-- `bench/tokens.ts` — token estimator (no native deps).
-- `bench/cold-start.ts` — cold-process root metadata and `unicli list` runner.
-- `bench/adapter-call.ts` — per-command p50/p95 runner (live or fixture mode).
-- `bench/report.ts` — orchestrator, writes `bench/results.json` and patches
-  this file between `<!-- BENCH:begin -->` and `<!-- BENCH:end -->`.
-- `bench/fixtures/` — captured JSON responses (rerun `npm run bench` in live
-  mode to refresh; commit the diff if upstream shape changes).
-
-`npm run bench` is **not** part of `npm run verify` because it prefers network.
-CI runs it only in fixture mode, on an explicit workflow dispatch or a scheduled
-maintenance check.
-
----
-
-_Last reviewed: 2026-07-12._
+The report command writes `bench/results.json` and updates the generated section on this page.

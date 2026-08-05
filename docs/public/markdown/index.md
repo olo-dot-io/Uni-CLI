@@ -6,44 +6,33 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/index.md
 - Section: Start
 
-## The open Agent-Computer Interface runtime for real software
+## One command interface for agents
 
-Uni-CLI provides one searchable boundary between agents and websites, logged-in browsers, desktop apps, local tools, files, MCP servers, accessibility, visual control, and system capabilities. It ranks cataloged operations by intent, runs the selected operation through its declared substrate under supported policy, returns a stable success/error envelope, and keeps supported failure paths repairable.
+Uni-CLI gives agents one command model for searching and operating websites, browser sessions, desktop apps, local tools, files, and protocol services.
 
-## Runtime Contract
-
-- Intent discovery
-- Declared substrates
-- Policy-aware execution
-- Structured envelopes
-- MCP + ACP
-- Browser + Desktop
-- Repairable paths
-
-## First Command
+## First Run
 
 ```bash
 npm install -g @zenalexa/unicli
-unicli do "find the Hacker News frontpage"
-unicli extract https://example.com --max-chars 1200
-unicli compute snapshot --app Calculator --format compact
-unicli mcp serve --transport streamable --port 19826
+unicli search "list the top Hacker News stories"
+unicli describe hackernews top
+unicli hackernews top --limit 5 -f json
 ```
 
-## Positioning
+## How It Works
 
-Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, browser agent, or MCP platform. CLI is the native full process entry point; MCP projects adapter operations; APIs, files, CLIs, browsers, desktops, protocols, and visual control are declared substrates. The compact loop is discover, select, govern, act, observe, and repair.
+1. Describe the result with `unicli search`.
+2. Inspect arguments, authentication, and output with `unicli describe`.
+3. Run the selected command. Use `-f json` for agents and scripts.
+4. If a command fails, read the structured error on stderr and use `unicli repair` to inspect the repair path.
 
-- **Discover.** Bilingual BM25 search retrieves only the operations, arguments, auth posture, and risk fields relevant to the task.
-- **Select and govern.** The agent selects an operation with a declared strategy/substrate; currently covered capability scope, effect, risk, and approval remain inspectable before execution.
-- **Act and observe.** The adapter kernel invokes the selected operation; AgentEnvelope distinguishes success from error, and supporting operations can add artifacts, recordings, or post-state evidence.
-- **Repair.** Structured errors always include code/message and add source path, failed boundary, retryability, suggestion, or alternatives when applicable.
+## Interfaces
 
-## Common Tasks
-
-- `unicli search` and `unicli do` read the local operation catalog first, then execution can inspect operation, args, auth, risk, and output fields.
-- When a page, API, app, or local boundary changes, an owned failure can name the source path and failing step or boundary in its error envelope.
-- Native CLI is the complete command surface; MCP default/deferred/expanded profiles project adapter operations, while fixed-core and other integration parity remain roadmap work.
+- Websites and public APIs
+- Logged-in browser sessions
+- Desktop apps and macOS capabilities
+- Local CLIs, files, and protocol services
+- MCP and ACP clients
 
 ## Coverage
 
@@ -52,14 +41,15 @@ Uni-CLI is an Agent-Computer Interface runtime, not an agent model, planner, bro
 - Built-in actions: 113 (58 registered + 55 transport-native)
 - Tests: 9995
 
-Site and operation totals describe the static adapter catalog; fixed core and host-discovered commands join at runtime. Operations, adapters, built-in actions, tests, and substrates are counted by the build.
+These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
 ## Entrypoints
 
-- [First Run](/guide/getting-started): install, search, execute, authenticate, choose output formats, and read exit codes.
-- [Operation Catalog](/reference/sites): browse by site, substrate, auth strategy, and examples.
-- [Adapters](/guide/adapters): YAML adapters, pipeline steps, self-repair, and verification.
-- [Integrations](/guide/integrations): native CLI, MCP, ACP, and output modes for agent runtimes.
+- [Quickstart](/guide/getting-started): install Uni-CLI and run the first command.
+- [Connect an Agent](/guide/integrations): choose CLI, MCP, or ACP.
+- [Operation Catalog](/reference/sites): browse the current sites and commands.
+- [Create an Adapter](/guide/adapters): add a new software interface.
+- [CLI Reference](/reference/cli): see the complete command entry points.
 
 ## Current Version
 

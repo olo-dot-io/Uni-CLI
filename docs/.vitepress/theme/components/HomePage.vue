@@ -30,8 +30,8 @@ let homepageScroll: Lenis | undefined;
 const installCommand = "npm install -g @zenalexa/unicli";
 const agentInstruction = computed(() =>
   isZh.value
-    ? '安装 @zenalexa/unicli；使用浏览器工具前，先运行 unicli search "<意图>"。'
-    : 'Install @zenalexa/unicli. Before browser tools, run unicli search "<intent>".',
+    ? '安装 @zenalexa/unicli；操作网站、App 或本地工具前，先运行 unicli search "<意图>"。'
+    : 'Install @zenalexa/unicli. Before using a website, app, or local tool, run unicli search "<intent>".',
 );
 const heroCommand = computed(() =>
   heroMode.value === "install" ? installCommand : agentInstruction.value,
@@ -178,7 +178,13 @@ onBeforeUnmount(() => {
         <span>Uni-CLI</span>
       </a>
       <div class="uni-home-nav-links">
-        <a :href="withBase(isZh ? '/zh/guide/' : '/guide/')">
+        <a
+          :href="
+            withBase(
+              isZh ? '/zh/guide/getting-started' : '/guide/getting-started',
+            )
+          "
+        >
           {{ copy.nav[0] }}
         </a>
         <a :href="withBase(isZh ? '/zh/reference/sites' : '/reference/sites')">

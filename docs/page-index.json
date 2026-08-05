@@ -3,6 +3,7 @@
   "pages": [
     {
       "title": "Overview",
+      "description": "One command interface for agents to search and operate websites, browsers, desktop apps, local tools, files, and MCP.",
       "locale": "root",
       "routePath": "/",
       "markdownPath": "/markdown/index.md",
@@ -13,7 +14,8 @@
       "breadcrumbs": []
     },
     {
-      "title": "First Run",
+      "title": "Quickstart",
+      "description": "Install Uni-CLI, find an operation, and run your first command in a few minutes.",
       "locale": "root",
       "routePath": "/guide/getting-started",
       "markdownPath": "/markdown/guide/getting-started.md",
@@ -32,26 +34,8 @@
       ]
     },
     {
-      "title": "How It Works",
-      "locale": "root",
-      "routePath": "/how-it-works",
-      "markdownPath": "/markdown/how-it-works.md",
-      "sourceLink": "/how-it-works",
-      "sourcePath": "docs/how-it-works.md",
-      "section": "Start",
-      "parent": {
-        "text": "Start",
-        "link": "/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Start",
-          "link": "/"
-        }
-      ]
-    },
-    {
-      "title": "Integrations",
+      "title": "Connect An Agent",
+      "description": "Use Uni-CLI from shell-based agents, MCP clients, and ACP clients.",
       "locale": "root",
       "routePath": "/guide/integrations",
       "markdownPath": "/markdown/guide/integrations.md",
@@ -70,12 +54,13 @@
       ]
     },
     {
-      "title": "Recipes",
+      "title": "How Uni-CLI Works",
+      "description": "Follow an intent from local discovery to execution, structured output, and repair.",
       "locale": "root",
-      "routePath": "/RECIPES",
-      "markdownPath": "/markdown/RECIPES.md",
-      "sourceLink": "/RECIPES",
-      "sourcePath": "docs/RECIPES.md",
+      "routePath": "/how-it-works",
+      "markdownPath": "/markdown/how-it-works.md",
+      "sourceLink": "/how-it-works",
+      "sourcePath": "docs/how-it-works.md",
       "section": "Start",
       "parent": {
         "text": "Start",
@@ -89,113 +74,192 @@
       ]
     },
     {
-      "title": "FAQ",
-      "locale": "root",
-      "routePath": "/faq",
-      "markdownPath": "/markdown/faq.md",
-      "sourceLink": "/faq",
-      "sourcePath": "docs/faq.md",
-      "section": "Start",
-      "parent": {
-        "text": "Start",
-        "link": "/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Start",
-          "link": "/"
-        }
-      ]
-    },
-    {
-      "title": "Glossary",
-      "locale": "root",
-      "routePath": "/glossary",
-      "markdownPath": "/markdown/glossary.md",
-      "sourceLink": "/glossary",
-      "sourcePath": "docs/glossary.md",
-      "section": "Start",
-      "parent": {
-        "text": "Start",
-        "link": "/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Start",
-          "link": "/"
-        }
-      ]
-    },
-    {
-      "title": "Guide Index",
+      "title": "Find An Operation",
+      "description": "Search Uni-CLI by intent, inspect the matching command, and run it with structured output.",
       "locale": "root",
       "routePath": "/guide/",
       "markdownPath": "/markdown/guide.md",
       "sourceLink": "/guide/",
       "sourcePath": "docs/guide/index.md",
-      "section": "Guides",
+      "section": "Use Uni-CLI",
       "parent": null,
       "breadcrumbs": []
     },
     {
-      "title": "Adapters",
+      "title": "Authentication",
+      "description": "Set up site credentials, import a browser session, and diagnose login state.",
       "locale": "root",
-      "routePath": "/guide/adapters",
-      "markdownPath": "/markdown/guide/adapters.md",
-      "sourceLink": "/guide/adapters",
-      "sourcePath": "docs/guide/adapters.md",
-      "section": "Guides",
+      "routePath": "/guide/authentication",
+      "markdownPath": "/markdown/guide/authentication.md",
+      "sourceLink": "/guide/authentication",
+      "sourcePath": "docs/guide/authentication.md",
+      "section": "Use Uni-CLI",
       "parent": {
-        "text": "Guides",
+        "text": "Use Uni-CLI",
         "link": "/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "Guides",
+          "text": "Use Uni-CLI",
           "link": "/guide/"
         }
       ]
     },
     {
-      "title": "OpenReview Archive",
+      "title": "Browser And Desktop",
+      "description": "Choose a browser session, inspect page state, and control desktop applications through Uni-CLI.",
       "locale": "root",
-      "routePath": "/guide/openreview-archive",
-      "markdownPath": "/markdown/guide/openreview-archive.md",
-      "sourceLink": "/guide/openreview-archive",
-      "sourcePath": "docs/guide/openreview-archive.md",
-      "section": "Guides",
+      "routePath": "/guide/browser-desktop",
+      "markdownPath": "/markdown/guide/browser-desktop.md",
+      "sourceLink": "/guide/browser-desktop",
+      "sourcePath": "docs/guide/browser-desktop.md",
+      "section": "Use Uni-CLI",
       "parent": {
-        "text": "Guides",
+        "text": "Use Uni-CLI",
         "link": "/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "Guides",
+          "text": "Use Uni-CLI",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
+      "title": "Recipes",
+      "description": "Short, copyable Uni-CLI workflows for web data, research papers, authenticated sites, and browser sessions.",
+      "locale": "root",
+      "routePath": "/RECIPES",
+      "markdownPath": "/markdown/RECIPES.md",
+      "sourceLink": "/RECIPES",
+      "sourcePath": "docs/RECIPES.md",
+      "section": "Use Uni-CLI",
+      "parent": {
+        "text": "Use Uni-CLI",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Use Uni-CLI",
           "link": "/guide/"
         }
       ]
     },
     {
       "title": "Self-Repair",
+      "description": "Read an adapter failure, update the named source, and verify the original operation.",
       "locale": "root",
       "routePath": "/guide/self-repair",
       "markdownPath": "/markdown/guide/self-repair.md",
       "sourceLink": "/guide/self-repair",
       "sourcePath": "docs/guide/self-repair.md",
-      "section": "Guides",
+      "section": "Use Uni-CLI",
       "parent": {
-        "text": "Guides",
+        "text": "Use Uni-CLI",
         "link": "/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "Guides",
+          "text": "Use Uni-CLI",
           "link": "/guide/"
         }
       ]
     },
     {
-      "title": "Reference Index",
+      "title": "Archive OpenReview",
+      "description": "Create a resumable local archive of a public OpenReview venue.",
+      "locale": "root",
+      "routePath": "/guide/openreview-archive",
+      "markdownPath": "/markdown/guide/openreview-archive.md",
+      "sourceLink": "/guide/openreview-archive",
+      "sourcePath": "docs/guide/openreview-archive.md",
+      "section": "Use Uni-CLI",
+      "parent": {
+        "text": "Use Uni-CLI",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Use Uni-CLI",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
+      "title": "Create An Adapter",
+      "description": "Add a site or tool to Uni-CLI with a YAML adapter and test it locally.",
+      "locale": "root",
+      "routePath": "/guide/adapters",
+      "markdownPath": "/markdown/guide/adapters.md",
+      "sourceLink": "/guide/adapters",
+      "sourcePath": "docs/guide/adapters.md",
+      "section": "Build",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "Adapter Format",
+      "description": "Complete field reference for Uni-CLI YAML adapters and the TypeScript registration path.",
+      "locale": "root",
+      "routePath": "/ADAPTER-FORMAT",
+      "markdownPath": "/markdown/ADAPTER-FORMAT.md",
+      "sourceLink": "/ADAPTER-FORMAT",
+      "sourcePath": "docs/ADAPTER-FORMAT.md",
+      "section": "Build",
+      "parent": {
+        "text": "Build",
+        "link": "/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Build",
+          "link": "/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "Pipeline Steps",
+      "description": "Built-in actions available to YAML adapters, with common shapes and the complete current action list.",
+      "locale": "root",
+      "routePath": "/reference/pipeline",
+      "markdownPath": "/markdown/reference/pipeline.md",
+      "sourceLink": "/reference/pipeline",
+      "sourcePath": "docs/reference/pipeline.md",
+      "section": "Build",
+      "parent": {
+        "text": "Build",
+        "link": "/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Build",
+          "link": "/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "Plugin Authoring",
+      "description": "Package adapters, pipeline steps, and runtime extensions for Uni-CLI.",
+      "locale": "root",
+      "routePath": "/PLUGIN",
+      "markdownPath": "/markdown/PLUGIN.md",
+      "sourceLink": "/PLUGIN",
+      "sourcePath": "docs/PLUGIN.md",
+      "section": "Build",
+      "parent": {
+        "text": "Build",
+        "link": "/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Build",
+          "link": "/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "Reference Overview",
+      "description": "Exact command, output, adapter, and pipeline references for Uni-CLI.",
       "locale": "root",
       "routePath": "/reference/",
       "markdownPath": "/markdown/reference.md",
@@ -206,7 +270,28 @@
       "breadcrumbs": []
     },
     {
+      "title": "CLI Commands",
+      "description": "Core Uni-CLI commands for discovery, execution, authentication, browsers, repair, and protocol servers.",
+      "locale": "root",
+      "routePath": "/reference/cli",
+      "markdownPath": "/markdown/reference/cli.md",
+      "sourceLink": "/reference/cli",
+      "sourcePath": "docs/reference/cli.md",
+      "section": "Reference",
+      "parent": {
+        "text": "Reference",
+        "link": "/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Reference",
+          "link": "/reference/"
+        }
+      ]
+    },
+    {
       "title": "Operation Catalog",
+      "description": "Browse the current generated catalog by interface, site, command, and authentication mode.",
       "locale": "root",
       "routePath": "/reference/sites",
       "markdownPath": "/markdown/reference/sites.md",
@@ -225,45 +310,8 @@
       ]
     },
     {
-      "title": "Adapter Format",
-      "locale": "root",
-      "routePath": "/ADAPTER-FORMAT",
-      "markdownPath": "/markdown/ADAPTER-FORMAT.md",
-      "sourceLink": "/ADAPTER-FORMAT",
-      "sourcePath": "docs/ADAPTER-FORMAT.md",
-      "section": "Reference",
-      "parent": {
-        "text": "Reference",
-        "link": "/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Reference",
-          "link": "/reference/"
-        }
-      ]
-    },
-    {
-      "title": "Pipeline Steps",
-      "locale": "root",
-      "routePath": "/reference/pipeline",
-      "markdownPath": "/markdown/reference/pipeline.md",
-      "sourceLink": "/reference/pipeline",
-      "sourcePath": "docs/reference/pipeline.md",
-      "section": "Reference",
-      "parent": {
-        "text": "Reference",
-        "link": "/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Reference",
-          "link": "/reference/"
-        }
-      ]
-    },
-    {
       "title": "Exit Codes",
+      "description": "Map Uni-CLI process status to the next action in scripts and agents.",
       "locale": "root",
       "routePath": "/reference/exit-codes",
       "markdownPath": "/markdown/reference/exit-codes.md",
@@ -282,50 +330,13 @@
       ]
     },
     {
-      "title": "Maintenance Tools",
+      "title": "Glossary",
+      "description": "Plain-language definitions for the terms used in Uni-CLI commands and adapter documentation.",
       "locale": "root",
-      "routePath": "/reference/maintenance",
-      "markdownPath": "/markdown/reference/maintenance.md",
-      "sourceLink": "/reference/maintenance",
-      "sourcePath": "docs/reference/maintenance.md",
-      "section": "Reference",
-      "parent": {
-        "text": "Reference",
-        "link": "/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Reference",
-          "link": "/reference/"
-        }
-      ]
-    },
-    {
-      "title": "Plugin Authoring",
-      "locale": "root",
-      "routePath": "/PLUGIN",
-      "markdownPath": "/markdown/PLUGIN.md",
-      "sourceLink": "/PLUGIN",
-      "sourcePath": "docs/PLUGIN.md",
-      "section": "Reference",
-      "parent": {
-        "text": "Reference",
-        "link": "/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "Reference",
-          "link": "/reference/"
-        }
-      ]
-    },
-    {
-      "title": "Release",
-      "locale": "root",
-      "routePath": "/reference/release",
-      "markdownPath": "/markdown/reference/release.md",
-      "sourceLink": "/reference/release",
-      "sourcePath": "docs/reference/release.md",
+      "routePath": "/glossary",
+      "markdownPath": "/markdown/glossary.md",
+      "sourceLink": "/glossary",
+      "sourcePath": "docs/glossary.md",
       "section": "Reference",
       "parent": {
         "text": "Reference",
@@ -340,55 +351,79 @@
     },
     {
       "title": "Architecture",
+      "description": "The components that turn an agent intent into a validated Uni-CLI operation and structured result.",
       "locale": "root",
       "routePath": "/ARCHITECTURE",
       "markdownPath": "/markdown/ARCHITECTURE.md",
       "sourceLink": "/ARCHITECTURE",
       "sourcePath": "docs/ARCHITECTURE.md",
-      "section": "Explanation",
+      "section": "Project",
       "parent": null,
       "breadcrumbs": []
     },
     {
       "title": "Benchmarks",
+      "description": "Reproducible startup, catalog-size, and response-budget measurements for Uni-CLI.",
       "locale": "root",
       "routePath": "/BENCHMARK",
       "markdownPath": "/markdown/BENCHMARK.md",
       "sourceLink": "/BENCHMARK",
       "sourcePath": "docs/BENCHMARK.md",
-      "section": "Explanation",
+      "section": "Project",
       "parent": {
-        "text": "Explanation",
+        "text": "Project",
         "link": "/ARCHITECTURE"
       },
       "breadcrumbs": [
         {
-          "text": "Explanation",
+          "text": "Project",
           "link": "/ARCHITECTURE"
         }
       ]
     },
     {
       "title": "Roadmap",
+      "description": "Shipped foundations and the next engineering priorities for Uni-CLI.",
       "locale": "root",
       "routePath": "/ROADMAP",
       "markdownPath": "/markdown/ROADMAP.md",
       "sourceLink": "/ROADMAP",
       "sourcePath": "docs/ROADMAP.md",
-      "section": "Explanation",
+      "section": "Project",
       "parent": {
-        "text": "Explanation",
+        "text": "Project",
         "link": "/ARCHITECTURE"
       },
       "breadcrumbs": [
         {
-          "text": "Explanation",
+          "text": "Project",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "FAQ",
+      "description": "Direct answers about installation, supported interfaces, authentication, MCP, output, repair, and contributing.",
+      "locale": "root",
+      "routePath": "/faq",
+      "markdownPath": "/markdown/faq.md",
+      "sourceLink": "/faq",
+      "sourcePath": "docs/faq.md",
+      "section": "Project",
+      "parent": {
+        "text": "Project",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Project",
           "link": "/ARCHITECTURE"
         }
       ]
     },
     {
       "title": "概览",
+      "description": "让 Agent 用统一命令搜索并操作网站、浏览器、桌面应用、本地工具、文件与 MCP。",
       "locale": "zh",
       "routePath": "/zh/",
       "markdownPath": "/markdown/zh/index.md",
@@ -399,7 +434,8 @@
       "breadcrumbs": []
     },
     {
-      "title": "安装运行",
+      "title": "快速开始",
+      "description": "安装 Uni-CLI，查找操作，并在几分钟内完成第一次调用。",
       "locale": "zh",
       "routePath": "/zh/guide/getting-started",
       "markdownPath": "/markdown/zh/guide/getting-started.md",
@@ -418,26 +454,8 @@
       ]
     },
     {
-      "title": "工作原理",
-      "locale": "zh",
-      "routePath": "/zh/how-it-works",
-      "markdownPath": "/markdown/zh/how-it-works.md",
-      "sourceLink": "/how-it-works",
-      "sourcePath": "docs/zh/how-it-works.md",
-      "section": "上手",
-      "parent": {
-        "text": "上手",
-        "link": "/zh/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "上手",
-          "link": "/zh/"
-        }
-      ]
-    },
-    {
       "title": "接入 Agent",
+      "description": "从 Shell Agent、MCP 客户端和 ACP 客户端调用 Uni-CLI。",
       "locale": "zh",
       "routePath": "/zh/guide/integrations",
       "markdownPath": "/markdown/zh/guide/integrations.md",
@@ -456,12 +474,13 @@
       ]
     },
     {
-      "title": "常用场景",
+      "title": "工作原理",
+      "description": "从意图搜索开始，了解执行、结构化结果和修复的完整流程。",
       "locale": "zh",
-      "routePath": "/zh/RECIPES",
-      "markdownPath": "/markdown/zh/RECIPES.md",
-      "sourceLink": "/RECIPES",
-      "sourcePath": "docs/zh/RECIPES.md",
+      "routePath": "/zh/how-it-works",
+      "markdownPath": "/markdown/zh/how-it-works.md",
+      "sourceLink": "/how-it-works",
+      "sourcePath": "docs/zh/how-it-works.md",
       "section": "上手",
       "parent": {
         "text": "上手",
@@ -475,113 +494,192 @@
       ]
     },
     {
-      "title": "常见问题",
-      "locale": "zh",
-      "routePath": "/zh/faq",
-      "markdownPath": "/markdown/zh/faq.md",
-      "sourceLink": "/faq",
-      "sourcePath": "docs/zh/faq.md",
-      "section": "上手",
-      "parent": {
-        "text": "上手",
-        "link": "/zh/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "上手",
-          "link": "/zh/"
-        }
-      ]
-    },
-    {
-      "title": "术语表",
-      "locale": "zh",
-      "routePath": "/zh/glossary",
-      "markdownPath": "/markdown/zh/glossary.md",
-      "sourceLink": "/glossary",
-      "sourcePath": "docs/zh/glossary.md",
-      "section": "上手",
-      "parent": {
-        "text": "上手",
-        "link": "/zh/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "上手",
-          "link": "/zh/"
-        }
-      ]
-    },
-    {
-      "title": "指南索引",
+      "title": "查找操作",
+      "description": "用自然语言搜索 Uni-CLI，查看命令参数，并获得结构化结果。",
       "locale": "zh",
       "routePath": "/zh/guide/",
       "markdownPath": "/markdown/zh/guide.md",
       "sourceLink": "/guide/",
       "sourcePath": "docs/zh/guide/index.md",
-      "section": "指南",
+      "section": "使用 Uni-CLI",
       "parent": null,
       "breadcrumbs": []
     },
     {
-      "title": "适配器",
+      "title": "登录与认证",
+      "description": "配置站点凭据、导入浏览器登录态，并诊断认证状态。",
       "locale": "zh",
-      "routePath": "/zh/guide/adapters",
-      "markdownPath": "/markdown/zh/guide/adapters.md",
-      "sourceLink": "/guide/adapters",
-      "sourcePath": "docs/zh/guide/adapters.md",
-      "section": "指南",
+      "routePath": "/zh/guide/authentication",
+      "markdownPath": "/markdown/zh/guide/authentication.md",
+      "sourceLink": "/guide/authentication",
+      "sourcePath": "docs/zh/guide/authentication.md",
+      "section": "使用 Uni-CLI",
       "parent": {
-        "text": "指南",
+        "text": "使用 Uni-CLI",
         "link": "/zh/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "指南",
+          "text": "使用 Uni-CLI",
           "link": "/zh/guide/"
         }
       ]
     },
     {
-      "title": "OpenReview 归档",
+      "title": "浏览器与桌面",
+      "description": "选择浏览器 session，读取页面状态，并通过 Uni-CLI 操作桌面应用。",
       "locale": "zh",
-      "routePath": "/zh/guide/openreview-archive",
-      "markdownPath": "/markdown/zh/guide/openreview-archive.md",
-      "sourceLink": "/guide/openreview-archive",
-      "sourcePath": "docs/zh/guide/openreview-archive.md",
-      "section": "指南",
+      "routePath": "/zh/guide/browser-desktop",
+      "markdownPath": "/markdown/zh/guide/browser-desktop.md",
+      "sourceLink": "/guide/browser-desktop",
+      "sourcePath": "docs/zh/guide/browser-desktop.md",
+      "section": "使用 Uni-CLI",
       "parent": {
-        "text": "指南",
+        "text": "使用 Uni-CLI",
         "link": "/zh/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "指南",
+          "text": "使用 Uni-CLI",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "常用场景",
+      "description": "复制即可使用的 Uni-CLI 工作流，覆盖网页数据、论文、登录站点和浏览器 session。",
+      "locale": "zh",
+      "routePath": "/zh/RECIPES",
+      "markdownPath": "/markdown/zh/RECIPES.md",
+      "sourceLink": "/RECIPES",
+      "sourcePath": "docs/zh/RECIPES.md",
+      "section": "使用 Uni-CLI",
+      "parent": {
+        "text": "使用 Uni-CLI",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "使用 Uni-CLI",
           "link": "/zh/guide/"
         }
       ]
     },
     {
       "title": "自修复",
+      "description": "读取 adapter failure，更新对应源文件，并验证原操作。",
       "locale": "zh",
       "routePath": "/zh/guide/self-repair",
       "markdownPath": "/markdown/zh/guide/self-repair.md",
       "sourceLink": "/guide/self-repair",
       "sourcePath": "docs/zh/guide/self-repair.md",
-      "section": "指南",
+      "section": "使用 Uni-CLI",
       "parent": {
-        "text": "指南",
+        "text": "使用 Uni-CLI",
         "link": "/zh/guide/"
       },
       "breadcrumbs": [
         {
-          "text": "指南",
+          "text": "使用 Uni-CLI",
           "link": "/zh/guide/"
         }
       ]
     },
     {
-      "title": "参考索引",
+      "title": "归档 OpenReview",
+      "description": "为公开 OpenReview venue 创建可续传的本地归档。",
+      "locale": "zh",
+      "routePath": "/zh/guide/openreview-archive",
+      "markdownPath": "/markdown/zh/guide/openreview-archive.md",
+      "sourceLink": "/guide/openreview-archive",
+      "sourcePath": "docs/zh/guide/openreview-archive.md",
+      "section": "使用 Uni-CLI",
+      "parent": {
+        "text": "使用 Uni-CLI",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "使用 Uni-CLI",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "创建适配器",
+      "description": "用 YAML adapter 把新站点或工具加入 Uni-CLI，并在本机完成测试。",
+      "locale": "zh",
+      "routePath": "/zh/guide/adapters",
+      "markdownPath": "/markdown/zh/guide/adapters.md",
+      "sourceLink": "/guide/adapters",
+      "sourcePath": "docs/zh/guide/adapters.md",
+      "section": "扩展",
+      "parent": null,
+      "breadcrumbs": []
+    },
+    {
+      "title": "适配器格式",
+      "description": "Uni-CLI YAML adapter 与 TypeScript 注册路径的完整字段参考。",
+      "locale": "zh",
+      "routePath": "/zh/ADAPTER-FORMAT",
+      "markdownPath": "/markdown/zh/ADAPTER-FORMAT.md",
+      "sourceLink": "/ADAPTER-FORMAT",
+      "sourcePath": "docs/zh/ADAPTER-FORMAT.md",
+      "section": "扩展",
+      "parent": {
+        "text": "扩展",
+        "link": "/zh/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "扩展",
+          "link": "/zh/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "管线步骤",
+      "description": "YAML adapter 可用的 built-in action、常见写法与当前完整 action 列表。",
+      "locale": "zh",
+      "routePath": "/zh/reference/pipeline",
+      "markdownPath": "/markdown/zh/reference/pipeline.md",
+      "sourceLink": "/reference/pipeline",
+      "sourcePath": "docs/zh/reference/pipeline.md",
+      "section": "扩展",
+      "parent": {
+        "text": "扩展",
+        "link": "/zh/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "扩展",
+          "link": "/zh/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "插件开发",
+      "description": "为 Uni-CLI 打包 adapter、pipeline step 与 runtime extension。",
+      "locale": "zh",
+      "routePath": "/zh/PLUGIN",
+      "markdownPath": "/markdown/zh/PLUGIN.md",
+      "sourceLink": "/PLUGIN",
+      "sourcePath": "docs/zh/PLUGIN.md",
+      "section": "扩展",
+      "parent": {
+        "text": "扩展",
+        "link": "/zh/guide/adapters"
+      },
+      "breadcrumbs": [
+        {
+          "text": "扩展",
+          "link": "/zh/guide/adapters"
+        }
+      ]
+    },
+    {
+      "title": "参考概览",
+      "description": "查看 Uni-CLI 的命令、输出、适配器和 pipeline 精确合同。",
       "locale": "zh",
       "routePath": "/zh/reference/",
       "markdownPath": "/markdown/zh/reference.md",
@@ -592,7 +690,28 @@
       "breadcrumbs": []
     },
     {
+      "title": "CLI 命令",
+      "description": "Uni-CLI 的发现、执行、认证、浏览器、修复和协议服务命令。",
+      "locale": "zh",
+      "routePath": "/zh/reference/cli",
+      "markdownPath": "/markdown/zh/reference/cli.md",
+      "sourceLink": "/reference/cli",
+      "sourcePath": "docs/zh/reference/cli.md",
+      "section": "参考",
+      "parent": {
+        "text": "参考",
+        "link": "/zh/reference/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "参考",
+          "link": "/zh/reference/"
+        }
+      ]
+    },
+    {
       "title": "操作目录",
+      "description": "按接口类型、站点、命令和认证方式浏览当前生成的操作目录。",
       "locale": "zh",
       "routePath": "/zh/reference/sites",
       "markdownPath": "/markdown/zh/reference/sites.md",
@@ -611,45 +730,8 @@
       ]
     },
     {
-      "title": "适配器格式",
-      "locale": "zh",
-      "routePath": "/zh/ADAPTER-FORMAT",
-      "markdownPath": "/markdown/zh/ADAPTER-FORMAT.md",
-      "sourceLink": "/ADAPTER-FORMAT",
-      "sourcePath": "docs/zh/ADAPTER-FORMAT.md",
-      "section": "参考",
-      "parent": {
-        "text": "参考",
-        "link": "/zh/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "参考",
-          "link": "/zh/reference/"
-        }
-      ]
-    },
-    {
-      "title": "管线步骤",
-      "locale": "zh",
-      "routePath": "/zh/reference/pipeline",
-      "markdownPath": "/markdown/zh/reference/pipeline.md",
-      "sourceLink": "/reference/pipeline",
-      "sourcePath": "docs/zh/reference/pipeline.md",
-      "section": "参考",
-      "parent": {
-        "text": "参考",
-        "link": "/zh/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "参考",
-          "link": "/zh/reference/"
-        }
-      ]
-    },
-    {
       "title": "退出码",
+      "description": "根据 Uni-CLI 进程状态在脚本和 Agent 中选择下一步。",
       "locale": "zh",
       "routePath": "/zh/reference/exit-codes",
       "markdownPath": "/markdown/zh/reference/exit-codes.md",
@@ -668,50 +750,13 @@
       ]
     },
     {
-      "title": "维护工具",
+      "title": "术语表",
+      "description": "用直白语言解释 Uni-CLI 命令和 adapter 文档中的常用术语。",
       "locale": "zh",
-      "routePath": "/zh/reference/maintenance",
-      "markdownPath": "/markdown/zh/reference/maintenance.md",
-      "sourceLink": "/reference/maintenance",
-      "sourcePath": "docs/zh/reference/maintenance.md",
-      "section": "参考",
-      "parent": {
-        "text": "参考",
-        "link": "/zh/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "参考",
-          "link": "/zh/reference/"
-        }
-      ]
-    },
-    {
-      "title": "插件开发",
-      "locale": "zh",
-      "routePath": "/zh/PLUGIN",
-      "markdownPath": "/markdown/zh/PLUGIN.md",
-      "sourceLink": "/PLUGIN",
-      "sourcePath": "docs/zh/PLUGIN.md",
-      "section": "参考",
-      "parent": {
-        "text": "参考",
-        "link": "/zh/reference/"
-      },
-      "breadcrumbs": [
-        {
-          "text": "参考",
-          "link": "/zh/reference/"
-        }
-      ]
-    },
-    {
-      "title": "发布",
-      "locale": "zh",
-      "routePath": "/zh/reference/release",
-      "markdownPath": "/markdown/zh/reference/release.md",
-      "sourceLink": "/reference/release",
-      "sourcePath": "docs/zh/reference/release.md",
+      "routePath": "/zh/glossary",
+      "markdownPath": "/markdown/zh/glossary.md",
+      "sourceLink": "/glossary",
+      "sourcePath": "docs/zh/glossary.md",
       "section": "参考",
       "parent": {
         "text": "参考",
@@ -726,49 +771,72 @@
     },
     {
       "title": "架构",
+      "description": "Uni-CLI 如何把 Agent 意图转换为经过验证的操作与结构化结果。",
       "locale": "zh",
       "routePath": "/zh/ARCHITECTURE",
       "markdownPath": "/markdown/zh/ARCHITECTURE.md",
       "sourceLink": "/ARCHITECTURE",
       "sourcePath": "docs/zh/ARCHITECTURE.md",
-      "section": "解释",
+      "section": "项目",
       "parent": null,
       "breadcrumbs": []
     },
     {
       "title": "基准",
+      "description": "Uni-CLI 可复现的启动时间、目录大小与响应预算数据。",
       "locale": "zh",
       "routePath": "/zh/BENCHMARK",
       "markdownPath": "/markdown/zh/BENCHMARK.md",
       "sourceLink": "/BENCHMARK",
       "sourcePath": "docs/zh/BENCHMARK.md",
-      "section": "解释",
+      "section": "项目",
       "parent": {
-        "text": "解释",
+        "text": "项目",
         "link": "/zh/ARCHITECTURE"
       },
       "breadcrumbs": [
         {
-          "text": "解释",
+          "text": "项目",
           "link": "/zh/ARCHITECTURE"
         }
       ]
     },
     {
       "title": "路线图",
+      "description": "Uni-CLI 已完成的基础能力与下一阶段工程重点。",
       "locale": "zh",
       "routePath": "/zh/ROADMAP",
       "markdownPath": "/markdown/zh/ROADMAP.md",
       "sourceLink": "/ROADMAP",
       "sourcePath": "docs/zh/ROADMAP.md",
-      "section": "解释",
+      "section": "项目",
       "parent": {
-        "text": "解释",
+        "text": "项目",
         "link": "/zh/ARCHITECTURE"
       },
       "breadcrumbs": [
         {
-          "text": "解释",
+          "text": "项目",
+          "link": "/zh/ARCHITECTURE"
+        }
+      ]
+    },
+    {
+      "title": "常见问题",
+      "description": "回答安装、支持接口、登录、MCP、输出、修复和扩展等常见问题。",
+      "locale": "zh",
+      "routePath": "/zh/faq",
+      "markdownPath": "/markdown/zh/faq.md",
+      "sourceLink": "/faq",
+      "sourcePath": "docs/zh/faq.md",
+      "section": "项目",
+      "parent": {
+        "text": "项目",
+        "link": "/zh/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "项目",
           "link": "/zh/ARCHITECTURE"
         }
       ]

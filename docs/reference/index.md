@@ -1,17 +1,20 @@
-# Reference
+---
+title: Reference overview
+description: Exact command, output, adapter, and pipeline references for Uni-CLI.
+---
 
-Use these pages when you need exact behavior, fields, commands, or release
-rules.
+# Reference overview
 
-| Contract              | Page                               |
-| --------------------- | ---------------------------------- |
-| Adapter schema        | [Adapter Format](/ADAPTER-FORMAT)  |
-| Supported sites       | [Sites Catalog](./sites)           |
-| Pipeline step catalog | [Pipeline Steps](./pipeline)       |
-| Process exit behavior | [Exit Codes](./exit-codes)         |
-| Maintenance commands  | [Maintenance Tools](./maintenance) |
-| Plugin public API     | [Plugin Authoring](/PLUGIN)        |
-| Release mechanics     | [Release](./release)               |
+Use these pages when you need the exact command or data contract.
 
-The reference section should stay terse and scan-friendly. Put task walkthroughs
-in [Guides](/guide/) and broader rationale in the explanation pages.
+| Need                           | Reference                         |
+| ------------------------------ | --------------------------------- |
+| Core command syntax            | [CLI commands](./cli)             |
+| Available sites and operations | [Operation catalog](./sites)      |
+| Process status                 | [Exit codes](./exit-codes)        |
+| Adapter schema                 | [Adapter format](/ADAPTER-FORMAT) |
+| Adapter actions                | [Pipeline steps](./pipeline)      |
+| Extension API                  | [Plugin authoring](/PLUGIN)       |
+| Product terminology            | [Glossary](/glossary)             |
+
+For a single installed command, `unicli describe <site> <command>` is the most current reference.

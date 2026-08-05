@@ -1,129 +1,185 @@
-# 适配器格式（v2）
+---
+title: 适配器格式
+description: Uni-CLI YAML adapter 与 TypeScript 注册路径的完整字段参考。
+---
 
-这是写 Uni-CLI adapter 的规范。大多数 adapter 应该写成 YAML；只有 pipeline primitives 不够用时，才使用 TypeScript。
+# 适配器格式
 
-## 原则
+一个 YAML adapter 注册一条命令。文件中包含 discovery metadata、参数、执行步骤、输出列和 schema-v2 metadata。
 
-1. **YAML first。** 如果命令能表达成有限 pipeline，就写 YAML。系统可以验证、迁移和自修复 YAML。
-2. **Agent-editable。** adapter 要短，最好几十行内。智能体应该能读、改、验证。
-3. **Deterministic。** 相同输入和相同上游状态，应得到可复现结果。
-4. **Minimum capability。** 声明最小需要的能力，比如 `http.fetch`，不要过度声明。
-5. **Structured output。** 成功和失败都走 v2 `AgentEnvelope`。
-
-## YAML schema
-
-最小示例：
+## 最小示例
 
 ```yaml
-site: example
-name: search
+site: hackernews
+name: top
+description: Hacker News top stories
+domain: news.ycombinator.com
 type: web-api
 strategy: public
-pipeline:
-  - fetch:
-      url: "https://api.example.com/search"
-      params:
-        q: "${{ args.query }}"
-  - select: data.results
-  - map:
-      title: "${{ item.title }}"
-      url: "${{ item.url }}"
+operation_effect: read
+
 args:
-  query:
-    type: str
-    required: true
-    positional: true
-columns: [title, url]
-```
-
-## 必填字段
-
-| 字段       | 含义                                                                 |
-| ---------- | -------------------------------------------------------------------- |
-| `site`     | 站点或工具名。                                                       |
-| `name`     | 命令名。                                                             |
-| `type`     | adapter 类型：`web-api`、`browser`、`desktop`、`bridge`、`service`。 |
-| `strategy` | 访问策略，如 `public`、`cookie`、`ui`、`intercept`。                 |
-| `pipeline` | 执行步骤。                                                           |
-
-## Args
-
-```yaml
-args:
-  query:
-    type: str
-    required: true
-    positional: true
   limit:
     type: int
     default: 20
+    description: Number of stories
+
+pipeline:
+  - fetch:
+      url: https://hacker-news.firebaseio.com/v0/topstories.json
+  - limit: ${{ args.limit }}
+
+columns: [id]
+
+capabilities: ["http.fetch"]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2
 ```
 
-常见类型：`str`、`int`、`float`、`bool`、`json`。
+## 标识与连接
+
+| 字段                | 含义                                                   |
+| ------------------- | ------------------------------------------------------ |
+| `site`              | 命令 namespace，例如 `hackernews`                      |
+| `name`              | Site 下的命令名                                        |
+| `description`       | Search 使用的一句话用户意图                            |
+| `domain`            | 主要远程域名                                           |
+| `type`              | `web-api`、`browser`、`desktop`、`bridge` 或 `service` |
+| `strategy`          | `public`、`cookie`、`header`、`intercept` 或 `ui`      |
+| `browser`           | 标记需要 browser runtime 的命令                        |
+| `browserSession`    | `auto`、`user` 或 `cdp`                                |
+| `auth_cookies`      | Site adapter 使用的 cookie 名称                        |
+| `binary` / `detect` | Bridge adapter 的外部 CLI 与检测命令                   |
+
+## Operation metadata
+
+| 字段                 | 可用值                                                                                                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `target_surface`     | `web`、`desktop`、`system`、`mobile`                                                                                                                                                           |
+| `execution_operator` | `structured-api`、`browser-protocol`、`native-cli`、`browser-semantic`、`desktop-accessibility`、`visual-observation`、`visual-coordinate`、`local-runtime`                                    |
+| `operation_family`   | `search`、`get`、`list`、`create`、`update`、`delete`、`invoke`、`capture`、`navigate`、`download`、`authenticate`、`unknown`                                                                  |
+| `operation_effect`   | `read`、`download_file`、`send_message`、`publish_content`、`account_state`、`remote_transform`、`remote_resource`、`service_state`、`local_app`、`local_file`、`destructive`、`unknown_write` |
+| `idempotency`        | `guaranteed`、`conditional`、`none`、`unknown`                                                                                                                                                 |
+| `auth_requirement`   | `required`、`optional`、`none`                                                                                                                                                                 |
+
+## 参数
+
+YAML 参数以命令行名称为 key。
+
+```yaml
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Search terms
+  limit:
+    type: int
+    default: 10
+    minimum: 1
+    maximum: 100
+  sort:
+    type: str
+    choices: [relevance, newest]
+    default: relevance
+```
+
+类型包括 `str`、`str[]`、`int`、`float`、`nullable-float`、`str-or-int` 和 `bool`。
+
+字符串参数可以使用 `minLength`、`maxLength`、`pattern` 和 `uri`、`uuid`、`date`、`date-time`、`email`、`hostname`、`ipv4`、`ipv6`、`regex` 等标准 format。Uni-CLI kind 提供 `path`、`adapter-ref`、`selector`、`shell-safe` 与 `id` 验证。
 
 ## Pipeline
 
-Pipeline 是顺序执行的步骤列表。常见步骤：
+`pipeline` 是按顺序执行的 action object 列表。
 
-- `fetch` / `fetch_text`
-- `select`
-- `map`
-- `filter`
-- `sort`
-- `limit`
-- `each`
-- `retry`
-- `navigate`
-- `click`
-- `type`
-- `snapshot`
-- `exec`
-- `write_temp`
+```yaml
+pipeline:
+  - fetch:
+      url: https://api.example.com/search
+      params:
+        q: ${{ args.query }}
+  - select: data.items
+  - map:
+      title: ${{ item.title }}
+      url: ${{ item.url }}
+  - limit: ${{ args.limit }}
+```
 
-详见 [管线步骤](/zh/reference/pipeline)。
+模板可以读取 `args`、当前 `item` 与 `index`、环境变量和前面步骤存储的数据。详情见 [Pipeline steps](/zh/reference/pipeline)。
 
 ## 输出
 
-`columns` 定义 Markdown/table 默认展示字段：
+`columns` 控制默认 Markdown、table 和 CSV 的字段顺序。JSON 保留完整结果。
 
 ```yaml
 columns: [title, url, score]
+defaultFormat: md
 ```
 
-JSON 输出保留完整对象。不要为了表格好看删掉机器需要的字段。
+`output` 可为需要更明确合同的命令提供 result schema 和 agent hint。
 
-## 错误
+## Schema-v2 必填 metadata
 
-失败时应该返回结构化错误，而不是裸 stderr：
+提交到仓库的 YAML adapter 带有六个字段：
 
-```yaml
-ok: false
-schema_version: "2"
-error:
-  code: selector_miss
-  adapter_path: src/adapters/example/search.yaml
-  step: 2
-  retryable: false
-  suggestion: "Update the selector and run unicli repair example search."
+| 字段                 | 用途                                       |
+| -------------------- | ------------------------------------------ |
+| `schema_version: v2` | 选择当前 adapter metadata schema           |
+| `capabilities`       | 列出命令使用的 capability                  |
+| `minimum_capability` | 执行所需的最小接口                         |
+| `trust`              | `public`、`user` 或 `system` 来源          |
+| `confidentiality`    | `public`、`internal` 或 `private` 数据类别 |
+| `quarantine`         | 标记等待修复的 adapter                     |
+
+给已有 adapter 加入当前 metadata：
+
+```bash
+unicli migrate schema-v2 path/to/adapter.yaml --write
 ```
 
-## TypeScript escape hatch
+## TypeScript adapter
 
-当 YAML 不够用时，可以写 TypeScript adapter。适合这些情况：
+SDK integration、streaming protocol、自定义 pagination 和 stateful flow 适合使用 TypeScript。
 
-- 复杂签名或加密。
-- SDK 或二进制协议。
-- 长状态机。
-- 需要深度平台 API。
+```typescript
+import { cli, Strategy } from "../../registry.js";
 
-即使用 TypeScript，也要保持同样的命令名、args、输出和错误合同。
+cli({
+  site: "example",
+  name: "search",
+  description: "Search Example",
+  strategy: Strategy.PUBLIC,
+  args: [{ name: "query", type: "str", required: true, positional: true }],
+  capabilities: ["http.fetch"],
+  minimum_capability: "http.fetch",
+  trust: "public",
+  confidentiality: "public",
+  quarantine: false,
+  operation_effect: "read",
+  execution_operator: "structured-api",
+  operation_family: "search",
+  func: async (_page, { query }) => {
+    const response = await fetch(
+      `https://api.example.com/search?q=${encodeURIComponent(String(query))}`,
+    );
+    return response.json();
+  },
+});
+```
 
-## 迁移和验证
+TypeScript registration 直接调用 registry API，因此参数使用 array。
+
+## 验证
 
 ```bash
 npm run lint:adapters
 npm run lint:schema-v2
-npm run test:adapter
+unicli describe <site> <command>
+unicli test <site>
 ```
 
-如果改了 schema，必须确认旧 adapter 还能迁移或给出清晰错误。
+Loader 位于 `src/core/yaml-adapter.ts`，v2 metadata schema 位于 `src/core/schema-v2.ts`。
