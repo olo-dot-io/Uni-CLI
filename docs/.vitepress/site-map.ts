@@ -1,6 +1,7 @@
 export type SiteLeaf = {
   text: string;
   link: string;
+  activeMatch?: string;
 };
 
 export type SiteGroup = {
@@ -28,11 +29,34 @@ type LocaleSiteMap = {
 };
 
 const rootTopNav = [
-  { text: "Docs", link: "/guide/getting-started" },
-  { text: "Operations", link: "/reference/sites" },
-  { text: "Integrations", link: "/guide/integrations" },
-  { text: "Build", link: "/guide/adapters" },
-  { text: "Reference", link: "/reference/" },
+  {
+    text: "Docs",
+    link: "/guide/getting-started",
+    activeMatch: "^/(?:zh/)?(?:guide/getting-started|how-it-works)$",
+  },
+  {
+    text: "Operations",
+    link: "/reference/sites",
+    activeMatch: "^/(?:zh/)?(?:guide/?|reference/sites)$",
+  },
+  {
+    text: "Integrations",
+    link: "/guide/integrations",
+    activeMatch:
+      "^/(?:zh/)?guide/(?:integrations|authentication|browser-desktop)$",
+  },
+  {
+    text: "Build",
+    link: "/guide/adapters",
+    activeMatch:
+      "^/(?:zh/)?(?:guide/adapters|ADAPTER-FORMAT|PLUGIN|reference/pipeline)$",
+  },
+  {
+    text: "Reference",
+    link: "/reference/",
+    activeMatch:
+      "^/(?:zh/)?(?:reference/(?!sites(?:$|/)|pipeline(?:$|/))|glossary)",
+  },
 ];
 
 const rootSidebarGroups: SiteGroup[] = [
@@ -92,11 +116,11 @@ const rootSidebarGroups: SiteGroup[] = [
 ];
 
 const zhTopNav = [
-  { text: "文档", link: "/guide/getting-started" },
-  { text: "操作目录", link: "/reference/sites" },
-  { text: "接入", link: "/guide/integrations" },
-  { text: "扩展", link: "/guide/adapters" },
-  { text: "参考", link: "/reference/" },
+  { ...rootTopNav[0], text: "文档" },
+  { ...rootTopNav[1], text: "操作目录" },
+  { ...rootTopNav[2], text: "接入" },
+  { ...rootTopNav[3], text: "扩展" },
+  { ...rootTopNav[4], text: "参考" },
 ];
 
 const zhSidebarGroups: SiteGroup[] = [

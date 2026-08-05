@@ -96,17 +96,17 @@
 
 .dark {
   color-scheme: dark;
-  --appica-foreground: oklch(0.84 0.025 106);
-  --appica-foreground-subtle: oklch(0.55 0.04 145);
-  --appica-foreground-muted: oklch(0.69 0.035 122);
-  --appica-foreground-strong: oklch(0.9 0.025 98);
+  --appica-foreground: oklch(0.87 0.024 106);
+  --appica-foreground-subtle: oklch(0.64 0.035 142);
+  --appica-foreground-muted: oklch(0.75 0.032 122);
+  --appica-foreground-strong: oklch(0.92 0.024 98);
   --appica-foreground-emphasis: oklch(0.945 0.022 94);
   --appica-foreground-intense: oklch(0.975 0.02 92);
-  --appica-foreground-inverse: oklch(0.17 0.055 158);
-  --appica-background: oklch(0.145 0.04 158);
-  --appica-background-subtle: oklch(0.175 0.04 158);
-  --appica-background-muted: oklch(0.215 0.045 157);
-  --appica-background-strong: oklch(0.26 0.05 157);
+  --appica-foreground-inverse: oklch(0.18 0.048 158);
+  --appica-background: oklch(0.17 0.034 158);
+  --appica-background-subtle: oklch(0.195 0.036 158);
+  --appica-background-muted: oklch(0.235 0.04 157);
+  --appica-background-strong: oklch(0.29 0.045 157);
   --appica-background-inverse: oklch(0.975 0.02 92);
   --appica-primary: oklch(0.94 0.025 96);
   --appica-primary-muted: oklch(0.86 0.03 105);
@@ -131,7 +131,24 @@ html {
   font-family: var(--uni-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-color: var(--appica-foreground-subtle) transparent;
+  scrollbar-width: thin;
   text-rendering: optimizeLegibility;
+}
+
+html::-webkit-scrollbar {
+  width: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--appica-foreground-subtle);
+  background-clip: padding-box;
 }
 
 body,
@@ -284,6 +301,24 @@ textarea:focus-visible {
 .VPSidebar {
   border: 0 !important;
   background: var(--appica-background-subtle) !important;
+  scrollbar-color: var(--appica-foreground-subtle) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.VPSidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.VPSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.VPSidebar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--appica-foreground-subtle);
+  background-clip: padding-box;
 }
 
 .VPContent.has-sidebar,
@@ -299,10 +334,11 @@ textarea:focus-visible {
 .VPSidebarItem .text {
   color: var(--appica-foreground-muted);
   font-size: 14px;
+  line-height: 1.35;
 }
 
 .VPSidebarItem.level-0 + .VPSidebarItem.level-0 {
-  margin-top: 30px;
+  margin-top: 26px;
 }
 
 .VPSidebarItem.level-0 > .item .text {
@@ -314,6 +350,19 @@ textarea:focus-visible {
 
 .VPSidebarItem.is-active > .item .link > .text {
   color: var(--appica-foreground-intense);
+}
+
+.VPSidebarItem.level-1 > .item {
+  min-height: 34px;
+  margin: 2px 0;
+  padding: 0 10px;
+  border-radius: 10px;
+}
+
+.VPSidebarItem.level-1 > .item .link {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
 }
 
 .VPSidebarItem.level-1.is-active > .item {
@@ -334,8 +383,11 @@ textarea:focus-visible {
 }
 
 .VPDocAsideOutline .outline-link {
+  display: block;
+  padding: 4px 0;
   border-radius: 8px;
   color: var(--appica-foreground-muted);
+  line-height: 1.35;
 }
 
 .VPDocAsideOutline .outline-link.active {
@@ -701,10 +753,10 @@ body:not(:has(.uni-docs-home))
   --home-paper: oklch(0.95 0.03 97);
   --home-ivory: oklch(0.975 0.022 91);
   --home-orange: oklch(0.66 0.16 46);
-  --home-radius-small: 12px;
-  --home-radius-control: 16px;
-  --home-radius-card: 28px;
-  --home-radius-panel: 36px;
+  --home-radius-small: 11px;
+  --home-radius-control: 15px;
+  --home-radius-card: 26px;
+  --home-radius-panel: 34px;
   width: 100%;
   overflow-x: clip;
   overflow-y: visible;
@@ -735,22 +787,22 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-home-nav {
-  position: absolute;
-  z-index: 20;
-  top: 20px;
+  position: fixed;
+  z-index: 60;
+  top: 16px;
   left: 50%;
   display: grid;
   width: min(1180px, calc(100% - 40px));
-  min-height: 60px;
-  grid-template-columns: 1fr auto 1fr;
+  min-height: 58px;
+  grid-template-columns: minmax(170px, 1fr) auto minmax(170px, 1fr);
   align-items: center;
-  gap: 28px;
-  padding: 8px 10px;
+  gap: 24px;
+  padding: 7px 9px;
   transform: translateX(-50%);
-  border-radius: 24px;
-  background: color-mix(in oklch, var(--home-ivory) 94%, transparent);
-  box-shadow: 0 14px 38px oklch(0.1 0.04 158 / 0.18);
-  backdrop-filter: blur(16px) saturate(112%);
+  border-radius: 21px;
+  background: color-mix(in oklch, var(--home-ivory) 91%, transparent);
+  box-shadow: 0 12px 34px oklch(0.1 0.04 158 / 0.2);
+  backdrop-filter: blur(18px) saturate(108%);
 }
 
 .uni-home-brand {
@@ -775,11 +827,12 @@ body:has(.uni-docs-home) .VPNav {
 .uni-home-nav-links {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 2px;
 }
 
 .uni-home-nav-links a {
-  padding: 10px 12px;
+  padding: 10px 11px;
   color: var(--home-forest) !important;
   font-size: 13px;
   font-weight: 590;
@@ -788,8 +841,9 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-home-nav-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: 3px;
 }
 
 .uni-home-nav-actions a,
@@ -871,13 +925,13 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-hero-copy {
   display: flex;
-  width: min(540px, 50%);
+  width: min(548px, 50%);
   min-height: 100svh;
   grid-column: 2;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 28px;
+  gap: 26px;
   padding: 112px 0 64px;
   color: var(--home-ivory);
 }
@@ -959,20 +1013,20 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-command-console {
   width: 100%;
+  padding: 8px;
   overflow: hidden;
-  border-radius: 24px;
-  background: color-mix(in oklch, var(--home-forest-deep) 88%, transparent);
-  box-shadow: 0 24px 64px oklch(0.07 0.04 158 / 0.32);
-  backdrop-filter: blur(14px) saturate(108%);
+  border-radius: 22px;
+  background: color-mix(in oklch, var(--home-forest-deep) 82%, transparent);
+  box-shadow: 0 18px 52px oklch(0.07 0.04 158 / 0.28);
+  backdrop-filter: blur(16px) saturate(106%);
 }
 
 .uni-command-head {
   display: flex;
-  min-height: 48px;
+  min-height: 38px;
   align-items: center;
   justify-content: flex-start;
-  gap: 18px;
-  padding: 8px 10px 4px;
+  padding: 0 2px 6px;
 }
 
 .uni-command-tabs {
@@ -984,8 +1038,8 @@ body:has(.uni-docs-home) .VPNav {
 }
 
 .uni-command-tabs button {
-  min-height: 34px;
-  padding: 0 13px;
+  min-height: 32px;
+  padding: 0 12px;
   border: 0;
   border-radius: var(--home-radius-small);
   background: transparent;
@@ -1009,11 +1063,13 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-install-command {
   display: grid;
-  min-height: 78px;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  min-height: 64px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px 14px 20px;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 16px;
+  background: color-mix(in oklch, var(--home-ivory) 7%, transparent);
 }
 
 .uni-command-swap-enter-active,
@@ -1038,7 +1094,7 @@ body:has(.uni-docs-home) .VPNav {
   overflow: hidden;
   color: var(--home-ivory) !important;
   font-family: "Geist Variable", sans-serif;
-  font-size: 14px;
+  font-size: 13.5px;
   font-variant-ligatures: none;
   font-weight: 520;
   line-height: 1.4;
@@ -1054,20 +1110,28 @@ body:has(.uni-docs-home) .VPNav {
 
 .uni-install-command button {
   display: inline-flex;
-  min-width: 92px;
-  min-height: 44px;
+  min-width: 84px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 14px;
+  padding: 0 13px;
   border: 0;
   border-radius: var(--home-radius-control);
   background: var(--home-ivory);
   color: var(--home-forest-deep);
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 650;
   cursor: pointer;
+}
+
+.uni-install-command button[data-state="copied"] {
+  background: var(--home-sage);
+}
+
+.uni-install-command button[data-state="failed"] {
+  background: color-mix(in oklch, var(--home-orange) 78%, var(--home-ivory));
 }
 
 .uni-install-command button svg {
@@ -2667,13 +2731,12 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command {
-    grid-template-columns: 16px minmax(0, 1fr) 44px;
-    gap: 10px;
-    padding: 12px 14px 16px;
+    grid-template-columns: 14px minmax(0, 1fr) 42px;
+    gap: 8px;
+    padding: 5px 5px 5px 12px;
   }
 
   .vp-doc .uni-install-command code {
-    min-height: 42px;
     overflow: visible;
     font-size: 13px;
     overflow-wrap: anywhere;
@@ -2682,8 +2745,8 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command button {
-    width: 44px;
-    min-width: 44px;
+    width: 42px;
+    min-width: 42px;
     padding: 0;
   }
 
@@ -2857,7 +2920,7 @@ body:has(.uni-docs-home) .VPNav {
     width: 100%;
     height: min(68svh, 620px);
     min-height: 440px;
-    border-radius: var(--home-radius-card);
+    border-radius: 20px;
     opacity: 1;
     pointer-events: auto;
     transform: none;
@@ -3020,13 +3083,12 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command {
-    grid-template-columns: 16px minmax(0, 1fr) 44px;
-    gap: 10px;
-    padding: 12px 14px 16px;
+    grid-template-columns: 14px minmax(0, 1fr) 42px;
+    gap: 8px;
+    padding: 5px 5px 5px 12px;
   }
 
   .vp-doc .uni-install-command code {
-    min-height: 42px;
     overflow: visible;
     overflow-wrap: anywhere;
     text-overflow: clip;
@@ -3034,8 +3096,8 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-install-command button {
-    width: 44px;
-    min-width: 44px;
+    width: 42px;
+    min-width: 42px;
     padding: 0;
   }
 

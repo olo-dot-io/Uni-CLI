@@ -27,6 +27,7 @@ const isZh = computed(() => localeIndex.value === "zh");
 const copyState = ref<"idle" | "copied" | "failed">("idle");
 const heroMode = ref<"install" | "agent">("install");
 let homepageScroll: Lenis | undefined;
+let copyResetTimer: number | undefined;
 const installCommand = "npm install -g @zenalexa/unicli";
 const agentInstruction = computed(() =>
   isZh.value
@@ -51,7 +52,7 @@ const brands = [
 const copy = computed(() =>
   isZh.value
     ? {
-        nav: ["文档", "操作", "架构"],
+        nav: ["文档", "操作", "集成", "架构"],
         eyebrow: "开放式 Agent-Computer Interface",
         title: "把所有界面交给 Agent。",
         lead: "安装一次。搜索、执行、检查、修复。",
@@ -69,7 +70,7 @@ const copy = computed(() =>
         license: "Apache-2.0 许可证",
       }
     : {
-        nav: ["Docs", "Operations", "Architecture"],
+        nav: ["Docs", "Operations", "Integrations", "Architecture"],
         eyebrow: "Open agent-computer interface",
         title: "Give agents every interface.",
         lead: "Install once. Search, run, inspect, repair.",
@@ -97,6 +98,11 @@ const titleWords = computed(() => {
 });
 
 async function copyHeroCommand() {
+  if (copyResetTimer !== undefined) {
+    window.clearTimeout(copyResetTimer);
+    copyResetTimer = undefined;
+  }
+
   let copied = false;
   if (navigator.clipboard?.writeText) {
     try {
@@ -120,17 +126,32 @@ async function copyHeroCommand() {
   }
 
   if (!copied) {
+    const command = document.querySelector<HTMLElement>(
+      "#uni-hero-command code",
+    );
+    if (command) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(command);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
     copyState.value = "failed";
     return;
   }
 
   copyState.value = "copied";
-  window.setTimeout(() => {
+  copyResetTimer = window.setTimeout(() => {
     copyState.value = "idle";
+    copyResetTimer = undefined;
   }, 1600);
 }
 
 function setHeroMode(mode: "install" | "agent") {
+  if (copyResetTimer !== undefined) {
+    window.clearTimeout(copyResetTimer);
+    copyResetTimer = undefined;
+  }
   heroMode.value = mode;
   copyState.value = "idle";
 }
@@ -165,6 +186,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  if (copyResetTimer !== undefined) window.clearTimeout(copyResetTimer);
   homepageScroll?.destroy();
   homepageScroll = undefined;
 });
@@ -190,8 +212,15 @@ onBeforeUnmount(() => {
         <a :href="withBase(isZh ? '/zh/reference/sites' : '/reference/sites')">
           {{ copy.nav[1] }}
         </a>
-        <a :href="withBase(isZh ? '/zh/ARCHITECTURE' : '/ARCHITECTURE')">
+        <a
+          :href="
+            withBase(isZh ? '/zh/guide/integrations' : '/guide/integrations')
+          "
+        >
           {{ copy.nav[2] }}
+        </a>
+        <a :href="withBase(isZh ? '/zh/ARCHITECTURE' : '/ARCHITECTURE')">
+          {{ copy.nav[3] }}
         </a>
       </div>
       <div class="uni-home-nav-actions">
@@ -300,7 +329,14 @@ onBeforeUnmount(() => {
               <code>{{ heroCommand }}</code>
               <button
                 type="button"
-                :aria-label="copy.copyAction"
+                :aria-label="
+                  copyState === 'copied'
+                    ? copy.copied
+                    : copyState === 'failed'
+                      ? copy.copyFailed
+                      : copy.copyAction
+                "
+                :data-state="copyState"
                 @click="copyHeroCommand"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24">
