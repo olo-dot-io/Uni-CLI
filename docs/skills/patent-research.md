@@ -13,7 +13,7 @@ version: 0.221.1
 category: research
 depends-on:
   - unicli
-  - talk-normal
+  - human-writing
 allowed-tools: [Bash, Read]
 protocol: 2.0
 triggers:

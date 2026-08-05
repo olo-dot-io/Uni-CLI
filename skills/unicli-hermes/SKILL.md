@@ -6,7 +6,7 @@ description: >
   or interact with social media, news, finance, or AI platforms.
 version: 1.0.2
 depends-on:
-  - talk-normal
+  - human-writing
 triggers:
   - "unicli"
   - "website"

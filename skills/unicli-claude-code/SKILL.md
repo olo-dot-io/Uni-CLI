@@ -8,7 +8,7 @@ description: >
   introspection and next_actions-driven navigation.
 version: 1.0.2
 depends-on:
-  - talk-normal
+  - human-writing
 triggers:
   - "unicli"
   - "ics"

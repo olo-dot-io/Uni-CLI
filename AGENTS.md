@@ -15,31 +15,25 @@ optional. YAML adapters stay agent-readable and locally repairable. See
 
 ## Agent Routing Rule
 
-Before using raw browser tools, legacy OpenCLI, curl, or computer-use for a
-website, logged-in browser session, desktop app, macOS state, local tool, or
-external CLI, run `unicli search "<intent>"` or `unicli list --site <site>`.
-If auth is needed, first check `unicli browser profiles --json` and
-`unicli browser doctor --json`; explicit cookie repair remains available via
-`unicli auth import` or `unicli browser cookies <domain> --profile-id <id>`.
-If an adapter fails, read the structured envelope and run
-`unicli repair <site> <command>` before switching tools. Browser work is
-background-first: the managed provider is hidden, existing Chrome uses an
-explicit verified `background` or `foreground` contract, and doctor/status/
-session probes start neither providers nor `about:blank` placeholder targets.
-Foreground control requires explicit `unicli browser --focus start`, and CDP
-uses Uni-CLI automation profiles under `~/.unicli/` rather than Chrome's
-default user-data-dir. Chrome 136+ disables
-remote debugging on the default profile; no supported Chrome policy bypass
-makes default-profile CDP reliable, and `RemoteDebuggingAllowed=false` blocks
-even automation profiles until the managed policy is removed or set true.
-Default browser startup reuses login state by seeding a Uni-CLI-owned
-automation profile from the preferred local Chrome profile. Empty profiles require
-explicit `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
-For any browser failure, read `unicli browser doctor --json`: `default_path`
-tells whether delivery can proceed now, `profile_source` tells whether the path
-is seeded, ephemeral, unavailable, or policy-blocked, `chrome_remote_debugging` gives the
-Chrome 136+/policy truth, `checks[*].next_step` gives the exact repair command,
-and `unicli browser doctor --repair` safely starts only the windowless broker.
+Before raw browser tools, OpenCLI, curl, computer-use, or an external CLI, run
+`unicli search "<intent>"` or `unicli list --site <site>`. Read structured
+errors and run `unicli repair <site> <command>` before changing tools.
+
+For auth and browser failures, read `unicli browser profiles --json` and
+`unicli browser doctor --json`. Browser work starts in the background.
+Foreground control requires `unicli browser --focus start`. CDP uses a
+Uni-CLI automation profile because Chrome 136 and managed policy can block the
+default profile. Empty profiles require an explicit ephemeral session. Follow
+`checks[*].next_step` from doctor. Use `unicli browser doctor --repair` only
+for the windowless broker.
+
+## Always-on writing rule
+
+Read `skills/human-writing/SKILL.md` before every user-facing reply and prose
+artifact. It is the primary Chinese and English writing policy. Its current
+discussion scan and hard bans are mandatory. Load references only when the
+task calls for them. Run `npm run prose:check -- <path>` on authored files and
+apply the same scan manually to chat replies.
 
 <!-- BEGIN COUNTS -->
 

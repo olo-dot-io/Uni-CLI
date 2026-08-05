@@ -15,7 +15,7 @@ description: >
 version: 1.0.2
 category: core
 depends-on:
-  - talk-normal
+  - human-writing
 allowed-tools: [Bash, Read]
 protocol: 2.0
 triggers:
