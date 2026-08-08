@@ -1,8 +1,8 @@
 {
-  "source": "unicli@1.0.2",
-  "generated": "2026-08-02T12:06:59.087Z",
+  "source": "unicli@1.0.3",
+  "generated": "2026-08-08T12:34:39.954Z",
   "total_sites": 326,
-  "total_commands": 1830,
+  "total_commands": 1853,
   "adapters": [
     {
       "site": "12306",
@@ -3280,6 +3280,61 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        },
+        {
+          "name": "native-post",
+          "description": "Publish a Bluesky post through the official goat CLI",
+          "when_to_use": "Publish a Bluesky post through the official goat CLI",
+          "command": "unicli bluesky native-post",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["output"],
+          "args": [
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Post text"
+            }
+          ]
+        },
+        {
+          "name": "native-record",
+          "description": "Read an AT Protocol record through Bluesky's official goat CLI",
+          "when_to_use": "Read an AT Protocol record through Bluesky's official goat CLI",
+          "command": "unicli bluesky native-record",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "uri",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Complete AT URI"
+            }
+          ]
+        },
+        {
+          "name": "native-resolve",
+          "description": "Resolve an AT Protocol handle through Bluesky's official goat CLI",
+          "when_to_use": "Resolve an AT Protocol handle through Bluesky's official goat CLI",
+          "command": "unicli bluesky native-resolve",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "handle",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "AT Protocol handle"
             }
           ]
         },
@@ -7932,44 +7987,33 @@
     {
       "site": "feishu",
       "type": "bridge",
-      "domain": "feishu-cli.com",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "commands": [
         {
           "name": "calendar",
-          "description": "List upcoming Feishu/Lark calendar events",
-          "when_to_use": "List upcoming Feishu/Lark calendar events",
+          "description": "Read today's agenda through the official Lark/Feishu CLI",
+          "when_to_use": "Read today's agenda through the official Lark/Feishu CLI",
           "command": "unicli feishu calendar",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
-          "browser": false,
-          "columns": ["title", "start", "end", "location", "organizer"],
-          "args": [
-            {
-              "name": "days",
-              "type": "str",
-              "required": false,
-              "positional": false,
-              "description": "Number of days to look ahead"
-            }
-          ]
+          "browser": false
         },
         {
           "name": "docs",
-          "description": "List recent Feishu/Lark documents",
-          "when_to_use": "List recent Feishu/Lark documents",
+          "description": "List recently edited documents through the official Lark/Feishu CLI",
+          "when_to_use": "List recently edited documents through the official Lark/Feishu CLI",
           "command": "unicli feishu docs",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "url", "owner", "updated_at"],
           "args": [
             {
               "name": "limit",
-              "type": "str",
+              "type": "int",
               "required": false,
-              "positional": false
+              "positional": false,
+              "description": "Number of documents"
             }
           ]
         },
@@ -7978,10 +8022,9 @@
           "description": "Send a message via Feishu/Lark CLI",
           "when_to_use": "When you need to post content to feishu.",
           "command": "unicli feishu send",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["message_id", "chat_id", "status"],
           "args": [
             {
               "name": "chat",
@@ -8001,22 +8044,12 @@
         },
         {
           "name": "tasks",
-          "description": "List Feishu/Lark tasks",
-          "when_to_use": "List Feishu/Lark tasks",
+          "description": "List the current user's tasks through the official Lark/Feishu CLI",
+          "when_to_use": "List the current user's tasks through the official Lark/Feishu CLI",
           "command": "unicli feishu tasks",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
-          "browser": false,
-          "columns": ["title", "assignee", "due_date", "status"],
-          "args": [
-            {
-              "name": "status",
-              "type": "str",
-              "required": false,
-              "positional": false,
-              "description": "Task status filter (open, completed, all)"
-            }
-          ]
+          "browser": false
         }
       ]
     },
@@ -14626,13 +14659,145 @@
     {
       "site": "lark",
       "type": "bridge",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "commands": [
         {
+          "name": "native-agenda",
+          "description": "Read today's agenda through the official Lark/Feishu CLI",
+          "when_to_use": "Read today's agenda through the official Lark/Feishu CLI",
+          "command": "unicli lark native-agenda",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "identity",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Lark identity used for the request"
+            }
+          ]
+        },
+        {
+          "name": "native-doc-fetch",
+          "description": "Read a Lark/Feishu document through the official CLI",
+          "when_to_use": "Read a Lark/Feishu document through the official CLI",
+          "command": "unicli lark native-doc-fetch",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "doc",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Document URL or token"
+            },
+            {
+              "name": "doc_format",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Returned document format"
+            },
+            {
+              "name": "detail",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Returned document detail level"
+            }
+          ]
+        },
+        {
+          "name": "native-message-search",
+          "description": "Search workspace messages through the official Lark/Feishu CLI",
+          "when_to_use": "Search workspace messages through the official Lark/Feishu CLI",
+          "command": "unicli lark native-message-search",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Message search query"
+            },
+            {
+              "name": "identity",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Lark identity used for the request"
+            },
+            {
+              "name": "page_size",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of messages in one page"
+            }
+          ]
+        },
+        {
+          "name": "native-send",
+          "description": "Send a workspace message through the official Lark/Feishu CLI",
+          "when_to_use": "Send a workspace message through the official Lark/Feishu CLI",
+          "command": "unicli lark native-send",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "chat_id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Lark chat ID"
+            },
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Message text"
+            },
+            {
+              "name": "identity",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Lark identity used for the request"
+            }
+          ]
+        },
+        {
+          "name": "native-task-search",
+          "description": "Search the current user's tasks through the official Lark/Feishu CLI",
+          "when_to_use": "Search the current user's tasks through the official Lark/Feishu CLI",
+          "command": "unicli lark native-task-search",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Task search query"
+            }
+          ]
+        },
+        {
           "name": "version",
-          "description": "Check Lark CLI version and status",
-          "when_to_use": "Check Lark CLI version and status",
+          "description": "Check the official Lark/Feishu CLI version",
+          "when_to_use": "Check the official Lark/Feishu CLI version",
           "command": "unicli lark version",
           "auth": false,
           "strategy": "public",
@@ -23240,13 +23405,29 @@
       "commands": [
         {
           "name": "channels",
-          "description": "List Slack channels",
-          "when_to_use": "List Slack channels",
+          "description": "List Slack channels through the official Slack Web API",
+          "when_to_use": "List Slack channels through the official Slack Web API",
           "command": "unicli slack channels",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["name", "id", "is_private", "num_members"]
+          "columns": ["id", "name", "is_private", "num_members"],
+          "args": [
+            {
+              "name": "token",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Slack token, or set SLACK_TOKEN"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of channels"
+            }
+          ]
         },
         {
           "name": "messages",
@@ -23315,58 +23496,96 @@
         },
         {
           "name": "search",
-          "description": "Search Slack messages",
+          "description": "Search Slack messages through the official Slack Web API",
           "when_to_use": "When you need to search slack for a specific query.",
           "command": "unicli slack search",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["channel", "user", "text", "ts"],
+          "columns": ["channel_id", "username", "text", "ts", "permalink"],
           "args": [
             {
               "name": "query",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "Search query"
+              "description": "Slack message search query"
+            },
+            {
+              "name": "token",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Slack user token, or set SLACK_TOKEN"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of messages"
             }
           ]
         },
         {
           "name": "send",
-          "description": "Send a message to a Slack channel",
+          "description": "Send a Slack message through the official Slack Web API",
           "when_to_use": "When you need to post content to slack.",
           "command": "unicli slack send",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["ok", "channel", "ts"],
+          "columns": ["ok", "channel", "ts", "message"],
           "args": [
             {
               "name": "channel",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "Channel ID (e.g. C0123456789)"
+              "description": "Slack channel ID"
             },
             {
               "name": "text",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "Message text to send"
+              "description": "Message text"
+            },
+            {
+              "name": "token",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Slack bot or user token, or set SLACK_TOKEN"
             }
           ]
         },
         {
           "name": "status",
-          "description": "Check Slack CLI auth and workspace status",
-          "when_to_use": "Check Slack CLI auth and workspace status",
+          "description": "Check Slack authentication through the official Slack Web API",
+          "when_to_use": "Check Slack authentication through the official Slack Web API",
           "command": "unicli slack status",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
-          "columns": ["team", "user", "url"]
+          "columns": [
+            "ok",
+            "url",
+            "team",
+            "user",
+            "team_id",
+            "user_id",
+            "bot_id"
+          ],
+          "args": [
+            {
+              "name": "token",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Slack token, or set SLACK_TOKEN"
+            }
+          ]
         },
         {
           "name": "users",
@@ -25999,7 +26218,7 @@
     },
     {
       "site": "twitter",
-      "type": "web-api",
+      "type": "bridge",
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
@@ -26099,6 +26318,94 @@
               "required": true,
               "positional": true,
               "description": "Twitter username to mute"
+            }
+          ]
+        },
+        {
+          "name": "native-me",
+          "description": "Read the authenticated X account through the official xurl CLI",
+          "when_to_use": "Read the authenticated X account through the official xurl CLI",
+          "command": "unicli twitter native-me",
+          "auth": true,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "native-post",
+          "description": "Publish an X post through the official xurl CLI and X API",
+          "when_to_use": "Publish an X post through the official xurl CLI and X API",
+          "command": "unicli twitter native-post",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "text",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Post text"
+            }
+          ]
+        },
+        {
+          "name": "native-search",
+          "description": "Search recent X posts through the official xurl CLI and X API",
+          "when_to_use": "Search recent X posts through the official xurl CLI and X API",
+          "command": "unicli twitter native-search",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "X recent-search query including supported API operators"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts"
+            }
+          ]
+        },
+        {
+          "name": "native-tweet",
+          "description": "Read one X post through the official xurl CLI and X API",
+          "when_to_use": "Read one X post through the official xurl CLI and X API",
+          "command": "unicli twitter native-tweet",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Numeric X post ID"
+            }
+          ]
+        },
+        {
+          "name": "native-user",
+          "description": "Read an X account through the official xurl CLI and X API",
+          "when_to_use": "Read an X account through the official xurl CLI and X API",
+          "command": "unicli twitter native-user",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "username",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "X username without the at sign"
             }
           ]
         },
@@ -31725,6 +32032,254 @@
             "following",
             "voteup",
             "answer_count"
+          ]
+        },
+        {
+          "name": "native-answer",
+          "description": "Generate a sourced Zhihu Direct answer through the official Zhihu CLI",
+          "when_to_use": "Generate a sourced Zhihu Direct answer through the official Zhihu CLI",
+          "command": "unicli zhihu native-answer",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Question for Zhihu Direct"
+            },
+            {
+              "name": "model",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Zhihu Direct model"
+            }
+          ]
+        },
+        {
+          "name": "native-capabilities",
+          "description": "Read the complete capability manifest from the official Zhihu CLI",
+          "when_to_use": "Read the complete capability manifest from the official Zhihu CLI",
+          "command": "unicli zhihu native-capabilities",
+          "auth": false,
+          "strategy": "public",
+          "browser": false
+        },
+        {
+          "name": "native-favorite-items",
+          "description": "Read items in one current-account Zhihu favorite list through the official CLI",
+          "when_to_use": "Read items in one current-account Zhihu favorite list through the official CLI",
+          "command": "unicli zhihu native-favorite-items",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "url_token",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Favorite list URL token returned by native-favorite-lists"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Result offset"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of favorite items"
+            }
+          ]
+        },
+        {
+          "name": "native-favorite-lists",
+          "description": "Read the current Zhihu account's favorite lists through the official CLI",
+          "when_to_use": "Read the current Zhihu account's favorite lists through the official CLI",
+          "command": "unicli zhihu native-favorite-lists",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of favorite lists"
+            }
+          ]
+        },
+        {
+          "name": "native-favorites-recent",
+          "description": "Read recent favorites across the current Zhihu account through the official CLI",
+          "when_to_use": "Read recent favorites across the current Zhihu account through the official CLI",
+          "command": "unicli zhihu native-favorites-recent",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of recent favorites"
+            }
+          ]
+        },
+        {
+          "name": "native-global-search",
+          "description": "Search current web sources through the official Zhihu CLI",
+          "when_to_use": "Search current web sources through the official Zhihu CLI",
+          "command": "unicli zhihu native-global-search",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search query"
+            },
+            {
+              "name": "count",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            },
+            {
+              "name": "search_db",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Official search index selection"
+            }
+          ]
+        },
+        {
+          "name": "native-hot",
+          "description": "Read the current Zhihu hot list through the official Zhihu CLI",
+          "when_to_use": "Read the current Zhihu hot list through the official Zhihu CLI",
+          "command": "unicli zhihu native-hot",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of hot topics"
+            }
+          ]
+        },
+        {
+          "name": "native-my-contents",
+          "description": "Read the current account's public Zhihu creations through the official CLI",
+          "when_to_use": "Read the current account's public Zhihu creations through the official CLI",
+          "command": "unicli zhihu native-my-contents",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "content_type",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Content type"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort field"
+            },
+            {
+              "name": "order",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Sort direction"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Result offset"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "native-my-followees",
+          "description": "Read accounts followed by the current Zhihu account through the official CLI",
+          "when_to_use": "Read accounts followed by the current Zhihu account through the official CLI",
+          "command": "unicli zhihu native-my-followees",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Result offset"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            }
+          ]
+        },
+        {
+          "name": "native-search",
+          "description": "Search Zhihu through the official Zhihu CLI and preserve its server JSON",
+          "when_to_use": "Search Zhihu through the official Zhihu CLI and preserve its server JSON",
+          "command": "unicli zhihu native-search",
+          "auth": true,
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Search query"
+            },
+            {
+              "name": "count",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of results"
+            }
           ]
         },
         {

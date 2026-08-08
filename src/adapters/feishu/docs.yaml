@@ -1,25 +1,47 @@
 site: feishu
 name: docs
-description: List recent Feishu/Lark documents
+description: List recently edited documents through the official Lark/Feishu CLI
 type: bridge
-domain: feishu-cli.com
-detect: which feishu
+detect: which lark-cli
 strategy: public
 args:
   limit:
-    required: false
+    type: int
     default: 20
+    minimum: 1
+    maximum: 20
+    description: Number of documents
 pipeline:
   - exec:
-      command: feishu
+      command: lark-cli
       args:
-        ["docs", "list", "--limit", "${{ args.limit | default(20) }}", "--json"]
-columns: [title, url, owner, updated_at]
+        [
+          drive,
+          +search,
+          --query,
+          "",
+          --doc-types,
+          docx,
+          --sort,
+          edit_time,
+          --page-size,
+          "${{ args.limit }}",
+          --as,
+          user,
+          --format,
+          json,
+        ]
+      parse: json
+      timeout: 60000
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
+operation_effect: read
+execution_operator: native-cli
+operation_family: list
+auth_requirement: required
 capabilities: ["subprocess.exec"]
+executables: [lark-cli]
 minimum_capability: subprocess.exec
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

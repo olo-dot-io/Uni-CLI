@@ -5,9 +5,9 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Static adapter sites: 326
-- Registered adapter commands: 1830
+- Registered adapter commands: 1853
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1227
+- Adapters: 1250
 - Built-in actions: 113 (58 registered + 55 transport-native)
 
 ---
@@ -56,9 +56,9 @@ unicli hackernews top --limit 5 -f json
 ## Coverage
 
 - Static adapter sites: 326
-- Registered adapter operations: 1830
+- Registered adapter operations: 1853
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 9995
+- Tests: 10138
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Latest: v1.0.2 · Artemis · Glover.
+Local release: v1.0.3 · Artemis · Glover.
 
 ## Agent Index
 
@@ -227,6 +227,23 @@ Run the selected command with -f json.
 ```
 
 This path works well with Codex CLI, Claude Code, OpenCode, OpenClaw, Cursor agents, and CI jobs.
+
+## Provider-native tools
+
+Uni-CLI uses a provider-maintained CLI when it offers a stronger structured contract than the corresponding web surface. The selected executable remains visible in command metadata, and its JSON response passes through the normal Uni-CLI envelope.
+
+The current first-party routes include Zhihu CLI, X `xurl`, Lark and Feishu `lark-cli`, and Bluesky `goat`.
+
+```bash
+unicli zhihu native-search "agent tools" -f json
+unicli twitter native-search "from:XDevelopers MCP" -f json
+unicli lark native-message-search "release" -f json
+unicli bluesky native-resolve bsky.app -f json
+```
+
+Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API, while Slack's hosted MCP remains an external OAuth service.
+
+Expanded MCP exposes the same typed `native-*` commands to MCP clients.
 
 ## MCP
 
@@ -1764,7 +1781,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
+This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -1787,7 +1804,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | binance | web-api | 13 | no | unicli binance asks<br>unicli binance depth<br>unicli binance gainers |
 | blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 13 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 16 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -1825,7 +1842,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | no | unicli exchangerate convert<br>unicli exchangerate list |
 | facebook | web-api | 15 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
-| feishu | bridge | 4 | no | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
+| feishu | bridge | 4 | yes | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | no | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | yes | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
 | flyctl | bridge | 1 | no | unicli flyctl apps |
@@ -1872,7 +1889,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | konachan | web-api | 4 | no | unicli konachan detail<br>unicli konachan download<br>unicli konachan search |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
-| lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| lark | bridge | 13 | yes | unicli lark native-agenda<br>unicli lark native-doc-fetch<br>unicli lark native-message-search |
 | leetcode | web-api | 1 | no | unicli leetcode discuss-search |
 | lens | web-api | 2 | yes | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
@@ -1960,7 +1977,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | tiktok | web-api | 18 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | web-api | 47 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| twitter | bridge | 52 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | ukipo | web-api | 1 | no | unicli ukipo info |
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
@@ -1990,7 +2007,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | youtube | web-api | 17 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
 | yt-dlp | bridge | 5 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
-| zhihu | web-api | 27 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zhihu | web-api | 37 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
 | zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
 | zsxq | web-api | 5 | yes | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
@@ -2245,7 +2262,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.0.2. Its main abstraction is an operation: a named action with arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.0.3. Its main abstraction is an operation: a named action with arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
@@ -2491,11 +2508,11 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.0.2 — Artemis · Glover.
+Current release: v1.0.3 — Artemis · Glover.
 
 The static catalog contains <!-- STATS:site_count -->326<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1830<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1853<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
@@ -2578,9 +2595,9 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.0.2 ships <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites in the static adapter catalog.
+v1.0.3 ships <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites in the static adapter catalog.
 
-The same catalog contains <span><!-- STATS:command_count -->1830<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
+The same catalog contains <span><!-- STATS:command_count -->1853<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
 ## How do I know which arguments a command accepts?
 

@@ -87,10 +87,10 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 Static catalog:
 
 - <!-- STATS:site_count -->326<!-- /STATS --> sites
-- <!-- STATS:command_count -->1830<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1227<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1853<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1250<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->9995<!-- /STATS --> tests
+- <!-- STATS:test_count -->10138<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -98,7 +98,7 @@ Fixed core and host-discovered commands join at runtime.
 <!-- prettier-ignore -->
 | Surface | Sites | Operations | Examples |
 | --- | ---: | ---: | --- |
-| social | 33 | 372 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| social | 33 | 395 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
 | video | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
 | news | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
 | finance | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
@@ -261,7 +261,7 @@ npm run verify   # full E2E and adapter coverage; required before release
 
 Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter and engine conventions.
 
-<p align="center"><sub>v1.0.2 — Artemis · Glover</sub></p>
+<p align="center"><sub>v1.0.3 — Artemis · Glover</sub></p>
 
 ## License
 

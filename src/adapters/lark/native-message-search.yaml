@@ -1,0 +1,64 @@
+site: lark
+name: native-message-search
+description: Search workspace messages through the official Lark/Feishu CLI
+type: bridge
+strategy: public
+binary: lark-cli
+detect: which lark-cli
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Message search query
+  identity:
+    type: str
+    default: user
+    choices: [user, bot]
+    description: Lark identity used for the request
+  page_size:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 50
+    description: Number of messages in one page
+
+pipeline:
+  - exec:
+      command: lark-cli
+      args:
+        [
+          im,
+          +messages-search,
+          --query,
+          "${{ args.query }}",
+          --as,
+          "${{ args.identity }}",
+          --page-size,
+          "${{ args.page_size }}",
+          --format,
+          json,
+        ]
+      parse: json
+      timeout: 60000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: search
+auth_requirement: required
+retrieval:
+  operation: discover
+  result_kind: message
+  source_class: official
+  arguments:
+    query: query
+    limit: page_size
+capabilities: [subprocess.exec]
+executables: [lark-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

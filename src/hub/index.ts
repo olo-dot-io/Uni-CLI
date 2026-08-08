@@ -22,6 +22,9 @@ export interface ExternalCli {
   description: string;
   homepage?: string;
   tags?: string[];
+  provenance?: "official" | "community";
+  native_surface?: "cli" | "mcp-server" | "cli+mcp";
+  provider_scope?: string;
   json_flag?: string;
   install?: Record<string, string>;
 }

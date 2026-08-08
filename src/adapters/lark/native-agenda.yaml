@@ -1,0 +1,33 @@
+site: lark
+name: native-agenda
+description: Read today's agenda through the official Lark/Feishu CLI
+type: bridge
+strategy: public
+binary: lark-cli
+detect: which lark-cli
+
+args:
+  identity:
+    type: str
+    default: user
+    choices: [user, bot]
+    description: Lark identity used for the request
+
+pipeline:
+  - exec:
+      command: lark-cli
+      args: [calendar, +agenda, --as, "${{ args.identity }}", --format, json]
+      parse: json
+      timeout: 60000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: list
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [lark-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

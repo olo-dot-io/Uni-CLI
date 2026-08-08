@@ -2,8 +2,7 @@ site: feishu
 name: send
 description: Send a message via Feishu/Lark CLI
 type: bridge
-domain: feishu-cli.com
-detect: which feishu
+detect: which lark-cli
 strategy: public
 args:
   chat:
@@ -15,23 +14,32 @@ args:
     description: Message content
 pipeline:
   - exec:
-      command: feishu
+      command: lark-cli
       args:
         [
-          "messenger",
-          "send",
-          "--chat",
+          im,
+          +messages-send,
+          --chat-id,
           "${{ args.chat }}",
-          "--text",
+          --text,
           "${{ args.message }}",
-          "--json",
+          --as,
+          user,
+          --format,
+          json,
         ]
-columns: [message_id, chat_id, status]
+      parse: json
+      timeout: 30000
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
+operation_effect: send_message
+execution_operator: native-cli
+operation_family: create
+idempotency: none
+auth_requirement: required
 capabilities: ["subprocess.exec"]
+executables: [lark-cli]
 minimum_capability: subprocess.exec
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

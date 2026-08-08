@@ -28,6 +28,23 @@ Run the selected command with -f json.
 
 This path works well with Codex CLI, Claude Code, OpenCode, OpenClaw, Cursor agents, and CI jobs.
 
+## Provider-native tools
+
+Uni-CLI uses a provider-maintained CLI when it offers a stronger structured contract than the corresponding web surface. The selected executable remains visible in command metadata, and its JSON response passes through the normal Uni-CLI envelope.
+
+The current first-party routes include Zhihu CLI, X `xurl`, Lark and Feishu `lark-cli`, and Bluesky `goat`.
+
+```bash
+unicli zhihu native-search "agent tools" -f json
+unicli twitter native-search "from:XDevelopers MCP" -f json
+unicli lark native-message-search "release" -f json
+unicli bluesky native-resolve bsky.app -f json
+```
+
+Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API, while Slack's hosted MCP remains an external OAuth service.
+
+Expanded MCP exposes the same typed `native-*` commands to MCP clients.
+
 ## MCP
 
 Start the server with `npx`:

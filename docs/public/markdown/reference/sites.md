@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
+This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -37,7 +37,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | binance | web-api | 13 | no | unicli binance asks<br>unicli binance depth<br>unicli binance gainers |
 | blender | desktop | 13 | no | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | no | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 13 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 16 | yes | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | yes | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | no | unicli brave search |
 | chaoxing | web-api | 2 | yes | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -75,7 +75,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | excel | desktop | 7 | no | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | no | unicli exchangerate convert<br>unicli exchangerate list |
 | facebook | web-api | 15 | yes | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
-| feishu | bridge | 4 | no | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
+| feishu | bridge | 4 | yes | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | no | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | yes | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
 | flyctl | bridge | 1 | no | unicli flyctl apps |
@@ -122,7 +122,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | konachan | web-api | 4 | no | unicli konachan detail<br>unicli konachan download<br>unicli konachan search |
 | krita | desktop | 4 | no | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | yes | unicli kuaishou hot<br>unicli kuaishou search |
-| lark | bridge | 8 | no | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| lark | bridge | 13 | yes | unicli lark native-agenda<br>unicli lark native-doc-fetch<br>unicli lark native-message-search |
 | leetcode | web-api | 1 | no | unicli leetcode discuss-search |
 | lens | web-api | 2 | yes | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
@@ -210,7 +210,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | tiktok | web-api | 18 | yes | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | twitch | web-api | 4 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | web-api | 47 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| twitter | bridge | 52 | yes | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | ukipo | web-api | 1 | no | unicli ukipo info |
 | unsplash | web-api | 2 | no | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
@@ -240,7 +240,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1830 commands.
 | youtube | web-api | 17 | yes | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
 | yt-dlp | bridge | 5 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | yes | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
-| zhihu | web-api | 27 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zhihu | web-api | 37 | yes | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
 | zoom | desktop | 3 | no | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | no | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
 | zsxq | web-api | 5 | yes | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |

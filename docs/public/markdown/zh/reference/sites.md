@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：326 个站点，1830 条命令。
+这个目录来自适配器 manifest：326 个站点，1853 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -34,7 +34,7 @@
 | binance | web-api | 13 | 否 | unicli binance asks<br>unicli binance depth<br>unicli binance gainers |
 | blender | desktop | 13 | 否 | unicli blender animation<br>unicli blender camera<br>unicli blender convert |
 | bloomberg | web-api | 10 | 否 | unicli bloomberg businessweek<br>unicli bloomberg economics<br>unicli bloomberg feeds |
-| bluesky | web-api | 13 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
+| bluesky | web-api | 16 | 是 | unicli bluesky feeds<br>unicli bluesky followers<br>unicli bluesky following |
 | boss | web-api | 14 | 是 | unicli boss batchgreet<br>unicli boss chatlist<br>unicli boss chatmsg |
 | brave | web-api | 1 | 否 | unicli brave search |
 | chaoxing | web-api | 2 | 是 | unicli chaoxing assignments<br>unicli chaoxing exams |
@@ -72,7 +72,7 @@
 | excel | desktop | 7 | 否 | unicli excel insert-image<br>unicli excel insert-link<br>unicli excel list |
 | exchangerate | web-api | 2 | 否 | unicli exchangerate convert<br>unicli exchangerate list |
 | facebook | web-api | 15 | 是 | unicli facebook add-friend<br>unicli facebook events<br>unicli facebook feed |
-| feishu | bridge | 4 | 否 | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
+| feishu | bridge | 4 | 是 | unicli feishu calendar<br>unicli feishu docs<br>unicli feishu send |
 | ffmpeg | desktop | 11 | 否 | unicli ffmpeg compress<br>unicli ffmpeg concat<br>unicli ffmpeg convert |
 | figma | browser | 8 | 是 | unicli figma export-selected<br>unicli figma open-app<br>unicli figma status-app |
 | flyctl | bridge | 1 | 否 | unicli flyctl apps |
@@ -119,7 +119,7 @@
 | konachan | web-api | 4 | 否 | unicli konachan detail<br>unicli konachan download<br>unicli konachan search |
 | krita | desktop | 4 | 否 | unicli krita batch<br>unicli krita convert<br>unicli krita export |
 | kuaishou | web-api | 2 | 是 | unicli kuaishou hot<br>unicli kuaishou search |
-| lark | bridge | 8 | 否 | unicli lark version<br>unicli lark open-app<br>unicli lark status-app |
+| lark | bridge | 13 | 是 | unicli lark native-agenda<br>unicli lark native-doc-fetch<br>unicli lark native-message-search |
 | leetcode | web-api | 1 | 否 | unicli leetcode discuss-search |
 | lens | web-api | 2 | 是 | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | 否 | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
@@ -207,7 +207,7 @@
 | tiktok | web-api | 18 | 是 | unicli tiktok comment<br>unicli tiktok explore<br>unicli tiktok follow |
 | toutiao | web-api | 3 | 是 | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | twitch | web-api | 4 | 是 | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | web-api | 47 | 是 | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
+| twitter | bridge | 52 | 是 | unicli twitter lists<br>unicli twitter media<br>unicli twitter mentions |
 | ukipo | web-api | 1 | 否 | unicli ukipo info |
 | unsplash | web-api | 2 | 否 | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | 否 | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |
@@ -237,7 +237,7 @@
 | youtube | web-api | 17 | 是 | unicli youtube playlist<br>unicli youtube shorts<br>unicli youtube trending |
 | yt-dlp | bridge | 5 | 否 | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | 是 | unicli yuanbao ask<br>unicli yuanbao new<br>unicli yuanbao shared |
-| zhihu | web-api | 27 | 是 | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
+| zhihu | web-api | 37 | 是 | unicli zhihu answer<br>unicli zhihu answers<br>unicli zhihu article |
 | zoom | desktop | 3 | 否 | unicli zoom join<br>unicli zoom start<br>unicli zoom toggle-mute |
 | zotero | service | 8 | 否 | unicli zotero add-note<br>unicli zotero add-tag<br>unicli zotero collections |
 | zsxq | web-api | 5 | 是 | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |

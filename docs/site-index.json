@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-02T12:06:59.087Z",
+  "generated": "2026-08-08T12:34:39.954Z",
   "total_sites": 326,
-  "total_commands": 1830,
+  "total_commands": 1853,
   "sites": [
     {
       "site": "12306",
@@ -790,7 +790,7 @@
       "domain": "public.api.bsky.app",
       "auth": true,
       "strategy": "public",
-      "command_count": 13,
+      "command_count": 16,
       "commands": [
         {
           "name": "feeds",
@@ -811,6 +811,21 @@
           "name": "likes",
           "description": "Get Bluesky liked posts for a user",
           "command": "unicli bluesky likes"
+        },
+        {
+          "name": "native-post",
+          "description": "Publish a Bluesky post through the official goat CLI",
+          "command": "unicli bluesky native-post"
+        },
+        {
+          "name": "native-record",
+          "description": "Read an AT Protocol record through Bluesky's official goat CLI",
+          "command": "unicli bluesky native-record"
+        },
+        {
+          "name": "native-resolve",
+          "description": "Resolve an AT Protocol handle through Bluesky's official goat CLI",
+          "command": "unicli bluesky native-resolve"
         },
         {
           "name": "notifications",
@@ -2110,19 +2125,18 @@
     {
       "site": "feishu",
       "type": "bridge",
-      "domain": "feishu-cli.com",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "command_count": 4,
       "commands": [
         {
           "name": "calendar",
-          "description": "List upcoming Feishu/Lark calendar events",
+          "description": "Read today's agenda through the official Lark/Feishu CLI",
           "command": "unicli feishu calendar"
         },
         {
           "name": "docs",
-          "description": "List recent Feishu/Lark documents",
+          "description": "List recently edited documents through the official Lark/Feishu CLI",
           "command": "unicli feishu docs"
         },
         {
@@ -2132,7 +2146,7 @@
         },
         {
           "name": "tasks",
-          "description": "List Feishu/Lark tasks",
+          "description": "List the current user's tasks through the official Lark/Feishu CLI",
           "command": "unicli feishu tasks"
         }
       ]
@@ -3757,13 +3771,38 @@
     {
       "site": "lark",
       "type": "bridge",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
-      "command_count": 8,
+      "command_count": 13,
       "commands": [
         {
+          "name": "native-agenda",
+          "description": "Read today's agenda through the official Lark/Feishu CLI",
+          "command": "unicli lark native-agenda"
+        },
+        {
+          "name": "native-doc-fetch",
+          "description": "Read a Lark/Feishu document through the official CLI",
+          "command": "unicli lark native-doc-fetch"
+        },
+        {
+          "name": "native-message-search",
+          "description": "Search workspace messages through the official Lark/Feishu CLI",
+          "command": "unicli lark native-message-search"
+        },
+        {
+          "name": "native-send",
+          "description": "Send a workspace message through the official Lark/Feishu CLI",
+          "command": "unicli lark native-send"
+        },
+        {
+          "name": "native-task-search",
+          "description": "Search the current user's tasks through the official Lark/Feishu CLI",
+          "command": "unicli lark native-task-search"
+        },
+        {
           "name": "version",
-          "description": "Check Lark CLI version and status",
+          "description": "Check the official Lark/Feishu CLI version",
           "command": "unicli lark version"
         },
         {
@@ -6218,7 +6257,7 @@
       "commands": [
         {
           "name": "channels",
-          "description": "List Slack channels",
+          "description": "List Slack channels through the official Slack Web API",
           "command": "unicli slack channels"
         },
         {
@@ -6233,17 +6272,17 @@
         },
         {
           "name": "search",
-          "description": "Search Slack messages",
+          "description": "Search Slack messages through the official Slack Web API",
           "command": "unicli slack search"
         },
         {
           "name": "send",
-          "description": "Send a message to a Slack channel",
+          "description": "Send a Slack message through the official Slack Web API",
           "command": "unicli slack send"
         },
         {
           "name": "status",
-          "description": "Check Slack CLI auth and workspace status",
+          "description": "Check Slack authentication through the official Slack Web API",
           "command": "unicli slack status"
         },
         {
@@ -6987,11 +7026,11 @@
     },
     {
       "site": "twitter",
-      "type": "web-api",
+      "type": "bridge",
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 47,
+      "command_count": 52,
       "commands": [
         {
           "name": "lists",
@@ -7012,6 +7051,31 @@
           "name": "mute",
           "description": "Mute a Twitter/X user",
           "command": "unicli twitter mute"
+        },
+        {
+          "name": "native-me",
+          "description": "Read the authenticated X account through the official xurl CLI",
+          "command": "unicli twitter native-me"
+        },
+        {
+          "name": "native-post",
+          "description": "Publish an X post through the official xurl CLI and X API",
+          "command": "unicli twitter native-post"
+        },
+        {
+          "name": "native-search",
+          "description": "Search recent X posts through the official xurl CLI and X API",
+          "command": "unicli twitter native-search"
+        },
+        {
+          "name": "native-tweet",
+          "description": "Read one X post through the official xurl CLI and X API",
+          "command": "unicli twitter native-tweet"
+        },
+        {
+          "name": "native-user",
+          "description": "Read an X account through the official xurl CLI and X API",
+          "command": "unicli twitter native-user"
         },
         {
           "name": "pin",
@@ -8414,7 +8478,7 @@
       "domain": "www.zhihu.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 27,
+      "command_count": 37,
       "commands": [
         {
           "name": "answer",
@@ -8475,6 +8539,56 @@
           "name": "me",
           "description": "Current Zhihu user profile",
           "command": "unicli zhihu me"
+        },
+        {
+          "name": "native-answer",
+          "description": "Generate a sourced Zhihu Direct answer through the official Zhihu CLI",
+          "command": "unicli zhihu native-answer"
+        },
+        {
+          "name": "native-capabilities",
+          "description": "Read the complete capability manifest from the official Zhihu CLI",
+          "command": "unicli zhihu native-capabilities"
+        },
+        {
+          "name": "native-favorite-items",
+          "description": "Read items in one current-account Zhihu favorite list through the official CLI",
+          "command": "unicli zhihu native-favorite-items"
+        },
+        {
+          "name": "native-favorite-lists",
+          "description": "Read the current Zhihu account's favorite lists through the official CLI",
+          "command": "unicli zhihu native-favorite-lists"
+        },
+        {
+          "name": "native-favorites-recent",
+          "description": "Read recent favorites across the current Zhihu account through the official CLI",
+          "command": "unicli zhihu native-favorites-recent"
+        },
+        {
+          "name": "native-global-search",
+          "description": "Search current web sources through the official Zhihu CLI",
+          "command": "unicli zhihu native-global-search"
+        },
+        {
+          "name": "native-hot",
+          "description": "Read the current Zhihu hot list through the official Zhihu CLI",
+          "command": "unicli zhihu native-hot"
+        },
+        {
+          "name": "native-my-contents",
+          "description": "Read the current account's public Zhihu creations through the official CLI",
+          "command": "unicli zhihu native-my-contents"
+        },
+        {
+          "name": "native-my-followees",
+          "description": "Read accounts followed by the current Zhihu account through the official CLI",
+          "command": "unicli zhihu native-my-followees"
+        },
+        {
+          "name": "native-search",
+          "description": "Search Zhihu through the official Zhihu CLI and preserve its server JSON",
+          "command": "unicli zhihu native-search"
         },
         {
           "name": "notifications",

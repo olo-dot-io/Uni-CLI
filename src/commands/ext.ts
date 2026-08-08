@@ -50,6 +50,9 @@ export function registerExtCommand(program: Command): void {
         name: c.name,
         binary: c.binary,
         description: c.description,
+        provenance: c.provenance ?? "unspecified",
+        surface: c.native_surface ?? "cli",
+        scope: c.provider_scope ?? "general",
         installed: c.installed ? "yes" : "no",
         tags: (c.tags ?? []).join(", "),
       }));
@@ -61,7 +64,20 @@ export function registerExtCommand(program: Command): void {
       };
 
       console.log(
-        format(rows, ["name", "binary", "description", "installed"], fmt, ctx),
+        format(
+          rows,
+          [
+            "name",
+            "binary",
+            "description",
+            "provenance",
+            "surface",
+            "scope",
+            "installed",
+          ],
+          fmt,
+          ctx,
+        ),
       );
 
       const installedCount = clis.filter((c) => c.installed).length;

@@ -28,6 +28,23 @@ unicli search "列出 Hacker News 最新文章" -f json
 
 Codex CLI、Claude Code、OpenCode、OpenClaw、Cursor Agent 和 CI 都可以使用这条路径。
 
+## 平台原生工具
+
+平台维护的 CLI 若能提供更强的结构化契约，Uni-CLI 会直接保留这个执行入口。命令元数据会写明实际 executable，官方 JSON 随后进入统一的 Uni-CLI envelope。
+
+当前第一方路径包括知乎 CLI、X `xurl`、Lark 和飞书 `lark-cli`，以及 Bluesky `goat`。
+
+```bash
+unicli zhihu native-search "Agent 工具" -f json
+unicli twitter native-search "from:XDevelopers MCP" -f json
+unicli lark native-message-search "发布" -f json
+unicli bluesky native-resolve bsky.app -f json
+```
+
+运行 `unicli ext list --tag social -f json` 可以检查提供方、原生形式、安装状态和能力范围。Reddit Devvit 与 Slack CLI 会明确标为应用开发工具，内容请求不会误入这些入口。Slack 内容命令调用官方 Web API，Slack 托管 MCP 保持独立的 OAuth 服务边界。
+
+Expanded MCP 会把同一组类型化 `native-*` 命令提供给 MCP 客户端。
+
 ## MCP
 
 使用 `npx` 启动服务：

@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.0.3] — 2026-08-08 — Artemis · Glover
+
+### Added
+
+- Add 23 provider-native commands for Zhihu, X, Lark/Feishu, and Bluesky.
+  These routes preserve the official CLI executable, authentication model, and
+  structured response while remaining available through expanded Uni-CLI MCP.
+- Add first-party provenance, native-surface, and provider-scope metadata to the
+  external CLI catalog for X, Bluesky, Lark, Reddit Devvit, DingTalk, and Slack.
+- Add focused English and Chinese guidance for selecting official native tools,
+  hosted MCP services, and Uni-CLI web adapters.
+
+### Changed
+
+- Rebuild the public documentation site around the green observatory and orbital
+  operation chapters, with tighter navigation, responsive interaction, local
+  brand assets, and rewritten guides for authentication, browser and desktop
+  control, CLI usage, integrations, and repair.
+- Route the existing Feishu bridge through the official `lark-cli`, including
+  agenda, document search, messaging, and task operations with JSON output.
+- Adopt the human-writing harness as the repository prose boundary and install
+  its compact agent guidance through `unicli init`.
+
+### Fixed
+
+- Replace invalid Slack content calls through the app-development CLI with the
+  corresponding official Slack Web API operations.
+- Correct the Lark executable and command paths used by existing adapters, and
+  distinguish content operations from application-development-only tools.
+- Update `js-yaml` and `undici` across the production lock closure to versions
+  that clear the npm security audit while preserving npm 10 optional peers.
+
 ## [1.0.2] — 2026-08-02 — Artemis · Glover
 
 > Published from annotated tag `v1.0.2` at commit `d6940a1c` through GitHub

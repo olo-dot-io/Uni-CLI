@@ -1,0 +1,26 @@
+site: zhihu
+name: native-capabilities
+description: Read the complete capability manifest from the official Zhihu CLI
+type: bridge
+strategy: public
+binary: zhihu-cli
+detect: which zhihu-cli
+
+pipeline:
+  - exec:
+      command: "${{ env.ZHIHU_CLI || (env.LOCALAPPDATA ? env.LOCALAPPDATA + '/ZhihuCLI/current/zhihu-cli.exe' : (env.ZHIHU_CLI_HOME || env.HOME + '/Library/Application Support/zhihu-cli') + '/current/zhihu-cli') }}"
+      args: [capabilities]
+      parse: json
+      timeout: 10000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: none
+capabilities: [subprocess.exec]
+executables: [zhihu-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

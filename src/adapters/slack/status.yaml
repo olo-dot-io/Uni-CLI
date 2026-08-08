@@ -1,27 +1,29 @@
 site: slack
 name: status
-description: Check Slack CLI auth and workspace status
-type: bridge
+description: Check Slack authentication through the official Slack Web API
+domain: slack.com
+type: web-api
 strategy: public
-binary: slack
-detect: which slack
+
+args:
+  token:
+    type: str
+    description: Slack token, or set SLACK_TOKEN
 
 pipeline:
-  - exec:
-      command: slack
-      args:
-        - auth
-        - info
-        - --json
-      parse: json
-      timeout: 15000
+  - fetch:
+      url: https://slack.com/api/auth.test
+      headers:
+        Authorization: "${{ 'Bearer ' + (args.token || env.SLACK_TOKEN || '') }}"
 
-columns: [team, user, url]
-
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
-minimum_capability: subprocess.exec
+columns: [ok, url, team, user, team_id, user_id, bot_id]
+operation_effect: read
+execution_operator: structured-api
+operation_family: get
+auth_requirement: required
+capabilities: [http.fetch]
+minimum_capability: http.fetch
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

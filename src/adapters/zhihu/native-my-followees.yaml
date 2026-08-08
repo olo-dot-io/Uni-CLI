@@ -1,0 +1,47 @@
+site: zhihu
+name: native-my-followees
+description: Read accounts followed by the current Zhihu account through the official CLI
+type: bridge
+strategy: public
+binary: zhihu-cli
+detect: which zhihu-cli
+
+args:
+  offset:
+    type: int
+    default: 0
+    minimum: 0
+    description: Result offset
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 50
+    description: Number of results
+
+pipeline:
+  - exec:
+      command: "${{ env.ZHIHU_CLI || (env.LOCALAPPDATA ? env.LOCALAPPDATA + '/ZhihuCLI/current/zhihu-cli.exe' : (env.ZHIHU_CLI_HOME || env.HOME + '/Library/Application Support/zhihu-cli') + '/current/zhihu-cli') }}"
+      args:
+        [
+          me,
+          followees,
+          --offset,
+          "${{ args.offset }}",
+          --limit,
+          "${{ args.limit }}",
+        ]
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: list
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [zhihu-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

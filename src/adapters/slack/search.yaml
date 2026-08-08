@@ -1,37 +1,53 @@
 site: slack
 name: search
-description: Search Slack messages
-type: bridge
+description: Search Slack messages through the official Slack Web API
+domain: slack.com
+type: web-api
 strategy: public
 lint_listing_detail: skip
-binary: slack
-detect: which slack
 
 args:
   query:
-    positional: true
-    required: true
     type: str
-    description: Search query
+    required: true
+    positional: true
+    description: Slack message search query
+  token:
+    type: str
+    description: Slack user token, or set SLACK_TOKEN
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+    description: Number of messages
 
 pipeline:
-  - exec:
-      command: slack
-      args:
-        - search
-        - messages
-        - --query
-        - "${{ args.query }}"
-        - --json
-      parse: json
-      timeout: 30000
+  - fetch:
+      url: https://slack.com/api/search.messages
+      headers:
+        Authorization: "${{ 'Bearer ' + (args.token || env.SLACK_TOKEN || '') }}"
+      params:
+        query: "${{ args.query }}"
+        count: "${{ args.limit }}"
 
-columns: [channel, user, text, ts]
+  - select: messages.matches
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
-minimum_capability: subprocess.exec
+columns: [channel_id, username, text, ts, permalink]
+operation_effect: read
+execution_operator: structured-api
+operation_family: search
+auth_requirement: required
+retrieval:
+  operation: discover
+  result_kind: message
+  source_class: official
+  arguments:
+    query: query
+    limit: limit
+capabilities: [http.fetch]
+minimum_capability: http.fetch
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

@@ -1,0 +1,50 @@
+site: lark
+name: native-task-search
+description: Search the current user's tasks through the official Lark/Feishu CLI
+type: bridge
+strategy: public
+binary: lark-cli
+detect: which lark-cli
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Task search query
+
+pipeline:
+  - exec:
+      command: lark-cli
+      args:
+        [
+          task,
+          +search,
+          --query,
+          "${{ args.query }}",
+          --as,
+          user,
+          --format,
+          json,
+        ]
+      parse: json
+      timeout: 60000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: search
+auth_requirement: required
+retrieval:
+  operation: discover
+  result_kind: task
+  source_class: official
+  arguments:
+    query: query
+capabilities: [subprocess.exec]
+executables: [lark-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

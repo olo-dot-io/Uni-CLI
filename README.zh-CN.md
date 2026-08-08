@@ -87,10 +87,10 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 静态目录：
 
 - <!-- STATS:site_count -->326<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1830<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1227<!-- /STATS --> 个 adapters
+- <!-- STATS:command_count -->1853<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1250<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->9995<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10138<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -98,7 +98,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 <!-- prettier-ignore -->
 | 类别 | 站点 | Operations | 示例 |
 | --- | ---: | ---: | --- |
-| 社交 | 33 | 372 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| 社交 | 33 | 395 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
 | 视频 | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
 | 新闻 | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
 | 财经 | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
@@ -261,7 +261,7 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 需要 Node.js 22.19 或更高版本。Adapter 和 engine 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-<p align="center"><sub>v1.0.2 — Artemis · Glover</sub></p>
+<p align="center"><sub>v1.0.3 — Artemis · Glover</sub></p>
 
 ## License
 

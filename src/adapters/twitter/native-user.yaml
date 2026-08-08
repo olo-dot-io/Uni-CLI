@@ -1,0 +1,35 @@
+site: twitter
+name: native-user
+description: Read an X account through the official xurl CLI and X API
+type: bridge
+strategy: public
+binary: xurl
+detect: which xurl
+
+args:
+  username:
+    type: str
+    required: true
+    positional: true
+    pattern: "^[A-Za-z0-9_]{1,15}$"
+    description: X username without the at sign
+
+pipeline:
+  - exec:
+      command: xurl
+      args:
+        - "${{ '/2/users/by/username/' + encodeURIComponent(args.username) + '?user.fields=created_at,description,location,profile_image_url,protected,public_metrics,url,verified' }}"
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [xurl]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

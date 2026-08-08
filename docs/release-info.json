@@ -1,24 +1,24 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "codename": "Artemis · Glover",
-  "date": "2026-08-02",
-  "status": "published",
+  "date": "2026-08-08",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.2",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#102--2026-08-02--artemis--glover",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.3",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#103--2026-08-08--artemis--glover",
   "highlights": {
     "root": [
-      "Uni-CLI 1.0.2 adds a complete OpenReview venue archive for public submissions, reviews, rebuttals, decisions, revisions, PDFs, supplementary files, and external research links.",
-      "OpenReview access now uses browser-derived sessions, bounded token refresh, strict request pacing, rate-limit-aware retries, durable cursors, transactional files, and SHA-256 verification.",
-      "Venue groups and edit history drive conference discovery and lifecycle reconstruction across current API v2 and older API v1 records.",
-      "The patch also preserves AT-SPI accessible names, makes visual evidence claims atomically single-use, and hardens durable MCP task persistence on Windows."
+      "Uni-CLI 1.0.3 adds 23 provider-native operations for Zhihu, X, Lark and Feishu, and Bluesky while preserving each official CLI and its structured response.",
+      "The external tool catalog now records official provenance, native surface, and provider scope for local CLI and MCP entry points.",
+      "Feishu operations now use the official lark-cli, while Slack content operations use the official Web API instead of the application-development CLI.",
+      "The public documentation gains a rebuilt green observatory interface, orbital operation chapters, clearer guides, and a repository-wide human-writing harness."
     ],
     "zh": [
-      "Uni-CLI 1.0.2 新增完整的 OpenReview venue 归档，覆盖公开投稿、审稿、rebuttal、决定、revision、PDF、补充材料和外部研究链接。",
-      "OpenReview 访问现在使用浏览器登录态、有界 token refresh、严格请求节奏、感知 rate limit 的重试、持久 cursor、事务文件和 SHA-256 校验。",
-      "Venue group 与 edit history 驱动会议发现和生命周期重建，同时覆盖当前 API v2 与旧 API v1 记录。",
-      "本次 patch 还保留 AT-SPI accessible name，使 visual evidence claim 具备原子单次消费，并强化 Windows 上的 MCP task 持久化。"
+      "Uni-CLI 1.0.3 新增 23 个平台原生 operation，覆盖知乎、X、Lark 和飞书，以及 Bluesky，并保留官方 CLI 与结构化响应。",
+      "外部工具目录现在记录本地 CLI 与 MCP 入口的官方来源、原生形式和提供方能力范围。",
+      "飞书 operation 已迁到官方 lark-cli，Slack 内容 operation 则调用官方 Web API。",
+      "公共文档完成绿色天文台界面与轨道 operation 章节重构，同时补齐关键指南并接入统一的 human-writing harness。"
     ]
   }
 }

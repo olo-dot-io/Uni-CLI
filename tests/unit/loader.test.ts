@@ -105,11 +105,14 @@ describe("adapter loader", () => {
     expect(cmds).toContain("user");
   });
 
-  it("loads bluesky adapter with all 13 commands", () => {
+  it("loads Bluesky API and official goat commands", () => {
     const adapters = getAllAdapters();
     const bsky = adapters.find((a) => a.name === "bluesky");
     expect(bsky).toBeDefined();
-    expect(Object.keys(bsky!.commands).length).toBe(13);
+    expect(Object.keys(bsky!.commands).length).toBe(16);
+    expect(bsky!.commands["native-resolve"]?.execution_operator).toBe(
+      "native-cli",
+    );
   });
 
   it("parses adapter args correctly", () => {

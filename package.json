@@ -1,6 +1,6 @@
 {
   "name": "@zenalexa/unicli",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Give agents every interface—install once to search, run, inspect, and repair real software across APIs, browsers, desktops, local tools, and MCP.",
   "packageManager": "npm@11.14.0",
   "type": "module",

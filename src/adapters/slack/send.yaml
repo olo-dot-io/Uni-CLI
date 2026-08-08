@@ -1,43 +1,46 @@
 site: slack
 name: send
-description: Send a message to a Slack channel
-type: bridge
+description: Send a Slack message through the official Slack Web API
+domain: slack.com
+type: web-api
 strategy: public
-binary: slack
-detect: which slack
 
 args:
   channel:
-    positional: true
-    required: true
     type: str
-    description: Channel ID (e.g. C0123456789)
+    required: true
+    positional: true
+    description: Slack channel ID
   text:
-    positional: true
-    required: true
     type: str
-    description: Message text to send
+    required: true
+    positional: true
+    minLength: 1
+    description: Message text
+  token:
+    type: str
+    description: Slack bot or user token, or set SLACK_TOKEN
 
 pipeline:
-  - exec:
-      command: slack
-      args:
-        - chat
-        - send
-        - --channel
-        - "${{ args.channel }}"
-        - --text
-        - "${{ args.text }}"
-        - --json
-      parse: json
-      timeout: 15000
+  - fetch:
+      url: https://slack.com/api/chat.postMessage
+      method: POST
+      headers:
+        Authorization: "${{ 'Bearer ' + (args.token || env.SLACK_TOKEN || '') }}"
+        Content-Type: application/json; charset=utf-8
+      body:
+        channel: "${{ args.channel }}"
+        text: "${{ args.text }}"
 
-columns: [ok, channel, ts]
-
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
-minimum_capability: subprocess.exec
+columns: [ok, channel, ts, message]
+operation_effect: send_message
+execution_operator: structured-api
+operation_family: create
+idempotency: none
+auth_requirement: required
+capabilities: [http.fetch]
+minimum_capability: http.fetch
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

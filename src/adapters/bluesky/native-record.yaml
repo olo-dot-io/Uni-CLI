@@ -1,0 +1,34 @@
+site: bluesky
+name: native-record
+description: Read an AT Protocol record through Bluesky's official goat CLI
+type: bridge
+strategy: public
+binary: goat
+detect: which goat
+
+args:
+  uri:
+    type: str
+    required: true
+    positional: true
+    pattern: "^at://"
+    description: Complete AT URI
+
+pipeline:
+  - exec:
+      command: goat
+      args: [get, "${{ args.uri }}"]
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: none
+capabilities: [subprocess.exec]
+executables: [goat]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

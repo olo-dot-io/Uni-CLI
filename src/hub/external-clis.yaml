@@ -4,6 +4,88 @@
 # it via `unicli ext run <name> <args>`.  The registry is read at startup;
 # only CLIs whose binary is found on $PATH are registered as live commands.
 
+# ── Tier 0 — Provider-native social and collaboration surfaces ─────────
+
+- name: xurl
+  binary: xurl
+  description: "X — official API CLI with OAuth, XChat, raw API calls, and a hosted MCP bridge"
+  homepage: "https://github.com/xdevplatform/xurl"
+  tags: [x, twitter, social, api, mcp]
+  provenance: official
+  native_surface: cli+mcp
+  provider_scope: content-and-platform-api
+  install:
+    mac: "brew install --cask xdevplatform/tap/xurl"
+    linux: "npm install -g @xdevplatform/xurl"
+    default: "npm install -g @xdevplatform/xurl"
+
+- name: goat
+  binary: goat
+  description: "Bluesky — official AT Protocol CLI for records, repositories, firehose, and posting"
+  homepage: "https://github.com/bluesky-social/goat"
+  tags: [bluesky, atproto, social, api]
+  provenance: official
+  native_surface: cli
+  provider_scope: content-and-protocol
+  install:
+    mac: "brew install goat"
+    default: "go install github.com/bluesky-social/goat@latest"
+
+- name: devvit
+  binary: devvit
+  description: "Reddit — official Devvit CLI for creating, uploading, and managing Reddit apps"
+  homepage: "https://developers.reddit.com/docs/guides/tools/devvit_cli"
+  tags: [reddit, devvit, social, app-development]
+  provenance: official
+  native_surface: cli
+  provider_scope: app-development
+  install:
+    default: "npm install -g devvit"
+
+- name: devvit-mcp
+  binary: devvit-mcp
+  description: "Reddit — official MCP server for Devvit application development"
+  homepage: "https://github.com/reddit/devvit-mcp"
+  tags: [reddit, devvit, social, app-development, mcp]
+  provenance: official
+  native_surface: mcp-server
+  provider_scope: app-development
+  install:
+    default: "npm install -g @devvit/mcp"
+
+- name: lark-mcp
+  binary: lark-mcp
+  description: "Lark/Feishu — official OpenAPI MCP server for workspace operations"
+  homepage: "https://github.com/larksuite/lark-openapi-mcp"
+  tags: [lark, feishu, collaboration, productivity, mcp]
+  provenance: official
+  native_surface: mcp-server
+  provider_scope: workspace-content
+  install:
+    default: "npm install -g @larksuiteoapi/lark-mcp"
+
+- name: dingtalk-mcp
+  binary: dingtalk-mcp
+  description: "DingTalk — official MCP server for contacts, messages, tasks, calendar, and reports"
+  homepage: "https://github.com/open-dingtalk/dingtalk-mcp"
+  tags: [dingtalk, collaboration, productivity, mcp]
+  provenance: official
+  native_surface: mcp-server
+  provider_scope: workspace-content
+  install:
+    default: "npm install -g dingtalk-mcp"
+
+- name: slack-cli
+  binary: slack
+  description: "Slack — official CLI for developing and deploying Slack applications"
+  homepage: "https://tools.slack.dev/slack-cli"
+  tags: [slack, collaboration, app-development]
+  provenance: official
+  native_surface: cli
+  provider_scope: app-development
+  install:
+    mac: "brew install slack-cli/tap/slack"
+
 # ── Tier 0 — Chinese Office (highest value) ─────────────────────────────
 
 - name: lark-cli
@@ -11,11 +93,12 @@
   description: "Lark/Feishu — messages, documents, calendar, tasks, 200+ commands"
   homepage: "https://github.com/larksuite/cli"
   tags: [lark, feishu, collaboration, productivity]
+  provenance: official
+  native_surface: cli
+  provider_scope: workspace-content
   json_flag: "--format json"
   install:
-    mac: "npm install -g @larksuite/cli"
-    linux: "npm install -g @larksuite/cli"
-    default: "npm install -g @larksuite/cli"
+    default: "npx -y @larksuite/cli@latest install"
 
 - name: wecom-cli
   binary: wecom-cli

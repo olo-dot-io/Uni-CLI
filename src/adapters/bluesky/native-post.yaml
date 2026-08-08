@@ -1,0 +1,36 @@
+site: bluesky
+name: native-post
+description: Publish a Bluesky post through the official goat CLI
+type: bridge
+strategy: public
+binary: goat
+detect: which goat
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Post text
+
+pipeline:
+  - exec:
+      command: goat
+      args: [bsky, post, "${{ args.text }}"]
+      parse: text
+      timeout: 30000
+
+columns: [output]
+operation_effect: publish_content
+execution_operator: native-cli
+operation_family: create
+idempotency: none
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [goat]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

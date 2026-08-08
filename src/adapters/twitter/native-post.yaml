@@ -1,0 +1,36 @@
+site: twitter
+name: native-post
+description: Publish an X post through the official xurl CLI and X API
+type: bridge
+strategy: public
+binary: xurl
+detect: which xurl
+
+args:
+  text:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Post text
+
+pipeline:
+  - exec:
+      command: xurl
+      args:
+        [-X, POST, -d, "${{ JSON.stringify({ text: args.text }) }}", /2/tweets]
+      parse: json
+      timeout: 30000
+
+operation_effect: publish_content
+execution_operator: native-cli
+operation_family: create
+idempotency: none
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [xurl]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

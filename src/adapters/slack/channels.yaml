@@ -1,27 +1,39 @@
 site: slack
 name: channels
-description: List Slack channels
-type: bridge
+description: List Slack channels through the official Slack Web API
+domain: slack.com
+type: web-api
 strategy: public
-binary: slack
-detect: which slack
+
+args:
+  token:
+    type: str
+    description: Slack token, or set SLACK_TOKEN
+  limit:
+    type: int
+    default: 100
+    minimum: 1
+    maximum: 200
+    description: Number of channels
 
 pipeline:
-  - exec:
-      command: slack
-      args:
-        - channel
-        - list
-        - --json
-      parse: json
-      timeout: 30000
+  - fetch:
+      url: https://slack.com/api/conversations.list
+      headers:
+        Authorization: "${{ 'Bearer ' + (args.token || env.SLACK_TOKEN || '') }}"
+      params:
+        limit: "${{ args.limit }}"
 
-columns: [name, id, is_private, num_members]
+  - select: channels
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
-minimum_capability: subprocess.exec
+columns: [id, name, is_private, num_members]
+operation_effect: read
+execution_operator: structured-api
+operation_family: list
+auth_requirement: required
+capabilities: [http.fetch]
+minimum_capability: http.fetch
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

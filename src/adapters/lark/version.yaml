@@ -1,14 +1,14 @@
 site: lark
 name: version
-description: Check Lark CLI version and status
+description: Check the official Lark/Feishu CLI version
 type: bridge
 strategy: public
-binary: lark
-detect: which lark
+binary: lark-cli
+detect: which lark-cli
 
 pipeline:
   - exec:
-      command: lark
+      command: lark-cli
       args:
         - --version
       parse: text
@@ -16,8 +16,12 @@ pipeline:
 
 columns: [output]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: none
 capabilities: ["subprocess.exec"]
+executables: [lark-cli]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

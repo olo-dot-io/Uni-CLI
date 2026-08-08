@@ -1,0 +1,57 @@
+site: lark
+name: native-send
+description: Send a workspace message through the official Lark/Feishu CLI
+type: bridge
+strategy: public
+binary: lark-cli
+detect: which lark-cli
+
+args:
+  chat_id:
+    type: str
+    required: true
+    positional: true
+    description: Lark chat ID
+  text:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Message text
+  identity:
+    type: str
+    default: user
+    choices: [user, bot]
+    description: Lark identity used for the request
+
+pipeline:
+  - exec:
+      command: lark-cli
+      args:
+        [
+          im,
+          +messages-send,
+          --chat-id,
+          "${{ args.chat_id }}",
+          --text,
+          "${{ args.text }}",
+          --as,
+          "${{ args.identity }}",
+          --format,
+          json,
+        ]
+      parse: json
+      timeout: 30000
+
+operation_effect: send_message
+execution_operator: native-cli
+operation_family: create
+idempotency: none
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [lark-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

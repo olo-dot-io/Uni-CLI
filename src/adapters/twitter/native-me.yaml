@@ -1,0 +1,27 @@
+site: twitter
+name: native-me
+description: Read the authenticated X account through the official xurl CLI
+type: bridge
+strategy: public
+binary: xurl
+detect: which xurl
+
+pipeline:
+  - exec:
+      command: xurl
+      args:
+        - /2/users/me?user.fields=created_at,description,location,profile_image_url,protected,public_metrics,url,verified
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [xurl]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

@@ -1,0 +1,34 @@
+site: zhihu
+name: native-favorite-lists
+description: Read the current Zhihu account's favorite lists through the official CLI
+type: bridge
+strategy: public
+binary: zhihu-cli
+detect: which zhihu-cli
+
+args:
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 50
+    description: Number of favorite lists
+
+pipeline:
+  - exec:
+      command: "${{ env.ZHIHU_CLI || (env.LOCALAPPDATA ? env.LOCALAPPDATA + '/ZhihuCLI/current/zhihu-cli.exe' : (env.ZHIHU_CLI_HOME || env.HOME + '/Library/Application Support/zhihu-cli') + '/current/zhihu-cli') }}"
+      args: [me, favorites, lists, --limit, "${{ args.limit }}"]
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: list
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [zhihu-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

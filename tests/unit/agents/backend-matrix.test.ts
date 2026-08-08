@@ -134,7 +134,7 @@ describe("agent backend matrix", () => {
       .map((entry) => entry.binary)
       .filter((binary, index, binaries) => binaries.indexOf(binary) !== index);
 
-    expect(entries).toHaveLength(59);
+    expect(entries).toHaveLength(66);
     expect(duplicateBinaries).toEqual([]);
     expect(entries).toContainEqual(
       expect.objectContaining({

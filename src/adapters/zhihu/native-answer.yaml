@@ -1,0 +1,47 @@
+site: zhihu
+name: native-answer
+description: Generate a sourced Zhihu Direct answer through the official Zhihu CLI
+type: bridge
+strategy: public
+binary: zhihu-cli
+detect: which zhihu-cli
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Question for Zhihu Direct
+  model:
+    type: str
+    default: zhida-fast-1p5
+    choices: [zhida-fast-1p5, zhida-thinking-1p5, zhida-agent]
+    description: Zhihu Direct model
+
+pipeline:
+  - exec:
+      command: "${{ env.ZHIHU_CLI || (env.LOCALAPPDATA ? env.LOCALAPPDATA + '/ZhihuCLI/current/zhihu-cli.exe' : (env.ZHIHU_CLI_HOME || env.HOME + '/Library/Application Support/zhihu-cli') + '/current/zhihu-cli') }}"
+      args:
+        [
+          answer,
+          --query,
+          "${{ args.query }}",
+          --model,
+          "${{ args.model }}",
+          --output,
+          json,
+        ]
+      parse: json
+      timeout: 120000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [zhihu-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

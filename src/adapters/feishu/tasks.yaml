@@ -1,32 +1,24 @@
 site: feishu
 name: tasks
-description: List Feishu/Lark tasks
+description: List the current user's tasks through the official Lark/Feishu CLI
 type: bridge
-domain: feishu-cli.com
-detect: which feishu
+detect: which lark-cli
 strategy: public
-args:
-  status:
-    required: false
-    default: open
-    description: Task status filter (open, completed, all)
 pipeline:
   - exec:
-      command: feishu
-      args:
-        [
-          "tasks",
-          "list",
-          "--status",
-          "${{ args.status | default('open') }}",
-          "--json",
-        ]
-columns: [title, assignee, due_date, status]
+      command: lark-cli
+      args: [task, +get-my-tasks, --as, user, --format, json]
+      parse: json
+      timeout: 60000
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
+operation_effect: read
+execution_operator: native-cli
+operation_family: list
+auth_requirement: required
 capabilities: ["subprocess.exec"]
+executables: [lark-cli]
 minimum_capability: subprocess.exec
 trust: user
-confidentiality: public
+confidentiality: private
 quarantine: false
 schema_version: v2

@@ -1,0 +1,57 @@
+site: lark
+name: native-doc-fetch
+description: Read a Lark/Feishu document through the official CLI
+type: bridge
+strategy: public
+binary: lark-cli
+detect: which lark-cli
+
+args:
+  doc:
+    type: str
+    required: true
+    positional: true
+    description: Document URL or token
+  doc_format:
+    type: str
+    default: markdown
+    choices: [xml, markdown, im-markdown]
+    description: Returned document format
+  detail:
+    type: str
+    default: simple
+    choices: [simple, with-ids, full]
+    description: Returned document detail level
+
+pipeline:
+  - exec:
+      command: lark-cli
+      args:
+        [
+          docs,
+          +fetch,
+          --doc,
+          "${{ args.doc }}",
+          --doc-format,
+          "${{ args.doc_format }}",
+          --detail,
+          "${{ args.detail }}",
+          --as,
+          user,
+          --format,
+          json,
+        ]
+      parse: json
+      timeout: 60000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: get
+auth_requirement: required
+capabilities: [subprocess.exec]
+executables: [lark-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: private
+quarantine: false
+schema_version: v2

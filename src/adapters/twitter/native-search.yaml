@@ -1,0 +1,48 @@
+site: twitter
+name: native-search
+description: Search recent X posts through the official xurl CLI and X API
+type: bridge
+strategy: public
+binary: xurl
+detect: which xurl
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: X recent-search query including supported API operators
+  limit:
+    type: int
+    default: 20
+    minimum: 10
+    maximum: 100
+    description: Number of posts
+
+pipeline:
+  - exec:
+      command: xurl
+      args:
+        - "${{ '/2/tweets/search/recent?query=' + encodeURIComponent(args.query) + '&max_results=' + args.limit + '&tweet.fields=author_id,created_at,public_metrics,conversation_id&expansions=author_id&user.fields=username,name,verified' }}"
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: search
+auth_requirement: required
+retrieval:
+  operation: discover
+  result_kind: post
+  source_class: community
+  arguments:
+    query: query
+    limit: limit
+capabilities: [subprocess.exec]
+executables: [xurl]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

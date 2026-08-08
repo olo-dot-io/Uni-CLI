@@ -1,0 +1,55 @@
+site: zhihu
+name: native-search
+description: Search Zhihu through the official Zhihu CLI and preserve its server JSON
+type: bridge
+strategy: public
+binary: zhihu-cli
+detect: which zhihu-cli
+lint_listing_detail: skip
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    description: Search query
+  count:
+    type: int
+    default: 10
+    minimum: 1
+    maximum: 10
+    description: Number of results
+
+pipeline:
+  - exec:
+      command: "${{ env.ZHIHU_CLI || (env.LOCALAPPDATA ? env.LOCALAPPDATA + '/ZhihuCLI/current/zhihu-cli.exe' : (env.ZHIHU_CLI_HOME || env.HOME + '/Library/Application Support/zhihu-cli') + '/current/zhihu-cli') }}"
+      args:
+        [
+          search,
+          zhihu,
+          --query,
+          "${{ args.query }}",
+          --count,
+          "${{ args.count }}",
+        ]
+      parse: json
+      timeout: 30000
+
+operation_effect: read
+execution_operator: native-cli
+operation_family: search
+auth_requirement: required
+retrieval:
+  operation: discover
+  result_kind: post
+  source_class: community
+  arguments:
+    query: query
+    limit: count
+capabilities: [subprocess.exec]
+executables: [zhihu-cli]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

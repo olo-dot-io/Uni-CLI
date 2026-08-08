@@ -5,11 +5,11 @@ description: Shipped foundations and the next engineering priorities for Uni-CLI
 
 # Roadmap
 
-Current release: v1.0.2 — Artemis · Glover.
+Current release: v1.0.3 — Artemis · Glover.
 
 The static catalog contains <!-- STATS:site_count -->326<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1830<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1853<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
