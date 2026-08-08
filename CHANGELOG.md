@@ -2,6 +2,11 @@
 
 ## [1.0.3] — 2026-08-08 — Artemis · Glover
 
+> Published from annotated tag `v1.0.3` at commit `f2d0b136` through GitHub
+> Actions run `31258688138`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
 ### Added
 
 - Add 23 provider-native commands for Zhihu, X, Lark/Feishu, and Bluesky.
