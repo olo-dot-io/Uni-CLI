@@ -95,6 +95,28 @@ Run `unicli help browser` for the complete action list.
 | `unicli dev <path>`                        | Reload an adapter during development |
 | `unicli test <site>`                       | Run adapter checks                   |
 
+## Run evidence and evolution
+
+| Command                                  | Purpose                                                   |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `unicli runs list`                       | List local recorded runs                                  |
+| `unicli runs distill <run_ids...>`       | Create a redacted evidence packet                         |
+| `unicli evolve adapter <site> <command>` | Stage an isolated YAML adapter candidate                  |
+| `unicli evolve verify <session_id>`      | Compare baseline and candidate on validation and held-out |
+| `unicli evolve diff <session_id>`        | Inspect the current candidate patch                       |
+| `unicli evolve promote <session_id>`     | Install a candidate that passed the gate                  |
+| `unicli evolve rollback <session_id>`    | Restore the exact pre-promotion user overlay              |
+
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A candidate must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+
+## Plugins
+
+| Command                        | Purpose                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `unicli plugin inspect <path>` | Validate an Agent Plugins 1.0 package and show its projection |
+| `unicli plugin create <name>`  | Scaffold portable skills plus a Uni-CLI runtime extension     |
+| `unicli plugin list`           | List installed portable and native plugins                    |
+
 ## Protocol servers
 
 | Command                     | Purpose                          |

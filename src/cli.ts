@@ -63,6 +63,7 @@ import { registerApprovalsCommand } from "./commands/approvals.js";
 import { registerMcpCommand } from "./commands/mcp.js";
 import { registerAcpCommand } from "./commands/acp.js";
 import { registerEvalCommand } from "./commands/eval.js";
+import { registerEvolveCommand } from "./commands/evolve.js";
 import { registerResearchCommand } from "./commands/research.js";
 import { registerHubCommand } from "./commands/hub.js";
 import { registerExtCommand } from "./commands/ext.js";
@@ -337,8 +338,8 @@ export async function createCli(): Promise<Command> {
 
       // 5. Plugin directory
       const { join } = await import("node:path");
-      const { homedir } = await import("node:os");
-      const pluginsDir = join(homedir(), ".unicli", "plugins");
+      const { userDataRoot } = await import("./engine/user-home.js");
+      const pluginsDir = join(userDataRoot(), "plugins");
       if (existsSync(pluginsDir)) {
         const plugins = readdirSync(pluginsDir, { withFileTypes: true }).filter(
           (d) => d.isDirectory(),
@@ -442,6 +443,9 @@ export async function createCli(): Promise<Command> {
 
   // Register eval command — declarative regression suites
   registerEvalCommand(program);
+
+  // Register evolution command — evidence, candidate, verification, promotion
+  registerEvolveCommand(program);
   registerResearchCommand(program);
   registerHubCommand(program);
   registerExtCommand(program);

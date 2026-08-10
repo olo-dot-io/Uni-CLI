@@ -58,7 +58,7 @@ unicli hackernews top --limit 5 -f json
 - Static adapter sites: 337
 - Registered adapter operations: 1890
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10314
+- Tests: 10334
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -966,13 +966,13 @@ Real software changes. Uni-CLI helps an agent move from a failed operation to th
 
 ## Read the envelope
 
-Run the target in JSON format and keep its arguments:
+Run the target in JSON format and keep its arguments.
 
 ```bash
 unicli <site> <command> [args] -f json
 ```
 
-An adapter failure can include:
+An adapter failure can include the following fields.
 
 ```json
 {
@@ -995,7 +995,7 @@ An adapter failure can include:
 unicli repair <site> <command> --dry-run
 ```
 
-For commands with arguments, pass the original argv as JSON:
+For commands with arguments, pass the original argv as JSON.
 
 ```bash
 unicli repair <site> <command> \
@@ -1007,7 +1007,7 @@ The preview shows the adapter path, command, arguments, timeout, and working dir
 
 ## Update the smallest owning boundary
 
-Inspect the named adapter and the upstream response or page state. Common changes include:
+Inspect the named adapter and the upstream response or page state. Common changes include the following cases.
 
 - an endpoint or response field moved
 - a selector changed
@@ -1032,13 +1032,40 @@ Store a local adapter under `~/.unicli/adapters/<site>/` when the repair belongs
 
 ## Quarantined adapters
 
-List commands that are waiting for repair:
+List commands that are waiting for repair.
 
 ```bash
 unicli repair --quarantined
 ```
 
 After the source is updated and the target verifier succeeds, a maintainer can return the adapter to the regular test set.
+
+## Evolve a repeated repair
+
+Use an evolution session when one successful replay is too weak to justify a persistent override. Record separate proposal, validation, and held-out runs.
+
+```bash
+unicli --record <site> <command> [args]
+unicli runs list -f json
+
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --validation-run <validation-run> \
+  --held-out-run <held-out-run> \
+  -f json
+```
+
+The returned session names `candidate.path`. An Agent can edit that isolated YAML file or pass an existing candidate through `--candidate <path>`. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields.
+
+```bash
+unicli evolve diff <session-id> -f json
+unicli evolve verify <session-id> -f json
+unicli evolve promote <session-id> -f json
+```
+
+The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. `promote` writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
+
+Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair endpoints, selectors, extraction, and pipeline behavior, but it cannot change the session's authorization or execution-scope fields.
 
 ---
 
@@ -1904,7 +1931,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/PLUGIN.md
 - Section: Build
 - Parent: Build (/guide/adapters)
 
-A plugin groups adapters and optional JavaScript extensions outside the main repository. Installed plugins live under `~/.unicli/plugins/` and join the runtime catalog at startup.
+A plugin can combine portable Agent Skills with Uni-CLI adapters and runtime extensions. Installed plugins live under `~/.unicli/plugins/` and join the runtime catalog at startup.
 
 ## Create a plugin
 
@@ -1913,23 +1940,56 @@ unicli plugin create astronomy
 cd unicli-plugin-astronomy
 ```
 
-The scaffold contains:
+The scaffold contains these files.
 
 ```text
 unicli-plugin-astronomy/
+├── plugin.json
 ├── unicli-plugin.json
+├── skills/
+│   └── example/
+│       └── SKILL.md
 ├── README.md
 ├── adapters/
 └── steps/
 ```
 
-## Manifest
+## Portable manifest
+
+`plugin.json` follows [Agent Plugins 1.0](https://agent-plugins.org/specification). Uni-CLI validates the closed manifest, discovers immediate child skills under `skills/`, and projects each valid Skill as `agent-plugin.<plugin-name>.<skill-name>` in the operation catalog. Portable Skills remain instruction-only, including when their frontmatter contains a Uni-CLI `pipeline` field.
+
+```json
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "astronomy",
+  "version": "1.0.0",
+  "description": "Portable astronomy skills",
+  "extensions": {
+    "dev.unicli": {
+      "manifest": "./unicli-plugin.json"
+    }
+  }
+}
+```
+
+Inspect a package before installation or inspect an installed package by name.
+
+```bash
+unicli plugin inspect ./unicli-plugin-astronomy -f json
+unicli plugin inspect astronomy -f json
+```
+
+An optional root `mcp.json` is validated entry by entry. Valid configuration adds the read-only `agent-plugin.<plugin-name>.__mcp_servers` descriptor operation and remains `configuration-only`; the portable loader does not start or connect to those servers. Invalid MCP configuration does not disable independently valid Skills.
+
+## Uni-CLI runtime manifest
+
+`unicli-plugin.json` declares native adapters, custom pipeline steps, and an optional JavaScript entry point.
 
 ```json
 {
   "name": "astronomy",
   "version": "1.0.0",
-  "unicli": ">=0.206.0",
+  "unicli": ">=1.2.0",
   "description": "Astronomy operations for Uni-CLI",
   "adapters": "adapters/",
   "steps": "steps/",
@@ -1937,11 +1997,11 @@ unicli-plugin-astronomy/
 }
 ```
 
-`adapters`, `steps`, and `main` are paths inside the plugin directory. Include the entries your package uses.
+`adapters`, `steps`, and `main` are paths inside the plugin directory. Include the entries your package uses. A fatal `plugin.json` error stops client-specific runtime loading for that package.
 
 ## Add adapters
 
-Plugin YAML uses the same schema as packaged adapters:
+Plugin YAML uses the same schema as packaged adapters.
 
 ```yaml
 site: observatory
@@ -1988,7 +2048,7 @@ registerStep("astronomy_normalize", (ctx, config) => {
 });
 ```
 
-List loaded custom steps:
+List loaded custom steps with this command.
 
 ```bash
 unicli plugin steps
@@ -1996,7 +2056,7 @@ unicli plugin steps
 
 ## Public package imports
 
-Uni-CLI publishes versioned subpaths for registry, errors, types, output, engine, transports, browser helpers, protocol schemas, and downloads. Examples:
+Uni-CLI publishes versioned subpaths for registry, errors, types, output, engine, transports, browser helpers, protocol schemas, and downloads. The imports below use that surface.
 
 ```typescript
 import { cli } from "@zenalexa/unicli/registry";
@@ -2006,7 +2066,7 @@ import { registerStep } from "@zenalexa/unicli/engine/registry";
 import { getTransportBus } from "@zenalexa/unicli/transport";
 ```
 
-Use package exports rather than `dist/` paths so the import tracks the supported public surface.
+Use package exports so the import tracks the supported public surface without depending on internal `dist/` paths.
 
 ## Broker-owned browser invocation pattern
 
@@ -2053,7 +2113,7 @@ unicli plugin update astronomy
 unicli plugin uninstall astronomy
 ```
 
-After installation, verify the new catalog entries:
+After installation, verify the new catalog entries.
 
 ```bash
 unicli search "search observatory objects"
@@ -2203,6 +2263,28 @@ Run `unicli help browser` for the complete action list.
 | `unicli init <site> <command>`             | Create a YAML adapter                |
 | `unicli dev <path>`                        | Reload an adapter during development |
 | `unicli test <site>`                       | Run adapter checks                   |
+
+## Run evidence and evolution
+
+| Command                                  | Purpose                                                   |
+| ---------------------------------------- | --------------------------------------------------------- |
+| `unicli runs list`                       | List local recorded runs                                  |
+| `unicli runs distill <run_ids...>`       | Create a redacted evidence packet                         |
+| `unicli evolve adapter <site> <command>` | Stage an isolated YAML adapter candidate                  |
+| `unicli evolve verify <session_id>`      | Compare baseline and candidate on validation and held-out |
+| `unicli evolve diff <session_id>`        | Inspect the current candidate patch                       |
+| `unicli evolve promote <session_id>`     | Install a candidate that passed the gate                  |
+| `unicli evolve rollback <session_id>`    | Restore the exact pre-promotion user overlay              |
+
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A candidate must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+
+## Plugins
+
+| Command                        | Purpose                                                       |
+| ------------------------------ | ------------------------------------------------------------- |
+| `unicli plugin inspect <path>` | Validate an Agent Plugins 1.0 package and show its projection |
+| `unicli plugin create <name>`  | Scaffold portable skills plus a Uni-CLI runtime extension     |
+| `unicli plugin list`           | List installed portable and native plugins                    |
 
 ## Protocol servers
 
@@ -2857,6 +2939,18 @@ Failed calls place their stable code, message, suggestion, and available repair 
 
 Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs that are still being tested.
 
+## Harness evolution kernel
+
+The evolution kernel turns selected run traces into a controlled adapter update. It owns five boundaries.
+
+1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
+2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays.
+3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
+4. `evolve verify` executes both overlays through the public CLI and records pass rate, duration, changed cases, and effect verdicts.
+5. `evolve promote` requires a changed candidate, strict validation improvement, and no held-out regression. Promotion writes a user override and preserves an exact rollback artifact.
+
+The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
+
 ## Protocol projections
 
 The native CLI exposes the complete runtime. MCP offers compact, deferred, and expanded tool profiles. ACP and other generated surfaces project selected operations from the same catalog. `unicli mcp health` reports the exact MCP profile and tool counts on the installed version.
@@ -2872,6 +2966,7 @@ The native CLI exposes the complete runtime. MCP offers compact, deferred, and e
 | Site identity resolution   | `src/discovery/site-resolver.ts`   |
 | Capability feasibility     | `src/discovery/feasibility.ts`     |
 | Engine and pipeline        | `src/engine/`                      |
+| Harness evolution          | `src/engine/evolution/`            |
 | Command surface            | `src/commands/`                    |
 | Browser runtime            | `src/browser/`                     |
 | Desktop and visual control | `src/compute/`, `src/transport/`   |
@@ -3079,7 +3174,11 @@ The current focus is stable background browser control, clearer provider health,
 
 ### Evidence after actions
 
-Mutating operations are gaining clearer post-action state, effect status, and run comparison so agents can distinguish dispatch from an observed result.
+Mutating operations are gaining clearer post-action state and effect status so agents can distinguish dispatch from an observed result.
+
+### Harness evolution
+
+The 1.2 development line adds private evidence packets, isolated adapter candidates, paired baseline comparison, held-out promotion gates, conflict-safe rollback, and Agent Plugins 1.0 skill discovery. The first editable component is one YAML adapter. Skills, routing policy, and delivery policy remain later component types after the adapter gate has enough transfer evidence.
 
 ### Adapter authoring
 
@@ -3094,7 +3193,9 @@ Search, deferred MCP tools, and generated agent indexes are being tuned so a lar
 - More page-native and application-specific operators
 - Broader Windows and Linux desktop coverage
 - Additional registry inputs that map cleanly to the operation contract
-- Stronger replay and comparison for long-running workflows
+- Verified persistent state for long-running workflows
+- Scoped model and domain affinity in discovery ranking
+- Local aggregation of verified patches without uploading raw traces
 
 ## How priorities are chosen
 

@@ -1,0 +1,231 @@
+import { existsSync } from "node:fs";
+import { readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
+
+import { userAdapterRoot } from "../user-home.js";
+import {
+  evolutionSessionPaths,
+  readEvolutionSession,
+  readPrivateJson,
+  sha256Text,
+  writeEvolutionSession,
+  writePrivateJson,
+  writePrivateText,
+  type EvolutionStore,
+} from "./store.js";
+import type {
+  EvolutionPromotionRecord,
+  EvolutionSession,
+  EvolutionVerificationReport,
+} from "./types.js";
+
+export class EvolutionPromotionError extends Error {
+  constructor(
+    public readonly code:
+      | "candidate_changed"
+      | "destination_changed"
+      | "not_eligible"
+      | "not_promoted",
+    message: string,
+    public readonly path?: string,
+  ) {
+    super(message);
+    this.name = "EvolutionPromotionError";
+  }
+}
+
+export async function promoteEvolutionSession(input: {
+  store: EvolutionStore;
+  sessionId: string;
+  promotedAt?: string;
+}): Promise<{
+  session: EvolutionSession;
+  promotion: EvolutionPromotionRecord;
+}> {
+  const session = await readEvolutionSession(input.store, input.sessionId);
+  if (
+    session.state !== "verified" ||
+    !session.verification?.eligible ||
+    !session.verification.path
+  ) {
+    throw new EvolutionPromotionError(
+      "not_eligible",
+      `evolution session is not eligible for promotion: ${session.state}`,
+    );
+  }
+  const paths = evolutionSessionPaths(
+    input.store,
+    session.session_id,
+    session.component.site,
+    session.component.command,
+  );
+  const report = await readPrivateJson<EvolutionVerificationReport>(
+    paths.verification,
+  );
+  if (
+    report.schema_version !== "unicli.evolution-verification.v1" ||
+    report.session_id !== session.session_id ||
+    report.component_id !== session.component.id ||
+    report.baseline_sha256 !== session.baseline.sha256 ||
+    !report.decision?.eligible
+  ) {
+    throw new EvolutionPromotionError(
+      "not_eligible",
+      "the stored verification report did not pass the promotion gate",
+      paths.verification,
+    );
+  }
+  const candidate = await readFile(paths.candidate_file, "utf-8");
+  const candidateSha256 = sha256Text(candidate);
+  if (
+    candidateSha256 !== session.verification.candidate_sha256 ||
+    candidateSha256 !== report.candidate_sha256
+  ) {
+    throw new EvolutionPromotionError(
+      "candidate_changed",
+      "candidate changed after verification; run `unicli evolve verify` again",
+      paths.candidate_file,
+    );
+  }
+
+  const destination = join(
+    userAdapterRoot(),
+    session.component.site,
+    `${session.component.command}.yaml`,
+  );
+  const previous = existsSync(destination)
+    ? await readFile(destination, "utf-8")
+    : undefined;
+  assertDestinationUnchanged(session, destination, previous);
+  if (previous !== undefined) await writePrivateText(paths.rollback, previous);
+  await writePrivateText(destination, candidate);
+
+  const promotedAt = input.promotedAt ?? new Date().toISOString();
+  const promotion: EvolutionPromotionRecord = {
+    schema_version: "unicli.evolution-promotion.v1",
+    session_id: session.session_id,
+    component_id: session.component.id,
+    promoted_at: promotedAt,
+    destination,
+    candidate_sha256: candidateSha256,
+    verification_path: paths.verification,
+    previous_overlay:
+      previous === undefined
+        ? null
+        : { path: destination, sha256: sha256Text(previous) },
+    rollback_path: previous === undefined ? null : paths.rollback,
+  };
+  await writePrivateJson(paths.promotion, promotion);
+  const updated: EvolutionSession = {
+    ...session,
+    state: "promoted",
+    updated_at: promotedAt,
+    promotion: {
+      path: paths.promotion,
+      promoted_at: promotedAt,
+      destination,
+    },
+  };
+  await writeEvolutionSession(input.store, updated);
+  return { session: updated, promotion };
+}
+
+export async function rollbackEvolutionSession(input: {
+  store: EvolutionStore;
+  sessionId: string;
+  rolledBackAt?: string;
+}): Promise<{
+  session: EvolutionSession;
+  destination: string;
+  restored: "previous_overlay" | "packaged_baseline";
+}> {
+  const session = await readEvolutionSession(input.store, input.sessionId);
+  if (session.state !== "promoted" || !session.promotion?.path) {
+    throw new EvolutionPromotionError(
+      "not_promoted",
+      `evolution session is not promoted: ${session.state}`,
+    );
+  }
+  const paths = evolutionSessionPaths(
+    input.store,
+    session.session_id,
+    session.component.site,
+    session.component.command,
+  );
+  const promotion = await readPrivateJson<EvolutionPromotionRecord>(
+    paths.promotion,
+  );
+  if (
+    promotion.schema_version !== "unicli.evolution-promotion.v1" ||
+    promotion.session_id !== session.session_id ||
+    promotion.component_id !== session.component.id ||
+    promotion.destination !== session.promotion.destination ||
+    promotion.candidate_sha256 !== session.verification?.candidate_sha256
+  ) {
+    throw new EvolutionPromotionError(
+      "destination_changed",
+      "the stored promotion record does not match the evolution session",
+      paths.promotion,
+    );
+  }
+  if (!existsSync(promotion.destination)) {
+    throw new EvolutionPromotionError(
+      "destination_changed",
+      "promoted adapter is missing; rollback stopped to preserve later user changes",
+      promotion.destination,
+    );
+  }
+  const current = await readFile(promotion.destination, "utf-8");
+  if (sha256Text(current) !== promotion.candidate_sha256) {
+    throw new EvolutionPromotionError(
+      "destination_changed",
+      "promoted adapter changed after promotion; rollback stopped to preserve later user changes",
+      promotion.destination,
+    );
+  }
+
+  let restored: "previous_overlay" | "packaged_baseline";
+  if (promotion.rollback_path) {
+    const previous = await readFile(promotion.rollback_path, "utf-8");
+    await writePrivateText(promotion.destination, previous);
+    restored = "previous_overlay";
+  } else {
+    await rm(promotion.destination);
+    restored = "packaged_baseline";
+  }
+  const rolledBackAt = input.rolledBackAt ?? new Date().toISOString();
+  const updated: EvolutionSession = {
+    ...session,
+    state: "rolled_back",
+    updated_at: rolledBackAt,
+  };
+  await writeEvolutionSession(input.store, updated);
+  return { session: updated, destination: promotion.destination, restored };
+}
+
+function assertDestinationUnchanged(
+  session: EvolutionSession,
+  destination: string,
+  current: string | undefined,
+): void {
+  if (session.component.source_tier === "user") {
+    if (
+      current === undefined ||
+      sha256Text(current) !== session.baseline.sha256
+    ) {
+      throw new EvolutionPromotionError(
+        "destination_changed",
+        "user adapter changed after the evolution session was created; create a new session from the current baseline",
+        destination,
+      );
+    }
+    return;
+  }
+  if (current !== undefined) {
+    throw new EvolutionPromotionError(
+      "destination_changed",
+      "a user adapter overlay appeared after the evolution session was created; create a new session from that overlay",
+      destination,
+    );
+  }
+}

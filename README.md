@@ -71,14 +71,15 @@ The public model stays compact.
 intent → candidate operations → explicit selection → policy → substrate → receipt
 ```
 
-| Stage    | Runtime behavior                                                                          |
-| -------- | ----------------------------------------------------------------------------------------- |
-| Discover | Compiled intent and bilingual retrieval return a small ranked set with selection evidence |
-| Select   | The caller chooses one operation with a declared strategy and substrate                   |
-| Govern   | `open`, `confirm`, and `locked` profiles evaluate effect and capability scope             |
-| Act      | The selected adapter, core command, browser, desktop, or protocol path executes           |
-| Observe  | Every normal command returns a stable success or error envelope                           |
-| Repair   | Owned drift paths expose their source, failed boundary, and bounded verification command  |
+| Stage    | Runtime behavior                                                                           |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Discover | Compiled intent and bilingual retrieval return a small ranked set with selection evidence  |
+| Select   | The caller chooses one operation with a declared strategy and substrate                    |
+| Govern   | `open`, `confirm`, and `locked` profiles evaluate effect and capability scope              |
+| Act      | The selected adapter, core command, browser, desktop, or protocol path executes            |
+| Observe  | Every normal command returns a stable success or error envelope                            |
+| Repair   | Owned drift paths expose their source, failed boundary, and bounded verification command   |
+| Evolve   | Recorded failures become isolated candidates that must pass paired and held-out evaluation |
 
 Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sandbox remain independent choices.
 
@@ -99,7 +100,7 @@ Static catalog
 - <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10314<!-- /STATS --> tests
+- <!-- STATS:test_count -->10334<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -225,6 +226,17 @@ unicli repair <site> <command>
 ```
 
 `repair` does not edit source or Git state. It reruns the original command as a bounded subprocess and succeeds only when the target returns `ok: true` with exit code `0`. Local overrides under `~/.unicli/adapters/` survive npm updates.
+
+For repeated failures, `evolve adapter` keeps proposal evidence, validation, and held-out cases separate. The agent edits an isolated YAML candidate. Uni-CLI compares it with the stored baseline and installs a user override only after the promotion gate passes.
+
+```bash
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --validation-run <validation-run> \
+  --held-out-run <held-out-run>
+unicli evolve verify <session-id>
+unicli evolve promote <session-id>
+```
 
 A minimal YAML adapter follows.
 

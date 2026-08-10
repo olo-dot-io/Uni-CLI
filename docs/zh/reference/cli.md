@@ -95,6 +95,28 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli dev <path>`                        | 开发时重新加载 adapter |
 | `unicli test <site>`                       | 运行 adapter 检查      |
 
+## Run evidence 与 evolution
+
+| 命令                                     | 用途                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `unicli runs list`                       | 列出本地 recorded run                                  |
+| `unicli runs distill <run_ids...>`       | 生成经过脱敏的 evidence packet                         |
+| `unicli evolve adapter <site> <command>` | 暂存隔离的 YAML adapter candidate                      |
+| `unicli evolve verify <session_id>`      | 在 validation 与 held-out 上比较 baseline 和 candidate |
+| `unicli evolve diff <session_id>`        | 检查当前 candidate patch                               |
+| `unicli evolve promote <session_id>`     | 安装通过 gate 的 candidate                             |
+| `unicli evolve rollback <session_id>`    | 恢复 promotion 前的精确 user overlay                   |
+
+Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。Candidate 必须在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline authorization scope。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
+
+## Plugin
+
+| 命令                           | 用途                                                      |
+| ------------------------------ | --------------------------------------------------------- |
+| `unicli plugin inspect <path>` | 验证 Agent Plugins 1.0 package 并显示 runtime projection  |
+| `unicli plugin create <name>`  | 创建 portable Skill 与 Uni-CLI runtime extension scaffold |
+| `unicli plugin list`           | 列出已安装的 portable 与 native plugin                    |
+
 ## 协议服务
 
 | 命令                        | 用途                          |

@@ -17,7 +17,7 @@ import type { DeliveryRepairCandidate, DeliveryTrajectory } from "./types.js";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { userHome } from "../user-home.js";
+import { userAdapterRoot, userHome } from "../user-home.js";
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ADAPTERS_ROOT = resolve(
@@ -91,7 +91,7 @@ function isAdapterFilePath(path: string): boolean {
   if (isRelativePackageAdapterPath(normalizedPath)) return true;
 
   const absolutePath = resolve(expandedPath);
-  const userAdaptersRoot = resolve(userHome(), ".unicli", "adapters");
+  const userAdaptersRoot = resolve(userAdapterRoot());
   return (
     isPathInsideRoot(absolutePath, PACKAGE_ADAPTERS_ROOT) ||
     isPathInsideRoot(absolutePath, userAdaptersRoot)

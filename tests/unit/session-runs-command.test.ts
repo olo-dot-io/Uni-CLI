@@ -1,4 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -1593,6 +1600,60 @@ describe("unicli runs command", () => {
       message: "invalid run id: ../escape",
     });
     expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+  });
+
+  it("distills selected traces into a private evidence packet", async () => {
+    const rootDir = join(tmp, "runs");
+    const runId = await writeReplayableRun(rootDir);
+    const output = join(tmp, "evidence.json");
+
+    const cap = captureConsole();
+    try {
+      const program = createProgram();
+      await program.parseAsync(
+        [
+          "-f",
+          "json",
+          "runs",
+          "distill",
+          runId,
+          "--root",
+          rootDir,
+          "--output",
+          output,
+          "--model",
+          "fixture-model",
+        ],
+        { from: "user" },
+      );
+    } finally {
+      cap.restore();
+    }
+
+    const env = JSON.parse(cap.getStdout().trim()) as {
+      ok: boolean;
+      command: string;
+      data: {
+        path: string;
+        packet: {
+          schema_version: string;
+          scope: { model_affinity: string[] };
+          summary: { runs: number; completed: number };
+        };
+      };
+    };
+    expect(env.ok).toBe(true);
+    expect(env.command).toBe("runs.distill");
+    expect(env.data.path).toBe(output);
+    expect(env.data.packet).toMatchObject({
+      schema_version: "unicli.evidence-packet.v1",
+      scope: { model_affinity: ["fixture-model"] },
+      summary: { runs: 1, completed: 1 },
+    });
+    expect(existsSync(output)).toBe(true);
+    expect(JSON.parse(readFileSync(output, "utf-8"))).toMatchObject({
+      packet_id: expect.stringMatching(/^evidence-/),
+    });
   });
 
   it("rejects replay run ids that already have a trace", async () => {

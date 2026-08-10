@@ -47,7 +47,6 @@ import {
   mkdirSync,
 } from "node:fs";
 import { join, resolve, dirname, basename, extname, relative } from "node:path";
-import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
@@ -55,20 +54,33 @@ import chalk from "chalk";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import type { OutputFormat } from "../types.js";
+import { userDataRoot } from "../engine/user-home.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Bundled evals ship in the package — resolved relative to dist/src. */
 const BUNDLED_EVALS_DIR = join(__dirname, "..", "..", "evals");
-const USER_EVALS_DIR = join(homedir(), ".unicli", "evals");
+const USER_EVALS_DIR = join(userDataRoot(), "evals");
+
+function userEvalsDir(): string {
+  return join(userDataRoot(), "evals");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 // ── YAML eval format ────────────────────────────────────────────────────────
 
 export interface EvalCase {
+  /** Stable case identity used by paired and held-out comparisons. */
+  id?: string;
   command: string;
   args?: Record<string, string | number | boolean>;
   /** Optional pre-canned positional values */
   positional?: Array<string | number>;
+  /** Optional role when one eval file is shared with an evolution workflow. */
+  split?: "train" | "validation" | "held-out";
   judges: Judge[];
 }
 
@@ -85,7 +97,16 @@ export type Judge =
     }
   | { type: "nonEmpty" }
   | { type: "matchesPattern"; pattern: string }
-  | { type: "exitCode"; equals: number };
+  | { type: "exitCode"; equals: number }
+  | {
+      type: "effectStatus";
+      equals:
+        | "not_applicable"
+        | "confirmed"
+        | "pending"
+        | "unverifiable"
+        | "suspected_noop";
+    };
 
 export interface EvalFile {
   name: string;
@@ -99,6 +120,7 @@ export interface CaseResult {
   passed: boolean;
   output?: string;
   exitCode?: number;
+  durationMs: number;
   error?: string;
   judgeResults: Array<{ judge: Judge; passed: boolean; reason?: string }>;
 }
@@ -135,7 +157,7 @@ function walkEvalDir(dir: string): string[] {
 /** Return every eval file path discovered across bundled + user directories. */
 export function discoverEvalFiles(): Array<{ path: string; relative: string }> {
   const result: Array<{ path: string; relative: string }> = [];
-  for (const root of [BUNDLED_EVALS_DIR, USER_EVALS_DIR]) {
+  for (const root of [BUNDLED_EVALS_DIR, userEvalsDir()]) {
     for (const file of walkEvalDir(root)) {
       result.push({
         path: file,
@@ -149,13 +171,190 @@ export function discoverEvalFiles(): Array<{ path: string; relative: string }> {
 /** Load + parse one eval file. Throws on YAML errors so callers can report. */
 export function loadEvalFile(file: string): EvalFile {
   const raw = readFileSync(file, "utf-8");
-  const parsed = yaml.load(raw) as EvalFile;
-  if (!parsed.name || !parsed.adapter || !Array.isArray(parsed.cases)) {
+  const parsed = yaml.load(raw);
+  if (
+    !isRecord(parsed) ||
+    typeof parsed.name !== "string" ||
+    parsed.name.length === 0 ||
+    typeof parsed.adapter !== "string" ||
+    parsed.adapter.length === 0 ||
+    !Array.isArray(parsed.cases)
+  ) {
     throw new Error(
       `Invalid eval file ${file}: missing one of name/adapter/cases`,
     );
   }
-  return parsed;
+  const unknownRootFields = Object.keys(parsed).filter(
+    (field) => !["name", "adapter", "description", "cases"].includes(field),
+  );
+  if (unknownRootFields.length > 0) {
+    throw new Error(
+      `Invalid eval file ${file}: unknown fields ${unknownRootFields.join(", ")}`,
+    );
+  }
+  if (
+    parsed.description !== undefined &&
+    typeof parsed.description !== "string"
+  ) {
+    throw new Error(`Invalid eval file ${file}: description must be a string`);
+  }
+  if (parsed.cases.length === 0) {
+    throw new Error(`Invalid eval file ${file}: cases must not be empty`);
+  }
+  parsed.cases.forEach((value, index) => validateEvalCase(value, file, index));
+  const caseIds = parsed.cases
+    .map((value) => (isRecord(value) ? value.id : undefined))
+    .filter((value): value is string => typeof value === "string");
+  if (new Set(caseIds).size !== caseIds.length) {
+    throw new Error(`Invalid eval file ${file}: case ids must be unique`);
+  }
+  return parsed as unknown as EvalFile;
+}
+
+function validateEvalCase(value: unknown, file: string, index: number): void {
+  const label = `${file} case ${index + 1}`;
+  if (
+    !isRecord(value) ||
+    typeof value.command !== "string" ||
+    value.command.length === 0 ||
+    !Array.isArray(value.judges) ||
+    value.judges.length === 0
+  ) {
+    throw new Error(
+      `Invalid eval ${label}: command and at least one judge are required`,
+    );
+  }
+  const unknownFields = Object.keys(value).filter(
+    (field) =>
+      !["id", "command", "args", "positional", "split", "judges"].includes(
+        field,
+      ),
+  );
+  if (unknownFields.length > 0) {
+    throw new Error(
+      `Invalid eval ${label}: unknown fields ${unknownFields.join(", ")}`,
+    );
+  }
+  if (
+    value.id !== undefined &&
+    (typeof value.id !== "string" || value.id.length === 0)
+  ) {
+    throw new Error(`Invalid eval ${label}: id must be a non-empty string`);
+  }
+  if (
+    value.split !== undefined &&
+    !["train", "validation", "held-out"].includes(String(value.split))
+  ) {
+    throw new Error(
+      `Invalid eval ${label}: split must be train, validation, or held-out`,
+    );
+  }
+  if (
+    value.args !== undefined &&
+    (!isRecord(value.args) ||
+      Object.values(value.args).some((entry) => !isEvalScalar(entry)))
+  ) {
+    throw new Error(`Invalid eval ${label}: args must contain scalar values`);
+  }
+  if (
+    value.positional !== undefined &&
+    (!Array.isArray(value.positional) ||
+      value.positional.some(
+        (entry) => typeof entry !== "string" && typeof entry !== "number",
+      ))
+  ) {
+    throw new Error(
+      `Invalid eval ${label}: positional must be an array of strings or numbers`,
+    );
+  }
+  value.judges.forEach((judge, judgeIndex) =>
+    validateJudge(judge, `${label} judge ${judgeIndex + 1}`),
+  );
+}
+
+function validateJudge(value: unknown, label: string): void {
+  if (!isRecord(value) || typeof value.type !== "string") {
+    throw new Error(`Invalid ${label}: judge type is required`);
+  }
+  switch (value.type) {
+    case "exitCode":
+      assertJudgeFields(value, ["type", "equals"], label);
+      if (!Number.isInteger(value.equals)) {
+        throw new Error(`Invalid ${label}: exitCode.equals must be an integer`);
+      }
+      return;
+    case "effectStatus":
+      assertJudgeFields(value, ["type", "equals"], label);
+      if (
+        ![
+          "not_applicable",
+          "confirmed",
+          "pending",
+          "unverifiable",
+          "suspected_noop",
+        ].includes(String(value.equals))
+      ) {
+        throw new Error(`Invalid ${label}: unsupported effect status`);
+      }
+      return;
+    case "nonEmpty":
+      assertJudgeFields(value, ["type"], label);
+      return;
+    case "matchesPattern":
+      assertJudgeFields(value, ["type", "pattern"], label);
+      if (typeof value.pattern !== "string") {
+        throw new Error(`Invalid ${label}: pattern must be a string`);
+      }
+      try {
+        new RegExp(value.pattern);
+      } catch {
+        throw new Error(`Invalid ${label}: pattern must be a valid expression`);
+      }
+      return;
+    case "contains":
+      assertJudgeFields(value, ["type", "field", "value"], label);
+      if (
+        typeof value.value !== "string" ||
+        (value.field !== undefined && typeof value.field !== "string")
+      ) {
+        throw new Error(`Invalid ${label}: contains fields must be strings`);
+      }
+      return;
+    case "arrayMinLength":
+      assertJudgeFields(value, ["type", "path", "min"], label);
+      if (
+        typeof value.min !== "number" ||
+        !Number.isInteger(value.min) ||
+        value.min < 0 ||
+        (value.path !== undefined && typeof value.path !== "string")
+      ) {
+        throw new Error(`Invalid ${label}: arrayMinLength fields are invalid`);
+      }
+      return;
+    default:
+      throw new Error(`Invalid ${label}: unsupported judge ${value.type}`);
+  }
+}
+
+function assertJudgeFields(
+  value: Record<string, unknown>,
+  allowed: string[],
+  label: string,
+): void {
+  const unknown = Object.keys(value).filter(
+    (field) => !allowed.includes(field),
+  );
+  if (unknown.length > 0) {
+    throw new Error(`Invalid ${label}: unknown fields ${unknown.join(", ")}`);
+  }
+}
+
+function isEvalScalar(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  );
 }
 
 // ── Judge engine ────────────────────────────────────────────────────────────
@@ -207,6 +406,17 @@ export function applyJudge(
         passed: rawOutput.trim().length > 0,
         reason: rawOutput.trim().length > 0 ? undefined : "output empty",
       };
+
+    case "effectStatus": {
+      const status = pickPath(parsedOutput, "meta.effect_verdict.status");
+      return {
+        passed: status === judge.equals,
+        reason:
+          status === judge.equals
+            ? undefined
+            : `effect status ${String(status ?? "missing")} vs expected ${judge.equals}`,
+      };
+    }
 
     case "matchesPattern":
       try {
@@ -299,7 +509,11 @@ function parseCliCommand(cliCommand: string): {
 export function runCase(
   adapter: string,
   c: EvalCase,
-  options: { timeout?: number; cliCommand?: string } = {},
+  options: {
+    timeout?: number;
+    cliCommand?: string;
+    env?: NodeJS.ProcessEnv;
+  } = {},
 ): CaseResult {
   const timeout = options.timeout ?? 30_000;
   const cliCommand = options.cliCommand ?? process.env.UNICLI_BIN ?? "unicli";
@@ -312,10 +526,12 @@ export function runCase(
   // spawnSync takes an argv array, so nothing in the args passes through a
   // shell. Positional values with spaces, quotes, or shell metachars
   // (`;`, `$(...)`, backticks) are literal argv elements, not shell syntax.
+  const caseStartedAt = Date.now();
   const result = spawnSync(executable, [...prefixArgs, ...cliArgs], {
     encoding: "utf-8",
     timeout,
     stdio: ["ignore", "pipe", "pipe"],
+    env: options.env ? { ...process.env, ...options.env } : process.env,
     // Prevent child from inheriting stdin, and capture both stdout + stderr.
   });
   if (result.error) {
@@ -348,6 +564,7 @@ export function runCase(
     passed,
     output: rawOutput.slice(0, 2000),
     exitCode,
+    durationMs: Date.now() - caseStartedAt,
     error: runErr,
     judgeResults,
   };
@@ -355,7 +572,11 @@ export function runCase(
 
 export function runEvalFile(
   file: EvalFile,
-  options: { timeout?: number; cliCommand?: string } = {},
+  options: {
+    timeout?: number;
+    cliCommand?: string;
+    env?: NodeJS.ProcessEnv;
+  } = {},
 ): EvalRunResult {
   const cases: CaseResult[] = [];
   let passed = 0;
@@ -655,6 +876,7 @@ export { BUNDLED_EVALS_DIR, USER_EVALS_DIR };
  * by production code paths.
  */
 export function ensureUserEvalsDir(): string {
-  mkdirSync(USER_EVALS_DIR, { recursive: true });
-  return USER_EVALS_DIR;
+  const path = userEvalsDir();
+  mkdirSync(path, { recursive: true });
+  return path;
 }

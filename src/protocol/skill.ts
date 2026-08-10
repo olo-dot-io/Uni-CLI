@@ -52,7 +52,7 @@ export interface Skill {
   raw: Record<string, unknown>;
 }
 
-export type SkillSource = "repo" | "user" | "xdg";
+export type SkillSource = "repo" | "user" | "xdg" | "plugin";
 
 export interface LoadSkillsOptions {
   /**
@@ -67,6 +67,13 @@ export interface LoadSkillsOptions {
    * this to contribute skills without touching the main directories.
    */
   extraDirs?: string[];
+}
+
+const pluginSkillRoots = new Set<string>();
+
+/** Register a validated Agent Plugin skills directory for later discovery. */
+export function registerPluginSkillRoot(dir: string): void {
+  pluginSkillRoots.add(resolve(dir));
 }
 
 /** Default list of skill search roots, in precedence order (first wins). */
@@ -91,6 +98,9 @@ export function defaultSkillRoots(
   }
   for (const extra of opts.extraDirs ?? []) {
     roots.push({ dir: extra, source: "repo" });
+  }
+  for (const pluginDir of [...pluginSkillRoots].sort()) {
+    roots.push({ dir: pluginDir, source: "plugin" });
   }
   return roots;
 }
@@ -175,7 +185,7 @@ export function parseSkillFile(
   const dependsOn = toStringArray(
     frontmatter["depends-on"] ?? frontmatter.dependsOn,
   );
-  const allowedTools = toStringArray(
+  const allowedTools = toToolArray(
     frontmatter["allowed-tools"] ?? frontmatter.allowedTools,
   );
   const version =
@@ -187,7 +197,11 @@ export function parseSkillFile(
         ? String(frontmatter.protocol)
         : undefined;
 
-  const pipeline = extractPipeline(frontmatter, body);
+  // Agent Plugins skills are portable instructions. Uni-CLI-specific
+  // frontmatter must not silently turn a portable package into executable
+  // local code when it is also surfaced through `skills invoke`.
+  const pipeline =
+    source === "plugin" ? undefined : extractPipeline(frontmatter, body);
 
   return {
     name,
@@ -306,6 +320,15 @@ function toStringArray(value: unknown): string[] {
       .filter((s) => s.length > 0);
   }
   return [];
+}
+
+function toToolArray(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+  if (typeof value !== "string") return [];
+  return value.split(/\s+/).filter(Boolean);
 }
 
 /**

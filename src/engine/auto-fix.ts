@@ -7,6 +7,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { userAdapterRoot } from "./user-home.js";
 
 /**
  * Analyze data structure and suggest alternative select paths.
@@ -64,7 +65,7 @@ export function applySelectFix(
     }
 
     // Write fix to user adapter dir
-    const userDir = join(process.env.HOME ?? "~", ".unicli", "adapters", site);
+    const userDir = join(userAdapterRoot(), site);
     mkdirSync(userDir, { recursive: true });
     const userPath = join(userDir, `${command}.yaml`);
 

@@ -37,7 +37,11 @@ Core command 与 adapter command 正在统一到一套 operation contract，并�
 
 ### Action 后的结果证据
 
-Mutating operation 正在补充更清晰的 post-action state、effect status 与 run comparison，让 Agent 可以区分已发起和已观察到的结果。
+Mutating operation 正在补充更清晰的 post-action state 与 effect status，让 Agent 可以区分已发起和已观察到的结果。
+
+### Harness evolution
+
+1.2 开发线加入私有 evidence packet、隔离 adapter candidate、baseline 成对比较、held-out promotion gate、冲突安全 rollback，以及 Agent Plugins 1.0 Skill discovery。第一类 editable component 是单个 YAML adapter。Skill、routing policy 和 delivery policy 会等待 adapter gate 积累足够 transfer evidence 后再接入。
 
 ### Adapter 开发
 
@@ -52,7 +56,9 @@ Search、deferred MCP tool 和生成的 Agent index 会继续优化，让大型�
 - 更多 page-native 与 App-specific operator
 - 更广的 Windows 与 Linux 桌面覆盖
 - 能映射到 operation contract 的其他 registry input
-- 面向长任务的 replay 与 comparison
+- 面向长任务的 verified persistent state
+- Discovery ranking 中带 scope 的 model 与 domain affinity
+- 不上传 raw trace 的本地 verified patch 聚合
 
 ## 如何安排优先级
 

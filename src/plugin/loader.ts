@@ -1,7 +1,8 @@
 /**
  * Plugin Loader — discovers and loads third-party plugins from ~/.unicli/plugins/.
  *
- * Each plugin directory may contain a `unicli-plugin.json` manifest that declares:
+ * Each plugin directory may contain the portable Agent Plugins `plugin.json`
+ * and the Uni-CLI runtime extension `unicli-plugin.json`.
  *   - adapters directory (YAML adapters loaded via discovery/loader)
  *   - steps directory (custom pipeline steps)
  *   - main entry point (JS file executed at startup)
@@ -18,8 +19,16 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve, sep } from "node:path";
-import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
+import {
+  assertAgentPluginName,
+  inspectAgentPlugin,
+  registerAgentPluginSkills,
+  type AgentPluginInspection,
+} from "./agent-plugin.js";
+import { registerPluginSkillRoot } from "../protocol/skill.js";
+import { primeKernelCache } from "../discovery/loader.js";
+import { userDataRoot } from "../engine/user-home.js";
 
 export interface PluginManifest {
   name: string;
@@ -31,7 +40,9 @@ export interface PluginManifest {
   main?: string; // entry point JS file
 }
 
-const PLUGINS_DIR = join(homedir(), ".unicli", "plugins");
+export function installedPluginsDir(): string {
+  return join(userDataRoot(), "plugins");
+}
 
 /**
  * Discover and load all installed plugins that have a unicli-plugin.json manifest.
@@ -44,18 +55,42 @@ export async function loadPlugins(): Promise<{
   const loaded: string[] = [];
   const errors: string[] = [];
 
-  if (!existsSync(PLUGINS_DIR)) return { loaded, errors };
+  const pluginsDir = installedPluginsDir();
+  if (!existsSync(pluginsDir)) return { loaded, errors };
 
-  const dirs = readdirSync(PLUGINS_DIR, { withFileTypes: true })
+  const dirs = readdirSync(pluginsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory() || d.isSymbolicLink())
     .map((d) => d.name);
 
   for (const dir of dirs) {
-    const pluginDir = join(PLUGINS_DIR, dir);
+    const pluginDir = join(pluginsDir, dir);
     const manifestPath = join(pluginDir, "unicli-plugin.json");
+    const portableManifestPath = join(pluginDir, "plugin.json");
 
-    // Skip plugins without a manifest — they are handled by src/plugin.ts
-    if (!existsSync(manifestPath)) continue;
+    let loadedName: string | undefined;
+    if (existsSync(portableManifestPath)) {
+      try {
+        const inspection = inspectAgentPlugin(pluginDir);
+        registerAgentPluginSkills(inspection);
+        if (inspection.skills.length > 0) {
+          registerPluginSkillRoot(join(inspection.root, "skills"));
+        }
+        loadedName = inspection.manifest.name;
+        for (const issue of inspection.issues) {
+          errors.push(`${dir}: ${issue.component}: ${issue.message}`);
+        }
+      } catch (err) {
+        errors.push(
+          `${dir}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        continue;
+      }
+    }
+
+    if (!existsSync(manifestPath)) {
+      if (loadedName) loaded.push(loadedName);
+      continue;
+    }
 
     try {
       const raw = readFileSync(manifestPath, "utf-8");
@@ -100,22 +135,45 @@ export async function loadPlugins(): Promise<{
     }
   }
 
-  return { loaded, errors };
+  primeKernelCache();
+
+  return { loaded: [...new Set(loaded)], errors };
+}
+
+/** List installed packages that conform to Agent Plugins 1.0. */
+export function listPortablePlugins(): AgentPluginInspection[] {
+  const pluginsDir = installedPluginsDir();
+  if (!existsSync(pluginsDir)) return [];
+  const plugins: AgentPluginInspection[] = [];
+  for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
+    if (!dir.isDirectory() && !dir.isSymbolicLink()) continue;
+    const root = join(pluginsDir, dir.name);
+    if (!existsSync(join(root, "plugin.json"))) continue;
+    try {
+      plugins.push(inspectAgentPlugin(root));
+    } catch {
+      continue;
+    }
+  }
+  return plugins.sort((left, right) =>
+    left.manifest.name.localeCompare(right.manifest.name),
+  );
 }
 
 /**
  * List plugins that have a unicli-plugin.json manifest.
  */
 export function listManifestPlugins(): PluginManifest[] {
-  if (!existsSync(PLUGINS_DIR)) return [];
+  const pluginsDir = installedPluginsDir();
+  if (!existsSync(pluginsDir)) return [];
 
   const plugins: PluginManifest[] = [];
-  const dirs = readdirSync(PLUGINS_DIR, { withFileTypes: true }).filter(
+  const dirs = readdirSync(pluginsDir, { withFileTypes: true }).filter(
     (d) => d.isDirectory() || d.isSymbolicLink(),
   );
 
   for (const dir of dirs) {
-    const manifestPath = join(PLUGINS_DIR, dir.name, "unicli-plugin.json");
+    const manifestPath = join(pluginsDir, dir.name, "unicli-plugin.json");
     try {
       const raw = readFileSync(manifestPath, "utf-8");
       plugins.push(JSON.parse(raw) as PluginManifest);
@@ -132,14 +190,16 @@ export function listManifestPlugins(): PluginManifest[] {
  * Returns the absolute path to the created directory.
  */
 export function createPlugin(name: string, destDir?: string): string {
+  assertAgentPluginName(name);
   const dir = destDir ?? join(process.cwd(), `unicli-plugin-${name}`);
   mkdirSync(join(dir, "adapters"), { recursive: true });
   mkdirSync(join(dir, "steps"), { recursive: true });
+  mkdirSync(join(dir, "skills", "example"), { recursive: true });
 
   const manifest: PluginManifest = {
     name,
     version: "1.0.0",
-    unicli: ">=0.206.0",
+    unicli: ">=1.2.0",
     description: `${name} plugin for Uni-CLI`,
     adapters: "adapters/",
     steps: "steps/",
@@ -148,6 +208,36 @@ export function createPlugin(name: string, destDir?: string): string {
   writeFileSync(
     join(dir, "unicli-plugin.json"),
     JSON.stringify(manifest, null, 2) + "\n",
+    "utf-8",
+  );
+  writeFileSync(
+    join(dir, "plugin.json"),
+    JSON.stringify(
+      {
+        $schema: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+        name,
+        version: "1.0.0",
+        description: `${name} Agent Plugin`,
+        extensions: {
+          "dev.unicli": { manifest: "./unicli-plugin.json" },
+        },
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf-8",
+  );
+  writeFileSync(
+    join(dir, "skills", "example", "SKILL.md"),
+    [
+      "---",
+      "name: example",
+      `description: Example portable skill from ${name}`,
+      "---",
+      "",
+      "Describe when an agent should use this capability.",
+      "",
+    ].join("\n"),
     "utf-8",
   );
   writeFileSync(

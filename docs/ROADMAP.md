@@ -35,7 +35,11 @@ The current focus is stable background browser control, clearer provider health,
 
 ### Evidence after actions
 
-Mutating operations are gaining clearer post-action state, effect status, and run comparison so agents can distinguish dispatch from an observed result.
+Mutating operations are gaining clearer post-action state and effect status so agents can distinguish dispatch from an observed result.
+
+### Harness evolution
+
+The 1.2 development line adds private evidence packets, isolated adapter candidates, paired baseline comparison, held-out promotion gates, conflict-safe rollback, and Agent Plugins 1.0 skill discovery. The first editable component is one YAML adapter. Skills, routing policy, and delivery policy remain later component types after the adapter gate has enough transfer evidence.
 
 ### Adapter authoring
 
@@ -50,7 +54,9 @@ Search, deferred MCP tools, and generated agent indexes are being tuned so a lar
 - More page-native and application-specific operators
 - Broader Windows and Linux desktop coverage
 - Additional registry inputs that map cleanly to the operation contract
-- Stronger replay and comparison for long-running workflows
+- Verified persistent state for long-running workflows
+- Scoped model and domain affinity in discovery ranking
+- Local aggregation of verified patches without uploading raw traces
 
 ## How priorities are chosen
 

@@ -868,8 +868,14 @@ if (!manifest.scripts?.verify?.includes(integrationCommand)) {
 if (!hasRun(allSteps(ci), integrationCommand)) {
   fail("CI does not execute the integration suite");
 }
-if (!hasRun(allSteps(release), "npm run verify")) {
-  fail("release workflow does not execute the canonical npm run verify gate");
+for (const command of [
+  "npm run lint",
+  "npm run build:release",
+  "npm run bench:product-surface:check",
+]) {
+  if (!hasRun(allSteps(release), command)) {
+    fail(`release workflow omits package-facing gate: ${command}`);
+  }
 }
 
 const processOwnerPaths = [
