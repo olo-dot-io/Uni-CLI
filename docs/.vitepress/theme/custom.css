@@ -19,7 +19,7 @@
   color-scheme: light;
   --uni-font: "Geist Variable", sans-serif;
 
-  /* Crisp ink-and-paper scale for the documentation surface. */
+  /* Benchmarked documentation colors. Component geometry stays unchanged. */
   --appica-foreground: oklch(0.36 0.012 260);
   --appica-foreground-subtle: oklch(0.65 0.01 260);
   --appica-foreground-muted: oklch(0.49 0.012 260);
@@ -32,9 +32,6 @@
   --appica-background-muted: oklch(0.952 0.004 260);
   --appica-background-strong: oklch(0.905 0.006 260);
   --appica-background-inverse: oklch(0.145 0.006 260);
-  --appica-border: oklch(0.89 0.006 260);
-  --appica-border-strong: oklch(0.82 0.008 260);
-  --appica-code-background: oklch(0.965 0.003 260);
   --appica-primary: oklch(0.5 0.19 258);
   --appica-primary-muted: oklch(0.57 0.17 258);
   --appica-primary-foreground: oklch(0.992 0.001 260);
@@ -47,11 +44,11 @@
   --appica-focus: oklch(0.55 0.17 258 / 24%);
   --appica-shadow-color: oklch(0.12 0.008 260 / 10%);
   --appica-selection: oklch(0.5 0.19 258 / 14%);
-  --appica-radius: 10px;
-  --appica-radius-sm: 8px;
-  --appica-radius-lg: 12px;
-  --appica-radius-xl: 16px;
-  --appica-radius-2xl: 20px;
+  --appica-radius: 14px;
+  --appica-radius-sm: 12px;
+  --appica-radius-lg: 16px;
+  --appica-radius-xl: 18px;
+  --appica-radius-2xl: 24px;
   --appica-shadow-xs: 0 1px 4px var(--appica-shadow-color);
   --appica-shadow-sm: 0 2px 8px -2px var(--appica-shadow-color);
   --appica-shadow-md: 0 4px 8px -2px var(--appica-shadow-color);
@@ -68,7 +65,7 @@
   --uni-ink-soft: var(--appica-foreground-strong);
   --uni-muted: var(--appica-foreground-muted);
   --uni-faint: var(--appica-foreground-subtle);
-  --uni-rule: var(--appica-border);
+  --uni-rule: transparent;
   --uni-accent: var(--appica-primary);
   --uni-success: var(--appica-success);
   --uni-link-visited: var(--appica-foreground-muted);
@@ -89,13 +86,12 @@
   --vp-c-text-1: var(--appica-foreground-intense);
   --vp-c-text-2: var(--appica-foreground-muted);
   --vp-c-text-3: var(--appica-foreground-subtle);
-  --vp-c-divider: var(--appica-border);
-  --vp-c-border: var(--appica-border);
+  --vp-c-divider: var(--appica-background-strong);
+  --vp-c-border: var(--appica-background-strong);
   --vp-nav-bg-color: var(--appica-background);
   --vp-sidebar-bg-color: var(--appica-background-subtle);
-  --vp-code-block-bg: var(--appica-code-background);
+  --vp-code-block-bg: var(--appica-background-muted);
   --vp-code-line-highlight-color: var(--appica-secondary-subtle);
-  --vp-nav-height: 64px;
 }
 
 .dark {
@@ -112,9 +108,6 @@
   --appica-background-muted: oklch(0.195 0.009 260);
   --appica-background-strong: oklch(0.255 0.011 260);
   --appica-background-inverse: oklch(0.96 0.003 260);
-  --appica-border: oklch(0.265 0.01 260);
-  --appica-border-strong: oklch(0.34 0.012 260);
-  --appica-code-background: oklch(0.185 0.009 260);
   --appica-primary: oklch(0.72 0.15 258);
   --appica-primary-muted: oklch(0.66 0.14 258);
   --appica-primary-foreground: oklch(0.145 0.006 260);
@@ -196,11 +189,10 @@ textarea:focus-visible {
 
 /* Navigation */
 .VPNav {
-  height: 64px;
-  border-bottom: 1px solid var(--appica-border) !important;
-  background: color-mix(in oklch, var(--appica-background) 94%, transparent);
+  height: 80px;
+  background: transparent;
+  border: 0 !important;
   box-shadow: none;
-  backdrop-filter: blur(14px) saturate(110%);
 }
 
 .VPNavBar,
@@ -212,27 +204,32 @@ textarea:focus-visible {
 }
 
 .VPNavBar {
-  height: 64px !important;
-  padding: 0 24px !important;
+  height: 80px !important;
+  padding: 10px 18px 12px !important;
 }
 
-.VPNavBar > .wrapper > .container {
-  width: min(1440px, 100%);
-  height: 64px;
+.VPNavBar .container {
+  width: min(1180px, 100%);
+  height: 58px;
   margin: 0 auto;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 0 12px;
+  border-radius: 22px;
+  background: color-mix(
+    in oklch,
+    var(--appica-background) 82%,
+    var(--appica-background-strong)
+  );
+  box-shadow: 0 12px 34px var(--appica-shadow-color);
+  backdrop-filter: blur(16px) saturate(112%);
 }
 
 .VPNavBar.has-sidebar .content-body {
-  height: 64px !important;
+  height: 58px !important;
   background: transparent !important;
 }
 
 .VPNavBar.has-sidebar .title {
-  height: 64px !important;
+  height: 58px !important;
 }
 
 .VPNavBarTitle .title,
@@ -264,7 +261,7 @@ textarea:focus-visible {
 }
 
 .VPNavBarMenuLink.active {
-  color: var(--appica-primary) !important;
+  color: var(--appica-secondary) !important;
 }
 
 .VPNavBar .divider {
@@ -273,10 +270,10 @@ textarea:focus-visible {
 
 .VPNavBarSearch .DocSearch-Button,
 .VPNavBarSearch .VPNavBarSearchButton {
-  min-height: 36px;
-  border: 1px solid var(--appica-border);
-  border-radius: 8px;
-  background: var(--appica-background-subtle);
+  min-height: 40px;
+  border: 1px solid var(--appica-background-strong);
+  border-radius: var(--appica-radius);
+  background: var(--appica-background-muted);
   color: var(--appica-foreground-muted);
   box-shadow: none;
 }
@@ -286,23 +283,23 @@ textarea:focus-visible {
  * borderless search input. */
 body .VPLocalSearchBox > .backdrop {
   background: oklch(0.07 0.004 260 / 72%);
-  backdrop-filter: blur(5px) saturate(75%);
+  backdrop-filter: blur(8px) saturate(80%);
 }
 
 body .VPLocalSearchBox > .shell {
   gap: 14px;
   padding: 16px;
-  border: 1px solid var(--appica-border-strong);
-  border-radius: 12px;
-  background: var(--appica-background-subtle);
+  border: 1px solid var(--appica-background-strong);
+  border-radius: 18px;
+  background: var(--appica-background);
   box-shadow: var(--appica-shadow-2xl);
 }
 
 body .VPLocalSearchBox .search-bar {
   min-height: 56px;
-  border: 1px solid var(--appica-border);
-  border-radius: 8px;
-  background: var(--appica-background);
+  border: 1px solid var(--appica-background-strong);
+  border-radius: 12px;
+  background: var(--appica-background-subtle);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -325,7 +322,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts {
 }
 
 body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
-  border: 1px solid var(--appica-border);
+  border: 1px solid var(--appica-background-strong);
   background: var(--appica-background-muted);
   box-shadow: none;
 }
@@ -346,9 +343,9 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 .VPNavScreen,
 .VPMenu,
 .VPLocalNav {
-  border: 1px solid var(--appica-border) !important;
+  border: 0 !important;
   background: var(--appica-background) !important;
-  box-shadow: var(--appica-shadow-sm);
+  box-shadow: var(--appica-shadow-lg);
 }
 
 .VPNavScreenMenuLink,
@@ -358,8 +355,8 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 
 /* Documentation */
 .VPSidebar {
-  border-right: 1px solid var(--appica-border) !important;
-  background: var(--appica-background) !important;
+  border: 0 !important;
+  background: var(--appica-background-subtle) !important;
   scrollbar-color: var(--appica-foreground-subtle) transparent;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -408,14 +405,14 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .VPSidebarItem.is-active > .item .link > .text {
-  color: var(--appica-primary);
+  color: var(--appica-foreground-intense);
 }
 
 .VPSidebarItem.level-1 > .item {
   min-height: 34px;
   margin: 2px 0;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 .VPSidebarItem.level-1 > .item .link {
@@ -425,9 +422,8 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .VPSidebarItem.level-1.is-active > .item {
-  border-radius: 6px;
-  background: var(--appica-secondary-subtle);
-  box-shadow: inset 2px 0 var(--appica-primary);
+  border-radius: 10px;
+  background: var(--appica-background-muted);
 }
 
 .VPDoc .content-container {
@@ -451,7 +447,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .VPDocAsideOutline .outline-link.active {
-  color: var(--appica-primary);
+  color: var(--appica-foreground-intense);
 }
 
 .vp-doc {
@@ -500,26 +496,22 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .vp-doc a {
-  color: var(--appica-primary);
+  color: var(--appica-foreground-intense);
   font-weight: 520;
-  text-decoration-color: color-mix(
-    in oklch,
-    var(--appica-primary) 48%,
-    transparent
-  );
+  text-decoration-color: var(--appica-foreground-subtle);
   text-decoration-thickness: from-font;
   text-underline-offset: 3px;
 }
 
 .vp-doc a:visited {
-  color: var(--appica-primary-muted);
+  color: var(--appica-foreground-strong);
 }
 
 .vp-doc :not(pre) > code,
 .vp-doc kbd {
-  border: 1px solid var(--appica-border);
-  border-radius: 5px;
-  background: var(--appica-code-background);
+  border: 0;
+  border-radius: 7px;
+  background: var(--appica-background-muted);
   color: var(--appica-foreground-emphasis);
   font-family: var(--uni-font);
   font-variant-numeric: tabular-nums;
@@ -528,25 +520,25 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 
 .vp-doc div[class*="language-"] {
   overflow: hidden;
-  border: 1px solid var(--appica-border);
+  border: 0;
   border-radius: var(--appica-radius);
-  background: var(--appica-code-background);
+  background: var(--appica-background-muted);
   box-shadow: none;
 }
 
 .vp-doc div[class*="language-"] > button.copy {
   top: 12px;
   right: 12px;
-  border: 1px solid var(--appica-border);
-  border-radius: 6px;
-  background-color: var(--appica-background-muted);
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--appica-background-strong);
   opacity: 1;
 }
 
 .vp-doc div[class*="language-"] > button.copy:hover,
 .vp-doc div[class*="language-"] > button.copy:hover.copied {
-  border: 1px solid var(--appica-border-strong);
-  background-color: var(--appica-background-muted);
+  border: 0;
+  background-color: var(--appica-background-strong);
   opacity: 1;
   transform: none;
 }
@@ -575,24 +567,24 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .dark .vp-doc div[class*="language-"] {
-  background: var(--appica-code-background) !important;
+  background: oklch(0.185 0.009 260) !important;
 }
 
 .dark .vp-doc div[class*="language-"] code {
-  color: var(--appica-foreground-emphasis);
+  color: oklch(0.92 0.004 260);
 }
 
 .vp-doc blockquote,
 .vp-doc .custom-block {
-  border: 1px solid var(--appica-border);
+  border: 0;
   border-radius: var(--appica-radius);
   background: var(--appica-background-subtle);
 }
 
 .vp-doc table {
   width: 100%;
-  border-collapse: collapse;
-  border-spacing: 0;
+  border-collapse: separate;
+  border-spacing: 0 4px;
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
@@ -600,18 +592,17 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 .vp-doc th,
 .vp-doc td {
   border: 0;
-  border-bottom: 1px solid var(--appica-border);
-  background: transparent;
+  background: var(--appica-background-subtle);
 }
 
 .vp-doc th:first-child,
 .vp-doc td:first-child {
-  border-radius: 0;
+  border-radius: 10px 0 0 10px;
 }
 
 .vp-doc th:last-child,
 .vp-doc td:last-child {
-  border-radius: 0;
+  border-radius: 0 10px 10px 0;
 }
 
 .pretext-typography .vp-doc p,
@@ -637,9 +628,9 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
   gap: 20px;
   margin-bottom: 56px;
   padding: 12px;
-  border: 1px solid var(--appica-border);
+  border: 0;
   border-radius: var(--appica-radius);
-  background: var(--appica-background-subtle);
+  background: var(--appica-background-muted);
 }
 
 .agent-doc-path {
@@ -701,7 +692,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--appica-radius-sm);
   font-size: 13px;
   font-weight: 560;
@@ -719,8 +710,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 }
 
 .agent-markdown-link {
-  border-color: var(--appica-border);
-  background: transparent;
+  background: var(--appica-background);
   color: var(--appica-foreground-emphasis) !important;
 }
 
@@ -754,12 +744,12 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 body:not(:has(.uni-docs-home)) .vp-doc a:hover,
 body:not(:has(.uni-docs-home)) .vp-doc .custom-block a:hover,
 body:not(:has(.uni-docs-home)) .vp-code-group label:hover {
-  color: var(--appica-primary) !important;
-  text-decoration-color: var(--appica-primary) !important;
+  color: var(--appica-foreground-intense) !important;
+  text-decoration-color: var(--appica-foreground-subtle) !important;
 }
 
 body:not(:has(.uni-docs-home)) .vp-doc a:visited:hover {
-  color: var(--appica-primary-muted) !important;
+  color: var(--appica-foreground-strong) !important;
 }
 
 body:not(:has(.uni-docs-home)) .vp-doc a:hover > code {
