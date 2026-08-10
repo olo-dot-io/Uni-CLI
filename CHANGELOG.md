@@ -4,6 +4,11 @@
 
 > `1.1.0` was the internal Changesets candidate. `1.1.1` is the first public
 > release in the 1.1 line.
+>
+> Published from annotated tag `v1.1.1` at commit `8617d2e1` through GitHub
+> Actions run `31406014098`. npm Trusted Publishers issued the provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
 
 ### Added
 
