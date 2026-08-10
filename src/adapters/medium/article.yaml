@@ -1,6 +1,7 @@
 site: medium
 name: article
 description: Read a Medium article as Markdown
+operation_effect: read
 type: web-api
 domain: medium.com
 strategy: public
@@ -27,5 +28,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "public article pages are blocked by Cloudflare and require a browser-backed adapter (2026-08-10)"
 schema_version: v2

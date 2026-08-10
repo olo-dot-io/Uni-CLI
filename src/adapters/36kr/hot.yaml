@@ -1,6 +1,7 @@
 site: 36kr
 name: hot
 description: 36Kr hot/trending articles
+operation_effect: read
 domain: 36kr.com
 type: web-api
 strategy: public
@@ -14,24 +15,30 @@ args:
 
 pipeline:
   - fetch:
-      url: https://36kr.com/api/newsflash
-      params:
-        per_page: "${{ args.limit }}"
+      url: https://gateway.36kr.com/api/mis/nav/home/nav/rank/hot
+      method: POST
+      body:
+        partner_id: wap
+        param:
+          siteId: 1
+          platformId: 2
       headers:
-        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
+        Content-Type: application/json; charset=utf-8
 
-  - select: data.items
+  - select: data.hotRankList
 
   - map:
       rank: ${{ index + 1 }}
-      title: ${{ item.title || '' }}
-      date: ${{ item.published_at || '' }}
-      summary: ${{ (item.description || '') | strip_html | truncate(150) }}
-      id: ${{ item.id }}
+      title: ${{ item.templateMaterial?.widgetTitle || '' }}
+      date: ${{ item.publishTime || '' }}
+      author: ${{ item.templateMaterial?.authorName || '' }}
+      reads: ${{ item.templateMaterial?.statRead || 0 }}
+      id: ${{ item.itemId }}
+      url: "${{ item.itemId ? 'https://www.36kr.com/p/' + item.itemId : '' }}"
 
   - limit: ${{ args.limit }}
 
-columns: [rank, title, date, summary, id]
+columns: [rank, title, date, author, reads, id, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]

@@ -4,7 +4,11 @@ import {
   buildSiteProbePlans,
   classifyCommand,
 } from "../../scripts/site-availability-sweep.js";
-import { healthProbeArgs } from "../../scripts/adapter-health-shared.js";
+import {
+  healthProbeArgs,
+  isEnvironmentMissing,
+  isProbeEnvironmentMissing,
+} from "../../scripts/adapter-health-shared.js";
 import {
   AdapterType,
   Strategy,
@@ -191,5 +195,27 @@ describe("site availability sweep", () => {
         adapterArgs: [{ name: "limit" }],
       }).limit,
     ).toBe("1");
+  });
+
+  it("classifies missing CLI auth and transient TLS resets as host limits", () => {
+    expect(
+      isEnvironmentMissing(
+        "exec \"fly\" failed: Error: no access token available. Please login with 'flyctl auth login'",
+      ),
+    ).toBe("cloud CLI not authenticated");
+    expect(
+      isEnvironmentMissing(
+        "Network request failed for https://en.wikipedia.org/api/rest_v1/page/random/summary: fetch failed: Client network socket disconnected before secure TLS connection was established (ECONNRESET)",
+      ),
+    ).toBe("probe network unreachable (transient)");
+    expect(isEnvironmentMissing("HTTP 403 from a public endpoint")).toBe(
+      undefined,
+    );
+    expect(
+      isProbeEnvironmentMissing(
+        new Error("HTTP 403"),
+        "HTTP 403 from a public endpoint",
+      ),
+    ).toBe(undefined);
   });
 });

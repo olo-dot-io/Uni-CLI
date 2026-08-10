@@ -1,6 +1,7 @@
 site: medium
 name: user
 description: Medium user profile and recent articles
+operation_effect: read
 domain: medium.com
 type: web-api
 strategy: public
@@ -16,22 +17,23 @@ args:
     description: Number of articles
 
 pipeline:
-  - fetch:
-      url: "https://medium.com/@${{ args.username }}?format=json"
+  - fetch_text:
+      url: "https://medium.com/feed/@${{ args.username }}"
       headers:
-        Accept: application/json
+        Accept: "application/rss+xml,application/xml"
+        User-Agent: "Mozilla/5.0 (compatible; Uni-CLI)"
 
-  - select: payload.references.Post
+  - parse_rss: ~
 
   - map:
       title: ${{ item.title || '' }}
-      subtitle: ${{ (item.virtuals?.subtitle || '') | slice(0, 100) }}
-      claps: ${{ item.virtuals?.totalClapCount || 0 }}
-      responses: ${{ item.virtuals?.responsesCreatedCount || 0 }}
+      summary: ${{ (item.description || '') | strip_html | truncate(180) }}
+      published_at: ${{ item.pubDate || '' }}
+      url: ${{ item.url || item.link || '' }}
 
   - limit: ${{ args.limit }}
 
-columns: [title, subtitle, claps, responses]
+columns: [title, published_at, summary, url]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]

@@ -8,6 +8,11 @@ describe("hf agent-facing paper command", () => {
     expect(requireHfPaperId("2501.12345")).toBe("2501.12345");
     expect(() => requireHfPaperId("cs/9901001")).toThrow("valid arXiv");
     expect(() => requireHfPaperId("")).toThrow("cannot be empty");
+    try {
+      requireHfPaperId("cs/9901001");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "invalid_input" });
+    }
   });
 
   it("normalizes endpoint values", () => {
@@ -67,10 +72,18 @@ describe("hf agent-facing paper command", () => {
 
   it("rejects empty HF paper payloads", () => {
     expect(() => mapHfPaperRow({})).toThrow("no paper data");
+    try {
+      mapHfPaperRow({});
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
   });
 
   it("advertises scholarly capabilities for meta-command discovery", () => {
-    expect(getAdapter("hf")?.commands.paper?.capabilities).toEqual([
+    const command = getAdapter("hf")?.commands.paper;
+    expect(command?.operation_effect).toBe("read");
+    expect(command?.operation_family).toBe("get");
+    expect(command?.capabilities).toEqual([
       "http.fetch",
       "scholar.get",
       "scholar.pdf",

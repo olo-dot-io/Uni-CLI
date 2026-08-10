@@ -90,6 +90,13 @@ export function normalizeAdapterOptionValues(
   return normalized;
 }
 
+export function adapterLimitDefault(args: readonly AdapterArg[]): string {
+  const value = args.find((arg) => arg.name === "limit")?.default;
+  return typeof value === "number" || typeof value === "string"
+    ? String(value)
+    : "20";
+}
+
 /**
  * Register one Commander sub-command per adapter×command.
  * Called once from createCli() after adapters are loaded.
@@ -133,7 +140,8 @@ export function registerAdapterDispatch(program: Command): void {
 
       // Register option arguments
       const registeredOpts = new Set<string>();
-      subCmd.option("--limit <n>", "limit results", "20");
+      const limitDefault = adapterLimitDefault(adapterArgs);
+      subCmd.option("--limit <n>", "limit results", limitDefault);
       registeredOpts.add("limit");
 
       for (const arg of adapterArgs) {
@@ -251,7 +259,7 @@ export function registerAdapterDispatch(program: Command): void {
         // validation with `additionalProperties`.
         const declaresLimit = adapterArgs.some((a) => a.name === "limit");
         if (declaresLimit && mergedArgs.limit === undefined) {
-          mergedArgs.limit = parseInt(opts.limit, 10) || 20;
+          mergedArgs.limit = parseInt(opts.limit, 10) || Number(limitDefault);
         } else if (!declaresLimit) {
           delete mergedArgs.limit;
         }

@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   decodeXmlEntities,
+  dblpEmptyResult,
+  fetchDblp,
+  inferDblpConferenceYear,
   mapPublicationHit,
   mapRecordXml,
   mapVenueHit,
@@ -11,6 +14,10 @@ import {
   requireRecordKey,
   splitAuthorRecords,
 } from "./publications.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("dblp agent-facing publication commands", () => {
   it("validates query, limit, record key, and PID inputs", () => {
@@ -27,6 +34,22 @@ describe("dblp agent-facing publication commands", () => {
     expect(() => requireRecordKey("https://dblp.org")).toThrow("not valid");
     expect(requirePid("56/953")).toBe("56/953");
     expect(() => requirePid("../56/953")).toThrow("not valid");
+    for (const operation of [
+      () => requireDblpQuery(""),
+      () => requireDblpLimit("101", 20, 100),
+      () => requireRecordKey("https://dblp.org"),
+      () => requirePid("../56/953"),
+    ]) {
+      try {
+        operation();
+      } catch (error) {
+        expect(error).toMatchObject({ code: "invalid_input" });
+      }
+    }
+    expect(dblpEmptyResult("No result")).toMatchObject({
+      code: "empty_result",
+      retryable: false,
+    });
   });
 
   it("normalizes XML entities, authors, and publication search hits", () => {
@@ -61,12 +84,20 @@ describe("dblp agent-facing publication commands", () => {
       authors: "Jane Doe",
       venue: "NeurIPS",
       year: "2024",
+      publication_year: "2024",
+      conference_year: undefined,
       type: "conf",
       doi: "10.0000/test",
       source_url: "https://doi.org/10.0000/test",
       landing_url: "https://dblp.org/rec/conf/nips/Paper24.html",
       url: "https://doi.org/10.0000/test",
     });
+    expect(
+      inferDblpConferenceYear(
+        "Formal Methods - 26th International Symposium, FM 2024, Proceedings",
+        "FM,Lecture Notes in Computer Science",
+      ),
+    ).toBe("2024");
   });
 
   it("maps record XML and author publication records", () => {
@@ -128,5 +159,23 @@ describe("dblp agent-facing publication commands", () => {
       type: "conf",
       url: "https://dblp.org/db/conf/iclr/",
     });
+  });
+
+  it("retries one transient DBLP server failure", async () => {
+    // REASON: fetch is the external DBLP boundary; this test protects the owned retry policy.
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("", { status: 500 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchDblp(
+      "/search/publ/api?q=CAV%202025&format=json&h=20",
+      "dblp search",
+      "application/json",
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

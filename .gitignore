@@ -52,6 +52,7 @@ ref/
 # but is not tracked.
 .claude/plans/
 .claude/worktrees/
+.claude/dogfood/
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
 .claude/skills/

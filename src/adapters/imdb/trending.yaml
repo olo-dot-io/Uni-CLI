@@ -1,6 +1,7 @@
 site: imdb
 name: trending
 description: IMDb most popular movies
+operation_effect: read
 type: web-api
 strategy: public
 lint_listing_detail: skip
@@ -33,5 +34,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "public proxy returns HTTP 403 and the official chart is WAF-gated (2026-08-10)"
 schema_version: v2

@@ -15,6 +15,7 @@ import { DOMParser, type Document, type Element } from "@xmldom/xmldom";
 import { cli, Strategy } from "../../registry.js";
 
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
+const PUBMED_TIMEOUT_MS = 15_000;
 const SUMMARY_COLUMNS = [
   "rank",
   "id",
@@ -61,6 +62,40 @@ interface PubMedSummary {
   }>;
 }
 
+interface PubMedAdapterError extends Error {
+  code: "invalid_input" | "empty_result";
+  suggestion: string;
+}
+
+function pubMedError(
+  code: PubMedAdapterError["code"],
+  message: string,
+  suggestion: string,
+): PubMedAdapterError {
+  return Object.assign(new Error(message), { code, suggestion });
+}
+
+function pubMedInvalidInput(message: string): PubMedAdapterError {
+  return pubMedError(
+    "invalid_input",
+    message,
+    "Use a numeric PMID, a valid PMCID, and the declared argument bounds.",
+  );
+}
+
+function pubMedEmptyResult(message: string): PubMedAdapterError {
+  return pubMedError(
+    "empty_result",
+    message,
+    "Verify the PMID or PMCID, or broaden the PubMed query.",
+  );
+}
+
+export function requirePubMedResults<T>(rows: T[], message: string): T[] {
+  if (rows.length === 0) throw pubMedEmptyResult(message);
+  return rows;
+}
+
 function stringField(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -79,14 +114,14 @@ function cleanText(value: unknown): string {
 
 export function requirePubMedText(value: unknown, label: string): string {
   const text = String(value ?? "").trim();
-  if (!text) throw new Error(`pubmed ${label} cannot be empty.`);
+  if (!text) throw pubMedInvalidInput(`pubmed ${label} cannot be empty.`);
   return text;
 }
 
 export function requirePmid(value: unknown, label = "pmid"): string {
   const pmid = requirePubMedText(value, label);
   if (!/^\d+$/.test(pmid))
-    throw new Error(`pubmed ${label} must be a numeric PMID.`);
+    throw pubMedInvalidInput(`pubmed ${label} must be a numeric PMID.`);
   return pmid;
 }
 
@@ -94,7 +129,7 @@ export function normalizePmcId(value: unknown): string {
   const raw = String(value ?? "").trim();
   if (!raw) return "";
   const match = raw.match(/^(?:PMC)?(\d+)$/i);
-  if (!match) throw new Error(`pubmed pmc id "${raw}" is not valid.`);
+  if (!match) throw pubMedInvalidInput(`pubmed pmc id "${raw}" is not valid.`);
   return `PMC${match[1]}`;
 }
 
@@ -106,7 +141,7 @@ export function requirePubMedLimit(
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > max) {
-    throw new Error(
+    throw pubMedInvalidInput(
       `pubmed limit must be an integer in [1, ${max}]. Got: ${String(value)}`,
     );
   }
@@ -120,7 +155,7 @@ export function requirePubMedMaxChars(
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1_000 || n > 1_000_000) {
-    throw new Error(
+    throw pubMedInvalidInput(
       `pubmed max-chars must be an integer in [1000, 1000000]. Got: ${String(value)}`,
     );
   }
@@ -135,7 +170,9 @@ function requireChoice(
 ): string {
   const text = String(value ?? fallback).trim();
   if (!choices.includes(text))
-    throw new Error(`pubmed ${label} must be one of: ${choices.join(", ")}.`);
+    throw pubMedInvalidInput(
+      `pubmed ${label} must be one of: ${choices.join(", ")}.`,
+    );
   return text;
 }
 
@@ -167,16 +204,51 @@ async function eutilsFetch(
   retmode = "json",
   db = "pubmed",
 ): Promise<unknown> {
-  const response = await fetch(buildUrl(tool, params, retmode, db), {
-    headers: { "User-Agent": "unicli (https://github.com/olo-dot-io/Uni-CLI)" },
-  });
-  if (!response.ok)
-    throw new Error(`PubMed ${tool} returned HTTP ${response.status}.`);
-  if (retmode === "xml") return response.text();
-  const json = (await response.json()) as { error?: unknown };
-  if (json.error)
-    throw new Error(`PubMed ${tool} returned an error: ${String(json.error)}`);
-  return json;
+  try {
+    const response = await fetch(buildUrl(tool, params, retmode, db), {
+      headers: {
+        "User-Agent": "unicli (https://github.com/olo-dot-io/Uni-CLI)",
+      },
+      signal: AbortSignal.timeout(PUBMED_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw Object.assign(
+        new Error(`PubMed ${tool} returned HTTP ${response.status}.`),
+        {
+          code: response.status === 429 ? "rate_limited" : "upstream_error",
+          retryable: response.status === 429 || response.status >= 500,
+          suggestion: "Retry after NCBI E-utilities is reachable and healthy.",
+        },
+      );
+    }
+    if (retmode === "xml") return response.text();
+    const json = (await response.json()) as { error?: unknown };
+    if (json.error) {
+      throw Object.assign(
+        new Error(`PubMed ${tool} returned an error: ${String(json.error)}`),
+        {
+          code: "upstream_error",
+          suggestion: "Verify the query or retry after NCBI is healthy.",
+        },
+      );
+    }
+    return json;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw Object.assign(
+        new Error(`PubMed ${tool} timed out after ${PUBMED_TIMEOUT_MS} ms.`),
+        {
+          code: "timeout",
+          retryable: true,
+          suggestion: "Retry later or select another scholarly source.",
+        },
+      );
+    }
+    throw error;
+  }
 }
 
 function authorNames(authors: PubMedSummary["authors"], max = 3): string {
@@ -308,7 +380,7 @@ export function mapPubMedArticleRecord(
   const document = new DOMParser().parseFromString(xml, "text/xml");
   const title = childText(document, "ArticleTitle");
   if (!title)
-    throw new Error(`pubmed article ${pmid} did not include a title.`);
+    throw pubMedEmptyResult(`pubmed article ${pmid} did not include a title.`);
   const doiValue = articleIdText(document, "IdType", "doi");
   const pmcId = articleIdText(document, "IdType", "pmc");
   const abstract = elementTexts(document, "AbstractText").join(" ");
@@ -428,7 +500,9 @@ export function mapPmcFullTextRow(
   const document = new DOMParser().parseFromString(xml, "text/xml");
   const title = childText(document, "article-title");
   if (!title) {
-    throw new Error(`PMC full text ${ref} did not include an article title.`);
+    throw pubMedEmptyResult(
+      `PMC full text ${ref} did not include an article title.`,
+    );
   }
   const pmcId = normalizePmcId(
     articleIdText(document, "pub-id-type", "pmcid") || ref,
@@ -449,7 +523,9 @@ export function mapPmcFullTextRow(
     .filter(Boolean)
     .join("\n\n");
   if (!text) {
-    throw new Error(`PMC full text ${pmcId} did not include readable text.`);
+    throw pubMedEmptyResult(
+      `PMC full text ${pmcId} did not include readable text.`,
+    );
   }
   const truncated = truncateText(text, maxChars);
   return {
@@ -480,7 +556,7 @@ async function pmcIdFromPubMedRef(ref: string): Promise<string> {
   )) as { esearchresult?: { idlist?: string[] } };
   const numericPmc = json.esearchresult?.idlist?.[0];
   if (!numericPmc) {
-    throw new Error(
+    throw pubMedEmptyResult(
       `PubMed PMID ${pmid} has no PubMed Central full text record.`,
     );
   }
@@ -501,8 +577,7 @@ async function fetchSummaryRows(
       (item): item is PubMedSummary => !!item && typeof item === "object",
     );
   const rows = mapPubMedSummaryRows(summaries, pmids);
-  if (rows.length === 0) throw new Error(`${label} returned no summary rows.`);
-  return rows;
+  return requirePubMedResults(rows, `${label} returned no summary rows.`);
 }
 
 cli({
@@ -544,8 +619,7 @@ cli({
     const pmids = Array.isArray(json.esearchresult?.idlist)
       ? json.esearchresult.idlist
       : [];
-    if (pmids.length === 0)
-      throw new Error(`No PubMed articles matched "${query}".`);
+    requirePubMedResults(pmids, `No PubMed articles matched "${query}".`);
     return fetchSummaryRows(pmids, "pubmed search");
   },
 });
@@ -648,6 +722,7 @@ cli({
     "text",
     "text_truncated",
   ],
+  operation_effect: "read",
   capabilities: ["http.fetch", "scholar.fulltext"],
   func: async (_page, kwargs) => {
     const ref = requirePubMedText(
@@ -699,8 +774,10 @@ cli({
     const pmids = Array.isArray(json.esearchresult?.idlist)
       ? json.esearchresult.idlist
       : [];
-    if (pmids.length === 0)
-      throw new Error(`No PubMed articles found for author "${name}".`);
+    requirePubMedResults(
+      pmids,
+      `No PubMed articles found for author "${name}".`,
+    );
     return fetchSummaryRows(pmids, "pubmed author");
   },
 });
@@ -752,8 +829,10 @@ cli({
     const links =
       json.linksets?.[0]?.linksetdbs?.[0]?.links?.map(String).slice(0, limit) ??
       [];
-    if (links.length === 0)
-      throw new Error(`No ${direction} links found for PMID ${pmid}.`);
+    requirePubMedResults(
+      links,
+      `No ${direction} links found for PMID ${pmid}.`,
+    );
     return fetchSummaryRows(links, "pubmed citations");
   },
 });
@@ -800,8 +879,7 @@ cli({
         )
         .filter((link) => link.id && link.id !== pmid)
         .slice(0, limit) ?? [];
-    if (links.length === 0)
-      throw new Error(`No related articles found for PMID ${pmid}.`);
+    requirePubMedResults(links, `No related articles found for PMID ${pmid}.`);
     const rows = await fetchSummaryRows(
       links.map((link) => link.id),
       "pubmed related",

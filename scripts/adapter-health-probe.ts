@@ -11,6 +11,8 @@
  *
  * Skip policies (non-failing):
  *   - quarantined adapters (intentionally parked)
+ *   - commands whose contract requires authentication
+ *   - commands whose contract is not read-only
  *   - commands requiring positional args (can't probe without an input)
  *   - browser/ui/intercept strategies (need headful Chrome)
  *   - TS function adapters (no pipeline)
@@ -21,11 +23,13 @@
  *   - intentional placeholder adapters that fail closed with a structured
  *     upstream-deprecated message instead of pretending coverage exists.
  *
- * Network failures against real endpoints count as probe failures. To park
- * a flaky adapter, add `quarantine: true` to its YAML.
+ * Endpoint HTTP, parser, and selector drift count as probe failures. Narrow
+ * host-auth and transient transport failures remain visible as environment
+ * skips. To park a consistently broken adapter, add `quarantine: true`.
  */
 
 import { loadAllAdapters, loadTsAdapters } from "../src/discovery/loader.js";
+import { buildCommandContract } from "../src/core/command-contract.js";
 import {
   commandStrategy,
   commandUsesBrowser,
@@ -64,6 +68,11 @@ async function main(): Promise<void> {
 
   for (const adapter of adapters) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      const contract = buildCommandContract({
+        adapter,
+        commandName: cmdName,
+        command: cmd,
+      });
       if (cmd.quarantine) {
         results.push({
           site: adapter.name,
@@ -72,6 +81,28 @@ async function main(): Promise<void> {
           reason: cmd.quarantineReason
             ? `quarantined: ${cmd.quarantineReason}`
             : "quarantined",
+          latency_ms: 0,
+        });
+        continue;
+      }
+
+      if (contract.auth.required) {
+        results.push({
+          site: adapter.name,
+          command: cmdName,
+          status: "skip",
+          reason: contract.auth.setup_command ?? "authentication required",
+          latency_ms: 0,
+        });
+        continue;
+      }
+
+      if (!contract.effect.read_only) {
+        results.push({
+          site: adapter.name,
+          command: cmdName,
+          status: "skip",
+          reason: `operation effect is ${contract.effect.operation_effect}`,
           latency_ms: 0,
         });
         continue;
@@ -178,7 +209,10 @@ async function main(): Promise<void> {
             adapter.base,
             {
               site: adapter.name,
+              command: cmdName,
               strategy: commandStrategy(adapter, cmd),
+              domain: cmd.domain ?? adapter.domain,
+              canMutate: false,
             },
           ),
           timeoutMs,

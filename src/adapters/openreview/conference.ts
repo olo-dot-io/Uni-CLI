@@ -471,6 +471,7 @@ async function persistArtifact(
   client: OpenReviewHttpClient,
   archiveRoot: string,
   ref: OpenReviewArtifactRef,
+  signal?: AbortSignal,
 ): Promise<boolean> {
   const identity = createHash("sha256")
     .update(`${ref.url}\0${ref.version_timestamp}`)
@@ -509,6 +510,7 @@ async function persistArtifact(
     ref.url,
     path,
     `openreview artifact ${ref.entity_id}/${ref.field}`,
+    signal,
   );
   if (!result) {
     throw new Error(`OpenReview artifact returned 404: ${ref.url}`);
@@ -539,6 +541,7 @@ function groupContentString(group: OpenReviewEntity, key: string): string {
 async function resolveVenue(
   venueId: string,
   rpm: number,
+  signal?: AbortSignal,
 ): Promise<{
   client: OpenReviewHttpClient;
   group: OpenReviewEntity;
@@ -549,6 +552,7 @@ async function resolveVenue(
     const envelope = await client.json<GroupsEnvelope>(
       queryPath("/groups", { id: venueId }),
       `openreview venue group ${venueId} (API v${apiVersion})`,
+      signal,
     );
     const group = envelope?.groups?.[0];
     if (!group) continue;
@@ -572,6 +576,7 @@ async function archiveSubmissionPage(
   archiveRoot: string,
   rows: OpenReviewEntity[],
   metadataOnly: boolean,
+  signal?: AbortSignal,
 ): Promise<{
   submissions: number;
   replies: number;
@@ -605,7 +610,9 @@ async function archiveSubmissionPage(
     if (!metadataOnly) {
       for (const ref of refs) {
         if (ref.kind !== "openreview_file") continue;
-        if (await persistArtifact(client, archiveRoot, ref)) artifacts += 1;
+        if (await persistArtifact(client, archiveRoot, ref, signal)) {
+          artifacts += 1;
+        }
       }
     }
   }
@@ -622,6 +629,7 @@ async function archiveEditPage(
   archiveRoot: string,
   edits: OpenReviewEntity[],
   metadataOnly: boolean,
+  signal?: AbortSignal,
 ): Promise<{ edits: number; artifacts: number; externalLinks: number }> {
   let artifacts = 0;
   let externalLinks = 0;
@@ -648,7 +656,9 @@ async function archiveEditPage(
     if (!metadataOnly) {
       for (const ref of refs) {
         if (ref.kind !== "openreview_file") continue;
-        if (await persistArtifact(client, archiveRoot, ref)) artifacts += 1;
+        if (await persistArtifact(client, archiveRoot, ref, signal)) {
+          artifacts += 1;
+        }
       }
     }
   }
@@ -660,6 +670,7 @@ async function archiveConference(
   output: string,
   rpm: number,
   metadataOnly: boolean,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
   const archiveRoot = join(resolve(output), archiveSlug(venueId));
   const manifestPath = join(archiveRoot, "manifest.json");
@@ -667,6 +678,7 @@ async function archiveConference(
   const { client, group, submissionInvitation } = await resolveVenue(
     venueId,
     rpm,
+    signal,
   );
   await writeJsonAtomic(join(archiveRoot, "group.json"), group);
 
@@ -714,6 +726,7 @@ async function archiveConference(
           after,
         }),
         `openreview submissions ${venueId}${after ? ` after ${after}` : ""}`,
+        signal,
       );
       const rows = envelope?.notes ?? [];
       if (rows.length === 0) break;
@@ -722,6 +735,7 @@ async function archiveConference(
         archiveRoot,
         rows,
         metadataOnly,
+        signal,
       );
       manifest.submission_count += delta.submissions;
       manifest.reply_count += delta.replies;
@@ -753,6 +767,7 @@ async function archiveConference(
           offset,
         }),
         `openreview note edits ${venueId} at offset ${offset}`,
+        signal,
       );
       const edits = envelope?.edits ?? [];
       if (edits.length === 0) break;
@@ -768,6 +783,7 @@ async function archiveConference(
         archiveRoot,
         edits,
         metadataOnly,
+        signal,
       );
       manifest.artifact_count += delta.artifacts;
       manifest.external_link_count += delta.externalLinks;
@@ -798,6 +814,7 @@ async function archiveConference(
           offset,
         }),
         `openreview edit catch-up ${venueId} at offset ${offset}`,
+        signal,
       );
       const edits = envelope?.edits ?? [];
       const reportedCount = Number(envelope?.count);
@@ -817,6 +834,7 @@ async function archiveConference(
         archiveRoot,
         catchupRows,
         metadataOnly,
+        signal,
       );
       manifest.artifact_count += delta.artifacts;
       manifest.external_link_count += delta.externalLinks;
@@ -918,7 +936,7 @@ cli({
     "scholar.pdf",
   ],
   minimum_capability: "http.download",
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const venueId = requireOpenReviewVenueId(kwargs.venue);
     const rpm = Number(kwargs.rpm ?? 20);
     if (!Number.isInteger(rpm) || rpm < 1 || rpm > 180) {
@@ -934,6 +952,7 @@ cli({
         String(kwargs.output ?? "./openreview-archives"),
         rpm,
         metadataOnly,
+        context.signal,
       ),
     ];
   },

@@ -1,6 +1,7 @@
 site: 36kr
 name: news
-description: 36Kr tech news (RSS)
+description: Latest 36Kr newsflashes
+operation_effect: read
 domain: 36kr.com
 type: web-api
 strategy: public
@@ -13,19 +14,32 @@ args:
 
 pipeline:
   - fetch_text:
-      url: https://36kr.com/feed
-      retry: 2
-      backoff: 500
+      url: https://www.36kr.com/newsflashes
+      headers:
+        User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        Accept: "text/html,application/xhtml+xml"
 
-  - parse_rss: ~
+  - extract:
+      from: .newsflash-item
+      required: true
+      fields:
+        title:
+          selector: a.item-title
+        path:
+          selector: a.item-title
+          type: attribute
+          attribute: href
+        date:
+          selector: .time
+        summary:
+          selector: .item-desc > span
 
   - map:
       rank: ${{ index + 1 }}
       title: ${{ item.title }}
-      date: ${{ item.pubDate }}
-      summary: ${{ item.description | strip_html | truncate(150) }}
-      url: ${{ item.url || item.link }}
-      link: ${{ item.link }}
+      date: ${{ item.date }}
+      summary: ${{ item.summary | truncate(150) }}
+      url: "${{ item.path ? 'https://www.36kr.com' + item.path : '' }}"
 
   - limit: ${{ args.limit }}
 

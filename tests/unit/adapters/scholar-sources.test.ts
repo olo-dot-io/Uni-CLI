@@ -7,10 +7,18 @@
 import { describe, expect, it } from "vitest";
 
 import { resolveCommand } from "../../../src/registry.js";
+import "../../../src/adapters/arxiv/papers.js";
+import "../../../src/adapters/biorxiv/preprints.js";
+import "../../../src/adapters/hf/paper.js";
+import "../../../src/adapters/medrxiv/preprints.js";
 import "../../../src/adapters/openalex/works.js";
+import "../../../src/adapters/openreview/papers.js";
+import "../../../src/adapters/pubmed/articles.js";
 import {
   mapCrossrefItem,
   requireCrossrefDoi,
+  requireCrossrefSearchQuery,
+  requireCrossrefSearchRows,
 } from "../../../src/adapters/crossref/works.js";
 import {
   mapSemanticScholarRecommendations,
@@ -48,6 +56,48 @@ import {
   parseNeuripsPaperPage,
   parseNeuripsRows,
 } from "../../../src/adapters/neurips/proceedings.js";
+
+describe("Scholarly direct-command contracts", () => {
+  it("declares file effects for PDF-backed reads", () => {
+    for (const site of [
+      "arxiv",
+      "acl-anthology",
+      "cvf",
+      "neurips",
+      "openalex",
+      "openreview",
+      "pmlr",
+      "semantic-scholar",
+      "unpaywall",
+      "biorxiv",
+      "medrxiv",
+    ]) {
+      expect(resolveCommand(site, "read")?.command.operation_effect).toBe(
+        "download_file",
+      );
+    }
+    expect(resolveCommand("pubmed", "read")?.command.operation_effect).toBe(
+      "read",
+    );
+  });
+
+  it("classifies Crossref input and empty-result failures", () => {
+    expect(() => requireCrossrefSearchQuery("")).toThrow("cannot be empty");
+    try {
+      requireCrossrefSearchQuery("");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "invalid_input" });
+    }
+    expect(() => requireCrossrefSearchRows([], "impossible title")).toThrow(
+      "No Crossref works",
+    );
+    try {
+      requireCrossrefSearchRows([], "impossible title");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
+  });
+});
 
 describe("Browser scholarly discovery adapters", () => {
   it("uses the current Baidu Scholar search route", () => {

@@ -1,8 +1,8 @@
 {
-  "source": "unicli@1.0.3",
-  "generated": "2026-08-08T12:34:39.954Z",
-  "total_sites": 326,
-  "total_commands": 1853,
+  "source": "unicli@1.0.4",
+  "generated": "2026-08-10T07:16:39.346Z",
+  "total_sites": 337,
+  "total_commands": 1884,
   "adapters": [
     {
       "site": "12306",
@@ -33577,6 +33577,129 @@
       ]
     },
     {
+      "site": "aaai",
+      "type": "web-api",
+      "domain": "ojs.aaai.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "papers",
+          "description": "List official AAAI main Technical Tracks papers by year",
+          "when_to_use": "List official AAAI main Technical Tracks papers by year",
+          "command": "unicli aaai papers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "track",
+            "pages",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search official AAAI main Technical Tracks papers by year",
+          "when_to_use": "When you need to search aaai for a specific query.",
+          "command": "unicli aaai search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "track",
+            "pages",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one official AAAI main Technical Tracks paper by OJS id, article URL, or DOI",
+          "when_to_use": "Fetch one official AAAI main Technical Tracks paper by OJS id, article URL, or DOI",
+          "command": "unicli aaai paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "track",
+            "pages",
+            "doi",
+            "pdf_url",
+            "source_url",
+            "abstract",
+            "volume",
+            "issue"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "acl-anthology",
       "type": "web-api",
       "domain": "aclanthology.org",
@@ -33696,6 +33819,127 @@
               "required": false,
               "positional": false,
               "description": "Maximum extracted text characters"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "acm",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search ACM publications from official DOI registration metadata",
+          "when_to_use": "When you need to search acm for a specific query.",
+          "command": "unicli acm search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "List ACM proceedings papers for a conference or venue",
+          "when_to_use": "List ACM proceedings papers for a conference or venue",
+          "command": "unicli acm venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one ACM publication by DOI",
+          "when_to_use": "Fetch one ACM publication by DOI",
+          "command": "unicli acm paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
             }
           ]
         }
@@ -35110,6 +35354,101 @@
               "required": false,
               "positional": false,
               "description": "Maximum text characters to return"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ccf",
+      "type": "web-api",
+      "domain": "www.ccf.org.cn",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List and filter all 58 official CCF A-class conferences from the 2026 seventh edition",
+          "when_to_use": "List and filter all 58 official CCF A-class conferences from the 2026 seventh edition",
+          "command": "unicli ccf conferences",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "acronym",
+            "aliases",
+            "title",
+            "rank",
+            "category",
+            "publisher",
+            "edition",
+            "directory_year",
+            "directory_updated",
+            "official_venue_url",
+            "source_url",
+            "pdf_page"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": true
+            },
+            {
+              "name": "category",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "publisher",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "conference",
+          "description": "Resolve one CCF A-class conference by acronym, former name, alias, or full name",
+          "when_to_use": "Resolve one CCF A-class conference by acronym, former name, alias, or full name",
+          "command": "unicli ccf conference",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "acronym",
+            "aliases",
+            "title",
+            "rank",
+            "category",
+            "publisher",
+            "edition",
+            "directory_year",
+            "directory_updated",
+            "official_venue_url",
+            "source_url",
+            "pdf_page"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -36847,6 +37186,44 @@
               "positional": true
             }
           ]
+        },
+        {
+          "name": "venue",
+          "description": "List venue papers from Crossref registration metadata across publishers",
+          "when_to_use": "List venue papers from Crossref registration metadata across publishers",
+          "command": "unicli crossref venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
         }
       ]
     },
@@ -37452,6 +37829,129 @@
               "required": false,
               "positional": false,
               "description": "Maximum extracted text characters"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "datacite",
+      "type": "web-api",
+      "domain": "api.datacite.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search DataCite research objects including datasets and software",
+          "when_to_use": "When you need to search datacite for a specific query.",
+          "command": "unicli datacite search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "code_url",
+            "dataset_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "type",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "doi",
+          "description": "Fetch one DataCite research object by DOI",
+          "when_to_use": "Fetch one DataCite research object by DOI",
+          "command": "unicli datacite doi",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "code_url",
+            "dataset_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "related",
+          "description": "Find DataCite datasets and software related to a paper DOI",
+          "when_to_use": "Find DataCite datasets and software related to a paper DOI",
+          "command": "unicli datacite related",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "code_url",
+            "dataset_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }
@@ -41862,6 +42362,57 @@
       ]
     },
     {
+      "site": "github-scholar",
+      "type": "web-api",
+      "domain": "api.github.com",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Find GitHub candidate implementations backed by exact DOI or strong paper-title evidence in repository READMEs",
+          "when_to_use": "When you need to search github-scholar for a specific query.",
+          "command": "unicli github-scholar search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "repository",
+            "title",
+            "doi",
+            "code_url",
+            "match_type",
+            "confidence",
+            "evidence",
+            "evidence_url",
+            "evidence_excerpt",
+            "title_overlap",
+            "matched_title_terms",
+            "relationship_evidence",
+            "github_stars",
+            "repository_license",
+            "relationship",
+            "is_official_code"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Complete paper title or DOI"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "google-patents-web",
       "type": "web-api",
       "domain": "patents.google.com",
@@ -42195,6 +42746,322 @@
           "args": [
             {
               "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "iclr",
+      "type": "web-api",
+      "domain": "blog.iclr.cc",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "awards",
+          "description": "List official ICLR award papers with OpenReview forum, review, and PDF links",
+          "when_to_use": "List official ICLR award papers with OpenReview forum, review, and PDF links",
+          "command": "unicli iclr awards",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "award",
+            "openreview_id",
+            "pdf_url",
+            "landing_url",
+            "source_url",
+            "next_command"
+          ],
+          "args": [
+            {
+              "name": "conference",
+              "type": "str",
+              "required": false,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "award",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ieee",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search IEEE publications from official DOI registration metadata without an API key",
+          "when_to_use": "When you need to search ieee for a specific query.",
+          "command": "unicli ieee search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "List IEEE conference proceedings papers without an API key",
+          "when_to_use": "List IEEE conference proceedings papers without an API key",
+          "command": "unicli ieee venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "doi",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one IEEE publication by DOI without an API key",
+          "when_to_use": "Fetch one IEEE publication by DOI without an API key",
+          "command": "unicli ieee paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "ieee-xplore",
+      "type": "web-api",
+      "domain": "ieeexploreapi.ieee.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search IEEE Xplore article metadata with an IEEE API key",
+          "when_to_use": "When you need to search ieee-xplore for a specific query.",
+          "command": "unicli ieee-xplore search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "cited_by_count",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "start",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "article",
+          "description": "Fetch one IEEE Xplore article by article number or DOI",
+          "when_to_use": "Fetch one IEEE Xplore article by article number or DOI",
+          "command": "unicli ieee-xplore article",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "cited_by_count",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "ref",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "List IEEE Xplore articles from a publication or conference",
+          "when_to_use": "List IEEE Xplore articles from a publication or conference",
+          "command": "unicli ieee-xplore venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "cited_by_count",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "start",
               "type": "int",
               "required": false,
               "positional": false
@@ -45026,6 +45893,147 @@
       ]
     },
     {
+      "site": "pacmpl",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PACMPL papers by title with optional conference issue and year filters",
+          "when_to_use": "When you need to search pacmpl for a specific query.",
+          "command": "unicli pacmpl search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "conference",
+            "issue",
+            "volume",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "venue",
+          "description": "List PACMPL papers for OOPSLA, POPL, PLDI, or ICFP by publication year",
+          "when_to_use": "List PACMPL papers for OOPSLA, POPL, PLDI, or ICFP by publication year",
+          "command": "unicli pacmpl venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "conference",
+            "issue",
+            "volume",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one PACMPL paper by ACM DOI and validate its conference issue and year",
+          "when_to_use": "Fetch one PACMPL paper by ACM DOI and validate its conference issue and year",
+          "command": "unicli pacmpl paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "conference",
+            "issue",
+            "volume",
+            "doi",
+            "pdf_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "doi",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "pmlr",
       "type": "web-api",
       "domain": "proceedings.mlr.press",
@@ -46551,6 +47559,152 @@
       ]
     },
     {
+      "site": "sigchi",
+      "type": "web-api",
+      "domain": "files.sigchi.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List official SIGCHI conference editions and program availability",
+          "when_to_use": "List official SIGCHI conference editions and program availability",
+          "command": "unicli sigchi conferences",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "year",
+            "venue",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "papers",
+          "description": "List papers and program content from an official SIGCHI conference",
+          "when_to_use": "List papers and program content from an official SIGCHI conference",
+          "command": "unicli sigchi papers",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "award",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "conference",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "awards",
+          "description": "List officially marked award papers from a SIGCHI conference",
+          "when_to_use": "List officially marked award papers from a SIGCHI conference",
+          "command": "unicli sigchi awards",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "type",
+            "doi",
+            "award",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "conference",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "award",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "site": "tdx",
       "type": "web-api",
       "domain": "pul.tdx.com.cn",
@@ -46890,6 +48044,192 @@
               "required": false,
               "positional": false,
               "description": "Maximum extracted text characters"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "usenix",
+      "type": "web-api",
+      "domain": "www.usenix.org",
+      "auth": false,
+      "strategy": "public",
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List first-party USENIX scholarly conference series",
+          "when_to_use": "List first-party USENIX scholarly conference series",
+          "command": "unicli usenix conferences",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": ["acronym", "title", "aliases", "source_url"],
+          "args": []
+        },
+        {
+          "name": "venue",
+          "description": "List papers from an official USENIX conference schedule",
+          "when_to_use": "List papers from an official USENIX conference schedule",
+          "command": "unicli usenix venue",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "award",
+            "pdf_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search current official USENIX conference schedules",
+          "when_to_use": "When you need to search usenix for a specific query.",
+          "command": "unicli usenix search",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "award",
+            "pdf_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "venue",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
+            }
+          ]
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one official USENIX presentation by first-party presentation URL or path",
+          "when_to_use": "Fetch one official USENIX presentation by first-party presentation URL or path",
+          "command": "unicli usenix paper",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "award",
+            "pdf_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "ref",
+              "type": "str",
+              "required": true,
+              "positional": true
+            }
+          ]
+        },
+        {
+          "name": "awards",
+          "description": "List award-marked papers from an official USENIX schedule",
+          "when_to_use": "List award-marked papers from an official USENIX schedule",
+          "command": "unicli usenix awards",
+          "auth": false,
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "title",
+            "authors",
+            "year",
+            "venue",
+            "award",
+            "pdf_url",
+            "landing_url",
+            "source_url"
+          ],
+          "args": [
+            {
+              "name": "venue",
+              "type": "str",
+              "required": true,
+              "positional": true
+            },
+            {
+              "name": "year",
+              "type": "int",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false
             }
           ]
         }

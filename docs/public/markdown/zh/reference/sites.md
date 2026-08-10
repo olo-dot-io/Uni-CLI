@@ -11,7 +11,7 @@
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：326 个站点，1853 条命令。
+这个目录来自适配器 manifest：337 个站点，1884 条命令。
 
 | 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |
 | --- | --- | ---: | --- | --- |
@@ -243,7 +243,9 @@
 | zsxq | web-api | 5 | 是 | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
 | 1point3acres | web-api | 9 | 是 | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 51job | web-api | 4 | 是 | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| aaai | web-api | 3 | 否 | unicli aaai papers<br>unicli aaai search<br>unicli aaai paper |
 | acl-anthology | web-api | 3 | 否 | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
+| acm | web-api | 3 | 否 | unicli acm search<br>unicli acm venue<br>unicli acm paper |
 | ai | web-api | 6 | 否 | unicli ai search<br>unicli ai pulse<br>unicli ai read |
 | aibase | web-api | 1 | 否 | unicli aibase news |
 | anilist | web-api | 5 | 否 | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -252,6 +254,7 @@
 | baidu-scholar | web-api | 1 | 否 | unicli baidu-scholar search |
 | bangumi | web-api | 5 | 否 | unicli bangumi anime<br>unicli bangumi book<br>unicli bangumi game |
 | biorxiv | web-api | 5 | 否 | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
+| ccf | web-api | 2 | 否 | unicli ccf conferences<br>unicli ccf conference |
 | chatgpt | web-api | 18 | 是 | unicli chatgpt ask<br>unicli chatgpt send<br>unicli chatgpt read |
 | chatgpt-app | web-api | 8 | 否 | unicli chatgpt-app ask<br>unicli chatgpt-app send<br>unicli chatgpt-app read |
 | chatwise | web-api | 17 | 否 | unicli chatwise ask<br>unicli chatwise send<br>unicli chatwise read |
@@ -262,10 +265,11 @@
 | codex | web-api | 19 | 否 | unicli codex ask<br>unicli codex send<br>unicli codex read |
 | coingecko | web-api | 7 | 否 | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
 | crates | web-api | 2 | 否 | unicli crates search<br>unicli crates crate |
-| crossref | web-api | 2 | 否 | unicli crossref search<br>unicli crossref work |
+| crossref | web-api | 3 | 否 | unicli crossref search<br>unicli crossref work<br>unicli crossref venue |
 | ctrip | web-api | 4 | 是 | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
 | cursor | web-api | 19 | 否 | unicli cursor ask<br>unicli cursor send<br>unicli cursor read |
 | cvf | web-api | 3 | 否 | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
+| datacite | web-api | 3 | 否 | unicli datacite search<br>unicli datacite doi<br>unicli datacite related |
 | dblp | web-api | 4 | 否 | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
 | defillama | web-api | 2 | 否 | unicli defillama protocols<br>unicli defillama protocol |
 | discord-app | web-api | 15 | 否 | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
@@ -296,11 +300,15 @@
 | fips | web-api | 2 | 否 | unicli fips get<br>unicli fips search |
 | flathub | web-api | 2 | 否 | unicli flathub search<br>unicli flathub app |
 | freepatentsonline-web | web-api | 2 | 否 | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
+| github-scholar | web-api | 1 | 否 | unicli github-scholar search |
 | google-patents-web | web-api | 2 | 否 | unicli google-patents-web get<br>unicli google-patents-web search |
 | google-scholar | web-api | 3 | 否 | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
 | goproxy | web-api | 2 | 否 | unicli goproxy module<br>unicli goproxy versions |
 | gov-law | web-api | 2 | 否 | unicli gov-law search<br>unicli gov-law recent |
 | gov-policy | web-api | 2 | 否 | unicli gov-policy search<br>unicli gov-policy recent |
+| iclr | web-api | 1 | 否 | unicli iclr awards |
+| ieee | web-api | 3 | 否 | unicli ieee search<br>unicli ieee venue<br>unicli ieee paper |
+| ieee-xplore | web-api | 3 | 否 | unicli ieee-xplore search<br>unicli ieee-xplore article<br>unicli ieee-xplore venue |
 | indeed | web-api | 2 | 是 | unicli indeed search<br>unicli indeed job |
 | inpi-br | web-api | 2 | 否 | unicli inpi-br get<br>unicli inpi-br search |
 | jikan | web-api | 4 | 否 | unicli jikan anime<br>unicli jikan manga<br>unicli jikan characters |
@@ -320,6 +328,7 @@
 | openfda | web-api | 2 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | 是 | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
 | osv | web-api | 2 | 否 | unicli osv query<br>unicli osv vulnerability |
+| pacmpl | web-api | 3 | 否 | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
 | powerchina | web-api | 1 | 是 | unicli powerchina search |
 | pubmed | web-api | 7 | 否 | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
@@ -330,12 +339,14 @@
 | rfc | web-api | 1 | 否 | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | 否 | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
+| sigchi | web-api | 3 | 否 | unicli sigchi conferences<br>unicli sigchi papers<br>unicli sigchi awards |
 | tdx | web-api | 1 | 是 | unicli tdx hot-rank |
 | ths | web-api | 1 | 是 | unicli ths hot-rank |
 | tvmaze | web-api | 2 | 否 | unicli tvmaze search<br>unicli tvmaze show |
 | uisdc | web-api | 1 | 否 | unicli uisdc news |
 | uiverse | web-api | 2 | 否 | unicli uiverse code<br>unicli uiverse preview |
 | unpaywall | web-api | 2 | 否 | unicli unpaywall oa<br>unicli unpaywall read |
+| usenix | web-api | 5 | 否 | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | 否 | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | 否 | unicli wanfang search |
 | wikidata | web-api | 2 | 否 | unicli wikidata search<br>unicli wikidata entity |

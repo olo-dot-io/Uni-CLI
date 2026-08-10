@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.0.4] — 2026-08-10 — Artemis · Glover
+
+### Added
+
+- Add the official seventh-edition CCF A conference directory with all 58
+  conferences, corrected 2026 identities, publisher metadata, aliases, and
+  former names.
+- Add first-party AAAI proceedings and GitHub repository evidence adapters.
+  Add conference publication views for PACMPL, PACMSE, PACMMOD, and
+  SIGGRAPH papers published through ACM Transactions on Graphics. Add a
+  publisher-neutral Crossref venue view for PVLDB and other journal-backed
+  proceedings.
+- Add a bilingual scholarly discovery guide covering conference lookup,
+  OpenReview review threads, official awards, PDFs, code, and datasets.
+
+### Changed
+
+- Resolve conference names and years before scholarly fan-out. Publisher
+  searches now use exact conference identities, ACM and IEEE cross-publisher
+  routing, and publication-specific issue models for OOPSLA, FSE, SIGMOD, and
+  SIGGRAPH.
+- Run independent scholarly sources concurrently with a configurable deadline.
+  Empty or slow sources preserve structured causes while healthy sources can
+  still complete the request.
+- Recover lightly misspelled academic titles through one bounded correction
+  pass and expose the executed query with every correction.
+
+### Fixed
+
+- Reject nearby acronyms, regional editions, companion volumes, workshops,
+  posters, talks, and proceedings front matter from exact conference results.
+- Require a source-backed PDF URL for PDF success and preserve expected empty,
+  invalid input, timeout, rate-limit, and restricted-access errors.
+- Accept bare OpenReview forum identifiers during tracing, classify author
+  responses as rebuttals, preserve SIGCHI DOI links, and skip conference
+  context sources that do not apply.
+- Bound DBLP and general scholarly requests, coordinate Crossref traffic, and
+  keep search-derived GitHub matches explicitly marked as candidate
+  implementations.
+- Parse venue years supplied in positional input, apply topical venue filters
+  after source-specific routing, and join code and dataset evidence into
+  cross-site traces.
+- Bound OpenReview requests and retry waits, run independent artifact sources
+  concurrently, and declare file-writing reader effects accurately.
+- Use DBLP publication records for Springer-backed CCF proceedings, preserve
+  their separate conference and publication years, and over-fetch venue
+  candidates before exact filtering.
+- Constrain title-based traces by the requested venue and year, reuse resolved
+  OpenReview forum identifiers, and reject similarly named resource records.
+- Make the live adapter health probe honor authentication and read-only
+  contracts while retaining public HTTP 401 and 403 responses as drift. Repair
+  the current 36Kr and Medium RSS routes, and quarantine endpoints with
+  reproducible upstream blocks.
+
 ## [1.0.3] — 2026-08-08 — Artemis · Glover
 
 > Published from annotated tag `v1.0.3` at commit `f2d0b136` through GitHub

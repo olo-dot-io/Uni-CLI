@@ -86,11 +86,11 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 
 Static catalog:
 
-- <!-- STATS:site_count -->326<!-- /STATS --> sites
-- <!-- STATS:command_count -->1853<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1250<!-- /STATS --> adapters
+- <!-- STATS:site_count -->337<!-- /STATS --> sites
+- <!-- STATS:command_count -->1884<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1261<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10138<!-- /STATS --> tests
+- <!-- STATS:test_count -->10237<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -105,17 +105,17 @@ Fixed core and host-discovered commands join at runtime.
 | shopping | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | dev | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
 | ai | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
-| scholarly | 22 | 81 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
+| scholarly | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | patent | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
-| reference | 12 | 48 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi) |
+| reference | 12 | 47 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb) |
 | audio | 4 | 46 | [spotify](https://olo-dot-io.github.io/Uni-CLI/reference/sites#spotify), [netease-music](https://olo-dot-io.github.io/Uni-CLI/reference/sites#netease-music), [xiaoyuzhou](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoyuzhou), [apple-podcasts](https://olo-dot-io.github.io/Uni-CLI/reference/sites#apple-podcasts) |
-| content | 16 | 93 | [lesswrong](https://olo-dot-io.github.io/Uni-CLI/reference/sites#lesswrong), [danbooru](https://olo-dot-io.github.io/Uni-CLI/reference/sites#danbooru), [dlsite](https://olo-dot-io.github.io/Uni-CLI/reference/sites#dlsite), [weread](https://olo-dot-io.github.io/Uni-CLI/reference/sites#weread) |
+| content | 16 | 90 | [lesswrong](https://olo-dot-io.github.io/Uni-CLI/reference/sites#lesswrong), [danbooru](https://olo-dot-io.github.io/Uni-CLI/reference/sites#danbooru), [dlsite](https://olo-dot-io.github.io/Uni-CLI/reference/sites#dlsite), [weread](https://olo-dot-io.github.io/Uni-CLI/reference/sites#weread) |
 | productivity | 10 | 78 | [notion-app](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notion-app), [ones](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ones), [obsidian](https://olo-dot-io.github.io/Uni-CLI/reference/sites#obsidian), [quark](https://olo-dot-io.github.io/Uni-CLI/reference/sites#quark) |
 | jobs | 6 | 42 | [nowcoder](https://olo-dot-io.github.io/Uni-CLI/reference/sites#nowcoder), [boss](https://olo-dot-io.github.io/Uni-CLI/reference/sites#boss), [51job](https://olo-dot-io.github.io/Uni-CLI/reference/sites#51job), [linkedin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linkedin) |
 | desktop | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
 | games | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
 | utility | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
-| other | 68 | 116 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| other | 71 | 122 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
 | travel | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
 
 <!-- END README_SITE_GRID -->
@@ -261,7 +261,7 @@ npm run verify   # full E2E and adapter coverage; required before release
 
 Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter and engine conventions.
 
-<p align="center"><sub>v1.0.3 — Artemis · Glover</sub></p>
+<p align="center"><sub>v1.0.4 — Artemis · Glover</sub></p>
 
 ## License
 

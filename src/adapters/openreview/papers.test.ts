@@ -16,6 +16,7 @@ import {
   requireOpenReviewLimit,
   requireOpenReviewOffset,
   requireOpenReviewPageRange,
+  requireOpenReviewSearchMatches,
   requireProfileId,
 } from "./papers.js";
 
@@ -75,6 +76,19 @@ describe("openreview agent-facing paper commands", () => {
     expect(openReviewPdfFilename("abcDEF123", "A / Paper: Demo")).toBe(
       "abcDEF123-A-Paper-Demo.pdf",
     );
+    try {
+      requireOpenReviewLimit(0, 25, 50);
+    } catch (error) {
+      expect(error).toMatchObject({ code: "invalid_input" });
+    }
+    expect(() => requireOpenReviewSearchMatches([], "no such paper")).toThrow(
+      "No OpenReview papers",
+    );
+    try {
+      requireOpenReviewSearchMatches([], "no such paper");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
   });
 
   it("maps OpenReview content.value note fields", () => {
@@ -135,6 +149,15 @@ describe("openreview agent-facing paper commands", () => {
     expect(classifyReviewNote({ invitations: ["A/-/Decision"] }, false)).toBe(
       "DECISION",
     );
+    expect(
+      classifyReviewNote(
+        {
+          invitations: ["A/-/Official_Comment"],
+          signatures: ["A/Authors"],
+        },
+        false,
+      ),
+    ).toBe("AUTHOR_RESPONSE");
     expect(
       authorFromSignatures(["ICLR.cc/2026/Conference/Reviewer_abcd"]),
     ).toBe("Reviewer_abcd");

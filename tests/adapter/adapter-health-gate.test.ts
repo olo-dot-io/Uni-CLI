@@ -107,4 +107,26 @@ describe("adapter health gate", () => {
       failing: [],
     });
   });
+
+  it("skips commands that require authentication instead of probing anonymously", () => {
+    const result = spawnSync(TSX_BIN, ["scripts/adapter-health-probe.ts"], {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      env: {
+        ...process.env,
+        HEALTH_SITE: "slack",
+      },
+      timeout: 30_000,
+      shell: process.platform === "win32",
+    });
+
+    expect(result.status).toBe(0);
+    const summary = JSON.parse(result.stdout) as {
+      fail: number;
+      skip: number;
+      total: number;
+    };
+    expect(summary.fail).toBe(0);
+    expect(summary.skip).toBe(summary.total);
+  });
 });

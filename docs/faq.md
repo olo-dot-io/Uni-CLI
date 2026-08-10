@@ -25,9 +25,9 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.0.3 ships <span><!-- STATS:site_count -->326<!-- /STATS --></span> sites in the static adapter catalog.
+v1.0.4 ships <span><!-- STATS:site_count -->337<!-- /STATS --></span> sites in the static adapter catalog.
 
-The same catalog contains <span><!-- STATS:command_count -->1853<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
+The same catalog contains <span><!-- STATS:command_count -->1884<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
 ## How do I know which arguments a command accepts?
 

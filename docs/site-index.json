@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-08T12:34:39.954Z",
-  "total_sites": 326,
-  "total_commands": 1853,
+  "generated": "2026-08-10T07:16:39.346Z",
+  "total_sites": 337,
+  "total_commands": 1884,
   "sites": [
     {
       "site": "12306",
@@ -8861,6 +8861,31 @@
       ]
     },
     {
+      "site": "aaai",
+      "type": "web-api",
+      "domain": "ojs.aaai.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "papers",
+          "description": "List official AAAI main Technical Tracks papers by year",
+          "command": "unicli aaai papers"
+        },
+        {
+          "name": "search",
+          "description": "Search official AAAI main Technical Tracks papers by year",
+          "command": "unicli aaai search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one official AAAI main Technical Tracks paper by OJS id, article URL, or DOI",
+          "command": "unicli aaai paper"
+        }
+      ]
+    },
+    {
       "site": "acl-anthology",
       "type": "web-api",
       "domain": "aclanthology.org",
@@ -8882,6 +8907,31 @@
           "name": "read",
           "description": "Download an ACL Anthology paper PDF by id and extract text",
           "command": "unicli acl-anthology read"
+        }
+      ]
+    },
+    {
+      "site": "acm",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search ACM publications from official DOI registration metadata",
+          "command": "unicli acm search"
+        },
+        {
+          "name": "venue",
+          "description": "List ACM proceedings papers for a conference or venue",
+          "command": "unicli acm venue"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one ACM publication by DOI",
+          "command": "unicli acm paper"
         }
       ]
     },
@@ -9180,6 +9230,26 @@
           "name": "read",
           "description": "Read bioRxiv preprint text by DOI, preferring JATS XML before PDF extraction",
           "command": "unicli biorxiv read"
+        }
+      ]
+    },
+    {
+      "site": "ccf",
+      "type": "web-api",
+      "domain": "www.ccf.org.cn",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 2,
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List and filter all 58 official CCF A-class conferences from the 2026 seventh edition",
+          "command": "unicli ccf conferences"
+        },
+        {
+          "name": "conference",
+          "description": "Resolve one CCF A-class conference by acronym, former name, alias, or full name",
+          "command": "unicli ccf conference"
         }
       ]
     },
@@ -9747,7 +9817,7 @@
       "domain": "api.crossref.org",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "commands": [
         {
           "name": "search",
@@ -9758,6 +9828,11 @@
           "name": "work",
           "description": "Fetch one Crossref Work by DOI",
           "command": "unicli crossref work"
+        },
+        {
+          "name": "venue",
+          "description": "List venue papers from Crossref registration metadata across publishers",
+          "command": "unicli crossref venue"
         }
       ]
     },
@@ -9917,6 +9992,31 @@
           "name": "read",
           "description": "Download a CVF OpenAccess paper PDF by page id and extract text",
           "command": "unicli cvf read"
+        }
+      ]
+    },
+    {
+      "site": "datacite",
+      "type": "web-api",
+      "domain": "api.datacite.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search DataCite research objects including datasets and software",
+          "command": "unicli datacite search"
+        },
+        {
+          "name": "doi",
+          "description": "Fetch one DataCite research object by DOI",
+          "command": "unicli datacite doi"
+        },
+        {
+          "name": "related",
+          "description": "Find DataCite datasets and software related to a paper DOI",
+          "command": "unicli datacite related"
         }
       ]
     },
@@ -11217,6 +11317,21 @@
       ]
     },
     {
+      "site": "github-scholar",
+      "type": "web-api",
+      "domain": "api.github.com",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Find GitHub candidate implementations backed by exact DOI or strong paper-title evidence in repository READMEs",
+          "command": "unicli github-scholar search"
+        }
+      ]
+    },
+    {
       "site": "google-patents-web",
       "type": "web-api",
       "domain": "patents.google.com",
@@ -11318,6 +11433,71 @@
           "name": "recent",
           "description": "List latest State Council policy documents",
           "command": "unicli gov-policy recent"
+        }
+      ]
+    },
+    {
+      "site": "iclr",
+      "type": "web-api",
+      "domain": "blog.iclr.cc",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "commands": [
+        {
+          "name": "awards",
+          "description": "List official ICLR award papers with OpenReview forum, review, and PDF links",
+          "command": "unicli iclr awards"
+        }
+      ]
+    },
+    {
+      "site": "ieee",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search IEEE publications from official DOI registration metadata without an API key",
+          "command": "unicli ieee search"
+        },
+        {
+          "name": "venue",
+          "description": "List IEEE conference proceedings papers without an API key",
+          "command": "unicli ieee venue"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one IEEE publication by DOI without an API key",
+          "command": "unicli ieee paper"
+        }
+      ]
+    },
+    {
+      "site": "ieee-xplore",
+      "type": "web-api",
+      "domain": "ieeexploreapi.ieee.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search IEEE Xplore article metadata with an IEEE API key",
+          "command": "unicli ieee-xplore search"
+        },
+        {
+          "name": "article",
+          "description": "Fetch one IEEE Xplore article by article number or DOI",
+          "command": "unicli ieee-xplore article"
+        },
+        {
+          "name": "venue",
+          "description": "List IEEE Xplore articles from a publication or conference",
+          "command": "unicli ieee-xplore venue"
         }
       ]
     },
@@ -11902,6 +12082,31 @@
       ]
     },
     {
+      "site": "pacmpl",
+      "type": "web-api",
+      "domain": "api.crossref.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search PACMPL papers by title with optional conference issue and year filters",
+          "command": "unicli pacmpl search"
+        },
+        {
+          "name": "venue",
+          "description": "List PACMPL papers for OOPSLA, POPL, PLDI, or ICFP by publication year",
+          "command": "unicli pacmpl venue"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one PACMPL paper by ACM DOI and validate its conference issue and year",
+          "command": "unicli pacmpl paper"
+        }
+      ]
+    },
+    {
       "site": "pmlr",
       "type": "web-api",
       "domain": "proceedings.mlr.press",
@@ -12196,6 +12401,31 @@
       ]
     },
     {
+      "site": "sigchi",
+      "type": "web-api",
+      "domain": "files.sigchi.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List official SIGCHI conference editions and program availability",
+          "command": "unicli sigchi conferences"
+        },
+        {
+          "name": "papers",
+          "description": "List papers and program content from an official SIGCHI conference",
+          "command": "unicli sigchi papers"
+        },
+        {
+          "name": "awards",
+          "description": "List officially marked award papers from a SIGCHI conference",
+          "command": "unicli sigchi awards"
+        }
+      ]
+    },
+    {
       "site": "tdx",
       "type": "web-api",
       "domain": "pul.tdx.com.cn",
@@ -12297,6 +12527,41 @@
           "name": "read",
           "description": "Download an Unpaywall open-access PDF by DOI and extract text",
           "command": "unicli unpaywall read"
+        }
+      ]
+    },
+    {
+      "site": "usenix",
+      "type": "web-api",
+      "domain": "www.usenix.org",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 5,
+      "commands": [
+        {
+          "name": "conferences",
+          "description": "List first-party USENIX scholarly conference series",
+          "command": "unicli usenix conferences"
+        },
+        {
+          "name": "venue",
+          "description": "List papers from an official USENIX conference schedule",
+          "command": "unicli usenix venue"
+        },
+        {
+          "name": "search",
+          "description": "Search current official USENIX conference schedules",
+          "command": "unicli usenix search"
+        },
+        {
+          "name": "paper",
+          "description": "Fetch one official USENIX presentation by first-party presentation URL or path",
+          "command": "unicli usenix paper"
+        },
+        {
+          "name": "awards",
+          "description": "List award-marked papers from an official USENIX schedule",
+          "command": "unicli usenix awards"
         }
       ]
     },

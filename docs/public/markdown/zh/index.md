@@ -36,10 +36,10 @@ unicli hackernews top --limit 5 -f json
 
 ## 覆盖范围
 
-- 静态 adapter 站点：326
-- 已注册 adapter 操作：1853
+- 静态 adapter 站点：337
+- 已注册 adapter 操作：1884
 - Built-in action：113（58 registered + 55 transport-native）
-- 测试：10138
+- 测试：10230
 
 这些数字来自当前静态适配器目录。核心命令和主机动态发现的工具会在运行时加入。
 
@@ -53,7 +53,7 @@ unicli hackernews top --limit 5 -f json
 
 ## 当前版本
 
-当前 latest：v1.0.3 · Artemis · Glover。
+本地版本：v1.0.4 · Artemis · Glover。
 
 ## Agent 索引
 

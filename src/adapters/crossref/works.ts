@@ -1,7 +1,7 @@
 /**
  * @owner       src::adapters::crossref::works
  * @does        Registers Crossref REST work search and DOI lookup commands for publisher metadata.
- * @needs       api.crossref.org REST API, optional CROSSREF_MAILTO, src/registry.ts
+ * @needs       src/adapters/_shared/crossref.ts, api.crossref.org REST API, src/registry.ts
  * @feeds       src/commands/scholar.ts and registry-driven AI literature intelligence through scholar.* and ai.* capabilities
  * @breaks      Crossref response-shape drift or rate limiting surfaces as explicit adapter errors.
  * @invariants  DOI lookup accepts only DOI-shaped references; output maps to ScholarlyWorkRecord.
@@ -14,141 +14,37 @@
  */
 
 import { cli, Strategy } from "../../registry.js";
-import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
+import {
+  crossrefEmptyResult,
+  getCrossrefWork,
+  requireCrossrefDoi,
+  searchCrossrefWorks,
+} from "../_shared/crossref.js";
+import {
+  ccfConferenceIdentities,
+  ccfCrossrefContainerQuery,
+  resolveCcfConference,
+} from "../ccf/resolve.js";
 
-const API = "https://api.crossref.org";
+export { mapCrossrefItem, requireCrossrefDoi } from "../_shared/crossref.js";
+export type { CrossrefItem } from "../_shared/crossref.js";
 
-interface CrossrefPerson {
-  given?: unknown;
-  family?: unknown;
-  name?: unknown;
-}
-
-interface CrossrefItem {
-  DOI?: unknown;
-  title?: unknown[];
-  subtitle?: unknown[];
-  author?: CrossrefPerson[];
-  "container-title"?: unknown[];
-  issued?: { "date-parts"?: unknown[][] };
-  published?: { "date-parts"?: unknown[][] };
-  "is-referenced-by-count"?: unknown;
-  reference?: unknown[];
-  URL?: unknown;
-  type?: unknown;
-  abstract?: unknown;
-}
-
-function str(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function arrFirst(value: unknown): string {
-  return Array.isArray(value) ? str(value[0]) : str(value);
-}
-
-function num(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-function dateParts(item: CrossrefItem): unknown[] {
-  return (
-    item.issued?.["date-parts"]?.[0] ??
-    item.published?.["date-parts"]?.[0] ??
-    []
-  );
-}
-
-function year(item: CrossrefItem): number | undefined {
-  const first = dateParts(item)[0];
-  return typeof first === "number" && Number.isFinite(first)
-    ? first
-    : undefined;
-}
-
-function date(item: CrossrefItem): string | undefined {
-  const parts = dateParts(item).filter(
-    (part): part is number => typeof part === "number",
-  );
-  if (parts.length === 0) return undefined;
-  return [
-    String(parts[0]).padStart(4, "0"),
-    String(parts[1] ?? 1).padStart(2, "0"),
-    String(parts[2] ?? 1).padStart(2, "0"),
-  ].join("-");
-}
-
-function authors(value: CrossrefPerson[] | undefined): string[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const out = value
-    .map(
-      (person) =>
-        str(person.name) ||
-        [person.given, person.family].map(str).filter(Boolean).join(" "),
-    )
-    .filter(Boolean);
-  return out.length > 0 ? out : undefined;
-}
-
-function bareDoi(value: unknown): string {
-  return str(value)
-    .replace(/^doi:/i, "")
-    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "");
-}
-
-export function requireCrossrefDoi(value: unknown): string {
-  const doi = bareDoi(value);
-  if (!/^10\.\S+\/\S+/.test(doi)) {
-    throw new Error(`crossref DOI "${String(value ?? "")}" is not recognised.`);
+export function requireCrossrefSearchQuery(value: unknown): string {
+  const query = String(value ?? "").trim();
+  if (!query) {
+    throw Object.assign(new Error("crossref search query cannot be empty."), {
+      code: "invalid_input",
+      suggestion: "Provide a paper title, author, DOI, or bibliographic query.",
+    });
   }
-  return doi;
+  return query;
 }
 
-function maybeMailto(params: URLSearchParams): void {
-  const mailto = process.env.CROSSREF_MAILTO?.trim();
-  if (mailto) params.set("mailto", mailto);
-}
-
-async function fetchCrossref(path: string, label: string): Promise<unknown> {
-  const response = await fetch(`${API}${path}`, {
-    headers: {
-      Accept: "application/json",
-      "User-Agent":
-        "unicli-crossref/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-    },
-  });
-  if (response.status === 404) throw new Error(`${label} returned no result.`);
-  if (response.status === 429) throw new Error(`${label} returned HTTP 429.`);
-  if (!response.ok)
-    throw new Error(`${label} returned HTTP ${response.status}.`);
-  return response.json();
-}
-
-export function mapCrossrefItem(
-  item: CrossrefItem,
-  source: string,
-): ScholarlyWorkRecord {
-  const doi = requireCrossrefDoi(item.DOI);
-  return {
-    id: doi,
-    title: arrFirst(item.title),
-    authors: authors(item.author),
-    year: year(item),
-    date: date(item),
-    venue: arrFirst(item["container-title"]) || undefined,
-    type: str(item.type) || undefined,
-    abstract: str(item.abstract).replace(/<[^>]+>/g, " ") || undefined,
-    doi,
-    cited_by_count: num(item["is-referenced-by-count"]),
-    references_count: Array.isArray(item.reference)
-      ? item.reference.length
-      : undefined,
-    source_adapter: source,
-    source_url: str(item.URL) || `https://doi.org/${doi}`,
-    retrieved_at: new Date().toISOString(),
-  };
+export function requireCrossrefSearchRows<T>(rows: T[], query: string): T[] {
+  if (rows.length === 0) {
+    throw crossrefEmptyResult(`No Crossref works matched "${query}".`);
+  }
+  return rows;
 }
 
 cli({
@@ -160,11 +56,12 @@ cli({
   strategy: Strategy.PUBLIC,
   args: [
     { name: "query", type: "str", required: true, positional: true },
-    { name: "limit", type: "int", default: 20 },
+    { name: "limit", type: "int", default: 20, minimum: 1, maximum: 100 },
   ],
   columns: ["id", "title", "authors", "year", "venue", "doi", "source_url"],
   operation_effect: "read",
   execution_operator: "structured-api",
+  operation_family: "search",
   retrieval: {
     operation: "discover",
     result_kind: "paper",
@@ -173,23 +70,12 @@ cli({
   },
   capabilities: ["http.fetch", "scholar.search"],
   func: async (_page, kwargs) => {
-    const query = String(kwargs.query ?? "").trim();
-    if (!query) throw new Error("crossref search query cannot be empty.");
-    const limit = Math.min(Math.max(Number(kwargs.limit ?? 20), 1), 100);
-    const params = new URLSearchParams({ query, rows: String(limit) });
-    maybeMailto(params);
-    const body = (await fetchCrossref(
-      `/works?${params.toString()}`,
-      "crossref search",
-    )) as {
-      message?: { items?: CrossrefItem[] };
-    };
-    const rows = (body.message?.items ?? []).map((item) =>
-      mapCrossrefItem(item, "crossref"),
+    const query = requireCrossrefSearchQuery(kwargs.query);
+    const limit = Number(kwargs.limit ?? 20);
+    return requireCrossrefSearchRows(
+      await searchCrossrefWorks({ query, limit }, "crossref"),
+      query,
     );
-    if (rows.length === 0)
-      throw new Error(`No Crossref works matched "${query}".`);
-    return rows;
   },
 });
 
@@ -204,14 +90,51 @@ cli({
   capabilities: ["http.fetch", "scholar.get"],
   func: async (_page, kwargs) => {
     const doi = requireCrossrefDoi(kwargs.doi ?? kwargs.id ?? kwargs.ref);
-    const params = new URLSearchParams();
-    maybeMailto(params);
-    const suffix = params.size > 0 ? `?${params.toString()}` : "";
-    const body = (await fetchCrossref(
-      `/works/${encodeURIComponent(doi)}${suffix}`,
-      `crossref work ${doi}`,
-    )) as { message?: CrossrefItem };
-    if (!body.message) throw new Error(`Crossref returned no work for ${doi}.`);
-    return [mapCrossrefItem(body.message, "crossref")];
+    return [await getCrossrefWork(doi, "crossref")];
+  },
+});
+
+cli({
+  site: "crossref",
+  name: "venue",
+  description:
+    "List venue papers from Crossref registration metadata across publishers",
+  domain: "api.crossref.org",
+  strategy: Strategy.PUBLIC,
+  args: [
+    { name: "venue", type: "str", required: true, positional: true },
+    { name: "year", type: "int", minimum: 1800, maximum: 2100 },
+    { name: "limit", type: "int", default: 50, minimum: 1, maximum: 100 },
+  ],
+  columns: ["id", "title", "authors", "year", "venue", "doi", "source_url"],
+  operation_effect: "read",
+  execution_operator: "structured-api",
+  operation_family: "list",
+  capabilities: ["http.fetch", "scholar.venue"],
+  func: async (_page, kwargs) => {
+    const venue = requireCrossrefSearchQuery(kwargs.venue);
+    const conference = resolveCcfConference(venue);
+    const year =
+      kwargs.year === undefined || kwargs.year === null || kwargs.year === ""
+        ? undefined
+        : Number(kwargs.year);
+    const limit = Number(kwargs.limit ?? 50);
+    return requireCrossrefSearchRows(
+      await searchCrossrefWorks(
+        {
+          containerTitle: conference
+            ? ccfCrossrefContainerQuery(conference)
+            : venue,
+          venueAliases: conference
+            ? [conference.name, ...ccfConferenceIdentities(conference), venue]
+            : [venue],
+          year,
+          researchContentOnly: true,
+          limit,
+        },
+        "crossref",
+      ),
+      `${venue}${year ? ` ${year}` : ""}`,
+    );
   },
 });

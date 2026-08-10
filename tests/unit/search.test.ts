@@ -620,6 +620,21 @@ describe("search", () => {
     );
   });
 
+  it("keeps compound conference-paper discovery on the venue workflow", () => {
+    const results = search(
+      "find PPoPP 2025 papers exact title DOI PDF code dataset",
+      8,
+    );
+
+    expect(results[0]).toMatchObject({ site: "scholar", command: "venue" });
+    expect(results.slice(0, 5)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ site: "scholar", command: "code" }),
+        expect.objectContaining({ site: "scholar", command: "datasets" }),
+      ]),
+    );
+  });
+
   it("routes paper reproducibility and install planning to scholar reproduce", () => {
     const english = search(
       "install and reproduce academic paper code environment",
@@ -739,6 +754,75 @@ describe("search", () => {
     });
   });
 
+  it("routes cross-site award and review linking to scholar trace", () => {
+    const english = search(
+      "link official best paper announcement to OpenReview reviews and PDF",
+      8,
+    );
+    const chinese = search("跨站追踪最佳论文奖项、评审和 PDF", 8);
+
+    expect(english[0]).toMatchObject({ site: "scholar", command: "trace" });
+    expect(chinese[0]).toMatchObject({ site: "scholar", command: "trace" });
+  });
+
+  it("routes official conference award lookup to scholar awards", () => {
+    const english = search("ACM CHI 2026 official best paper awards", 8);
+    const chinese = search("查询 CHI 2026 官方最佳论文奖项", 8);
+
+    expect(english[0]).toMatchObject({ site: "sigchi", command: "awards" });
+    expect(["sigchi", "scholar"]).toContain(chinese[0].site);
+    expect(chinese[0].command).toBe("awards");
+    expect(english.slice(0, 5).map((result) => result.site)).toContain(
+      "sigchi",
+    );
+  });
+
+  it("routes ICLR award and rebuttal lookup to the official announcement adapter", () => {
+    const results = search(
+      "ICLR 2025 official outstanding paper OpenReview rebuttal",
+      8,
+    );
+
+    expect(results[0]).toMatchObject({ site: "scholar", command: "trace" });
+    expect(results.slice(0, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ site: "iclr", command: "awards" }),
+      ]),
+    );
+    expect(results.slice(0, 5)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ site: "scholar", command: "trace" }),
+      ]),
+    );
+  });
+
+  it("routes CCF A classification and directory lookup to the official catalog", () => {
+    const classification = search("Is ICLR a 2026 CCF A conference", 8);
+    const directory = search("CCF 推荐 A 类会议目录", 8);
+    const renamed = search("USENIX ATC CCF A new name", 8);
+
+    expect(classification[0]).toMatchObject({
+      site: "ccf",
+      command: "conference",
+    });
+    expect(directory[0]).toMatchObject({
+      site: "ccf",
+      command: "conferences",
+    });
+    expect(renamed.slice(0, 3)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ site: "ccf", command: "conference" }),
+      ]),
+    );
+  });
+
+  it("routes IEEE conference metadata to IEEE academic adapters", () => {
+    const results = search("IEEE Xplore conference papers", 8);
+    expect(results.slice(0, 5).map((result) => result.site)).toEqual(
+      expect.arrayContaining(["ieee-xplore", "ieee"]),
+    );
+  });
+
   it("routes top-conference proceedings queries to scholarly sources", () => {
     const pmlr = search("PMLR ICML proceedings", 8);
     const cvpr = search("CVPR 2024 papers", 8);
@@ -751,6 +835,36 @@ describe("search", () => {
     expect(pmlr[0].site).toBe("pmlr");
     expect(cvpr[0].site).toBe("cvf");
     expect(acl[0].site).toBe("acl-anthology");
+  });
+
+  it("routes compact CCF A venue aliases to a proceedings-capable command", () => {
+    const expected = new Map<string, [string, string]>([
+      ["AAAI 2025 official conference papers", ["aaai", "papers"]],
+      ["ACMMM 2024 conference papers", ["acm", "venue"]],
+      ["SIGGRAPH 2024 conference papers", ["acm", "venue"]],
+      ["IEEEVIS conference papers", ["ieee", "venue"]],
+      ["UbiComp conference journal papers", ["sigchi", "papers"]],
+      ["PACM IMWUT ubiquitous computing papers", ["sigchi", "papers"]],
+      ["RTSS real-time systems conference papers", ["ieee", "venue"]],
+    ]);
+
+    for (const [query, [site, command]] of expected) {
+      expect(search(query, 5)[0]).toMatchObject({ site, command });
+    }
+  });
+
+  it("routes USENIX proceedings and award queries to the first-party adapter", () => {
+    expect(search("FAST 2025 USENIX papers", 8)[0]).toMatchObject({
+      site: "usenix",
+      command: "venue",
+    });
+    expect(
+      search("USENIX Security 2025 best paper official", 8).slice(0, 3),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ site: "usenix", command: "awards" }),
+      ]),
+    );
   });
 
   it("routes DOI and open-access PDF queries to DOI-aware scholarly sources", () => {

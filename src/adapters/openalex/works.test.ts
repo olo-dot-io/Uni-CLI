@@ -22,6 +22,23 @@ describe("openalex agent-facing commands", () => {
       "doi:10.7717/peerj.4375",
     );
     expect(() => requireOpenAlexWorkRef("A12345")).toThrow("not recognised");
+    expect(() => requireOpenAlexWorkRef("10.invalid")).toThrow(
+      "not recognised",
+    );
+    expect(() =>
+      requireOpenAlexWorkRef("https://openalex.org/W1234junk"),
+    ).toThrow("not recognised");
+    for (const run of [
+      () => requireOpenAlexString("", "query"),
+      () => requireOpenAlexLimit("0"),
+      () => requireOpenAlexWorkRef("A12345"),
+    ]) {
+      try {
+        run();
+      } catch (error) {
+        expect(error).toMatchObject({ code: "invalid_input" });
+      }
+    }
   });
 
   it("reconstructs OpenAlex abstracts from inverted indexes", () => {
@@ -114,5 +131,10 @@ describe("openalex agent-facing commands", () => {
     expect(() => mapOpenAlexWorkRow({})).toThrow(
       "OpenAlex returned no work record",
     );
+    try {
+      mapOpenAlexWorkRow({});
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
   });
 });

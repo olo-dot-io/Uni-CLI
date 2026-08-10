@@ -7,11 +7,11 @@
 - 栏目: 项目
 - 上级: 项目 (/zh/ARCHITECTURE)
 
-当前版本：v1.0.3 — Artemis · Glover。
+当前版本：v1.0.4 — Artemis · Glover。
 
-静态目录包含 <!-- STATS:site_count -->326<!-- /STATS --> 个站点。
+静态目录包含 <!-- STATS:site_count -->337<!-- /STATS --> 个站点。
 
-它包含 <!-- STATS:command_count -->1853<!-- /STATS --> 条注册命令。运行时还会加入 core 与主机发现的命令。
+它包含 <!-- STATS:command_count -->1884<!-- /STATS --> 条注册命令。运行时还会加入 core 与主机发现的命令。
 
 ## 已完成
 

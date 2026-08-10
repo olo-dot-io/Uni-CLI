@@ -166,6 +166,26 @@
       ]
     },
     {
+      "title": "Trace Scholarly Work",
+      "description": "Find papers, reviews, rebuttals, awards, PDFs, code, and datasets through one source-backed workflow.",
+      "locale": "root",
+      "routePath": "/guide/scholarly-discovery",
+      "markdownPath": "/markdown/guide/scholarly-discovery.md",
+      "sourceLink": "/guide/scholarly-discovery",
+      "sourcePath": "docs/guide/scholarly-discovery.md",
+      "section": "Use Uni-CLI",
+      "parent": {
+        "text": "Use Uni-CLI",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Use Uni-CLI",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
       "title": "Archive OpenReview",
       "description": "Create a resumable local archive of a public OpenReview venue.",
       "locale": "root",
@@ -573,6 +593,26 @@
       "markdownPath": "/markdown/zh/guide/self-repair.md",
       "sourceLink": "/guide/self-repair",
       "sourcePath": "docs/zh/guide/self-repair.md",
+      "section": "使用 Uni-CLI",
+      "parent": {
+        "text": "使用 Uni-CLI",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "使用 Uni-CLI",
+          "link": "/zh/guide/"
+        }
+      ]
+    },
+    {
+      "title": "跨站追踪学术资源",
+      "description": "从一条论文引用找到评审、rebuttal、奖项、PDF、代码和数据集。",
+      "locale": "zh",
+      "routePath": "/zh/guide/scholarly-discovery",
+      "markdownPath": "/markdown/zh/guide/scholarly-discovery.md",
+      "sourceLink": "/guide/scholarly-discovery",
+      "sourcePath": "docs/zh/guide/scholarly-discovery.md",
       "section": "使用 Uni-CLI",
       "parent": {
         "text": "使用 Uni-CLI",

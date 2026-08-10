@@ -4,12 +4,12 @@ Uni-CLI gives AI agents one command model for searching and operating websites, 
 
 ## Operation Snapshot
 
-- Static adapter sites: 326
-- Registered adapter commands: 1853
+- Static adapter sites: 337
+- Registered adapter commands: 1884
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1250 (1003 YAML + 247 TypeScript)
+- Adapters: 1261 (1003 YAML + 258 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10138
+- Tests: 10230
 
 ## Agent Contract
 
@@ -36,6 +36,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 - [Browser And Desktop](https://olo-dot-io.github.io/Uni-CLI/guide/browser-desktop) — Choose a browser session, inspect page state, and control desktop applications through Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/browser-desktop.md
 - [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — Short, copyable Uni-CLI workflows for web data, research papers, authenticated sites, and browser sessions. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
 - [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — Read an adapter failure, update the named source, and verify the original operation. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+- [Trace Scholarly Work](https://olo-dot-io.github.io/Uni-CLI/guide/scholarly-discovery) — Find papers, reviews, rebuttals, awards, PDFs, code, and datasets through one source-backed workflow. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/scholarly-discovery.md
 - [Archive OpenReview](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) — Create a resumable local archive of a public OpenReview venue. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive.md
 
 ## Build
