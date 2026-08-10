@@ -116,7 +116,7 @@ Uni-CLI completed 11/11 tasks at rank one. 11/11 top results included an invocat
 
 - Root discovery entry coverage 5/5
 - Generated catalog synchronization pass
-- OpenCLI pinned manifest synchronization pass
+- OpenCLI pinned baseline integrity pass
 - Personal content command parity pass
 - Product surface gate pass
 

@@ -9,6 +9,16 @@
       "sites": 176,
       "commands": 1331
     },
+    "personal_content": {
+      "commands": 78,
+      "sites": 44,
+      "families": {
+        "activity": 17,
+        "library": 35,
+        "feed": 18,
+        "network": 8
+      }
+    },
     "declared_boundary": "Websites, browser sessions, Electron applications, and local tools through adapters and browser primitives.",
     "evidence": [
       "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/README.md",

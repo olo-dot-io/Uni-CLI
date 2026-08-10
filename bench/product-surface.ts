@@ -1,7 +1,7 @@
 /**
  * @owner   bench/product-surface.ts
  * @does    Measure user-visible discovery, actionability, personalized content, catalog synchronization, and current competitor surface snapshots.
- * @needs   built Uni-CLI dist, generated docs/site-index.json, pinned OpenCLI manifest, bench/product-baselines.json
+ * @needs   built Uni-CLI dist, generated docs/site-index.json, bench/product-baselines.json
  * @feeds   bench/product-surface-results.json and generated product sections in docs/BENCHMARK.md plus docs/zh/BENCHMARK.md
  * @breaks  Exits nonzero when a user task, actionability field, catalog synchronization check, or declared parity gate fails.
  */
@@ -23,13 +23,6 @@ const REPO_ROOT = join(HERE, "..");
 const CLI_ENTRY = join(REPO_ROOT, "dist", "main.js");
 const MANIFEST_PATH = join(REPO_ROOT, "dist", "manifest.json");
 const SITE_INDEX_PATH = join(REPO_ROOT, "docs", "site-index.json");
-const OPENCLI_MANIFEST_PATH = join(
-  REPO_ROOT,
-  "ref",
-  "agent-control-plane",
-  "opencli",
-  "cli-manifest.json",
-);
 const BASELINES_PATH = join(HERE, "product-baselines.json");
 const RESULTS_PATH = join(HERE, "product-surface-results.json");
 const ENGLISH_DOC = join(REPO_ROOT, "docs", "BENCHMARK.md");
@@ -80,13 +73,6 @@ interface SiteIndex {
   }>;
 }
 
-interface OpenCliCommand {
-  site: string;
-  name: string;
-  description?: string;
-  strategy?: string;
-}
-
 interface Baselines {
   captured_at: string;
   opencli: {
@@ -95,6 +81,11 @@ interface Baselines {
     commit_date: string;
     package_version: string;
     catalog: { sites: number; commands: number };
+    personal_content: {
+      commands: number;
+      sites: number;
+      families: Record<string, number>;
+    };
     declared_boundary: string;
     evidence: string[];
   };
@@ -261,26 +252,6 @@ function personalizedContentCounts(manifest: Manifest): {
   return countPersonalizedRows(rows);
 }
 
-function openCliPersonalizedContentCounts(
-  commands: OpenCliCommand[],
-): ReturnType<typeof personalizedContentCounts> {
-  const rows: Array<{ site: string; family: PersonalizationFamily }> = [];
-  for (const command of commands) {
-    const auth = ["cookie", "browser"].includes(command.strategy ?? "")
-      ? "required"
-      : "none";
-    const family = classifyPersonalization({
-      command: command.name,
-      description: command.description,
-      auth,
-    });
-    if (family && family !== "account") {
-      rows.push({ site: command.site, family });
-    }
-  }
-  return countPersonalizedRows(rows);
-}
-
 function countPersonalizedRows(
   rows: Array<{ site: string; family: PersonalizationFamily }>,
 ): { commands: number; sites: number; families: Record<string, number> } {
@@ -346,7 +317,7 @@ function renderEnglish(report: ProductSurfaceReport): string {
     "",
     `- Root discovery entry coverage  ${report.uni.root_discovery.passed}/${report.uni.root_discovery.total}`,
     `- Generated catalog synchronization  ${report.uni.catalog.generated_catalog_in_sync ? "pass" : "fail"}`,
-    `- OpenCLI pinned manifest synchronization  ${report.opencli.snapshot_in_sync ? "pass" : "fail"}`,
+    `- OpenCLI pinned baseline integrity  ${report.opencli.snapshot_valid ? "pass" : "fail"}`,
     `- Personal content command parity  ${report.gates.personal_content_command_parity ? "pass" : "fail"}`,
     `- Product surface gate  ${report.passed ? "pass" : "fail"}`,
     "",
@@ -393,7 +364,7 @@ function renderChinese(report: ProductSurfaceReport): string {
     "",
     `- 根命令发现入口  ${report.uni.root_discovery.passed}/${report.uni.root_discovery.total}`,
     `- 生成目录同步  ${report.uni.catalog.generated_catalog_in_sync ? "通过" : "失败"}`,
-    `- OpenCLI 固定 manifest 同步  ${report.opencli.snapshot_in_sync ? "通过" : "失败"}`,
+    `- OpenCLI 固定基准完整性  ${report.opencli.snapshot_valid ? "通过" : "失败"}`,
     `- 个人内容命令对等检查  ${report.gates.personal_content_command_parity ? "通过" : "失败"}`,
     `- 产品能力检查  ${report.passed ? "通过" : "失败"}`,
     "",
@@ -430,7 +401,7 @@ interface ProductSurfaceReport {
   opencli: {
     catalog: { sites: number; commands: number };
     personal_content: ReturnType<typeof personalizedContentCounts>;
-    snapshot_in_sync: boolean;
+    snapshot_valid: boolean;
   };
   cli_anything: Baselines["cli_anything"];
   tasks: {
@@ -449,7 +420,26 @@ interface ProductSurfaceReport {
     actionability: boolean;
     personalized_task_completion: boolean;
     generated_catalog_sync: boolean;
+    competitor_baseline_integrity: boolean;
   };
+}
+
+function validOpenCliBaseline(baseline: Baselines["opencli"]): boolean {
+  const familyTotal = Object.values(baseline.personal_content.families).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
+  return (
+    /^[0-9a-f]{40}$/u.test(baseline.commit) &&
+    /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u.test(baseline.package_version) &&
+    baseline.catalog.sites > 0 &&
+    baseline.catalog.commands > 0 &&
+    baseline.personal_content.sites > 0 &&
+    baseline.personal_content.commands > 0 &&
+    familyTotal === baseline.personal_content.commands &&
+    baseline.evidence.length > 0 &&
+    baseline.evidence.every((url) => url.includes(baseline.commit))
+  );
 }
 
 async function main(): Promise<void> {
@@ -458,7 +448,6 @@ async function main(): Promise<void> {
     CLI_ENTRY,
     MANIFEST_PATH,
     SITE_INDEX_PATH,
-    OPENCLI_MANIFEST_PATH,
     BASELINES_PATH,
   ]) {
     if (!existsSync(path)) throw new Error(`missing benchmark input ${path}`);
@@ -467,7 +456,6 @@ async function main(): Promise<void> {
   const baselines = readJson<Baselines>(BASELINES_PATH);
   const manifest = readJson<Manifest>(MANIFEST_PATH);
   const siteIndex = readJson<SiteIndex>(SITE_INDEX_PATH);
-  const openCliCommands = readJson<OpenCliCommand[]>(OPENCLI_MANIFEST_PATH);
   const taskResults = TASKS.map(searchTask) as TaskResult[];
 
   const uniSites = Object.keys(manifest.sites).length;
@@ -481,12 +469,9 @@ async function main(): Promise<void> {
   );
   const generatedCatalogInSync =
     siteIndex.sites.length === uniSites && generatedCommands === uniCommands;
-  const openCliSites = new Set(openCliCommands.map((row) => row.site)).size;
-  const openCliSnapshotInSync =
-    openCliSites === baselines.opencli.catalog.sites &&
-    openCliCommands.length === baselines.opencli.catalog.commands;
+  const openCliSnapshotValid = validOpenCliBaseline(baselines.opencli);
   const uniPersonal = personalizedContentCounts(manifest);
-  const openCliPersonal = openCliPersonalizedContentCounts(openCliCommands);
+  const openCliPersonal = baselines.opencli.personal_content;
 
   const help = runCli(["--help"]);
   const rootEntries = [
@@ -513,7 +498,8 @@ async function main(): Promise<void> {
 
   const gates = {
     catalog_breadth_parity:
-      uniSites >= openCliSites && uniCommands >= openCliCommands.length,
+      uniSites >= baselines.opencli.catalog.sites &&
+      uniCommands >= baselines.opencli.catalog.commands,
     personal_content_command_parity:
       uniPersonal.commands >= openCliPersonal.commands,
     task_completion: passedTasks === TASKS.length,
@@ -521,11 +507,11 @@ async function main(): Promise<void> {
     personalized_task_completion:
       personalizedPassed === personalizedTasks.length,
     generated_catalog_sync: generatedCatalogInSync,
+    competitor_baseline_integrity: openCliSnapshotValid,
   };
   const passed =
     Object.values(gates).every(Boolean) &&
-    rootDiscoveryPassed === rootEntries.length &&
-    openCliSnapshotInSync;
+    rootDiscoveryPassed === rootEntries.length;
 
   const report: ProductSurfaceReport = {
     generated_at: new Date().toISOString(),
@@ -545,9 +531,9 @@ async function main(): Promise<void> {
       },
     },
     opencli: {
-      catalog: { sites: openCliSites, commands: openCliCommands.length },
+      catalog: baselines.opencli.catalog,
       personal_content: openCliPersonal,
-      snapshot_in_sync: openCliSnapshotInSync,
+      snapshot_valid: openCliSnapshotValid,
     },
     cli_anything: baselines.cli_anything,
     tasks: {

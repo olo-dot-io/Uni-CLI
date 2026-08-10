@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-10T15:00:42.276Z",
+  "generated_at": "2026-08-10T15:34:30.335Z",
   "passed": true,
   "sources": {
     "captured_at": "2026-08-10",
@@ -9,6 +9,11 @@
       "commit_date": "2026-08-09T23:46:03+08:00",
       "package_version": "1.8.6",
       "catalog": { "sites": 176, "commands": 1331 },
+      "personal_content": {
+        "commands": 78,
+        "sites": 44,
+        "families": { "activity": 17, "library": 35, "feed": 18, "network": 8 }
+      },
       "declared_boundary": "Websites, browser sessions, Electron applications, and local tools through adapters and browser primitives.",
       "evidence": [
         "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/README.md",
@@ -65,7 +70,7 @@
       "sites": 44,
       "families": { "activity": 17, "library": 35, "feed": 18, "network": 8 }
     },
-    "snapshot_in_sync": true
+    "snapshot_valid": true
   },
   "cli_anything": {
     "repository": "https://github.com/HKUDS/CLI-Anything",
@@ -255,6 +260,7 @@
     "task_completion": true,
     "actionability": true,
     "personalized_task_completion": true,
-    "generated_catalog_sync": true
+    "generated_catalog_sync": true,
+    "competitor_baseline_integrity": true
   }
 }
