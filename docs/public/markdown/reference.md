@@ -17,5 +17,6 @@ Use these pages when you need the exact command or data contract.
 | Adapter actions                | [Pipeline steps](/reference/pipeline)      |
 | Extension API                  | [Plugin authoring](/PLUGIN)       |
 | Product terminology            | [Glossary](/glossary)             |
+| Release changes                | [Release history](/releases)      |
 
 For a single installed command, `unicli describe <site> <command>` is the most current reference.

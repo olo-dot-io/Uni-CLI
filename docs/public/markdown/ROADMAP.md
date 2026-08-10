@@ -7,11 +7,11 @@
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.0.4 — Artemis · Glover.
+Current release: v1.1.1 — Artemis · Koch.
 
 The static catalog contains <!-- STATS:site_count -->337<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1884<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1890<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 

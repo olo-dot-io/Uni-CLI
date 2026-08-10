@@ -24,8 +24,16 @@ import { resolveCommand } from "../../../src/registry.js";
 
 const ROOT = join(import.meta.dirname, "..", "..", "..");
 
+interface ParsedPipelineStep {
+  exec?: { args?: unknown[] };
+  extract?: { from?: unknown; fields?: unknown };
+  then?: ParsedPipelineStep[];
+  else?: ParsedPipelineStep[];
+  [key: string]: unknown;
+}
+
 interface ParsedAdapter {
-  pipeline: Array<Record<string, Record<string, unknown>>>;
+  pipeline: ParsedPipelineStep[];
 }
 
 function readAdapter(site: string, command: string): ParsedAdapter {
@@ -35,6 +43,16 @@ function readAdapter(site: string, command: string): ParsedAdapter {
       "utf8",
     ),
   ) as ParsedAdapter;
+}
+
+function pipelineExecArgs(steps: ParsedPipelineStep[]): unknown[][] {
+  const args: unknown[][] = [];
+  for (const step of steps) {
+    if (step.exec?.args) args.push(step.exec.args);
+    if (step.then) args.push(...pipelineExecArgs(step.then));
+    if (step.else) args.push(...pipelineExecArgs(step.else));
+  }
+  return args;
 }
 
 beforeAll(async () => {
@@ -898,15 +916,24 @@ describe("AI source precision contracts", () => {
   });
 
   it.each(["search-issues", "search-prs"])(
-    "forces public visibility for gh.%s",
+    "forces public result scope for gh.%s",
     (command) => {
-      const exec = readAdapter("gh", command).pipeline[0].exec;
-      const args = exec.args as unknown[];
-      const visibility = args.indexOf("--visibility");
+      const branches = pipelineExecArgs(readAdapter("gh", command).pipeline);
 
-      expect(visibility).toBeGreaterThan(-1);
-      expect(args[visibility + 1]).toBe("public");
-      expect(String(args[args.indexOf("--json") + 1])).toContain("body");
+      expect(branches.length).toBeGreaterThan(0);
+      for (const args of branches) {
+        const visibility = args.indexOf("--visibility");
+        const query = args.find(
+          (arg) => typeof arg === "string" && arg.includes("is:public"),
+        );
+        expect(
+          (visibility >= 0 && args[visibility + 1] === "public") ||
+            query !== undefined,
+        ).toBe(true);
+
+        const json = args.indexOf("--json");
+        if (json >= 0) expect(String(args[json + 1])).toContain("body");
+      }
     },
   );
 });

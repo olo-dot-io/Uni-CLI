@@ -1,61 +1,178 @@
 site: gh
 name: search-repos
-description: Search GitHub repositories
+description: Find GitHub repositories by fuzzy keywords, technology stack, topic, README content, or owner
 type: bridge
 strategy: public
+operation_effect: read
 lint_listing_detail: skip
 binary: gh
 detect: which gh
 
-pipeline:
-  - exec:
-      command: gh
-      args:
-        - search
-        - repos
-        - ${{ args.query }}
-        - --limit
-        - ${{ args.limit }}
-        - --json
-        - fullName,description,stargazersCount,forksCount,language,url,updatedAt
-        - --sort
-        - ${{ args.sort }}
-        - --order
-        - ${{ args.order }}
-        - --language
-        - ${{ args.language }}
-        - --visibility
-        - public
-      parse: json
-      timeout: 30000
-
 args:
   query:
     type: str
-    required: true
+    default: ""
     positional: true
-    description: GitHub repository search query
-  limit:
+    description: Keywords or raw GitHub repository search qualifiers
+  owner:
+    type: str
+    default: ""
+    description: User or organization login that owns the repository
+  language:
+    type: str
+    default: ""
+    description: Primary programming language
+  topic:
+    type: str
+    default: ""
+    description: Exact GitHub topic, such as terminal or react
+  match:
+    type: str
+    default: best
+    choices: [best, name, description, readme, all]
+    description: Restrict keyword matching; all searches name, description, and README
+  min-stars:
     type: int
-    default: 20
-    description: Maximum number of repositories to return
+    default: 0
+    minimum: 0
+    description: Minimum star count
+  min-forks:
+    type: int
+    default: 0
+    minimum: 0
+    description: Minimum fork count
+  pushed:
+    type: str
+    default: ""
+    description: GitHub pushed date expression, such as >=2026-01-01
+  archived:
+    type: str
+    default: any
+    choices: [any, "true", "false"]
+    description: Filter archived repositories
+  include-forks:
+    type: str
+    default: "false"
+    choices: ["false", "true", only]
+    description: Include all forks or return only forks
   sort:
     type: str
-    default: stars
-    choices: [stars, forks, updated, help-wanted-issues]
-    description: Sort returned repositories
+    default: best-match
+    choices: [best-match, stars, forks, updated, help-wanted-issues]
+    description: Ranking strategy; best-match preserves GitHub relevance
   order:
     type: str
     default: desc
     choices: [asc, desc]
-    description: Sort direction
-  language:
-    type: str
-    default: ""
-    description: Optional language filter
+    description: Sort direction when sort is not best-match
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+    description: Maximum number of repositories to return
+
+pipeline:
+  - if: "args.sort === 'best-match'"
+    then:
+      - exec:
+          command: gh
+          args:
+            - api
+            - --method
+            - GET
+            - search/repositories
+            - -H
+            - "Accept: application/vnd.github.text-match+json"
+            - -f
+            - >-
+              q=${{ args.query
+              + (args.match === 'best' ? '' : ' in:' + (args.match === 'all' ? 'name,description,readme' : args.match))
+              + (args.owner ? ' user:' + args.owner : '')
+              + (args.language ? ' language:' + args.language : '')
+              + (args.topic ? ' topic:' + args.topic : '')
+              + (args['min-stars'] > 0 ? ' stars:>=' + args['min-stars'] : '')
+              + (args['min-forks'] > 0 ? ' forks:>=' + args['min-forks'] : '')
+              + (args.pushed ? ' pushed:' + args.pushed : '')
+              + (args.archived !== 'any' ? ' archived:' + args.archived : '')
+              + (args['include-forks'] !== 'false' ? ' fork:' + args['include-forks'] : '')
+              + ' is:public' }}
+            - -F
+            - per_page=${{ args.limit }}
+          parse: json
+          timeout: 30000
+    else:
+      - exec:
+          command: gh
+          args:
+            - api
+            - --method
+            - GET
+            - search/repositories
+            - -H
+            - "Accept: application/vnd.github.text-match+json"
+            - -f
+            - >-
+              q=${{ args.query
+              + (args.match === 'best' ? '' : ' in:' + (args.match === 'all' ? 'name,description,readme' : args.match))
+              + (args.owner ? ' user:' + args.owner : '')
+              + (args.language ? ' language:' + args.language : '')
+              + (args.topic ? ' topic:' + args.topic : '')
+              + (args['min-stars'] > 0 ? ' stars:>=' + args['min-stars'] : '')
+              + (args['min-forks'] > 0 ? ' forks:>=' + args['min-forks'] : '')
+              + (args.pushed ? ' pushed:' + args.pushed : '')
+              + (args.archived !== 'any' ? ' archived:' + args.archived : '')
+              + (args['include-forks'] !== 'false' ? ' fork:' + args['include-forks'] : '')
+              + ' is:public' }}
+            - -f
+            - sort=${{ args.sort }}
+            - -f
+            - order=${{ args.order }}
+            - -F
+            - per_page=${{ args.limit }}
+          parse: json
+          timeout: 30000
+
+  - set:
+      incomplete: ${{ item.incomplete_results || false }}
+      total_count: ${{ item.total_count || 0 }}
+
+  - select: items
+
+  - map:
+      id: ${{ item.id }}
+      fullName: ${{ item.full_name }}
+      owner: "${{ item.owner ? item.owner.login : '' }}"
+      description: ${{ item.description || '' }}
+      topics: "${{ JSON.stringify(item.topics || []) }}"
+      language: ${{ item.language || '' }}
+      stargazersCount: ${{ item.stargazers_count }}
+      forksCount: ${{ item.forks_count }}
+      openIssuesCount: ${{ item.open_issues_count }}
+      license: "${{ item.license ? item.license.spdx_id : '' }}"
+      archived: ${{ item.archived }}
+      fork: ${{ item.fork }}
+      createdAt: ${{ item.created_at }}
+      updatedAt: ${{ item.updated_at }}
+      pushedAt: ${{ item.pushed_at }}
+      score: ${{ item.score }}
+      matches: "${{ JSON.stringify(item.text_matches || []) }}"
+      totalCount: ${{ vars.total_count }}
+      incomplete: ${{ vars.incomplete }}
+      url: ${{ item.html_url }}
 
 columns:
-  [fullName, description, stargazersCount, forksCount, language, url, updatedAt]
+  [
+    fullName,
+    description,
+    topics,
+    language,
+    stargazersCount,
+    forksCount,
+    pushedAt,
+    score,
+    url,
+  ]
 
 retrieval:
   operation: discover
@@ -64,8 +181,8 @@ retrieval:
   arguments:
     query: query
     limit: limit
-    sort: sort
-    order: order
+    owner: owner
+    language: language
 capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user

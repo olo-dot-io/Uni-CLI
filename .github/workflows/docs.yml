@@ -6,6 +6,8 @@ on:
     paths:
       - "docs/**"
       - "scripts/generate-docs-agent-assets.ts"
+      - "scripts/generate-release-history.ts"
+      - "CHANGELOG.md"
       - ".github/workflows/docs.yml"
       - "package.json"
       - "package-lock.json"

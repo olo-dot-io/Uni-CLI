@@ -61,3 +61,14 @@ export function metadataHasOptionalAuth(
 ): boolean {
   return requirement === "optional";
 }
+
+export function metadataAuthRequirement(
+  strategy: string | undefined,
+  capabilities: readonly string[] | undefined,
+  requirement?: AuthRequirement,
+): AuthRequirement {
+  if (requirement !== undefined) return requirement;
+  return metadataRequiresAuth(strategy, capabilities, requirement)
+    ? "required"
+    : "none";
+}

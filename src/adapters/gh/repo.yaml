@@ -1,6 +1,6 @@
 site: gh
 name: repo
-description: View GitHub repository details
+description: Inspect a GitHub repository's stack, topics, activity, license, counts, release, and default branch
 operation_effect: read
 type: bridge
 strategy: public
@@ -15,21 +15,66 @@ pipeline:
         - view
         - ${{ args.repo }}
         - --json
-        - name,owner,description,stargazerCount,forkCount,url,primaryLanguage
+        - nameWithOwner,description,homepageUrl,url,visibility,isArchived,isEmpty,isFork,isMirror,isPrivate,isTemplate,createdAt,updatedAt,pushedAt,stargazerCount,forkCount,watchers,primaryLanguage,languages,licenseInfo,repositoryTopics,defaultBranchRef,latestRelease,issues,pullRequests,hasDiscussionsEnabled,hasIssuesEnabled,hasProjectsEnabled,hasWikiEnabled,securityPolicyUrl
       parse: json
       timeout: 30000
+
+  - map:
+      fullName: ${{ item.nameWithOwner }}
+      description: ${{ item.description || '' }}
+      homepage: ${{ item.homepageUrl || '' }}
+      visibility: ${{ item.visibility }}
+      archived: ${{ item.isArchived }}
+      empty: ${{ item.isEmpty }}
+      fork: ${{ item.isFork }}
+      mirror: ${{ item.isMirror }}
+      private: ${{ item.isPrivate }}
+      template: ${{ item.isTemplate }}
+      createdAt: ${{ item.createdAt }}
+      updatedAt: ${{ item.updatedAt }}
+      pushedAt: ${{ item.pushedAt }}
+      stargazerCount: ${{ item.stargazerCount }}
+      forkCount: ${{ item.forkCount }}
+      watcherCount: "${{ item.watchers ? item.watchers.totalCount : 0 }}"
+      primaryLanguage: "${{ item.primaryLanguage ? item.primaryLanguage.name : '' }}"
+      languages: "${{ JSON.stringify(item.languages || []) }}"
+      topics: "${{ JSON.stringify(item.repositoryTopics || []) }}"
+      license: "${{ item.licenseInfo ? item.licenseInfo.key : '' }}"
+      defaultBranch: "${{ item.defaultBranchRef ? item.defaultBranchRef.name : '' }}"
+      latestRelease: "${{ JSON.stringify(item.latestRelease || null) }}"
+      issueCount: "${{ item.issues ? item.issues.totalCount : 0 }}"
+      pullRequestCount: "${{ item.pullRequests ? item.pullRequests.totalCount : 0 }}"
+      discussionsEnabled: ${{ item.hasDiscussionsEnabled }}
+      issuesEnabled: ${{ item.hasIssuesEnabled }}
+      projectsEnabled: ${{ item.hasProjectsEnabled }}
+      wikiEnabled: ${{ item.hasWikiEnabled }}
+      securityPolicyUrl: ${{ item.securityPolicyUrl || '' }}
+      url: ${{ item.url }}
 
 args:
   repo:
     type: str
     required: true
     positional: true
-    description: Repository in owner/name format
+    pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Repository in OWNER/REPO form
 
-columns: [name, description, stargazerCount, forkCount]
+columns:
+  [
+    fullName,
+    description,
+    primaryLanguage,
+    topics,
+    stargazerCount,
+    forkCount,
+    issueCount,
+    pullRequestCount,
+    pushedAt,
+    latestRelease,
+    url,
+  ]
 
-# schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["subprocess.exec"]
+capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user
 confidentiality: public

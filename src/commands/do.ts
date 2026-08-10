@@ -56,11 +56,13 @@ import type { DeliveryOperatorSpec } from "../engine/delivery/spec.js";
 import type { CommandOperatorProfile } from "../core/operator-model.js";
 import {
   evaluateCommandFeasibility,
-  mergeCapabilityRequirements,
-  parseIntentCapabilityPlan,
-  type CapabilityRequirements,
   type CommandFeasibility,
 } from "../discovery/feasibility.js";
+import {
+  compileIntentPlan,
+  mergeCapabilityRequirements,
+  type CapabilityRequirements,
+} from "../discovery/intent-plan.js";
 import type {
   ExecutionOperator,
   OperationEffect,
@@ -90,6 +92,7 @@ interface MatchPayload {
   score: number;
   description: string;
   category: string;
+  ranking: SearchResult["ranking"];
   args_schema?: Record<string, unknown> | string;
   example_stdin?: Record<string, unknown> | string;
   invocation?: string;
@@ -211,7 +214,7 @@ export function registerDoCommand(program: Command): void {
       }
 
       const objectivePlan = compileObjectivePlan(intent);
-      const intentPlan = parseIntentCapabilityPlan(intent);
+      const intentPlan = compileIntentPlan(intent);
       const requirements = doRequirements(intentPlan.requirements, opts);
       const results = search(intentPlan.task_text, top, { requirements });
       const filtered = results.filter((r) => r.score > SCORE_FLOOR);
@@ -419,6 +422,7 @@ function enrichMatch(
     score: round(result.score, 4),
     description: result.description,
     category: result.category,
+    ranking: result.ranking,
   };
   const resolved = resolveCommand(result.site, result.command);
   if (resolved) {

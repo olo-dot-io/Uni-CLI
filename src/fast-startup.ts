@@ -19,11 +19,13 @@ Open Agent-Computer Interface runtime for real software.
 
 Discovery:
   search <intent...>            Find commands by bilingual intent
-  list [--site <site>]          List current sites and commands
+  do <goal...>                  Resolve a goal, schema, and invocation at once
+  list [--site <site>]          List commands; add --personalized for personal content
   describe [site] [command]     Show command schema and examples
 
 Execution and recovery:
   <site> <command> [options]    Run a website, app, or local-tool command
+  upgrade                      Check and install a newer Uni-CLI release
   repair [site] [command]      Verify a repair with the original command
   doctor                       Diagnose adapters, browser runtime, and tools
 

@@ -3,9 +3,11 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   evaluateCommandFeasibility,
   evaluateFeasibilityProfile,
+} from "../../src/discovery/feasibility.js";
+import {
   inferCapabilityRequirements,
   mergeCapabilityRequirements,
-} from "../../src/discovery/feasibility.js";
+} from "../../src/discovery/intent-plan.js";
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";
 import { search } from "../../src/discovery/search.js";
 

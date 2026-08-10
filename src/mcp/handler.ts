@@ -32,6 +32,7 @@ import {
   MCP_SUPPORTED_PROTOCOL_VERSIONS,
   VERSION,
 } from "../constants.js";
+import { getActiveUpdateNotice } from "../core/update-notice.js";
 import { resolveElicitation, type ElicitationResponse } from "./elicitation.js";
 import { createBrowserInvocationContext } from "../browser/invocation-context.js";
 import {
@@ -539,6 +540,25 @@ function decorateModernResponse(
           name: "unicli",
           version: VERSION,
         },
+      },
+    },
+  };
+}
+
+function decorateUpdateResponse(
+  response: JsonRpcResponse | undefined,
+): JsonRpcResponse | undefined {
+  if (!response?.result) return response;
+  const result = readRecord(response.result);
+  const update = getActiveUpdateNotice();
+  if (!result || !update) return response;
+  return {
+    ...response,
+    result: {
+      ...result,
+      _meta: {
+        ...readRecord(result._meta),
+        "io.unicli/update": update,
       },
     },
   };
@@ -1206,16 +1226,20 @@ export function buildHandler(
     if (isPromiseLike(response)) {
       return Promise.resolve(response).then((settled) =>
         enforceJsonRpcResultBudget(
-          classification.era === "modern"
-            ? decorateModernResponse(settled)
-            : settled,
+          decorateUpdateResponse(
+            classification.era === "modern"
+              ? decorateModernResponse(settled)
+              : settled,
+          ),
         ),
       );
     }
     return enforceJsonRpcResultBudget(
-      classification.era === "modern"
-        ? decorateModernResponse(response)
-        : response,
+      decorateUpdateResponse(
+        classification.era === "modern"
+          ? decorateModernResponse(response)
+          : response,
+      ),
     );
   };
   handleRequest.closeSession = async (sessionId, reason) => {

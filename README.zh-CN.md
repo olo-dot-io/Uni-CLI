@@ -34,6 +34,15 @@ unicli search "列出 Hacker News 热门文章"
 unicli hackernews top --limit 3 -f json
 ```
 
+检查后续版本，或者打开 Y/N 更新选择。
+
+```bash
+unicli upgrade --check -f json
+unicli upgrade
+```
+
+持久化安装由非交互 Agent 使用时，Uni-CLI 默认在后台更新。结构化结果通过 `meta.update.automatic_update` 报告进度。交互式终端继续使用 Y/N，`unicli upgrade --no-auto-update` 可以把当前机器改回明确确认。
+
 ## 按任务选择路径
 
 Operation 目录负责发现和合同。执行阶段再选择结构最强、范围最小的 operator。每次只运行一个 provider；路径失败后保留原始原因和修复命令。
@@ -56,7 +65,7 @@ unicli repair reddit saved               # 验证受支持的漂移路径
 
 ## Operation 合同
 
-公开模型保持紧凑：
+公开模型保持紧凑。
 
 ```text
 intent → candidate operations → explicit selection → policy → substrate → receipt
@@ -64,7 +73,7 @@ intent → candidate operations → explicit selection → policy → substrate 
 
 | 阶段     | Runtime 行为                                                        |
 | -------- | ------------------------------------------------------------------- |
-| Discover | BM25 双语搜索返回一组小型候选集                                     |
+| Discover | 编译意图与双语检索返回一组带选择依据的小型候选集                    |
 | Select   | 调用方选择一条声明了 strategy 和 substrate 的 operation             |
 | Govern   | `open`、`confirm`、`locked` profile 检查 effect 和 capability scope |
 | Act      | 执行选中的 adapter、core command、browser、desktop 或 protocol 路径 |
@@ -84,13 +93,13 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 | Protocols | Native CLI、MCP stdio、MCP Streamable HTTP、ACP、生成配置和 Agent skills         |
 | Policy    | Permission profiles、deny rules、scoped approvals、recording、replay 和 evidence |
 
-静态目录：
+静态目录
 
 - <!-- STATS:site_count -->337<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1884<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1261<!-- /STATS --> 个 adapters
+- <!-- STATS:command_count -->1890<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10237<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10314<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -98,12 +107,12 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 <!-- prettier-ignore -->
 | 类别 | 站点 | Operations | 示例 |
 | --- | ---: | ---: | --- |
-| 社交 | 33 | 395 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| 社交 | 33 | 396 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
 | 视频 | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
 | 新闻 | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
 | 财经 | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | 购物 | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
-| 开发 | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
+| 开发 | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
 | AI | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | 学术 | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | 专利 | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
@@ -150,7 +159,7 @@ unicli extract https://example.com --max-chars 1200
 }
 ```
 
-等价命令：
+等价命令
 
 ```bash
 npx -y @zenalexa/unicli mcp serve
@@ -171,7 +180,7 @@ unicli compute click --ref <ref-from-find>
 
 ## 能解释自身的结果
 
-成功：
+成功
 
 ```yaml
 ok: true
@@ -186,7 +195,7 @@ data:
 error: null
 ```
 
-失败：
+失败
 
 ```yaml
 ok: false
@@ -205,7 +214,7 @@ Exit code 区分成功、空结果、依赖不可用、临时失败、认证和�
 
 ## 在 Owned Boundary 修复漂移
 
-Adapter 保持 Agent 可读，并支持本地替换：
+Adapter 保持 Agent 可读，并支持本地替换。
 
 ```text
 run → read error.adapter_path → patch the owned step → save override → verify once
@@ -217,7 +226,7 @@ unicli repair <site> <command>
 
 `repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
 
-最小 YAML adapter：
+下面是一份最小 YAML adapter。
 
 ```yaml
 site: example
@@ -261,7 +270,9 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 需要 Node.js 22.19 或更高版本。Adapter 和 engine 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-<p align="center"><sub>v1.0.4 — Artemis · Glover</sub></p>
+全部已发布版本见[生成的版本记录](docs/zh/releases.md)。Agent 可以通过 `docs/public/release-history.json` 读取同一份结构化数据。
+
+<p align="center"><sub>v1.1.1 — Artemis · Koch</sub></p>
 
 ## License
 

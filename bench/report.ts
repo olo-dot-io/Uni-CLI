@@ -15,6 +15,7 @@
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { format } from "prettier";
 import { runColdStart } from "./cold-start.js";
 import { runSuite, type AdapterCallResult } from "./adapter-call.js";
 
@@ -54,10 +55,10 @@ function renderMarkdown(report: Report): string {
   lines.push(BEGIN_MARKER);
   lines.push("");
   lines.push(
-    `> Generated ${report.generated_at} on Node ${report.node_version} / ${report.platform}.`,
+    `> Generated ${report.generated_at.slice(0, 10)} on Node ${report.node_version} / ${report.platform}.`,
   );
   lines.push(
-    `> Mode: **${report.mode}** (${report.runs} iterations per case).`,
+    `> Mode  **${report.mode}** (${report.runs} iterations per case).`,
   );
   lines.push(
     `> Reproduce with \`npm run bench\` (local live mode) or \`BENCH_FIXTURES_ONLY=1 npm run bench\` (CI-deterministic fixture mode).`,
@@ -66,7 +67,7 @@ function renderMarkdown(report: Report): string {
   lines.push("### Cold-process CLI startup");
   lines.push("");
   lines.push("| command boundary | wall p50 | wall p95 | evidence class |");
-  lines.push("| ---------------- | --------: | --------: | -------------- |");
+  lines.push("| ---------------- | -------- | -------- | -------------- |");
   lines.push(
     `| \`unicli --version\` | ${report.cold_start.version_wall_ms_p50} ms | ${report.cold_start.version_wall_ms_p95} ms | new subprocess, constant metadata path |`,
   );
@@ -90,13 +91,13 @@ function renderMarkdown(report: Report): string {
     `| command rows in \`list\` output | ${report.cold_start.commands} |`,
   );
   lines.push("");
-  lines.push("### Adapter call: p50/p95 response tokens");
+  lines.push("### Adapter call p50 and p95 response tokens");
   lines.push("");
   lines.push(
     "| category | command | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode |",
   );
   lines.push(
-    "| -------- | ------- | ----------------: | ------------------: | ------------------: | ----------: | ----------: | ---- |",
+    "| -------- | ------- | ---------------- | ------------------ | ------------------ | ---------- | ---------- | ---- |",
   );
   for (const r of report.adapter_calls) {
     lines.push(
@@ -130,7 +131,7 @@ function renderMarkdown(report: Report): string {
   return lines.join("\n");
 }
 
-function patchBenchmarkMd(markdown: string): void {
+async function patchBenchmarkMd(markdown: string): Promise<void> {
   if (!existsSync(BENCHMARK_MD)) {
     throw new Error(`BENCHMARK.md missing at ${BENCHMARK_MD}`);
   }
@@ -145,7 +146,7 @@ function patchBenchmarkMd(markdown: string): void {
   const before = source.slice(0, beginIdx);
   const after = source.slice(endIdx + END_MARKER.length);
   const next = `${before}${markdown}${after}`;
-  writeFileSync(BENCHMARK_MD, next);
+  writeFileSync(BENCHMARK_MD, await format(next, { parser: "markdown" }));
 }
 
 async function main(): Promise<void> {
@@ -182,7 +183,7 @@ async function main(): Promise<void> {
   console.log(`[bench] wrote ${RESULTS_PATH}`);
 
   const md = renderMarkdown(report);
-  patchBenchmarkMd(md);
+  await patchBenchmarkMd(md);
   console.log(`[bench] patched ${BENCHMARK_MD} between BENCH markers`);
 }
 

@@ -2,8 +2,8 @@
 
 /**
  * @owner       src::main
- * @does        Selects constant-time root version/help, ACP, manifest fast paths, or the full Commander command tree.
- * @needs       constants/fast-startup, ACP server, manifest fast path, full CLI and Commander error boundary loaded only at the owning boundary
+ * @does        Selects constant-time root version/help, explicit upgrade, ACP, manifest fast paths, or the full Commander command tree.
+ * @needs       constants/fast-startup, update runtime, ACP server, manifest fast path, full CLI and Commander error boundary loaded only at the owning boundary
  * @feeds       npm `unicli` executable
  * @breaks      Startup routing and command failures propagate their owning exit status.
  * @invariants  Root version/help never load adapters or start network work; only one dispatch path runs.
@@ -17,6 +17,7 @@
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  const upgradeArgs = readUpgradeInvocation(args);
   const versionFastPath =
     args.length === 1 && (args[0] === "--version" || args[0] === "-V");
   const helpFastPath =
@@ -39,6 +40,13 @@ async function main(): Promise<void> {
     const { beginCliInvocationLogging } =
       await import("./runtime/cli-invocation-log.js");
     beginCliInvocationLogging();
+    if (upgradeArgs) {
+      const { runUpgradeCommand } = await import("./commands/upgrade.js");
+      process.exitCode = await runUpgradeCommand(upgradeArgs);
+      return;
+    }
+    const { checkForUpdates } = await import("./engine/update-check.js");
+    checkForUpdates();
     const { tryRunFastPath } = await import("./fast-path.js");
     if (!tryRunFastPath(process.argv)) {
       const { createCli, handleCommanderError } = await import("./cli.js");
@@ -50,6 +58,31 @@ async function main(): Promise<void> {
       }
     }
   }
+}
+
+function readUpgradeInvocation(args: readonly string[]): string[] | undefined {
+  const prefix: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "upgrade") return [...prefix, ...args.slice(index + 1)];
+    if (argument === "-f" || argument === "--format") {
+      const value = args[index + 1];
+      if (!value) return undefined;
+      prefix.push(argument, value);
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("--format=")) {
+      prefix.push(argument);
+      continue;
+    }
+    if (argument === "--yes") {
+      prefix.push(argument);
+      continue;
+    }
+    return undefined;
+  }
+  return undefined;
 }
 
 async function emitStartupFailure(error: unknown): Promise<void> {

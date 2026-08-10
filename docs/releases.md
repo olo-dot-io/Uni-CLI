@@ -1,0 +1,2843 @@
+---
+title: Release History
+description: Browse every Uni-CLI release with additions, behavior changes, fixes, and exact comparison links.
+---
+
+# Release History
+
+This page is generated from the repository root `CHANGELOG.md`. Changesets collect each change, the release script owns version metadata, and the docs build publishes this page plus a machine-readable history.
+
+The machine-readable record is available as [`release-history.json`](./release-history.json).
+
+## Version Index
+
+| Version             | Date       | Codename                      | Full diff                                                                    |
+| ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.1.1](#v111)     | 2026-08-10 | Artemis · Koch                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.4...v1.1.1)     |
+| [v1.0.4](#v104)     | 2026-08-10 | Artemis · Glover              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.3...v1.0.4)     |
+| [v1.0.3](#v103)     | 2026-08-08 | Artemis · Glover              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.2...v1.0.3)     |
+| [v1.0.2](#v102)     | 2026-08-02 | Artemis · Glover              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.1...v1.0.2)     |
+| [v1.0.1](#v101)     | 2026-07-31 | Artemis · Glover              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.0...v1.0.1)     |
+| [v1.0.0](#v100)     | 2026-07-31 | Artemis · Glover              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.2...v1.0.0)   |
+| [v0.400.2](#v04002) | 2026-07-18 | Apollo · Duke                 | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.1...v0.400.2) |
+| [v0.400.1](#v04001) | 2026-07-18 | Apollo · Young                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.0...v0.400.1) |
+| [v0.400.0](#v04000) | 2026-07-17 | Apollo · Young                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.227.1...v0.400.0) |
+| [v0.227.1](#v02271) | 2026-07-12 | Apollo · Evans                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.227.0...v0.227.1) |
+| [v0.227.0](#v02270) | 2026-07-12 | Apollo · Mattingly            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.226.0...v0.227.0) |
+| [v0.226.0](#v02260) | 2026-06-29 | Apollo · Stafford             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.3...v0.226.0) |
+| [v0.225.3](#v02253) | 2026-06-27 | Apollo · Schmitt              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.2...v0.225.3) |
+| [v0.225.2](#v02252) | 2026-06-15 | Apollo · Gordon               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.1...v0.225.2) |
+| [v0.225.1](#v02251) | 2026-06-02 | Apollo · Conrad               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.0...v0.225.1) |
+| [v0.225.0](#v02250) | 2026-06-01 | Apollo · Irwin                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.224.1...v0.225.0) |
+| [v0.224.1](#v02241) | 2026-05-27 | Apollo · Collins              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.224.0...v0.224.1) |
+| [v0.224.0](#v02240) | 2026-05-26 | Apollo · Armstrong            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.4...v0.224.0) |
+| [v0.223.4](#v02234) | 2026-05-25 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.3...v0.223.4) |
+| [v0.223.3](#v02233) | 2026-05-25 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.2...v0.223.3) |
+| [v0.223.2](#v02232) | 2026-05-25 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.1...v0.223.2) |
+| [v0.223.1](#v02231) | 2026-05-25 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.0...v0.223.1) |
+| [v0.223.0](#v02230) | 2026-05-24 | Apollo · Worden               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.3...v0.223.0) |
+| [v0.222.3](#v02223) | 2026-05-24 | Apollo · Scott                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.2...v0.222.3) |
+| [v0.222.2](#v02222) | 2026-05-24 | Apollo · Duke                 | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.1...v0.222.2) |
+| [v0.222.1](#v02221) | 2026-05-24 | Apollo · Young                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.0...v0.222.1) |
+| [v0.222.0](#v02220) | 2026-05-21 | Apollo · Armstrong            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.221.1...v0.222.0) |
+| [v0.221.1](#v02211) | 2026-05-19 | Apollo · Anders               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.221.0...v0.221.1) |
+| [v0.221.0](#v02210) | 2026-05-18 | Apollo · Anders               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.220.1...v0.221.0) |
+| [v0.220.1](#v02201) | 2026-05-14 | Apollo · Lovell Patch         | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.220.0...v0.220.1) |
+| [v0.220.0](#v02200) | 2026-05-12 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.219.0...v0.220.0) |
+| [v0.219.0](#v02190) | 2026-05-05 | Vostok · Gagarin              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.218.1...v0.219.0) |
+| [v0.218.1](#v02181) | 2026-05-05 | Apollo · Cernan Patch         | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.218.0...v0.218.1) |
+| [v0.218.0](#v02180) | 2026-05-05 | Apollo · Cernan               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.3...v0.218.0) |
+| [v0.217.3](#v02173) | 2026-05-04 | Apollo · Shepard              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.2...v0.217.3) |
+| [v0.217.2](#v02172) | 2026-04-30 | Apollo · Swigert              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.1...v0.217.2) |
+| [v0.217.1](#v02171) | 2026-04-29 | Apollo · Haise                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.0...v0.217.1) |
+| [v0.217.0](#v02170) | 2026-04-28 | Apollo · Lovell               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.3...v0.217.0) |
+| [v0.216.3](#v02163) | 2026-04-27 | Apollo · Collins              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.2...v0.216.3) |
+| [v0.216.2](#v02162) | 2026-04-27 | Apollo · Aldrin               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.1...v0.216.2) |
+| [v0.216.1](#v02161) | 2026-04-27 | Apollo · Armstrong            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.0...v0.216.1) |
+| [v0.216.0](#v02160) | 2026-04-27 | Surface Coverage Harness      | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.215.1...v0.216.0) |
+| [v0.215.1](#v02151) | 2026-04-24 | Agent Backend Matrix          | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.215.0...v0.215.1) |
+| [v0.215.0](#v02150) | 2026-04-24 | Closed Adapter Loop           | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.3...v0.215.0) |
+| [v0.213.3](#v02133) | 2026-04-19 | Vostok · Gagarin TC0 Patch R2 | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.2...v0.213.3) |
+| [v0.213.2](#v02132) | 2026-04-18 | Vostok · Gagarin TC0 Patch    | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.1...v0.213.2) |
+| [v0.213.1](#v02131) | 2026-04-18 | Vostok · Gagarin Patch        | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.0...v0.213.1) |
+| [v0.213.0](#v02130) | 2026-04-17 | Vostok · Gagarin              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.212.1...v0.213.0) |
+| [v0.212.1](#v02121) | 2026-04-16 | Vostok · Shatalov II          | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.212.0...v0.212.1) |
+| [v0.212.0](#v02120) | 2026-04-15 | Vostok · Shatalov             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.211.2...v0.212.0) |
+| [v0.211.2](#v02112) | 2026-04-13 | Vostok · Volynov              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.210.0...v0.211.2) |
+| [v0.210.0](#v02100) | 2026-04-12 | Vostok · Komarov              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.209.0...v0.210.0) |
+| [v0.209.0](#v02090) | 2026-04-10 | Vostok · Popovich             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.208.0...v0.209.0) |
+| [v0.208.0](#v02080) | 2026-04-08 | Vostok · Titov                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.207.0...v0.208.0) |
+| [v0.207.0](#v02070) | 2026-04-06 | Vostok · Gagarin              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.206.0...v0.207.0) |
+| [v0.206.0](#v02060) | 2026-04-05 | Vostok · Tereshkova           | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.205.0...v0.206.0) |
+| [v0.205.0](#v02050) | 2026-04-05 | Vostok · Bykovsky             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.204.0...v0.205.0) |
+| [v0.204.0](#v02040) |            | Vostok · Nikolayev            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.203.0...v0.204.0) |
+| [v0.203.0](#v02030) |            | Vostok · Leonov               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.202.0...v0.203.0) |
+| [v0.202.0](#v02020) |            | Vostok · Tereshkova           | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.201.0...v0.202.0) |
+| [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
+| [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
+| [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v111"></a>
+
+## v1.1.1 · 2026-08-10 · Artemis · Koch
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.1.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.1.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.4...v1.1.1)
+
+> `1.1.0` was the internal Changesets candidate. `1.1.1` is the first public
+> release in the 1.1 line.
+
+### Added
+
+- Add default detached updates for persistent non-interactive Agent
+  installations. Every exact-version install records durable progress, uses one
+  lease across concurrent Agent processes, retries bounded failures, and exposes
+  opt-out state through structured CLI and MCP metadata.
+- Add `unicli upgrade` with live version checks, interactive Y/N approval,
+  unattended installation, 24-hour deferral, exact-release dismissal, persistent
+  automatic-update settings, and npm, pnpm, or Bun detection.
+- Add one intent plan shared by search, describe, one-shot execution, fast paths,
+  and MCP. The plan carries task semantics, personalization, target scope,
+  feasibility, named ranking evidence, and typo-aware site resolution.
+- Add GitHub code, commit, topic, user, repository, issue, pull-request, and file
+  discovery through structured `gh` commands. Repository and issue searches keep
+  best-match and hybrid retrieval available as explicit modes.
+- Add generated English and Chinese release pages plus
+  `release-history.json`. Every historical entry links to its npm artifact,
+  GitHub Release, and exact Git comparison.
+- Add current-user discovery through `--personalized`, including saved-item,
+  feed, network, account, and activity operations. Xiaohongshu saved notes now
+  have an owned authenticated command.
+
+### Changed
+
+- Replace parallel intent-frame and intent-boost paths with one bounded ranking
+  pipeline. Bilingual discovery now compiles the task once, applies one site
+  resolution policy, and returns executable usage with its ranking signals.
+- Align root help, onboarding, Agent skills, operation descriptions, and public
+  catalog pages around the same search, execution, personalization, repair, and
+  update paths.
+- Benchmark the current product surface against pinned OpenCLI and CLI-Anything
+  snapshots. The maintained task set covers 11 executable intents, five personal
+  content intents, root discovery, catalog breadth, and actionability.
+- Run release discovery from a daily local cache. Ordinary commands stay free of
+  foreground registry waits, while interactive terminals retain explicit choice
+  and non-interactive Agents can adopt the next release automatically.
+
+### Fixed
+
+- Preserve authentication requirements, effective operators, exact usage, and
+  structured causes across search, describe, fast-path, and MCP projections.
+- Keep benchmarks deterministic by disabling detached release checks inside
+  measured child processes.
+- Remove stale duplicate `Unreleased` sections and replace the manually copied
+  historical release audit with generated cross-version documentation.
+
+<a id="v104"></a>
+
+## v1.0.4 · 2026-08-10 · Artemis · Glover
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.4) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.0.4) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.3...v1.0.4)
+
+> Published from annotated tag `v1.0.4` at commit `8289f86c` through GitHub
+> Actions run `31373576820`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
+### Added
+
+- Add the official seventh-edition CCF A conference directory with all 58
+  conferences, corrected 2026 identities, publisher metadata, aliases, and
+  former names.
+- Add first-party AAAI proceedings and GitHub repository evidence adapters.
+  Add conference publication views for PACMPL, PACMSE, PACMMOD, and
+  SIGGRAPH papers published through ACM Transactions on Graphics. Add a
+  publisher-neutral Crossref venue view for PVLDB and other journal-backed
+  proceedings.
+- Add a bilingual scholarly discovery guide covering conference lookup,
+  OpenReview review threads, official awards, PDFs, code, and datasets.
+
+### Changed
+
+- Resolve conference names and years before scholarly fan-out. Publisher
+  searches now use exact conference identities, ACM and IEEE cross-publisher
+  routing, and publication-specific issue models for OOPSLA, FSE, SIGMOD, and
+  SIGGRAPH.
+- Run independent scholarly sources concurrently with a configurable deadline.
+  Empty or slow sources preserve structured causes while healthy sources can
+  still complete the request.
+- Recover lightly misspelled academic titles through one bounded correction
+  pass and expose the executed query with every correction.
+
+### Fixed
+
+- Reject nearby acronyms, regional editions, companion volumes, workshops,
+  posters, talks, and proceedings front matter from exact conference results.
+- Require a source-backed PDF URL for PDF success and preserve expected empty,
+  invalid input, timeout, rate-limit, and restricted-access errors.
+- Accept bare OpenReview forum identifiers during tracing, classify author
+  responses as rebuttals, preserve SIGCHI DOI links, and skip conference
+  context sources that do not apply.
+- Bound DBLP and general scholarly requests, coordinate Crossref traffic, and
+  keep search-derived GitHub matches explicitly marked as candidate
+  implementations.
+- Parse venue years supplied in positional input, apply topical venue filters
+  after source-specific routing, and join code and dataset evidence into
+  cross-site traces.
+- Bound OpenReview requests and retry waits, run independent artifact sources
+  concurrently, and declare file-writing reader effects accurately.
+- Use DBLP publication records for Springer-backed CCF proceedings, preserve
+  their separate conference and publication years, and over-fetch venue
+  candidates before exact filtering.
+- Constrain title-based traces by the requested venue and year, reuse resolved
+  OpenReview forum identifiers, and reject similarly named resource records.
+- Make the live adapter health probe honor authentication and read-only
+  contracts while retaining public HTTP 401 and 403 responses as drift. Repair
+  the current 36Kr and Medium RSS routes, and quarantine endpoints with
+  reproducible upstream blocks.
+
+<a id="v103"></a>
+
+## v1.0.3 · 2026-08-08 · Artemis · Glover
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.0.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.2...v1.0.3)
+
+> Published from annotated tag `v1.0.3` at commit `f2d0b136` through GitHub
+> Actions run `31258688138`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
+### Added
+
+- Add 23 provider-native commands for Zhihu, X, Lark/Feishu, and Bluesky.
+  These routes preserve the official CLI executable, authentication model, and
+  structured response while remaining available through expanded Uni-CLI MCP.
+- Add first-party provenance, native-surface, and provider-scope metadata to the
+  external CLI catalog for X, Bluesky, Lark, Reddit Devvit, DingTalk, and Slack.
+- Add focused English and Chinese guidance for selecting official native tools,
+  hosted MCP services, and Uni-CLI web adapters.
+
+### Changed
+
+- Rebuild the public documentation site around the green observatory and orbital
+  operation chapters, with tighter navigation, responsive interaction, local
+  brand assets, and rewritten guides for authentication, browser and desktop
+  control, CLI usage, integrations, and repair.
+- Route the existing Feishu bridge through the official `lark-cli`, including
+  agenda, document search, messaging, and task operations with JSON output.
+- Adopt the human-writing harness as the repository prose boundary and install
+  its compact agent guidance through `unicli init`.
+
+### Fixed
+
+- Replace invalid Slack content calls through the app-development CLI with the
+  corresponding official Slack Web API operations.
+- Correct the Lark executable and command paths used by existing adapters, and
+  distinguish content operations from application-development-only tools.
+- Update `js-yaml` and `undici` across the production lock closure to versions
+  that clear the npm security audit while preserving npm 10 optional peers.
+
+<a id="v102"></a>
+
+## v1.0.2 · 2026-08-02 · Artemis · Glover
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.0.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.1...v1.0.2)
+
+> Published from annotated tag `v1.0.2` at commit `d6940a1c` through GitHub
+> Actions run `30747691291`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
+### Added
+
+- Add `openreview conference`, a paced and resumable venue archive for public
+  submissions, review and rebuttal threads, decisions, note revisions, hosted
+  PDFs and supplementary files, artifact hashes, and external research links.
+- Add bilingual operator documentation for authenticated, sequential,
+  multi-year OpenReview archival and recovery.
+
+### Changed
+
+- Route every OpenReview command through one authenticated client that supports
+  API v2/v1 venue discovery, browser-derived sessions, bounded token refresh,
+  strict request spacing, rate-limit headers, transactional downloads, and
+  SHA-256 verification.
+- Resolve OpenReview venue tabs from each group's live `submission_id` and
+  `decision_heading_map`, removing conference-specific label assumptions.
+- Redesign the public product surface around one operation receipt and a denser,
+  responsive documentation layout while keeping semantic source content and
+  generated agent documents aligned.
+
+### Fixed
+
+- Preserve AT-SPI accessible names when nodes expose attributes separately from
+  their visible labels.
+- Make visual-observation evidence claims atomically single-use so concurrent
+  consumers cannot reuse the same claim.
+- Harden durable MCP task persistence on Windows with platform-aware replacement
+  and cleanup behavior.
+- Preserve actionable OpenReview authentication, challenge, rate-limit, and
+  transient upstream errors; interrupted archives resume from durable cursors
+  without replaying completed downloads.
+
+<a id="v101"></a>
+
+## v1.0.1 · 2026-07-31 · Artemis · Glover
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.0.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.0...v1.0.1)
+
+> Published from annotated tag `v1.0.1` at commit `a317b32a` through GitHub
+> Actions run `30644287649`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+>
+> The `v1.0.0` candidate remained unpublished. Both release attempts stopped
+> before registry or GitHub Release creation when the shared runner falsified
+> the index-construction performance budget. Version 1.0.1 carries the measured
+> hot-path correction without rewriting that tag.
+
+### Changed
+
+- Cache exact-content document tokenization in a bounded 8,192-entry preparation
+  store and reuse it across immutable index rebuilds. Fuse per-document term
+  counting with postings construction, retain only term counts in the finished
+  index, and invalidate prepared data whenever any indexed field changes.
+- Preserve the 1.0 operation-first contract, computer-use drivers, modern MCP
+  task surface, deterministic provider routing, and 326-site catalog from the
+  1.0.0 candidate as the first publishable 1.x package.
+
+### Fixed
+
+- Regenerate the public agent-document surface after release metadata changes so
+  local candidates and published versions cannot retain an older version label.
+- Upgrade `fast-uri` to 3.1.5 in the locked dependency closure, removing the
+  production audit findings that affected earlier 3.1.x builds.
+
+<a id="v100"></a>
+
+## v1.0.0 · 2026-07-31 · Artemis · Glover
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.0.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.2...v1.0.0)
+
+### Added
+
+- Introduce one operation contract across CLI, MCP, browser, desktop, HTTP, app,
+  and subprocess substrates. Discovery now returns operation family, effects,
+  target scope, feasibility, provider, evidence, and recovery metadata before an
+  agent executes work.
+- Add a first-class computer-use driver with exact target binding, visual refs,
+  same-provider post-action capture, typed effect verdicts, and bounded
+  observation. Native AX, UIA, AT-SPI, CDP, and visual paths share the contract
+  without collapsing their capabilities.
+- Add modern MCP protocol support for durable tasks, subscriptions, request
+  settlement, principal quotas, result budgets, and the 2026-07-28 protocol while
+  retaining the supported 2025-11-25 transport contract.
+- Add compact command description, one-shot intent execution, task-routing
+  guidance, live capability smoke tests, and operation specifications for browser
+  control.
+
+### Changed
+
+- Replace cross-provider cascades with deterministic feasibility ranking and one
+  declared provider per execution. A provider failure now returns its structured
+  cause and repair path instead of silently switching substrate or target.
+- Rebuild intent search around bounded top-k selection and reusable indexed
+  postings. The 611-case evaluation records 76.27% top-1, 92.47% top-5, and
+  0.8294 MRR@5 while performance tests enforce the new query budgets.
+- Bind compute dispatch, screenshots, assertions, waits, and replay to exact app,
+  renderer, transport, and window identities. Ref lifetimes, tombstones, and
+  atomic artifact publication prevent stale or cross-target execution.
+- Align CLI, MCP, adapter, browser, auth, diagnostic, and agent-readable surfaces
+  around structured operation envelopes. The static catalog now contains 326
+  sites and 1,829 commands, backed by 980 schema-conforming YAML adapters plus
+  246 TypeScript adapters.
+
+### Fixed
+
+- Preserve operation-specific errors through every pipeline and transport
+  boundary, including authentication, rate limits, unsupported surfaces, stale
+  refs, ambiguous targets, provider policy, and temporary resource contention.
+- Close browser ownership and cookie-authority gaps so probes remain passive,
+  background and foreground contracts stay explicit, and empty or policy-blocked
+  profiles fail with an actionable next step.
+
+<a id="v04002"></a>
+
+## v0.400.2 · 2026-07-18 · Apollo · Duke
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.400.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.1...v0.400.2)
+
+> Published from annotated tag `v0.400.2` at commit `785c3ef6` through GitHub
+> Actions run `29658936515`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+
+### Patch Changes
+
+- 481b643: Position Uni-CLI as the open Agent-Computer Interface runtime for real software.
+  Align English, Chinese, agent-readable, package, and executable architecture
+  surfaces around the current discover-select-govern-act-observe-repair model,
+  while documenting that automatic substrate arbitration, universal evidence,
+  and fixed-core protocol parity remain roadmap work.
+
+  Make MCP discovery honest about that boundary: list/search results now identify
+  adapter versus fixed-core sources and whether `unicli_run` supports them;
+  fixed-core run attempts return `unsupported_surface` with the native CLI route.
+
+- 3cfccd1: Replace the relevance-blind arXiv YAML path with one cancellable TypeScript
+  search boundary that compiles natural multi-term and disjunctive queries into
+  explicit arXiv syntax, over-fetches bounded candidates, filters for meaningful
+  query overlap before limiting, and preserves caller-authored field syntax.
+
+  Apply the same domain-neutral relevance analysis to AI source fusion, keep
+  origin publishers distinct from authors, artifact hosts, venues, and community
+  platforms, and retain concrete first-party recovery when indexes are empty.
+  GitHub issue and pull-request thread adapters now require the exact URL form
+  accepted by the underlying `gh` CLI, while HTTP failures preserve status-specific
+  authentication, rate-limit, missing-source, and upstream recovery guidance.
+
+- f391bf0: Replace the CLI-only usage counter with a bounded, owner-only local event log
+  covering CLI, MCP, ACP, bench, and hub adapter calls. Diagnostic events now
+  carry version plus stabilized clean/dirty source identity, trace, transport,
+  surface, parent/child operation role, outcome, latency, result size, and typed
+  failure metadata while excluding arguments, content, URLs, credentials, raw
+  errors, and adapter filesystem paths. Complete lock owners are durably
+  published, dead owners and abandoned candidates are reclaimed by exact inode,
+  dual operation/release failures remain visible, and bounded readers reject
+  symlinks, identity changes, and oversized files before loading bytes.
+
+  Make `unicli usage report` combine legacy and current evidence, distinguish
+  transports, reject invalid windows and limits, and surface corrupt or
+  unreadable JSONL through structured error envelopes instead of silently
+  dropping records. CLI and MCP request boundaries sanitize unknown user tokens,
+  correlate direct kernel work without double counting, and preserve allowlisted
+  tool error types.
+
+  Normalize Commander parser failures through the same structured envelope and
+  local-event boundary: unknown options and missing values now use stable
+  `invalid_input` diagnostics without echoing raw user tokens.
+
+- 3cfccd1: Bind compute operations to their original app, CDP endpoint, or ref transport
+  instead of falling through to an unrelated browser or screen. Forward target
+  arguments through CDP, UIA, and AT-SPI snapshots, keep incompatible persisted
+  CDP sessions from replacing explicit apps, bind macOS/Windows/Linux native refs
+  to exact window IDs and traversal paths, publish empty target tombstones so old
+  refs cannot revive, and reject unresolved or legacy refs.
+
+  Make `compute wait` poll fresh target snapshots for ref, text, and
+  appear/disappear/focused/enabled/checked state conditions. Unmet conditions now time out, ambiguous unscoped waits return
+  `invalid_input`, and duration-only Visual/Subprocess waits can no longer report
+  false condition success.
+
+  Serialize compute-ref shard readers with publishers so retention cannot remove
+  an enumerated record mid-read, and report live lock contention as a typed,
+  retryable temporary failure. Combined snapshot-and-screenshot capture now derives
+  one exact window identity from ref provenance, binds every replay step to it,
+  and fails closed if the window cannot be proved or changes mid-capture.
+
+  Reject partially parsed numeric CLI options, publish format-sensitive screenshot
+  files through extension-preserving atomic staging, and surface transport cleanup
+  failures instead of printing a false successful result. Align CLI, MCP contract,
+  help, and operator docs for window targeting, click background mode, observe
+  app/top-k, assert visibility, and exact CDP target IDs.
+
+<a id="v04001"></a>
+
+## v0.400.1 · 2026-07-18 · Apollo · Young
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.400.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.400.0...v0.400.1)
+
+> Published from annotated tag `v0.400.1` at commit `5a1d0b78` through GitHub
+> Actions run `29636301437`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+
+### Added
+
+- Domain-neutral `retrieval search|sources` discovers 41 registered, read-only
+  evidence sources from declarative adapter metadata, executes bounded
+  federated queries, and returns normalized candidates with source identity,
+  raw provider records, exact retry commands, and structured partial failures.
+- `ai search|pulse|read|sources|landscape|profiles` adds a role-aware overlay
+  with 35 executable source rows, 102 maintained first-party targets, and 10
+  practitioner profiles spanning foundation-model work, training, inference,
+  world models, embodied AI, hardware, agents, evaluation/safety, and research.
+- `evidence-document.v1` gives HTML, text, JSON/XML, PDF text, and GitHub threads
+  one provenance-bearing document contract with canonical URLs, headings,
+  links, true truncation metadata, retrieval time, and a hash of returned
+  content. ModelScope, OpenCSG, Bluesky, Hugging Face community, and structured
+  GitHub issue/PR/discussion surfaces now participate through owned adapters.
+
+### Changed
+
+- Generic source discovery, execution, fusion, and reading now live below AI
+  as a reusable retrieval kernel. AI-specific vendor identity, official-domain
+  attribution, role vocabulary, and pulse selection remain a data overlay, so
+  future technical, medical, standards, security, or other domains do not need
+  to duplicate transport logic.
+- Search and reading use bounded concurrency, per-source deadlines, explicit
+  timestamp provenance, strict `--since` semantics, opt-in authenticated
+  sources, and transport-identical CLI/MCP contracts instead of silent
+  fallbacks or fabricated freshness.
+
+### Fixed
+
+- Redirect validation, cache identity, download cleanup, cancellation, and
+  authentication propagation now remain correct across HTTP, TypeScript
+  adapters, PDF extraction, and child processes. Binary payloads and challenge
+  pages fail closed rather than becoming successful Markdown.
+- Exact NVIDIA, AMD, Ascend, T-Head, Kunlunxin, and Cambricon queries preserve
+  catalog-owned repositories and avoid unrelated hardware-domain fallback;
+  hosted artifacts remain distinct from their hosting platform, while GitHub
+  issue and pull-request reads retain comments and review state.
+- Clean production installs now declare the XML DOM parser used by PubMed and
+  bioRxiv instead of inheriting it from documentation tooling. The release
+  truth gate rejects undeclared literal package loads across import/export,
+  dynamic import, require, require.resolve, and createRequire aliases, plus
+  lockfile entries that would be installed as development-only dependencies.
+  It also requires exact package identity and dependency-map parity between the
+  publication manifest and root lock entry.
+- Browser broker auto-start now always executes the compiled broker artifact
+  from the installed package or repository build. Source-mode commands fail
+  with an exact `npm run build` recovery when that artifact is absent instead
+  of depending on the development-only `tsx` transpiler at runtime.
+
+### Verification
+
+- The complete local release gate passed 3,131 unit tests (4 skipped), 94
+  integration tests (16 platform-skipped), 6,528 adapter tests, 5 performance
+  tests (1 skipped), and 23 targeted coverage behaviors at 100%.
+- All 994 YAML adapters passed adapter and schema-v2 lint; conformance reported
+  952 passed, 0 failed, and 42 explicitly quarantined. Stats, release truth,
+  exports, public-boundary, formatting, type, lint, build, and strict release
+  metadata checks also passed.
+- Three bounded Agent consumer rehearsals exercised 37 NVLink/NVSwitch,
+  domestic-accelerator, and deep-algorithm tasks. The implementation repaired
+  every resulting P1 boundary finding; the final independent rereview reported
+  no remaining P0/P1 finding for this retrieval scope.
+- A clean tarball installation returned version `0.400.1`, discovered all 41
+  generic and 35 AI sources, registered `pubmed.search`, and completed a live
+  one-result PubMed query through the installed package. Its broker auto-start
+  used the compiled artifact without starting a browser provider or Chrome.
+- Main CI run `29635957077` passed after its Windows matrix proved the lifecycle
+  assertion against the native Job Object owner. The tagged release workflow
+  then repeated the complete gate, built both Windows binaries, and published
+  the package and GitHub Release without an npm fallback token.
+
+<a id="v04000"></a>
+
+## v0.400.0 · 2026-07-17 · Apollo · Young
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.400.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.400.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.227.1...v0.400.0)
+
+> Published from annotated tag `v0.400.0` at commit `3e4d555c` through GitHub
+> Actions run `29568815086`, using npm Trusted Publishers with SLSA provenance
+> and a GitHub Release carrying both Windows process-owner executables.
+
+### Added
+
+- The generic `computer-use` MCP profile now exposes 16 direct browser tools
+  alongside 16 computer controls: prepared state, screenshots, navigation,
+  trusted ref/viewport input, tabs, bounded content/history search, claims,
+  dialog/download supervision, and explicit foreground presence.
+- Existing Chrome can render an isolated, pointer-through Shadow DOM edge glow
+  and virtual cursor only for an explicit foreground target. The renderer has
+  no idle timer, RAF loop, or infinite animation and honors reduced motion.
+- Open-tab and history search reads eligible content on demand with fixed tab,
+  frame, text, concurrency, and result ceilings, without debugger attachment,
+  target claims, focus changes, navigation, or persistent indexing.
+
+### Changed
+
+- Per-command browser ownership and the legacy HTTP daemon are replaced by one
+  authenticated Browser Runtime Broker. Agent sessions share provider lifetime
+  while retaining exclusive target leases, profile partitions, explicit
+  handoff, turn cleanup, idle TTL, crash recovery, and transport-independent
+  CLI/MCP/plugin identity.
+- Browser, compute, MCP, subprocess, overlay, and sidecar operations now share
+  bounded cancellation, exact action settlement, deny-first permissions,
+  process-tree containment, and fresh snapshot-ref generation.
+- The tag workflow cross-builds x64 and arm64 Windows Job Object owners from
+  the locked Rust workspace, validates their PE payloads, bundles both into the
+  provenance-signed npm artifact, and exposes architecture-labelled Release
+  assets; clean installs no longer depend on unpublished platform packages.
+- Windows Native Messaging registration now selects the architecture-matched
+  PE launcher and publishes content-addressed, immutable host generations, so
+  reinstall or upgrade cannot replace an executable used by an active Chrome
+  connection.
+- Release metadata now distinguishes a complete local delivery from an npm or
+  GitHub publication, so generated documentation cannot claim an event that did
+  not occur.
+
+### Fixed
+
+- The npm lock retains DocSearch's complete optional React peer closure, and
+  the release truth gate now rejects future npm 11 pruning that would make
+  clean Node 22/npm 10 installs fail before verification starts.
+- Background Chrome allocation preserves the active tab, focused window, and
+  foreground app; doctor/status/session probes start neither providers nor
+  placeholder targets.
+- Ref actions fail closed on stale generations, ambiguous aliases, unsupported
+  frames, occlusion, sensitive content, and points outside the live CSS
+  viewport instead of replaying or guessing.
+- Transport close retries unacknowledged session cleanup, raw snapshots stop at
+  their producer-side bound, and composed-tree redaction crosses open shadow
+  roots, same-origin frames, and slots.
+- Native-host and broker boundaries now share one exact, bounded Chrome error
+  contract. Target-invalidating results close and reacquire only the affected
+  target while preserving outcome ambiguity and the live host connection.
+
+### Verification
+
+- The complete `npm run verify` gate passed with 2,992 unit (4 skipped), 94
+  integration (16 platform-skipped), 6,467 adapter, 5 performance (1 skipped),
+  and 23 targeted coverage behaviors at 100%.
+- GitHub Actions run `29567020303` passed Ubuntu Node 22/24, macOS Node 22,
+  Windows Node 22 including the real Native Messaging integration, and all
+  three x64 Rust sidecar jobs.
+- Independent bounded audit and counterexample rerun reported no remaining
+  P0/P1/P2 findings for the delivered browser-control scope.
+- Real Chrome behavior covers shared runtime ownership, no-focus background
+  work, open-shadow/same-origin refs, privacy redaction, visible presence,
+  semantic isolation, reduced motion, and byte-identical teardown.
+
+<a id="v02271"></a>
+
+## v0.227.1 · 2026-07-12 · Apollo · Evans
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.227.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.227.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.227.0...v0.227.1)
+
+### Fixed
+
+- Explicitly forced detached update checks now run under CI while normal CI and
+  non-TTY invocations remain network-free.
+- macOS browser-seed simulations declare their target platform instead of
+  inheriting the runner host, and profile-seed manifests serialize portable
+  POSIX-relative paths.
+- Test inventory and Git reference synchronization fixtures now own their
+  case-sensitivity and line-ending assumptions, so release evidence is stable
+  across Linux, macOS, and Windows.
+
+### Verification
+
+- GitHub Actions run `29196085654` passed Linux Node 22 and Node 24, Windows
+  Node 22, macOS, and all three Rust sidecar jobs.
+- The `v0.227.0` candidate correctly stopped before npm publication and GitHub
+  Release creation when its release gate found host-contaminated tests.
+  `0.227.1` is the corrected publication target and carries the `0.227.0`
+  production truth fixes below.
+
+<a id="v02270"></a>
+
+## v0.227.0 · 2026-07-12 · Apollo · Mattingly
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.227.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.227.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.226.0...v0.227.0)
+
+### Security
+
+- Live browser and CDP cookie acquisition is memory-only. Cookie files are
+  created only by explicit import/export commands; POSIX storage uses an
+  owner-only `0700` directory and `0600` file, atomic replacement, legacy-mode
+  tightening, and symlink rejection.
+- Undici 8.7.0 and js-yaml 4.3.0 remove the production advisories reported
+  against the previous dependency graph. CI and the tag workflow now enforce a
+  zero-moderate-or-higher production audit on Node 22 and Node 24.
+- `PRIVACY.md` and `SECURITY.md` now describe the implemented credential and
+  network data flows and are included in the published npm artifact.
+
+### Fixed
+
+- All Node HTTP owners now pair `undici.fetch` with the same package's proxy
+  dispatcher, including pipeline, OAuth, download, extraction, cascade, and
+  public HTTP transport paths. Proxy and `NO_PROXY` behavior is locked by a
+  real local-proxy regression and Node 22/24 live command checks.
+- `unicli repair` is now a bounded, shell-free verifier for the exact original
+  command. It performs no hidden npm, git, or agent mutation; its envelope,
+  oracle evidence, and process exit code express one result.
+- Network, authentication, rate-limit, and browser-availability failures no
+  longer tell agents to edit adapters. Only established adapter-drift classes
+  offer repair verification.
+- Root metadata commands no longer wait for update-network I/O. A detached
+  worker refreshes the correctly scoped npm package cache for the next run.
+- Explicit cookie export returns `auth_required` with exit 77 when no cookie is
+  found, rather than reporting process success without a persisted artifact.
+- Per-domain rate limiting serializes concurrent callers and retains the
+  strictest declared policy. Jina reads bypass stale upstream cache entries.
+
+### Changed
+
+- The executable action contract is derived from live owners and budgeted as
+  50 registered composition actions plus 55 transport-native actions. Catalog,
+  documentation, and runtime must agree exactly.
+- Fixture shape, deterministic integration, real endpoint, authenticated
+  browser, cold-start, and warm-start evidence are published as separate
+  claims. Inventory count is not presented as operational health.
+- `npm run verify` includes repair truth integration; Node 22/24 CI and the
+  release workflow execute the canonical gate instead of hand-maintained test
+  subsets. Reference synchronization now discovers nested checkouts and fails
+  closed on dirty, diverged, or empty work.
+
+### Verification
+
+- Node 22.23.1 and Node 24.18.0 each pass 250 unit files (2,807 passed, 2
+  skipped). The clean gate passes 11 integration files, 170 adapter files with
+  6,467 tests, performance, coverage, conformance, export, stats, release-truth,
+  changeset, and public-boundary checks.
+- The real E2E matrix passes 44 of 44 workflows with zero failures or skips,
+  and the production dependency audit reports zero vulnerabilities.
+
+<a id="v02260"></a>
+
+## v0.226.0 · 2026-06-29 · Apollo · Stafford
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.226.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.226.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.3...v0.226.0)
+
+### Minor Changes
+
+- Browser automation now defaults to a verified logged-in identity: Uni-CLI attaches to an already-exposed local browser profile when possible, otherwise seeds its automation profile from the preferred local Chrome profile, and keeps empty profiles explicit through `--ephemeral`.
+
+<a id="v02253"></a>
+
+## v0.225.3 · 2026-06-27 · Apollo · Schmitt
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.225.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.2...v0.225.3)
+
+### Added
+
+- `unicli scholar` now has a source-grounded academic-resource loop for
+  discovery, comparison, PDF download, bounded full-text reading, resource
+  lookup, coverage inspection, and fail-closed source auditing across the major
+  scholarly surfaces.
+- Source-scoped read/full-text commands now cover arXiv, ACL Anthology,
+  OpenReview, PubMed/PMC, bioRxiv, medRxiv, CVF, NeurIPS, PMLR, OpenAlex,
+  Semantic Scholar, and Unpaywall where each source exposes an actual
+  full-text or PDF URL.
+- `scholar-artifacts` provides the shared PDF download and `pdftotext`
+  extraction boundary used by source adapters, keeping artifact validation,
+  page ranges, truncation, and provenance consistent.
+
+### Changed
+
+- Scholarly discovery, capability policy, operation policy, fast-path metadata,
+  and generated command catalogs now expose source-fulltext, resource, citation,
+  and provenance capabilities directly to agents.
+- CNKI search moved from the old YAML fetch/map adapter to a typed KNS-backed
+  adapter with current request payload, vv token generation, structured record
+  normalization, and regression coverage.
+
+### Fixed
+
+- Broad PDF search intent no longer lets Unpaywall outrank execution-oriented
+  paper download/read workflows unless the query has DOI or open-access intent.
+- Generated manifest scanning now preserves shared TypeScript adapter
+  declarations used by scholarly adapters, preventing source-mode/dist parity
+  drift after adapter refactors.
+
+<a id="v02252"></a>
+
+## v0.225.2 · 2026-06-15 · Apollo · Gordon
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.225.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.1...v0.225.2)
+
+### Security
+
+- The legacy HTTP MCP transport (`unicli mcp serve --transport http`) now
+  validates the `Origin` header on every request, rejecting non-loopback
+  browser origins with `403` before any routing. Previously this transport —
+  unlike the Streamable HTTP transport — accepted cross-origin browser
+  requests, so a malicious page could drive `tools/call` against a local
+  server bound to loopback. The DNS-rebinding policy is now shared by both
+  transports via `src/mcp/origin-guard.ts`. Reported privately by
+  Ryan Vonbrubeck ([@dodge1218](https://github.com/dodge1218)).
+
+### Added
+
+- `unicli browser console` now reads bounded current-page console messages,
+  warnings, errors, and page error events from the browser evidence hook without
+  exposing page-context eval or raw CDP authority.
+- Compute command contracts now expose core computer-use action arguments through
+  `describe`, `schema`, and MCP tool schemas, including click/type/press/scroll
+  fields that agents need for real OLo handoff planning.
+- Compute snapshots and `find` results now project ref provenance, including the
+  provider, namespace, transport, scope, stable alias, TTL, identity, bounds, and
+  app/process context.
+
+### Changed
+
+- MCP JSON-RPC wire handling now shares a single internal type boundary instead
+  of carrying parallel request/response shapes.
+- Intent discovery and browser supervision surfaces now expose more reliable
+  agent-facing evidence for local action planning.
+
+### Fixed
+
+- Compute actions now fail closed on OLo-owned, browser-owned, and unknown
+  namespaced refs before dispatch, returning structured `foreign_ref` or
+  `unresolvable_ref` envelopes instead of falling through to a generic compute
+  failure.
+
+<a id="v02251"></a>
+
+## v0.225.1 · 2026-06-02 · Apollo · Conrad
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.225.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.225.0...v0.225.1)
+
+### Added
+
+- `npm run site:availability` now classifies every adapter command and runs one
+  bounded safe read probe per site when a command is public, non-browser,
+  non-destructive, and has no required semantic input.
+- `npm run e2e:real` now exercises a built-CLI real workflow matrix across
+  common web, browser-adjacent, social, reference, and local-tool routes.
+- Xiaohongshu now has a public `feed` reader for front-line social-media smoke
+  tests without forcing browser/CDP state into every availability check.
+
+### Changed
+
+- Adapter health and site availability now share the same environment classifier
+  for auth gates, platform gates, local daemons, transient network failures,
+  rate limits, and declared detect probes.
+- Electron desktop and AI-chat commands now declare their `cdp-browser`
+  substrate requirement, so health gates skip them honestly instead of
+  misreporting unavailable local app control as site breakage.
+- `unicli do` now returns objective-level delivery spec templates for media
+  playback intents while preserving explicit execution through
+  `unicli delivery run`.
+
+### Fixed
+
+- Browser launcher repair now converts detached `spawn` failures into catchable
+  launch errors and rejects invalid `mdfind` app executable paths before they
+  poison CDP/browser recovery.
+- Browser-session CDP acquisition now creates a fresh page target for
+  user-session commands, so a stale logged-in automation tab cannot make
+  Twitter/X and Xiaohongshu hang on stealth injection.
+- The all-site audit no longer empty-probes commands that require semantic
+  inputs such as `query`, `author`, `pid`, `id`, `url`, or `tags`.
+- The Maoyan hot adapter now follows the current public box-office response path
+  directly instead of relying on runtime select-path auto-fix.
+- Empty successful adapter observations remain `ok=true` and exit `0`; only
+  explicit `empty_result` errors become failure envelopes.
+- Common social-media smoke routes for Twitter/X, Xiaohongshu, Reddit, YouTube,
+  Bilibili, and Weibo now pass through the built CLI after the browser-substrate
+  repair.
+
+### Verified
+
+- `RELEASE_CODENAME="Apollo · Conrad" npm run release`
+- `SITE_SWEEP_TIMEOUT_MS=10000 npx tsx scripts/site-availability-sweep.ts`
+- `npm run adapter:health`
+- `npm run e2e:real`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run format:check`
+- `git diff --check`
+- `npm run release:check -- --strict-codename`
+- `npm run verify`
+- `npm publish --dry-run`
+
+<a id="v02250"></a>
+
+## v0.225.0 · 2026-06-01 · Apollo · Irwin
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.225.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.225.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.224.1...v0.225.0)
+
+### Added
+
+- Architecture audit now emits a catalog-derived `capability_matrix` for web,
+  browser, desktop, system, protocol, and bridge control surfaces.
+- Architecture audit now emits `workflow_readiness` for the vehicle-assistant
+  workflows: media playback, video search, browser tab control, installed app
+  operation, productivity state, and open/navigate destination.
+- `unicli do` now attaches a `delivery_spec_template` for executable matches so
+  intent planning can hand off to `unicli delivery run` without automatically
+  executing side effects.
+- Public release audit docs now compare the `0.225.0` candidate against the
+  historical `0.200.0` through `0.224.1` release lines.
+
+### Changed
+
+- Uni-CLI is now positioned and audited as the universal computer-control
+  platform for agents: intent, policy, action substrates, evidence, delivery,
+  and repair across real software.
+- Core Commander commands now project into the same command-contract family as
+  adapter commands, so `compute`, `browser`, `delivery`, `runs`, `mcp`,
+  `agents`, and `architecture` are first-class control operations in
+  architecture and describe surfaces.
+- README, Chinese README, architecture docs, how-it-works, roadmap, FAQ,
+  glossary, generated public Markdown, `llms.txt`, `llms-full.txt`, skills,
+  MCP registry metadata, and release metadata now point at `0.225.0`.
+- Release docs now describe the current `0.225.0` product-frame minor line
+  instead of the stale `0.220.x` execution-substrate patch line.
+
+### Fixed
+
+- Browser pipeline unit tests now force their intended CDP/mock acquisition path
+  instead of accidentally using a live Uni-CLI browser daemon.
+- Release propagation accepts the current generated operation-catalog FAQ copy,
+  avoiding stale release metadata after docs copy changes.
+- Architecture inventory no longer omits core command source paths or treats
+  core command governance as fake adapter repair metadata.
+
+### Verified
+
+- `npx vitest run tests/unit/core/capability-matrix.test.ts tests/unit/core/architecture-tree.test.ts tests/unit/commands/architecture.test.ts --maxWorkers=1 --reporter=dot`
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run docs:build`
+- `npm run docs:check-public`
+- `npm run boundary:check`
+- `npm run release:check -- --strict-codename`
+- `npm publish --dry-run`
+
+<a id="v02241"></a>
+
+## v0.224.1 · 2026-05-27 · Apollo · Collins
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.224.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.224.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.224.0...v0.224.1)
+
+### Added
+
+- `marxists-cn` now exposes a Chinese archive reader with normalized text
+  output and search/discovery aliases for Chinese Marxists archive workflows.
+
+### Changed
+
+- Release records, public docs, skills, MCP registry metadata, and generated
+  stats now point at `0.224.1`.
+
+### Fixed
+
+- Twitter timeline/comment commands now expose user timeline and comment
+  retrieval paths through the live adapter catalog.
+
+### Verified
+
+- `npm run release`
+- `npm run release:check -- --strict-codename`
+- `npm run verify`
+- `npm publish --dry-run`
+- `npm run docs:check-public`
+
+<a id="v02240"></a>
+
+## v0.224.0 · 2026-05-26 · Apollo · Armstrong
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.224.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.224.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.4...v0.224.0)
+
+### Minor Changes
+
+- cd40064: Architecture and dependency refresh release: callable architecture audit/tree, live registry-backed search with registry-version caching, local computer-use action evidence, refreshed command discovery semantics, and the latest `undici`, `ws`, and `zod` releases. The runtime floor is now Node.js 22.19+ because `undici@8` requires that engine baseline.
+
+All notable changes to Uni-CLI are documented here.
+Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](https://github.com/olo-dot-io/Uni-CLI/blob/main/contributing/COPY.md) for the codename system.
+
+<a id="v02234"></a>
+
+## v0.223.4 · 2026-05-25 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.4) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.223.4) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.3...v0.223.4)
+
+### Fixed
+
+- Compute capture reference tests now parse fallback JSON content before
+  asserting screenshot paths, so Windows escaped path separators do not break
+  CI while preserving the externalized-image contract.
+
+### Verified
+
+- `npx vitest run --project unit tests/unit/compute-capture-reference.test.ts --maxWorkers=1 --reporter=dot`
+- `npx oxlint tests/unit/compute-capture-reference.test.ts`
+- `npm run verify`
+
+<a id="v02233"></a>
+
+## v0.223.3 · 2026-05-25 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.223.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.2...v0.223.3)
+
+### Fixed
+
+- Browser command tests now isolate Windows `USERPROFILE`, `APPDATA`, and
+  `LOCALAPPDATA` alongside `HOME`, so CI runner Edge profiles cannot leak into
+  local profile discovery fixtures.
+
+### Verified
+
+- `npx vitest run --project unit tests/unit/commands/browser.test.ts --maxWorkers=1 --reporter=dot`
+- `npm test`
+- `npm run verify`
+
+<a id="v02232"></a>
+
+## v0.223.2 · 2026-05-25 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.223.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.1...v0.223.2)
+
+### Added
+
+### Changed
+
+- Regenerated `package-lock.json` with the same npm 10 resolver used by GitHub
+  hosted runners so local and CI installs agree on VitePress/DocSearch peer
+  dependency placement.
+
+### Fixed
+
+- `npm ci --include=dev` now succeeds on Node 20/22 runners that ship npm 10,
+  unblocking the CI and Docs workflows after the 0.223.1 browser-hardening
+  release.
+
+### Verified
+
+- `npx -y npm@10 ci --include=dev`
+- `npm run verify`
+- `npm run release:check -- --strict-codename`
+- `npm run docs:build`
+
+<a id="v02231"></a>
+
+## v0.223.1 · 2026-05-25 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.223.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.223.0...v0.223.1)
+
+### Added
+
+- `unicli browser doctor --json` now reports a delivery-oriented
+  `default_path`, per-check `next_step` repair commands, safe
+  `self_repair.safe_command`, and a `chrome_remote_debugging` section for
+  Chrome 136+ and `RemoteDebuggingAllowed` policy state.
+- Local browser profile discovery, explicit profile cookie export, direct
+  Chromium cookie DB import, and user-session cookie injection now give agents
+  multiple authenticated reuse paths without emitting raw cookie values in
+  doctor output.
+
+### Changed
+
+- Browser/CDP startup is background-first by default and uses Uni-CLI-owned
+  automation profiles under `~/.unicli/`, with foreground startup reserved for
+  explicit `browser --focus start`.
+- Agent-facing docs and skills now route browser failures through
+  `unicli browser doctor --json` / `--repair` before falling back to lower-level
+  browser, OpenCLI, or computer-use paths.
+
+### Fixed
+
+- Chrome 136+ default-profile CDP failures are now diagnosed as a hard browser
+  policy/runtime boundary instead of a transient port race; `doctor --repair`
+  starts a non-default automation profile and refuses unsupported feature-flag
+  bypasses.
+- Browser session and doctor probes stay read-only and avoid creating reusable
+  `about:blank` placeholder tabs while checking daemon/extension health.
+
+### Verified
+
+- `npm run verify`
+- `timeout 30 npm run --silent dev -- browser doctor --json`
+- `timeout 30 npm run --silent dev -- browser doctor --repair --json`
+- `timeout 60 npm run --silent dev -- twitter trending -f json`
+
+<a id="v02230"></a>
+
+## v0.223.0 · 2026-05-24 · Apollo · Worden
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.223.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.223.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.3...v0.223.0)
+
+### Added
+
+- `unicli compute capture` now creates reusable desktop context packets that
+  combine accessibility refs, screenshot evidence, image metadata, and a
+  replayable capture trajectory.
+- `compute capture --save-reference` and `--copy-reference` persist local
+  app-shot artifacts and copy `[app-shots ...]` handoff markup for agent-to-agent
+  context transfer.
+- The `computer-use.capture` MCP tool exposes the same capture packet and
+  reference-save/copy path, bringing the computer-use MCP profile to 16 tools.
+- Core compute commands are now first-class discovery entries: `unicli search
+"Appshots"`, `unicli list --site compute`, `unicli describe compute capture`,
+  and MCP `unicli_list` all surface `compute capture`.
+- `doctor compute --providers` adds neutral, environment-configured discovery
+  checks for optional external/platform provider commands and visual-model
+  fallback configuration.
+
+### Changed
+
+- Saved capture metadata and fallback content now externalize screenshot bytes
+  into an image file instead of duplicating base64 in handoff artifacts, while
+  retaining SHA-256, byte count, dimensions, and top-left image-pixel
+  coordinate-space metadata.
+- Capture reference text and metadata normalize app state for agent handoff by
+  preserving refs while stripping geometry strings, screen ids, and raw
+  accessibility object pointers.
+- The MCP `computer-use.capture` safety annotations now reflect its optional
+  local file and clipboard side effects instead of marking it read-only and
+  idempotent.
+- The release SOP now treats GitHub Actions as the authoritative npm publish
+  path when local npm auth is unavailable, and manual dispatch now checks out
+  the requested release tag before publishing.
+- Public compute docs now describe the capture/reference workflow, explicit
+  `--reference-root` artifact roots, replayable capture trajectory, and the
+  search/list/describe discovery path.
+
+### Fixed
+
+- Repeated capture saves now generate distinct artifact directories instead of
+  overwriting an identical prior capture.
+- Clipboard-copy failures now surface structured `compute_failed` envelopes
+  with a safe `--save-reference` recovery path.
+- Invalid `compute capture --include ...` values now fail with a structured
+  usage error instead of silently falling back to the default parts.
+- Invalid snapshot formats for `compute snapshot`, `compute capture`, and
+  `computer-use.capture` now fail with structured usage errors instead of
+  silently coercing to `compact`.
+
+### Verified
+
+- `npx vitest run tests/unit/compute-capture-reference.test.ts tests/unit/commands/compute.test.ts tests/unit/mcp/tools.test.ts`
+- `npx vitest run tests/unit/search.test.ts tests/unit/fast-path.test.ts tests/unit/mcp/tools.test.ts`
+- `npm run typecheck`
+- Live `compute capture --app Finder --copy-reference` with clipboard and
+  artifact inspection.
+
+<a id="v02223"></a>
+
+## v0.222.3 · 2026-05-24 · Apollo · Scott
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.222.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.2...v0.222.3)
+
+### Fixed
+
+- Applied `cargo fmt` to native sidecar error constructors so Rust Sidecars CI
+  format checks pass on Linux, macOS, and Windows targets.
+
+### Verified
+
+- `cargo fmt --check`
+- `npm run verify:clean`
+
+<a id="v02222"></a>
+
+## v0.222.2 · 2026-05-24 · Apollo · Duke
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.222.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.1...v0.222.2)
+
+### Changed
+
+- Release metadata now points at the final 0.222.2 tag so the published
+  package, public docs, skills, server manifest, and changelog all describe the
+  same delivery-substrate build.
+
+### Fixed
+
+- Restored npm lockfile entries for DocSearch's optional React peer tree so
+  `npm ci --include=dev` succeeds in CI and Docs workflows on clean runners.
+- Supersedes 0.222.1 as the complete published release for the closed-loop
+  delivery substrate, because 0.222.1 was published before the lockfile repair
+  commit reached the release tag.
+
+### Verified
+
+- `npm ci --include=dev --dry-run`
+- `npm run verify:clean`
+- `npm run release:check -- --strict-codename`
+- `npm run docs:check-public`
+
+<a id="v02221"></a>
+
+## v0.222.1 · 2026-05-24 · Apollo · Young
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.222.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.222.0...v0.222.1)
+
+### Added
+
+- `unicli delivery run &lt;spec&gt;` executes the next evidence-gated delivery
+  action from a delivery spec, records the underlying command through the
+  existing run recorder, and returns the updated trajectory instead of leaving
+  experiment execution as a separate side path.
+- Delivery strategy specs now accept command `args`, so objective-level
+  strategies can call the same adapter commands users already run manually.
+- Delivery commands are indexed by search as first-class agent capabilities:
+  `delivery/assess`, `delivery/run`, `delivery/trajectory`, and
+  `delivery/repair-candidate`.
+
+### Changed
+
+- The delivery substrate now links objective assessment, trajectory planning,
+  safe command execution, structured diagnosis, repair candidates, and
+  verification history through one kernel under `src/engine/delivery/`.
+- `do`, `extract`, `runs`, and `delivery` command failures now write structured
+  error envelopes to stderr through the shared error writer while preserving
+  JSON output for successful stdout payloads.
+- Public README, Chinese README, architecture docs, release metadata, roadmap
+  pages, skills, server manifest, and generated stats now describe Uni-CLI as a
+  self-repairing operations substrate for agents using real software.
+
+### Fixed
+
+- Adapter health probing now respects adapter argument defaults before applying
+  bounded smoke-test limits, preventing false negatives on commands whose
+  required arguments are declared in the adapter.
+- WeRead shelf probing uses the current sync endpoint.
+- Instagram reels now fails closed under quarantine instead of pretending the
+  retired unauthenticated route is still a reliable delivery path.
+- Structured failures from delivery and run-oriented commands now surface the
+  real envelope on stderr, which keeps agent repair loops observable.
+
+### Verified
+
+- `npm run verify`
+- `npm run adapter:health`
+
+<a id="v02220"></a>
+
+## v0.222.0 · 2026-05-21 · Apollo · Armstrong
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.222.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.222.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.221.1...v0.222.0)
+
+### Major Changes
+
+- Uni-CLI's local computer-use stack is now a first-class compute substrate:
+  native accessibility remains the primary semantic path, macOS can click,
+  type, and press keys into non-frontmost windows, and visual fallback is now
+  product-owned rather than exposed through upstream project naming.
+
+### Added
+
+- `visual` transport and `visual_*` pipeline steps as the owned fallback for
+  screenshot-plus-coordinate operation across compute cascades.
+- macOS `desktop-ax` background input session covering `ax_background_click`,
+  `ax_background_type`, and `ax_background_press`, with per-process focus
+  suppression taps, AppKit activation priming, window-addressed events, and
+  structured success metadata such as `wasFrontmost` and
+  `backgroundActivated`.
+- Background fallback from failed semantic `AXValue` writes to scoped
+  pid/window-addressed text input when the request includes target
+  coordinates and does not ask to focus the app.
+- `unicli extract &lt;url&gt;` — one-call URL → cleaned Markdown (also
+  `--as text|html`) with structured envelope, configurable `--max-chars`
+  truncation, and SSRF guard.
+- `unicli do &lt;intent&gt;` — natural-language intent → top-ranked adapter plan
+  with the agent-invocable command, args schema, and example stdin surfaced
+  without executing ambiguous writes.
+
+### Changed
+
+- `compute press` on macOS now routes to pid/window-addressed background key
+  dispatch before visual fallback when an app target is supplied and `--focus`
+  is not requested.
+- Public exports, capability matrices, migration helpers, generated docs, MCP
+  assets, repair references, and samples now use the `visual` vocabulary.
+- Compute docs, focus-behavior docs, architecture docs, roadmap material, and
+  public Markdown assets now describe native accessibility, CDP, and visual
+  fallback as the long-lived operating model.
+- Cross-platform desktop error wording now points agents toward native
+  platform transports first and visual fallback second.
+
+### Fixed
+
+- macOS background mouse events now use AppKit `NSEvent.mouseEvent` generation
+  before explicit pid/window/local-coordinate stamping, filling additional
+  AppKit routing fields that bare `CGEvent` creation left sparse.
+- Background `AXValue` fallback is bounded to coordinate-scoped requests, so a
+  failed semantic text write without a target point returns the original AX
+  error instead of guessing where to type.
+- Boundary and leak checks now keep upstream project names and deprecated
+  capability names out of product-facing source, tests, generated docs, and
+  shipped agent assets.
+
+### Removed
+
+- Deprecated upstream-named transport adapter, sample adapters, unit tests, and
+  docs were removed from the public product surface in favor of the owned
+  `visual` abstraction.
+
+<a id="v02211"></a>
+
+## v0.221.1 · 2026-05-19 · Apollo · Anders
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.221.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.221.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.221.0...v0.221.1)
+
+### Added
+
+- `unicli scholar` meta-command for academic discovery, paper lookup, PDF
+  routing, citation traversal, reference traversal, and source doctor output.
+- First-source scholarly adapters for Semantic Scholar, Crossref, Unpaywall,
+  ACL Anthology, PMLR, CVF OpenAccess, and NeurIPS proceedings.
+- Unified scholarly work record types plus adapter tests covering source
+  mapping, DOI/PDF metadata, and proceedings parsing.
+
+### Changed
+
+- Natural-language discovery now treats category as a hard filter across
+  Commander, fast-path search, and MCP `unicli_search`, so agents can search
+  within `scholarly`, `finance`, `social`, or other verticals without mixed
+  results.
+- Search intent boosts moved out of the core BM25/TF-IDF implementation into
+  `src/discovery/intents.ts`, keeping vertical routing maintainable as the
+  catalog grows.
+- Scholarly routing now prefers canonical venue/source adapters for ICML/PMLR,
+  CVPR/CVF, ACL Anthology, NeurIPS, DOI metadata, open-access PDF, and citation
+  workflows.
+
+### Fixed
+
+- Manifest, runtime registry, fast-path list, and MCP list/search category
+  contracts now agree on category output and filtering.
+- Hugging Face paper commands remain discoverable through `scholar.*`
+  capabilities without misclassifying the full `hf` adapter as scholarly.
+- Stats generation preserves existing test counts when Vitest list enumeration
+  cannot complete under local load.
+
+<a id="v02210"></a>
+
+## v0.221.0 · 2026-05-18 · Apollo · Anders
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.221.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.221.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.220.1...v0.221.0)
+
+### Added
+
+- Patent search vertical: 20 site adapters across L0 keyless web,
+  L1 free-tier APIs, L2 paid aggregators, L3 browser-driven fallback,
+  and L4 placeholder for forthcoming public APIs. Covers USPTO ODP,
+  EPO OPS, JPO, KIPRIS, INPI-FR, DPMA, IP Australia, Lens.org, Google
+  Patents BigQuery, Project PQAI, PatSnap Eureka, CNIPA, Espacenet,
+  CIPO, INPI Brasil, Rospatent FIPS, WIPO PATENTSCOPE, UK IPO, plus
+  the two keyless web adapters Google Patents and FreePatentsOnline.
+- Top-level `unicli patent` meta-command with seven subcommands:
+  `search`, `get`, `family`, `citations`, `legal-status`, `prior-art`,
+  and `doctor`. Cross-source fan-out with family-id dedupe, reciprocal
+  rank fusion across PQAI semantic search and Google Patents BigQuery
+  keyword search, prefix-routed publication-number lookup, and an
+  honesty-gated health checker that reads adapter `@verification`
+  headers.
+- Public TypeScript surface at `@zenalexa/unicli/index` re-exporting
+  nine patent types (`PatentRecord`, `PatentCommand`, `PatentSearchQuery`,
+  `PatentParty`, `PatentClassification`, `PatentFamilyMember`,
+  `PatentEnvelope`, `PatentErrorCode`, `PatentVerificationStatus`)
+  plus three helpers (`canonicalizePublicationNumber`,
+  `extractKindCode`, `dedupeByFamily`).
+- Four engine extensions enabling the vertical: OAuth 2.0
+  client-credentials broker with LRU token cache, `oauth2-token`
+  pipeline step, `select-xml` XPath-subset step, and the
+  `mcp-browser` transport with an installable resolver injection
+  point for hosts that wire an outbound MCP client.
+- Patent envelope normalizer (`assemblePatentRecord`,
+  `buildPatentEnvelope`, `dedupeByFamily`, `canonicalizePublicationNumber`,
+  `extractKindCode`) with a ten-code structured error taxonomy.
+- `docs/skills/patent-research.md` skill doc and
+  `docs/skills/patent-cookbook.md` with five recipes covering the
+  day-zero keyless flow, authenticated multi-source search,
+  cross-jurisdiction family resolution, AI-driven prior art, and the
+  doctor pre-flight check.
+- Output extensions to the meta-command: `--detailed`,
+  `--include-raw`, and `-f json|jsonl|csv|md`.
+
+### Changed
+
+- Adapter map steps across uspto, epo, jpo, kipris, inpi-fr, dpma,
+  ipaustralia, lens, google-patents-bq, pqai, and patsnap now emit
+  every available PatentRecord field rather than just publication
+  number and title; per-adapter field counts roughly doubled.
+
+### Fixed
+
+- `src/engine/template.ts buildScope()` now binds `process.env` into
+  the template scope. The pre-existing `${{ env.X || '' }}` idiom
+  used by approximately 38 adapters previously resolved to undefined
+  and short-circuited every authenticated request to an empty
+  credential header.
+- Office adapter capability arrays now carry the corresponding
+  `patent.&lt;command&gt;` token so the meta-command's discovery filter
+  picks them up; without the fix `unicli patent doctor` only saw four
+  of eleven HTTP adapters.
+
+<a id="v02201"></a>
+
+## v0.220.1 · 2026-05-14 · Apollo · Lovell Patch
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.220.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.220.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.220.0...v0.220.1)
+
+### Added
+
+- Documented the new paper workflow: arXiv PDF download plus local `pdf read`
+  extraction for agents that need to collect, read, and summarize papers
+  without leaving the CLI contract.
+- Documented ACG discovery workflows for character lookup, wiki lookup,
+  booru tag confirmation, visual-novel catalogs, and 2024-2026 anime/game
+  queries across AniList, Bangumi, Danbooru, E-Hentai, Moegirl, Safebooru,
+  VNDB, and related adapters.
+- Added English and Chinese recipes that show entity-first search for
+  ambiguous names such as `花火`, tag-first booru search, and Japanese /
+  romaji / Chinese / English alias handling.
+
+### Changed
+
+- Refreshed README, Chinese README, FAQ, and architecture docs to describe
+  the latest 282-site, 1680-command catalog, including scholarly PDF,
+  ACG/anime/manga/wiki, booru, and visual-novel coverage.
+- Removed the stale package description count so the npm metadata no longer
+  drifts behind generated catalog statistics.
+
+### Fixed
+
+- Regenerated public docs, `llms.txt`, `llms-full.txt`, and catalog indexes
+  from the current source docs and manifest data so agent-facing references
+  do not retain the old 268-site / 1616-command inventory.
+
+<a id="v02200"></a>
+
+## v0.220.0 · 2026-05-12 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.220.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.220.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.219.0...v0.220.0)
+
+### Minor Changes
+
+- 02bb048: Expand command coverage with Rednote, 1Point3Acres, travel, marketplace, AI chat, and social command surfaces plus release-signal coverage gates.
+
+<a id="v02190"></a>
+
+## v0.219.0 · 2026-05-05 · Vostok · Gagarin
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.219.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.219.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.218.1...v0.219.0)
+
+### Minor Changes
+
+- 9a9b68f: Add `juejin` (search, hot) and `leetcode` (discuss-search) adapters as public web-api commands. Both run anonymously — no cookie required. Includes fixture-based vitest coverage for all three commands.
+- Standardize the Uni-CLI release surface for v0.219 Vostok: archive dead adapters with public provenance, add Maven/NuGet/RubyGems/Packagist/pub.dev package registry coverage, rebuild the README and Chinese README from the live manifest, sync VitePress/public docs to generated catalog data, remove legacy MCP/SSE and yaml-runner release leaks, and make the npm package expose the root `bin/unicli-mcp` wrapper plus registry metadata.
+
+### Patch Changes
+
+- 33bafa6: Promote macOS Shortcuts and App Intent discovery into first-class runtime commands, with stable app action inventory and automation smoke probes.
+
+<a id="v02181"></a>
+
+## v0.218.1 · 2026-05-05 · Apollo · Cernan Patch
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.218.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.218.0...v0.218.1)
+
+### Added
+
+- **`unicli-mcp` bin** — `npx -y @zenalexa/unicli-mcp` boots the MCP server
+  in one step; equivalent to `npx -y @zenalexa/unicli mcp serve`. Useful as
+  the `command` value in Claude Desktop / Cursor / Continue MCP configs.
+- **`server.json` MCP registry manifest** at the package root, conforming
+  to the official `https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json`,
+  so Uni-CLI can be published to `registry.modelcontextprotocol.io` and
+  similar discovery endpoints.
+- **Skills shipped to npm** — the `unicli`, `unicli-browser`,
+  `unicli-claude-code`, `unicli-explorer`, `unicli-hermes`, `unicli-oneshot`,
+  `unicli-operate`, `unicli-repair`, `unicli-smart-search`, `unicli-usage`,
+  and `talk-normal` skill packs are now in the published npm tarball under
+  `node_modules/@zenalexa/unicli/skills/`. Agents that install via
+  `npm i -g @zenalexa/unicli` get the skills without a separate clone.
+
+### Fixed
+
+- **`skills/unicli-hermes/SKILL.md`** — refreshed numbers (was 235 sites /
+  1,448 commands; now 237 / 3,319) and bumped `version: 0.218.1`.
+- **`AGENTS.md`** — added the MCP one-liner config block so agents can
+  copy-paste the JSON into Claude Desktop / Cursor without grepping docs.
+
+<a id="v02180"></a>
+
+## v0.218.0 · 2026-05-05 · Apollo · Cernan
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.218.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.218.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.3...v0.218.0)
+
+### Added
+
+- **First-class cross-platform browser cookie source (macOS / Linux / Windows)** —
+  `unicli auth import &lt;site&gt; --browser chrome|arc|dia|brave|edge|atlas` reads
+  cookies straight from the browser's local SQLite DB and decrypts them via
+  the platform-native key store: macOS Keychain (`security` CLI), Linux
+  libsecret/KWallet (`secret-tool`, with `peanuts` fallback for headless
+  boxes), Windows DPAPI (`Local State` master key via PowerShell, no native
+  modules). No browser launch, no CDP, no extension. Wired as the new
+  default middle source: `~/.unicli/cookies/ → BROWSER → CDP`. Successful
+  reads persist to disk for offline reuse. Honest Windows v20 (Chrome 127+
+  App-Bound Encryption) handling: surfaces `encryption_unsupported` and
+  suggests CDP fallback rather than ship a brittle bypass. Set
+  `UNICLI_COOKIE_NO_BROWSER=1` to skip in CI.
+- **`unicli auth audit`** — walks every cookie/header adapter, probes each
+  declared `domain:` against every detected browser, and reports a summary
+  of `ok / no-domain / no-cookies / blocked` plus per-adapter breakdown.
+  Agent-friendly JSON with structured `suggestion` fields.
+- **`unicli doctor cookies`** — diagnoses platform readiness: sqlite3 binary
+  detection, installed browsers + profiles, Keychain/secret-service
+  reachability, and platform-specific notes (Windows v20 caveat, Linux
+  no-keyring fallback).
+- **Adapter `domain:` field is now first-class** — `PipelineOptions.domain`
+  is plumbed through every `runPipeline` caller (cli.ts test, kernel,
+  health, dev, skills) and consumed by the cookie loader. Silently fixes
+  ~10 adapters whose naïve site→`&lt;site&gt;.com` derivation pointed at the
+  wrong cookie store: notion (`api.notion.com`), perplexity (`.ai`), weixin
+  (`mp.weixin.qq.com`), weread (`weread.qq.com`), twitch (`.tv`), linux-do
+  (`linux.do`), jike (`okjike.com`), bluesky (`bsky.app`), minimax
+  (`.chat`), pinduoduo (`yangkeduo.com`).
+- **Parent-domain matching for cookie lookup** — when an adapter declares
+  `api.bilibili.com`, the SQLite host_key filter now also matches
+  `.bilibili.com` cookies (per RFC 6265), capturing parent-domain auth
+  cookies that the previous strict matcher missed.
+- **`date_iso` pipe filter** — converts Unix epoch (seconds or
+  milliseconds) to ISO-8601 strings inside YAML templates; returns "" for
+  null / NaN / non-positive input rather than `Invalid Date`. First user is
+  `sspai/latest.yaml`.
+- **Quarantine honesty invariant test** — `tests/unit/quarantine-honesty.test.ts`
+  walks every YAML under `src/adapters/` and asserts each `quarantine: true`
+  entry carries a `quarantineReason` string with a 4-digit year, blocking
+  `quarantine: true` from drifting into an undated kill-switch. Backfilled
+  the 18 pre-existing quarantines with `(quarantined 2026-04-15)` matching
+  the date the entries first landed.
+
+### Changed
+
+- **Lint rule `cookie-domain-required`** — `strategy: cookie|header` adapters
+  must declare a top-level `domain:`. Added at lint-time so the broken
+  inference path can never come back. All 135 current cookie/header
+  adapters already satisfy the rule (920 lint passes, 0 failures).
+- **AGENTS.md trimmed** — restated envelope shape, error-code table, site
+  enumerations, and adapter template removed (canonical sources are
+  `unicli describe`, `unicli search`, the YAML files, and the project
+  skill). Front-matter now points cold agents at `unicli auth setup
+&lt;site&gt;` directly when an `auth_required` envelope arrives.
+- **Documentation surface synced to a single source** — `scripts/release.ts`
+  now also propagates the version and codename to `docs/zh/ROADMAP.md`,
+  `docs/ARCHITECTURE.md`, and `docs/release-info.json` so a release leaves
+  no stale tag pointer in any tracked surface. Build-emitted stats counts
+  remain owned by `scripts/build-readme.ts` via STATS markers.
+
+### Fixed
+
+- **`parsePipes` now treats both halves of `||` as logical-OR** — the
+  parser only looked one character ahead, so the second `|` of a `||`
+  token got split as a real filter pipe; the base expression then
+  contained a stray `|` (invalid JS, threw in vm) and the unknown filter
+  was silently dropped, so any filter expression wrapping its condition
+  in `||` returned 0 rows. The Homebrew and OpenRouter `search` adapters
+  silently matched nothing because of this. Look back as well as forward
+  when deciding whether a `|` is part of a `||`.
+- **`evalExpression` surfaces unknown filter names as `TemplateEvalError`** —
+  the previous `if (!filterFn) continue;` paired with an outer
+  `try { ... } catch { return undefined; }` swallowed adapter-author
+  typos. Throw a typed error instead so the pipeline executor produces a
+  visible step error envelope. The VM eval path stays lenient (with a
+  `// REASON:` line) so optional access like `item.foo.bar` against null
+  still returns undefined; the `FORBIDDEN_EXPR` security gate keeps
+  soft-rejecting (Postel: lenient at the boundary).
+- **`navigate` step accepts the shorthand `- navigate: &lt;url&gt;` form** —
+  fifty-eight YAML adapters use the bare-string shorthand and previously
+  crashed at step 0 with `Cannot read properties of undefined (reading
+'match')` because the step typed `NavigateConfig` only. Sibling steps
+  (`click`, `press`, `select`, `wait`) already accepted both forms; this
+  brings `navigate` to parity.
+- **sspai `hot` and `latest` adapters** — the legacy
+  `/api/v1/articles?sort=hot|created_at` endpoint returns HTTP 405/500.
+  Switched both to `/api/v1/article/index/page/get`; for the hot view,
+  fetch a wider window and sort client-side by `like_count`. The
+  `released_at` column is rendered through the new `date_iso` filter
+  instead of a raw Unix epoch.
+- **Homebrew and OpenRouter search filter expressions** — replaced the
+  embedded `${{ args.query }}` template literals (which never substituted
+  inside a filter JS body) with direct `args.query` references and
+  case-insensitive matching.
+- **Four upstream-blocked adapters quarantined** with dated reasons
+  (`quarantined 2026-05-05`): `pypi.search` (Fastly bot-wall HTML),
+  `ctrip.hot` (HTTP 502), `ctrip.search` (`showAuthCode` CAPTCHA gate),
+  `coupang.hot` (Cloudflare 403). Quarantine count 42 → 46. Future
+  repair via the cookie strategy stays open.
+
+<a id="v02173"></a>
+
+## v0.217.3 · 2026-05-04 · Apollo · Shepard
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.217.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.2...v0.217.3)
+
+### Added
+
+- **Local computer-control surface (preview, macOS-first)** — `unicli compute`
+  adds a unified app-control family for apps, windows, snapshot, find, click,
+  type, press, scroll, screenshot, CDP attach, eval, wait, observe, and
+  assert, backed by macOS AX (functional), Electron CDP (functional), and
+  UIA/AT-SPI sidecar scaffolds (Windows/Linux compile-clean; live smoke
+  pending). Treat Windows and Linux paths as preview until cross-OS smoke
+  ships.
+- **Computer-use MCP profile** — `unicli mcp serve --profile computer-use`
+  exposes 15 `computer-use.*` tools, prompt support, stdio e2e coverage, and
+  action evidence metadata for direct agent desktop control.
+- **Compute self-repair** — `unicli doctor compute --json`, structured
+  remedies, troubleshooting docs, sidecar install hints, and macOS
+  Accessibility and Screen Recording probes help recover from local-control
+  failures.
+- **Listing↔detail adapter lint** — new cross-adapter rule
+  `listing-detail-pairing` flags any site that exposes a listing-style
+  command (top/hot/search/feed/list/...) without a paired detail command
+  (read/get/item/show/...). Soft warning today, 185 hits across the 920
+  built-in YAML adapters; opt out per adapter via `lint_listing_detail: skip`.
+
+### Changed
+
+- **`desktop-ax.ts` slimmed by 21%** — module-level helpers (Swift binary
+  lifecycle + snapshot normalization) extracted to a sibling
+  `desktop-ax-helpers.ts`. Main file 1086 → 853 LOC. No behavior change;
+  31 unit tests stay green.
+
+### Internal
+
+- Rust workspace bootstrapped under `crates/{unicli-shared,unicli-uia,
+unicli-atspi}` with rust-toolchain pinned to 1.82.0 and a 6-target CI
+  matrix (macOS/Windows/Linux × x64/arm64).
+- Sidecar packaging (`packages/sidecars/*`) and build/publish scripts
+  (`scripts/build-sidecars.mjs`, `publish-sidecars.mjs`) wire the optional
+  `@zenalexa/unicli-{uia,atspi}-*` packages addressed at `0.218.0`.
+- Snapshot encoder + ref store gain 100/100/100/100 coverage with six
+  golden fixtures and a perf budget project (`tests/perf/`).
+
+<a id="v02172"></a>
+
+## v0.217.2 · 2026-04-30 · Apollo · Swigert
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.217.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.1...v0.217.2)
+
+### Added
+
+- **Real-time macOS automation discovery** — Uni-CLI now promotes local
+  Shortcuts and App Intents into runtime-discovered macOS commands. User
+  shortcuts become runnable `macos shortcut-*` commands, while installed app
+  actions become searchable `macos app-action-*` inspection commands.
+- **First-class macOS action inventory** — `unicli macos app-actions` lists
+  real-time Shortcuts ToolKit actions with app/query filters so agents can
+  inspect apps such as Finder, Safari, Mail, Messages, Notes, Reminders, and
+  WhatsApp before choosing a concrete action.
+- **macOS automation smoke probe** — `unicli macos automation-smoke` checks the
+  three local automation layers independently: Shortcuts CLI, Shortcuts ToolKit
+  SQLite API, and AX/System Events.
+
+### Changed
+
+- `unicli search` and fast-path `unicli list --site macos` now merge the static
+  manifest with live macOS discovery results on Darwin hosts.
+- Generated docs and stats were refreshed for the new test coverage.
+
+### Fixed
+
+- Dynamic macOS discovery is now guarded by platform and environment checks, has
+  bounded subprocess timeouts, and degrades to empty structured results when
+  Shortcuts, ToolKit, SQLite, or AX access is unavailable.
+
+<a id="v02171"></a>
+
+## v0.217.1 · 2026-04-29 · Apollo · Haise
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.217.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.217.0...v0.217.1)
+
+> Patch release after reviewing `v0.217.0..HEAD`: docs/site refresh,
+> approval memory, runtime deny policy, browser lease evidence, run replay,
+> run comparison, score gates, and evidence coverage. This release bump does
+> not update dependency versions.
+
+### Added
+
+- **Approval memory controls** — `unicli approvals list`, `approvals revoke`,
+  and `approvals clear` manage persisted approval memory locally.
+- **Resource-bound approvals** — remembered approvals are bound to stable
+  resource metadata such as domain, app, process family, account surface, and
+  path argument slots.
+- **Explicit deny rules** — local permission deny rules can block matching
+  command scopes before `--yes` or remembered approvals apply.
+- **Runtime resource denies** — fetch domains, browser targets, downloads,
+  output paths, and subprocess executables are checked against local deny
+  policy during execution.
+- **Browser lease evidence** — recorded browser work now carries session lease
+  metadata, target identity, auth posture, render-aware evidence, and guarded
+  browser operation traces.
+- **Run replay and comparison** — `unicli runs probe`, `runs replay`, and
+  `runs compare` add evidence-backed replay checks, private replay payloads,
+  numeric comparison scores, and `--min-score` gates.
+- **Run event streaming** — `unicli runs stream <run_id>` streams JSONL events
+  with sequence cursors, follow mode, terminal stop handling, and the same
+  public/internal redaction model as `runs show`.
+- **Run context and evidence scoring** — run traces record public environment
+  snapshots, context check summaries, score gate output, evidence coverage
+  checks, and `runs list` evidence totals by type.
+
+### Changed
+
+- Public docs, VitePress home page, generated Markdown, and agent-facing docs
+  were refreshed around Uni-CLI as an execution substrate for agents.
+- Runtime permission deny traces now expose only reviewable summaries in public
+  run output while keeping raw runtime resources inside internal trace payloads.
+- Replay and compare output now reports threshold gates, actual scores, failed
+  behavior checks, failed context checks, and unknown context checks.
+- Dependency maintenance that had already landed after `v0.217.0` is included
+  in this release line, but the `0.217.1` release commit itself only changes
+  Uni-CLI version metadata.
+
+### Fixed
+
+- Windows Node 20 malformed-trace scans now close the run trace input stream
+  explicitly, avoiding a hanging Vitest worker on that path.
+- Recorded run summaries now surface runtime permission deny summaries and
+  evidence counts without forcing agents to open the full trace first.
+
+<a id="v02170"></a>
+
+## v0.217.0 · 2026-04-28 · Apollo · Lovell
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.217.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.217.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.3...v0.217.0)
+
+> Execution-substrate minor release. Uni-CLI is now positioned as the
+> command-first layer under agents for web, browser, desktop, local tool, system,
+> and external CLI operations.
+
+### Added
+
+- **Execution substrate surface** — 235 sites, 1448 commands, 1039 adapters, 59
+  pipeline steps, and 7473 tests ship behind one searchable `unicli` surface.
+- **Observable run kernel** — `--record` / `UNICLI_RECORD_RUN=1` records
+  append-only run traces under `~/.unicli/runs` with permission evaluations,
+  result envelopes, and evidence events.
+- **Browser action evidence** — recorded browser operations capture structured
+  pre/post evidence, movement dimensions, stale-ref failure details, and optional
+  watchdog enforcement instead of treating clicks and typing as opaque side
+  effects.
+- **Operation policy contract** — `--permission-profile open|confirm|locked`,
+  `--yes`, and `UNICLI_APPROVE=1` expose effect, risk, approval, and capability
+  scope without making the default catalog private.
+- **Agent backend matrix** — `unicli agents matrix` and
+  `unicli agents recommend &lt;agent&gt;` model native CLI, JSON stream, MCP, ACP,
+  HTTP API, OpenAI-compatible, and bridge routes explicitly.
+
+### Changed
+
+- Public positioning now describes Uni-CLI as an agent execution substrate, not a
+  scraper, protocol wrapper, or visual-first product.
+- CLI, README, VitePress homepage, architecture, roadmap, release metadata, app
+  manifest, and generated docs now use the same slogan and capability framing.
+- Browser-backed adapter execution uses shared browser/kernel plumbing,
+  command-level browser/auth/strategy metadata, and structured auth/rate-limit
+  envelopes across the relevant surfaces.
+- MCP, ACP, HTTP, and generated agent configs remain compatibility surfaces over
+  the same command catalog rather than separate semantic runtimes.
+- Release automation now consumes changesets, requires a final
+  `Program · Astronaut` codename before tagging, and verifies release metadata
+  before publish workflows can run.
+
+### Fixed
+
+- Fast-path discovery falls back to the full CLI when the generated manifest is
+  absent and preserves `[quarantined]` health warnings in list output.
+- Browser daemon compatibility honors the legacy daemon port environment and the
+  response shapes used by compatible daemon implementations.
+- Auth and rate-limit failures map to structured `auth_required` and retryable
+  `rate_limited` envelopes consistently.
+- `vercel list` uses the current Vercel CLI JSON flag, and `uiverse preview`
+  handles Windows and slashless relative output paths.
+
+### Removed
+
+- Removed stale Reddit public JSON YAML adapters and fixtures that no longer
+  represented the live site.
+- Removed the dead Meituan hot adapter after the upstream endpoint returned
+  unrecoverable 404 responses and no reliable reference path remained.
+
+<a id="v02163"></a>
+
+## v0.216.3 · 2026-04-27 · Apollo · Collins
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.216.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.2...v0.216.3)
+
+### Fixed
+
+- Fast-path discovery now falls back to the full CLI when the generated
+  manifest is absent, preserving fresh-checkout behavior.
+- Fast-path `list` output keeps `[quarantined]` tags alongside `[auth]`, so
+  agents do not lose adapter health warnings.
+- `uiverse preview` now uses `path.dirname()` for output parent directories,
+  avoiding Windows path and slashless relative-path edge cases.
+
+<a id="v02162"></a>
+
+## v0.216.2 · 2026-04-27 · Apollo · Aldrin
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.216.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.1...v0.216.2)
+
+### Fixed
+
+- CI no longer requires the ignored local reference-manifest checkout for unit
+  tests. The full parity benchmark still runs locally when the synced reference
+  is present, while signal coverage remains validated in GitHub Actions.
+
+<a id="v02161"></a>
+
+## v0.216.1 · 2026-04-27 · Apollo · Armstrong
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.216.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.216.0...v0.216.1)
+
+### Changed
+
+- Package-manager-neutral release scripts: aggregate `verify`, `docs:*`,
+  `release`, `preversion`, and `postversion` scripts now call `npm run`
+  subcommands, while still working when invoked through `pnpm`.
+- Build now calls the local `prettier` binary directly instead of requiring a
+  `pnpm` executable on npm-based CI runners.
+
+### Fixed
+
+- GitHub release/docs/verify workflows no longer fail before real validation
+  on runners that install dependencies with `npm ci` but do not have `pnpm`
+  preinstalled.
+- Public LLM/docs markdown assets were regenerated so published docs match the
+  current 235-site / 1448-command release surface.
+
+<a id="v02160"></a>
+
+## v0.216.0 · 2026-04-27 · Surface Coverage Harness
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.216.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.216.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.215.1...v0.216.0)
+
+### Added
+
+- **Surface coverage benchmark** — `pnpm bench:surface-coverage` compares the
+  synced reference manifest against Uni-CLI's generated manifest, reports
+  site/command gaps, and can fail CI with `--fail-on-gaps`.
+- **Latest surface signal watchlist** — release-signal movements for
+  Google Scholar, Instagram, Doubao, browser upload, daemon ports,
+  debugger-detach retry, plugin daemon docs, bind-current, browser network
+  detail, and DeepSeek file upload are now checked as quantitative signals.
+- **Google Scholar coverage** — `google-scholar search` now deduplicates result
+  cards, and `google-scholar cite` / `profile` add first-class scholarly lookup
+  flows.
+- **DeepSeek file uploads** — `deepseek ask --file &lt;path&gt;` uploads one or more
+  local files before sending the prompt.
+
+### Changed
+
+- Plugin author documentation now records the supported plugin-side browser
+  daemon spawn pattern, `UNICLI_DAEMON_PORT`, and the public daemon subpath.
+- Build now uses `pnpm exec prettier` instead of `npx prettier`, avoiding npm
+  config warnings during the generated-doc pass.
+- Cold-start benchmarking now allows full manifest stdout and fails loudly on
+  parse errors instead of silently returning zero counts.
+
+### Fixed
+
+- Browser daemon commands now retry transient CDP debugger-detach failures.
+- CLI fast-path execution now lets stdout flush naturally, avoiding truncated
+  JSON for large manifest-producing commands.
+
+<a id="v02151"></a>
+
+## v0.215.1 · 2026-04-24 · Agent Backend Matrix
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.215.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.215.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.215.0...v0.215.1)
+
+### Added
+
+- **Coding-agent backend matrix** — `unicli agents matrix` and
+  `unicli agents recommend &lt;agent&gt;` now expose a structured v2 policy
+  matrix for core, direct, bridge, watchlist, and editor-owned coding agents:
+  Claude Code, Codex, Hermes, Cursor, Kimi CLI, OpenCode, Gemini CLI, Qwen
+  Code, Kiro CLI, Aider, Goose, Amp, GitHub Copilot CLI, Auggie, Crush,
+  OpenHands, mini-SWE-agent, SWE-agent, acpx/OpenClaw, AgentAPI, MiniMax CLI,
+  Blackbox CLI, Droid, ForgeCode, Rovo Dev, Cline, Roo Code, Windsurf, and
+  Continue.
+- **Agent CLI hub entries** — external CLI discovery now includes verified
+  agent-facing binaries and install hints for Claude Code, Codex, OpenCode,
+  acpx, Hermes, Cursor Agent, Gemini CLI, Qwen Code, Kiro CLI, Kimi CLI,
+  Aider, Goose, Amp, Copilot, Auggie, Crush, OpenHands, mini-SWE-agent,
+  SWE-agent, AgentAPI, Droid, ForgeCode, and Rovo. Blackbox remains
+  watchlist-only because the public npm package exposes a generic `cli` bin.
+- **Reusable package export** — `@zenalexa/unicli/agents/backends` exports
+  the backend matrix and recommendation helpers for other coding-agent
+  integrations.
+
+### Changed
+
+- ACP is now documented as an editor compatibility gateway rather than
+  Uni-CLI's core runtime path. Recommendations prefer direct CLI, JSON
+  stream, MCP, or explicit API/CLI routes first for lower latency and native
+  session semantics.
+- Backend recommendations now expose `primary_protocol` and
+  `external_cli_name`, so callers can distinguish route names like `acpx` or
+  `api_cli` from the underlying protocol and install the matching external
+  CLI registry entry.
+- README, AGENTS.md, roadmap, and release metadata now present v0.215.1 as
+  the current agent-backend release line.
+
+<a id="v02150"></a>
+
+## v0.215.0 · 2026-04-24 · Closed Adapter Loop
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.215.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.215.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.3...v0.215.0)
+
+### Added
+
+- **Browser adapter authoring loop** — `unicli browser analyze`, `browser init`,
+  and `browser verify` now cover the legacy-style authoring path with
+  structured v2 envelopes, schema-v2 adapter skeletons, fixture generation,
+  fixture validation, and `--strict-memory` gates.
+- **Reusable site memory** under `~/.unicli/sites/&lt;site&gt;/`: endpoint
+  discoveries, field maps, notes, and verify fixtures are now written by
+  `explore` / `generate` and consumed by `synthesize` / `browser verify`.
+- **Network evidence replay** — `browser network` now persists captured
+  responses with stable keys and supports `--filter`, `--detail`, `--ttl`,
+  and `--max-body` for repeatable adapter investigation.
+
+### Changed
+
+- `browser verify` runs adapters through the shared invocation kernel using
+  fixture-provided args, preserves fixture args on update, and fails with the
+  adapter's structured error when execution fails.
+- Browser authoring commands are split into focused modules so the top-level
+  browser command file stays within the project file-size budget.
+
+### Fixed
+
+- Site analysis now classifies single authenticated API failures as Pattern D,
+  records multi-vendor anti-bot evidence instead of keeping only the first
+  match, and emits Pattern E for websocket / event-stream surfaces.
+- Fixture verification no longer produces a misleading success envelope when
+  the adapter execution itself failed.
+
+<a id="v02133"></a>
+
+## v0.213.3 · 2026-04-19 · Vostok · Gagarin TC0 Patch R2
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.213.3) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.213.3) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.2...v0.213.3)
+
+> Closes six gaps left by v0.213.2 along the agent-invocation path:
+> unified invocation kernel (P1), MCP/ACP/CLI surface parity (P2),
+> output-side TC0 externalization (P3), schema-driven hardening on 71
+> adapters (P4), and a multi-provider agent-bench harness (P5).
+> Bench posture was recorded in the v0.213.3 git history; empirical ASR
+> numbers were deferred to v0.213.4 (OpenRouter credit
+> exhausted mid-run; harness is ready, fix landed in commit `d31e72e`).
+
+### Added
+
+- **Invocation kernel** (`src/engine/kernel/{types,ulid,compile,execute}.ts`)
+  with monotonic ULID ids and a `CompiledCommand` cache primed by the
+  loader. `src/engine/invoke.ts` is now a thin re-export shim. CLI / MCP
+  / ACP all route through `buildInvocation()` + `execute()`; the lazy
+  compile fallback is gone.
+- **Schema-driven hardening** in `src/engine/harden.ts` via `ajv` +
+  `ajv-formats` with `format-assertion: true`. Adapter args may declare
+  `format:` (JSON Schema draft-2020-12 formats) and a vendor extension
+  `x-unicli-kind:` of `id` / `path` / `uri` / `email` / `date` to dispatch
+  to a dedicated validator. `validateIdArg` rejects URL-shaped inputs
+  (`?` / `#` / `%XX` encodings, `scheme://`).
+- **Output projection flags** — `--select &lt;jsonpath&gt;` (`jsonpath-plus`),
+  `--fields <a,b,c>`, `--pluck &lt;field&gt;` (newline-sanitized for safety),
+  and `--pluck0 &lt;field&gt;` (NUL-delimited for `xargs -0`). `ProjectionError`
+  on malformed JSONPath emits `USAGE_ERROR` (exit 2); empty result after
+  projection emits `EMPTY_RESULT` (exit 66).
+- **Three-channel transport coverage** — `bench/agent/sdk-runner.ts`
+  drives any OpenAI-compatible provider via Vercel AI SDK +
+  `@ai-sdk/openai-compatible` across `shell` / `file` / `stdin` channels,
+  five tasks, four ICS buckets, with per-trial verdicts (`asr_gen`,
+  `asr_exec`, `asr_sem`), Wilson-95 CIs, per-model + overall ship-gate
+  thresholds, and per-trial USD cost from `bench/agent/pricing.ts`.
+- **`scripts/migrate-add-kind.ts`** — comment-preserving YAML codemod
+  (552 LOC, `yaml` LineCounter) that annotates 243/1355 args across 223
+  YAMLs with `format:` + `x-unicli-kind:`. Idempotent (`--check` exits 0
+  after a full pass). 30 unique override triplets were documented in the
+  generated codemod report for that release.
+
+### Changed
+
+- **`runPipeline(pipeline, bag, base, opts)` requires a `ResolvedArgs`
+  bag** — no more optional default. Seven callers + 107 test sites
+  migrated. `ArgSource` extended with `"internal"` / `"mcp"` / `"acp"`;
+  template scope exposes `source` / `surface` / `trace_id` so adapters
+  can branch on origin.
+- **`src/mcp/server.ts` 1061 → 174 LOC** — split into
+  `dispatch.ts` / `tools.ts` / `handler.ts` / `http-transport.ts`.
+  `src/mcp/streamable-http.ts` 745 → 15 LOC shim, with handlers split
+  into `streamable-http/{index,handle-post,session}.ts`. `handlePost`
+  itself shrank 349 → 36 LOC.
+- **`src/acp.ts` 700 → 523 LOC** — extracted `acp-helpers.ts` (195 LOC)
+  and routed through the kernel. `commands/dispatch.ts` 296 → 251 LOC,
+  also a thin kernel wrapper.
+- **`describe.ts` documents schema divergence** — the introspection
+  schema declares `additionalProperties: true` (permissive — agents
+  discover by probing); the kernel validation schema enforces
+  `additionalProperties: false` (strict — drift fails closed at
+  `INPUT_HARDENING_ERROR`, exit 65). The divergence is intentional and
+  the comment block explains the contract.
+
+### Fixed
+
+- **`$HOME` prefix-collision in path sandbox** — `validatePathArg` now
+  ensures the resolved path is contained within `$HOME` rather than
+  string-prefix-matching, so `$HOME-evil` no longer slips through.
+- **Per-call ULID ordering** — IDs generated in the same millisecond
+  are now strictly monotonic via a same-ms spin-counter, so trace order
+  matches generation order in tight loops.
+- **MCP health tool counts** are derived from `DEFAULT_TOOL_NAMES`
+  rather than hard-coded literals; deferred-tool name collisions warn
+  instead of silently shadowing.
+- **`bench/agent/sdk-runner.ts` prompt path** — Run 1 (1800 trials,
+  $0.645) discovered the prompt's example invocations used bare
+  `unicli` (not on `PATH` in the bench env); commit `d31e72e` now
+  interpolates `${unicliBin}` into all four examples and adds an
+  explicit "absolute path required" guard line per channel stanza.
+  Re-run deferred to v0.213.4 due to OpenRouter credit exhaustion.
+
+### Bench posture
+
+The ship-gate (`scripts/bench/check-ship-gate.js`) is a recommended
+pre-release check, not a hard merge blocker for this patch. The TC0
+thesis and the three-channel design are externally validated
+(Merrill & Sabharwal 2023; arXiv:2604.06742; Poehnelt 2026-03;
+openclaw#46370). Implementation correctness is carried by 1569 unit +
+5514 adapter tests at green. Empirical ASR numbers will land in
+v0.213.4 once OpenRouter credit is restored.
+
+<a id="v02132"></a>
+
+## v0.213.2 · 2026-04-18 · Vostok · Gagarin TC0 Patch
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.213.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.213.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.1...v0.213.2)
+
+> Agent-invocation reliability release. Externalizes argument state out of
+> shell quoting (a TC0-bounded mod-2 matching problem that Transformers
+> cannot reliably generate) into JSON channels (stdin / `--args-file`).
+> Grounded in arXiv:2411.07602 (RoPE + TC0 bounds), 2502.02393 (CoT lower
+> bounds), 2604.06742 (CLI-Tool-Bench), 2603.20847 (Claude-Code / Codex /
+> Gemini CLI bug study) — see `.claude/plans/sessions/2026-04-18-v213.2-tc0/task_plan.md`.
+
+### Added
+
+- **`--args-file &lt;path&gt;` global flag** — every command accepts a JSON
+  object from file. Reuse + version-controllable payloads without touching
+  the shell. JSON only; YAML/TOML deliberately not supported.
+- **Stdin-JSON auto-detection** — when stdin is non-TTY AND the first byte
+  is `{`, Uni-CLI parses it as the argument bag. Precedence:
+  `stdin > --args-file > shell flags > positional args > defaults`.
+  Externalizes TC0-hostile quote nesting into byte-structured JSON.
+- **`unicli describe [site] [command]`** — runtime schema introspection.
+  Emits JSON Schema draft-2020-12 for args, a realistic example payload,
+  the three invocation-channel templates, and `next_actions` hints.
+  Replaces stale markdown docs as the agent's source of truth
+  (Poehnelt `gws schema` pattern, Google Workspace CLI 2026-03).
+- **`--dry-run` global flag** — resolves the ArgBag and prints the
+  execution plan (`command`, `args`, `args_source`, `pipeline_steps`)
+  without running the pipeline. Safe preview for mutating commands.
+- **HATEOAS `next_actions[]` in v2 envelope** — every success and error
+  response carries typed command templates (`params.&lt;name&gt;.value /
+.default / .enum / .description`) so agents can navigate without
+  re-reading docs. Pattern from joelclaw.com 2026-02.
+- **Input hardening** — control-character rejection for string args,
+  path-traversal sandbox for path-shaped args, URL-punctuation and
+  pre-encoded-id rejection, double-URL-encoding warnings. Fails fast
+  with `invalid_input` + directional `suggestion` (Poehnelt pattern,
+  Google Workspace CLI).
+- **`bench/agent/` harness** — deterministic Invocation Complexity Score
+  (ICS, 0..10) calculator with 5 inputs: quote nest depth, backslash
+  escapes, non-ASCII chars, arg tokens, inline JSON depth. Payload
+  factory generates trivial / moderate / hostile / pathological buckets
+  for 5 representative tasks. `npm run bench:agent` writes a timestamped
+  `bench/agent/results.json`. ASR / SED measurement via Claude SDK lives
+  behind an opt-in flag (costs real API credits).
+- **`skills/unicli-claude-code/SKILL.md`** — formal guide teaching Claude
+  Code to pick the right channel per payload. The decision rule: if the
+  payload contains quotes / emoji / newlines / JSON / is >60 chars,
+  pipe it (stdin-JSON); otherwise shell args are fine.
+
+### Changed
+
+- **`src/commands/dispatch.ts` — unified arg resolution** — the inline
+  Commander-to-args merging is gone; every code path now calls
+  `resolveArgs()` from `src/engine/args.ts`. One place for precedence
+  rules, one place for type coercion.
+- **Error envelope now includes `next_actions`** — `defaultErrorNextActions()`
+  biases hints toward `unicli repair` + stdin-JSON channel switch on
+  `invalid_input` / `selector_miss` / `parse_error`, and toward
+  `unicli auth setup` on `auth_required`.
+
+### Fixed
+
+- **Commander arg drift** — the previous inline merge silently dropped
+  values when the same flag name appeared on the command and its parent,
+  because positional-then-optional ordering was ambiguous. The unified
+  resolver enumerates schema once per arg and applies precedence
+  deterministically.
+
+<a id="v02131"></a>
+
+## v0.213.1 · 2026-04-18 · Vostok · Gagarin Patch
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.213.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.213.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.213.0...v0.213.1)
+
+> Patch release closing 25 documented and audited issues against v0.213.0 Gagarin GA.
+> Semver-correct bug-fix + cleanup release; no new feature surface.
+> See `.claude/plans/sessions/2026-04-17-v213.1-patch/findings.md` for the full audit.
+
+### Added
+
+- **`DEFAULT_SURFACE` + `makeCtx` helpers** exported from `src/output/envelope.ts` — callers building `AgentContext` no longer need to hard-code `surface: "web"` or repeat the 5-field literal. The existing 10 call sites migrate in T3 and T5-T7.
+
+### Fixed
+
+- **`zhihu.answers` MD rendering** — `pickTitle` in `src/output/md.ts` now falls back to `question` → `excerpt` → `summary` before the generic `"Item"` label, so answer listings render meaningful `### N · &lt;question&gt;` headings. Adapter shapes that carry post bodies in `question` + `excerpt` (zhihu.answers) or `summary` (certain arxiv paths) now surface that content as the row title. `zhihu.answers.success.md` fixture regenerated; 2 unit tests in `tests/unit/output/md.test.ts` pin the new priority order (`title > name > id > question > excerpt > summary > "Item"`).
+- **`content[]` canonical populated case battle-tested** — the optional `AgentEnvelope.content[]` field first shipped in v0.213.0 was never exercised end-to-end. `src/output/md.ts` now renders a `## Content` section (text / image / resource blocks) when the field is populated; `makeEnvelope()` gained an optional `content` argument threading `AgentContent[]` through the envelope. New golden fixture `tests/fixtures/md/unsplash.search.success-with-content.md` plus 3 unit tests in `md.test.ts` + 2 in `envelope.test.ts` pin the shape for the download-step use case (`{type:"resource", uri:"file://…"}`). YAML-adapter opt-in via `emit_content: true` is documented on `makeEnvelope`; the runner-side plumbing to auto-populate from `download` step output ships in v0.214.
+- **`stats-consistency.test.ts` timeout bumped 5s → 60s** — `computeStats()` spawns `vitest list --json` twice (one per project) after T11's rewrite, which takes ~10-25s on cold runs of this repo. The 5s default was tight from day one and timed out under `npm run verify` on slower machines. 7 sibling tests were already fast and unchanged.
+- **Ref-Locator verification layer** — `BrowserPage.snapshot()` and `DaemonPage.snapshot()` now persist a window-level fingerprint map on `window.__unicli_ref_identity`; click/type steps plus `unicli operate click/type` resolve refs against this map and throw structured `TargetError` ({code: "stale_ref" | "ambiguous" | "ref_not_found"}) when a ref fails to bind uniquely. `executor.ts` re-wraps the TargetError into a `PipelineError` preserving `detail.code` as `errorType`, and `dispatch.ts` passes it through verbatim to the v2 envelope's `AgentError.code`. Adds diagnostics on top of our existing snapshot primitive. `ref_not_found` is deliberately distinct from the HTTP-404 `not_found` code so agents can tell DOM-level from server-level failures.
+- **`streamable-http` test port flake fixed** — `tests/unit/streamable-http.test.ts` now calls `server.listen(0)` and reads the OS-assigned port via `address().port`, retiring the 5-attempt `Math.random()` retry loop added in v0.213.0-beta.2. Zero collision risk on busy CI runners.
+- **Windows cold-start test timeouts bumped** — `tests/unit/{exports,loader-parity,mcp-server-expanded}.test.ts` now give Windows Node 20 runners 15s instead of 5s for dynamic-import cold-start cases. Linux/macOS timing unchanged.
+- **`dist/main.js` execute bit set via postbuild hook** — when `npm run build` runs, `dist/main.js` is now chmod'd to 755 so it's immediately executable when extracted from the tarball. Previously mode 644; npm auto-chmods on install but manual tarball consumers had to `chmod +x` themselves. Uses `node -e "require('fs').chmodSync(...)"` so Windows builds are untouched gracefully.
+- **`scripts/release.ts` replacement patterns refreshed** — 4 of 6 patterns were stale after v0.213.0's documentation restructure, causing `npm run release` to silently SKIP updates. Patterns for CLAUDE.md (.gitignored), the retired `## Available Sites` / `N sites, M commands` AGENTS.md headers, and the retired `N_Sites-M_Commands` README badge are deleted; site/command/pipeline/test counts are now authoritative in `scripts/build-readme.ts` via `<!-- STATS:key -->` markers. README footer codename regex updated to match the current `&lt;sub&gt;vX.Y.Z — Codename&lt;/sub&gt;` shape. `docs/ROADMAP.md` summary version pattern narrowed to `as of vX.Y.Z` so STATS marker interleaving no longer blocks the match. `npx tsx scripts/release.ts --dry-run` now emits 0 SKIP warnings.
+- **Test coverage closed on 3 v0.213.0 gaps** — CLI-level quarantine dispatch via subprocess spawn (`tests/unit/cli/quarantine-cli.test.ts` asserts the full `process.exit` path — exit code 78, stderr-routed v2 envelope with `error.code: "quarantined"`, plus a `UNICLI_FORCE_QUARANTINE=1` bypass guard); `format()` error-wins precedence when both `ctx.error` and non-null `data` are passed (non-empty array, object payload, and yaml/md output all verified to discard the data and emit `data: null`); `UNICLI_OUTPUT` env bare override detection when `OUTPUT` is explicitly unset, plus the UNICLI_OUTPUT-wins-when-both-set path asserts no deprecation warning leaks.
+- **`stats.json.test_count` now matches runtime vitest count** — the regex-based counter in `scripts/count-stats.ts` missed `it.each([...])` parametrised cases and loop-generated tests (1314 claimed vs 6921 actual across unit + adapter projects). Rewritten to enumerate via `npx vitest list --json --project=&lt;name&gt;` per project, so parametrised and dynamic tests are counted exactly. Regex fallback (`UNICLI_STATS_TEST_STRATEGY=regex` or when vitest spawn fails) still ships for sandboxed environments. Accuracy now within 0% of `npm run test` + `npm run test:adapter` runtime output.
+- **`stats.json` regenerated** — `test_count` 1314 → 6921 now propagates through the `<!-- STATS:test_count -->` markers in README / AGENTS / ROADMAP / copy rules. `site_count` stays at 200, which matches `dist/manifest.json` truth: the 5 extra directories under `src/adapters/` are the `_electron` shared-infra module (prefixed with `_`, never a site) plus 4 AI-chat adapters (`antigravity`, `chatgpt`, `chatwise`, `doubao-app`) that register via `registerAIChatCommands()` rather than direct `cli()` calls. Those 4 surface at runtime (203 runtime sites) but are intentionally excluded from the manifest/stats site count until the registration pathway is unified in v0.214.
+
+### Changed
+
+- **887 YAML adapters: duplicate schema-v2 migration banner comments coalesced** — the v0.212 migration injected a banner + 5 metadata fields; the v0.213 migration re-emitted the same banner before the new `schema_version: v2` line, leaving every adapter with two identical comment lines. New one-off `scripts/dedupe-yaml-banner.ts` walks `src/adapters/**/*.yaml`, drops the second banner in exactly the canonical duplicate shape, and is idempotent (dry-runs to 0 after a full pass). Purely cosmetic; adapter lints + 5514 adapter tests stay green.
+- **undici stays at 8.0.2** — the 8.1.0 bump attempted in this patch calls `webidl.util.markAsUncloneable` which does not exist in Node 20, breaking our `"engines": ">=20"` CI matrix. Deferred to v0.214 pending a Node 22+ engine bump.
+- **`AgentError.code` documented enum expanded 11 → 15** — adds `quarantined` (already emitted by the quarantine gate since v0.213.0) and the three T1 ref-locator codes `stale_ref` / `ambiguous` / `ref_not_found`. `code` remains an open string to preserve forward compatibility.
+- **`UNICLI_OUTPUT` env var is now canonical**; bare `OUTPUT` is deprecated and emits a stderr warning. CI systems that set `OUTPUT` for their own purposes (GitHub Actions step outputs, Jenkins outputs) no longer accidentally switch unicli's output format. `OUTPUT` will be removed in v0.214.
+- **`detectFormat` simplified** — the three branches that all returned `"md"` (non-TTY, agent-UA, default) are collapsed into a single final return, now documented in one comment.
+- **`isAgentUA` no longer inspects the `USER_AGENT` env var** — that variable isn't set in subprocess contexts (it's an HTTP header name, not a process env var). The 5 canonical agent env vars (`CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT`) remain.
+- **Error-mapping helpers extracted to `src/output/error-map.ts`** — `errorTypeToCode`, `mapErrorToExitCode`, `errorToAgentFields`, and `REF_LOCATOR_CODES` now live in one reusable module. `src/commands/dispatch.ts` slims by ~60 LOC; the 4-way `err instanceof` ternary (repeated 7 times) collapses to a single `errorToAgentFields` call.
+- **17 admin commands migrated to v2 envelope**, closing the gap documented in v0.213.0's "every command" claim. Wired: `agents`, `auth`, `eval`, `explore`, `generate`, `hub`, `lint`, `mcp` (health/list/install/config), `migrate`, `migrate-schema`, `operate`, `repair`, `research`, `schema`, `skills`, `status`, `synthesize`. Combined with the 7 v0.213.0-wired sites (adapter dispatch + `core.list/health/usage/search` + `ext.list` + `dev.watch`), the v2 envelope contract now covers 24 command surfaces. `mcp serve` intentionally stays raw (stdio MCP protocol). All envelopes flow through `format(data, columns, fmt, ctx)`; human-oriented chalk summaries route to stderr (Scene-6 pattern). The `operate upload` sensitive-path / workspace-boundary deny branches also normalize to structured error envelopes now, closing the last non-envelope bypass.
+
+### Removed
+
+- **`health --json` flag removed** — duplicated `-f json`; use `-f json` (or `UNICLI_OUTPUT=json`).
+- **Top-level `--json` alias removed** — pre-v0.213 legacy; use `-f json` (or `UNICLI_OUTPUT=json`). The `applyJsonAlias` helper and its unit test are deleted.
+
+### Breaking
+
+- **`unicli agents generate > AGENTS.md` no longer writes raw Markdown to stdout.** Stdout now returns the v2 envelope (with `data.generated` carrying the generated MD). Use `unicli agents generate --output AGENTS.md` to write the raw file. Callers redirecting stdout to capture raw MD must migrate.
+
+<a id="v02130"></a>
+
+## v0.213.0 · 2026-04-17 · Vostok · Gagarin
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.213.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.213.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.212.1...v0.213.0)
+
+> **GA release.** Engine rigor + Agent-Native output + honest parity numbers.
+> 195 sites · 957 commands · engine split (2810 → 298 LOC executor) · schema-v2 on 896 adapters · v2 envelope with `-f md` default for agents · 1286 unit + 5514 adapter = 6800 tests passing.
+>
+> **Since v0.212.1 Shatalov II** the branch accumulated 46 commits across two prereleases:
+>
+> - **beta.1 (engine rigor)**: yaml-runner split into executor + registry + runtime + template + ssrf + 33 step files; 24 plugin export subpaths + `PLUGIN.md` + exports CI gate; weekly release CI cron + dependabot grouping; schema-v2 migration on 896 YAML adapters; 80 colocated adapter tests.
+> - **beta.2 (agent-native output)**: v2 `{ok, schema_version, command, meta, data, error, content?}` envelope, `-f md` default on non-TTY and recognised agent UAs, `isAgentUA()` detector, 7 call sites wired, `src/commands/dispatch.ts` extracted from `cli.ts`, 20 golden MD fixtures across 10 flagship adapter pairs, quarantine envelope aligned.
+> - **GA polish**: `docs/THEORY.md` v2 now cites SkillDroid (arXiv:2604.14872), MolmoWeb, IntentScore, Android Coach, Beyond Chat and Clicks — 46 refs verified against arxiv.org; `PARITY_AUDIT.md` publishes measured per-CLI numbers against `public-clis`; Ref-Backed Locator primitive audited against the reference diagnostics set.
+>
+> **Honest parity numbers.** Measured per-CLI parity against `github.com/public-clis/public-clis` on 2026-04-17: 85.7% on the four core social sites (twitter 95.7%, reddit 87.0%, xiaohongshu 82.8%, bilibili 77.3%); weighted across eight messaging peer CLIs the figure is 73.5%, not 85%. Uni-CLI ships ~45 commands on overlapping sites that no peer offers (twitter trending/spaces/lists/media, bilibili live/later, xiaohongshu creator-suite, reddit rising/frontpage). Telegram (0 adapters), Discord (placeholder only), and Obsidian vault-write are explicit scope-outs deferred to v0.214. Positioning: breadth (195 sites in one binary) + self-repair + editable 20-line YAML adapters, not per-peer command parity.
+>
+> **Ref-Backed Locator diagnostics.** Snapshot-driven numbered refs, interactive-only filtering, scroll markers, iframe/shadow-DOM crossing all ship since v0.211. The verification-layer diagnostics on top — window-level fingerprint map, `stale_ref` / `ambiguous` / `not_found` structured errors with candidate lists — are scoped for v0.213.1 (~2–3 days).
+>
+> **Remaining v0.213 runway → v0.214 Nikolayev**: workflow adapters (gmail/gcal/drive/spotify/apple-notes/imessage), Chrome extension full pipeline, `generate --verify` closed loop, visual backend drivers, dual JS adapter format, `unicli inbox`, `unicli shop`, and the full 25-adapter compatibility harness.
+
+### Breaking
+
+- **`--json` / `--yaml` output shape changed to v2 envelope.** Adapter dispatch plus `core.list`, `core.health`, `core.search`, `core.usage`, `ext.list`, and `dev.watch` now return `{ok, schema_version: "2", command, meta, data, error, content?}`. Pre-P-B flat arrays are no longer emitted from these paths; parse `data` from the envelope. Remaining admin commands (`repair`, `skills`, `hub`, `operate`, `mcp health`, `explore`, `eval`, `lint`, `status`, `schema`) migrate in v0.214. `csv` and `compact` output formats are unchanged.
+- **Non-TTY default format is now `md`**, not `json`. Set `-f json` (or `UNICLI_OUTPUT=json`) to restore the previous behaviour for scripts that parse stdout.
+- **`table` format deprecated** and now falls back to `md` with a stderr warning.
+- **Command naming unified to `&lt;area&gt;.&lt;action&gt;`** in the envelope `command` field (e.g. `core.list`, `ext.install`, `dev.watch`, plus `&lt;adapter&gt;.&lt;cmd&gt;` for adapter dispatch). Flat command names such as `list` no longer appear in envelopes.
+
+### Added
+
+- **`src/output/envelope.ts`** (184 LOC) — `AgentEnvelope` discriminated union (`AgentEnvelopeOk | AgentEnvelopeErr`), `AgentMeta`, `AgentError`, `AgentContext`, `AgentContent`, factories `makeEnvelope()` / `makeError()`, and `validateEnvelope()` with 9 structural invariants (schema_version, ok/error mutual exclusion, ok/data correlation, `&lt;site&gt;.&lt;command&gt;` regex, duration_ms type, content[].type enum, count/data.length consistency).
+- **`src/output/md.ts`** (313 LOC) — `renderMd(envelope)` produces YAML frontmatter plus `## Data` / `## Context` / `## Next Actions` / `## Error` / `## Suggestion` / `## Alternatives` sections. Handles null/undefined/Date/Buffer/Function/BigInt/circular references, shared-ref DAGs, long strings, throwing `toJSON`, and unserializable values without crashing. Markdown injection sanitised at 21 insertion points.
+- **`-f md` output format** (`UNICLI_OUTPUT=md` and agent-UA env vars also trigger it) with stable byte-for-byte rendering per input (golden-fixture tested).
+- **Agent-UA auto-detection** — `isAgentUA()` reads `CLAUDE_CODE`, `CODEX_CLI`, `OPENCODE`, `HERMES_AGENT`, `UNICLI_AGENT` environment variables and switches output to `md` when any is set.
+- **`UNICLI_OUTPUT` / `OUTPUT` env var override** — `json|yaml|md|csv|compact`, overrides auto-detection; `--format` / `-f` flag has highest priority.
+- **`src/commands/dispatch.ts`** (299 LOC) — adapter-dispatch path extracted from `cli.ts`, including envelope construction and the structured-error path (`AgentError` → `ctx.error` → v2 error envelope to stderr with `errorTypeToCode` + `mapErrorToExitCode` helpers).
+- **20 MD golden fixtures** under `tests/fixtures/md/&lt;site&gt;.&lt;command&gt;.{success,error}.md` covering 10 flagship adapter pairs (twitter.mentions, reddit.frontpage, bilibili.dynamic, hackernews.top, github-trending.daily, arxiv.search, xiaohongshu.feed, zhihu.answers, douban.book-hot, notion.search). Regenerate with `UPDATE_FIXTURES=1 npx vitest run tests/unit/output/fixtures.test.ts`.
+
+### Changed
+
+- **`format(data, columns, fmt, ctx)`** now requires an `AgentContext` argument; TypeScript enforces it at every call site.
+- **`src/cli.ts` slimmed 781 → 490 LOC** by moving adapter dispatch into `src/commands/dispatch.ts`; the complexity gate is green.
+- **7 call sites migrated to the envelope path**: `core.list` in `src/cli.ts`, adapter dispatch in `src/commands/dispatch.ts`, plus `src/commands/{ext,usage,dev,search,health}.ts`.
+- **`detectFormat()` order**: explicit `--format` > `UNICLI_OUTPUT` / `OUTPUT` env > non-TTY (md) > agent-UA (md) > md default.
+
+### Fixed
+
+- **No silent envelope bypass on empty results, chalk-styled rows, `health.json`, `core.usage --json`, or the adapter-dispatch catch path** — every surface that previously emitted raw arrays or `console.log` now goes through `format()`.
+- **Command regex `&lt;area&gt;.&lt;action&gt;`** is the only accepted shape for envelope `command`; legacy dash-case values are rejected by `validateEnvelope`.
+
+<a id="v02121"></a>
+
+## v0.212.1 · 2026-04-16 · Vostok · Shatalov II
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.212.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.212.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.212.0...v0.212.1)
+
+> Pre-push security and contract hardening after third-round audit.
+
+### Security
+
+- **SSRF defence on pipeline fetch** — `stepFetch` / `stepFetchText` / HTTP transport reject `file://`, `data:`, `gopher:` schemes and private/loopback/metadata addresses (`127.0.0.0/8`, `10/8`, `192.168/16`, `172.16–31/12`, `169.254/16`, `localhost`, `metadata.google.internal`). Set `UNICLI_ALLOW_LOCAL=1` to override for local development. Tests inherit `UNICLI_ALLOW_LOCAL=1` via vitest config; production runs never get it.
+- **AppleScript injection hardening** — `escapeAs` now folds `\r` / `\n` to spaces and strips NUL bytes so a user-controlled app name like `Calculator"\nos_command(...)` can no longer smuggle new statements past `osascript -e`.
+- **OAuth Bearer constant-time validation** — `validateBearer` scans every resident token with `crypto.timingSafeEqual` so the timing between "no match" and "expired match" doesn't leak which prefix of a guessed token matched. Token length capped at 128 chars.
+- **Billion-laughs + oversized YAML defense** — `js-yaml.load` switched to `CORE_SCHEMA` (blocks `!!js/*` tags) and file size capped at 256 KiB before parse.
+- **release.yml scope tightening** — `id-token: write` moved from workflow to job level; workflow-level `permissions: {}` forbids broad grants. NPM_TOKEN stays as an explicit fallback when Trusted Publishers is not yet bound.
+
+### Fixed — Contract Drift
+
+- **schema-v2 hard gate validates the full YAML**, not a five-field projection — the legacy `pipeline`, `url`, `params` fields now go through Zod too, so `pipeline: "string"` fails the gate (it would have crashed at runtime before). Warn mode always writes to stderr.
+- **clipboard step names aligned** — the capability matrix referenced `clipboard_get` / `clipboard_set` while every handler, adapter, lint engine, and migrator used `clipboard_read` / `clipboard_write`. Matrix renamed to match, so `bus.require("clipboard_read")` resolves.
+- **Quarantine enforcement** — `unicli &lt;site&gt; &lt;cmd&gt;` for a command flagged `quarantine: true` now emits a structured envelope to stderr and exits-78 (CONFIG_ERROR) with a `unicli repair` hint. Bypass flag `UNICLI_FORCE_QUARANTINE=1` for debugging.
+- **TransportBus registers all 7 transports** — `HttpTransport`, `CdpBrowserTransport`, `SubprocessTransport` previously not registered on the shared bus (capability queries lied). Now every transport is visible to `bus.require`.
+- **Visual backend stub honesty** — error messages now say "v0.213-deferred" explicitly and explain that a production visual backend MUST compose with a screen capture source. `VISUAL_BACKEND` selects the fallback mode.
+
+### Fixed — Robustness
+
+- **migrate-schema roundtrip validation** — every rewritten YAML is re-parsed and run through `validateAdapterV2` before being blessed as migrated; failures are quarantined with a reason.
+- **stepParallel concurrency cap** — replaced unbounded `Promise.all` with `mapConcurrent(5)`.
+- **ACP prompt length bound** — `parseUnicliInvocation` truncates input to 64 KiB before regex scan (ReDoS defence).
+- **MCP SSE event IDs** — every SSE frame now carries an `id:` line; `Last-Event-ID` request header is accepted and logged (full replay lands in v0.213 per `docs/ROADMAP.md`).
+
+### Changed
+
+- **stats.json adds `app_transport_count`** — 7 application-layer transports (TRANSPORT_KINDS) distinct from the 3 MCP server-side transports. `pipeline_step_count` now counts `CAPABILITY_MATRIX` top-level keys (54) rather than `executeStep` switch arms (31) — matches the spec promise of the step catalog.
+- **verify chain expanded** — `npm run verify` now runs `conformance` + `verify:changesets` in addition to the previous 10 gates. Full network probe (`adapter:health`) + bibtex resolve available via `npm run verify:full`.
+- **docs/ROADMAP.md** — added v0.213 deferred items covering Anthropic planner composition, Windows UIA / Linux AT-SPI napi-rs bindings, full Last-Event-ID replay, Gmail/GCal/Drive OAuth adapters.
+
+<a id="v02120"></a>
+
+## v0.212.0 · 2026-04-15 · Vostok · Shatalov
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.212.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.212.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.211.2...v0.212.0)
+
+> The execution layer for agent skills. Deterministic, editable, cross-vendor.
+> 200 sites · 968 commands · 7-transport architecture · Visual · ACP · 1134 tests.
+
+### Minor Changes
+
+- e456a01: v0.212.0 "Shatalov" — the execution layer for agent skills.
+
+  Destructive architecture rewrite introducing a unified `TransportAdapter` interface over 7 transports (http, cdp-browser, subprocess, desktop-ax, desktop-uia, desktop-atspi, visual), visual fallback backend integration behind an owned interface, ACP JSON-RPC distribution for avante.nvim and OpenCode, Changesets + OIDC npm publishing, Node×OS CI matrix, schema-v2 with `capabilities`/`minimum_capability`/`trust`/`confidentiality`/`quarantine` fields, and the retirement of the ~80-tokens claim in favor of measured p50/p95 benchmarks.
+
+  ### Added
+  - `src/core/` (envelope, schema-v2, registry-v2), `src/transport/` (TransportAdapter + 46×7 capability matrix + bus), `src/protocol/` (acp, skill)
+  - `unicli acp` — Agent Client Protocol JSON-RPC stdio server
+  - `unicli lint` — schema + step validity + cycle detection
+  - `unicli migrate schema-v2` — mass migration tool for existing YAML adapters
+  - `unicli mcp serve` now exposes 3 transports (stdio/http/streamable)
+  - SKILL.md cross-vendor loader discovers skills from `skills/`, `$HOME/.unicli/skills`
+  - `docs/THEORY.md` v2 — softened decidability, Bimodal Agent Capability, Trilemma, Self-Repair Search-Space Contraction
+  - `docs/refs.bib` with 25+ verified arXiv citations + CI bibtex-resolve gate
+  - `docs/BENCHMARK.md` + `bench/` harness with measured p50/p95
+  - `docs/ADAPTER-FORMAT.md` v2 and adapter migration tooling
+  - `docs/guide/integrations.md` integration guide
+  - `contributing/` per-domain guides (adapter, transport, visual, mcp, acp, release, schema, branch-protection)
+  - `.claude/commands/` and `skills/` committed as cross-vendor workflow surface
+  - Changesets workflow + `verify-changesets` CI gate
+  - `adapter-health` (PR-soft) + `adapter-health-strict` (push/nightly) gates
+  - Nightly conformance suite with artifact upload
+
+  ### Changed
+  - Formatter rewritten: `table` dropped; added `compact` format (newline-delimited, token-efficient)
+  - `--json` global flag becomes deprecation alias for `-f json` with stderr warning
+  - stats.json is the single source of truth for counts; CI gate enforces marker consistency across README/AGENTS.md/COPY.md/ROADMAP.md
+  - All GitHub Actions SHA-pinned (checkout/setup-node/upload-artifact/stale/gh-release)
+  - CI matrix expanded to Node 20/22 × macOS 14 × Windows × Ubuntu
+  - Retired "~80 tokens" claim; published honest measured-in-BENCHMARK.md decomposition
+
+  ### Fixed
+  - Conflict resolved across Phase 0+8: unified verify chain runs format:check → typecheck → lint → lint:context → build:manifest → lint:adapters → test → build → stats:check
+
+<a id="v02112"></a>
+
+## v0.211.2 · 2026-04-13 · Vostok · Volynov
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.211.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.211.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.210.0...v0.211.2)
+
+> Discovery engine, MCP infrastructure, self-repairing CLI for AI agents.
+> 198 sites · 1020 commands · BM25+TF-IDF bilingual search · MCP 2025-03-26 · 855 tests.
+
+### Added
+
+- **BM25+TF-IDF hybrid bilingual search engine** — `unicli search "推特热门"` finds `twitter trending` (Top-1: 67.76%, Top-5: 81.31%). 200+ Chinese↔English alias entries, mixed-script tokenizer (B站, QQ音乐), 50KB index, <10ms queries
+- **MCP Streamable HTTP transport** — replaces deprecated SSE. Single POST /mcp endpoint, MCP-Session-Id headers, Origin validation, CORS, DELETE session termination (spec 2025-03-26)
+- **MCP OAuth 2.1 PKCE** — authorization code flow with S256 challenge, `--auth` flag on HTTP/Streamable transports
+- **MCP deferred tool loading** — 4 meta-tools at ~200 tokens default, 956 lightweight stubs with searchHint for on-demand discovery (95% token reduction)
+- **`unicli search` CLI command** — bilingual semantic search across all adapters
+- **`unicli_search` MCP tool** — alwaysLoad, bilingual discovery for MCP clients
+- **`unicli_explore` MCP tool** — renamed from `unicli_discover` (backwards-compatible alias kept)
+- **Eval suite** — 214 bilingual queries measuring Top-1/3/5 accuracy across 15 categories
+- **Logo SVG** — dark/light mode adaptive via `&lt;picture&gt;` element
+- **Tool annotations** — `idempotentHint` and `destructiveHint` added per MCP 2025-03-26 spec
+
+### Changed
+
+- **MCP protocol version** — upgraded from 2024-11-05 to 2025-03-26
+- **Schema builder extracted** — `src/mcp/schema.ts` eliminates duplication between server.ts and commands/schema.ts
+- **README rewritten** — compiler tagline, architecture diagram, number badges, agent integration section
+- **AGENTS.md** — search-first instructions, MCP server documentation, version update
+- **Build manifest** — now generates search index (`manifest-search.json`) and compact catalog (`manifest-compact.txt`)
+
+### Security
+
+- Codex cross-audit: 2 independent reviews, all CRITICAL findings addressed
+- Streamable HTTP: Origin validation, body size limits, session management
+- OAuth: single-use auth codes (60s TTL), PKCE S256 only, token expiry (3600s)
+
+<a id="v02100"></a>
+
+## v0.210.0 · 2026-04-12 · Vostok · Komarov
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.210.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.210.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.209.0...v0.210.0)
+
+> The compiler that turns the internet into deterministic programs for AI agents.
+> 195 sites · 957 commands · 30 macOS system adapters · 35 external CLIs · 5 agent skills.
+
+### Added
+
+- **Error reliability system** — `retryable` and `alternatives` fields in all structured error output; agents never get opaque errors
+- **Agent platform skills** — 5 SKILL.md files (agentskills.io standard) covering 39 agent platforms
+- **`unicli status` command** — lightweight system health JSON for agent pre-flight checks
+- **Cloudflare remote browser** — `UNICLI_CDP_ENDPOINT` connects to any remote CDP WebSocket (Cloudflare Browser Rendering, etc.)
+- **30 macOS system adapters** — volume, dark-mode, battery, notify, clipboard, screenshot, say, spotlight, system-info, disk-info, wifi, lock-screen, caffeinate, trash, open, apps, calendar-list, calendar-create, contacts-search, mail-status, mail-send, reminder-create, notes-list, notes-search, music-now, music-control, messages-send, photos-search, finder-tags, finder-recent
+- **20 new web sites** — threads, deepseek, perplexity, baidu, toutiao, maoyan, futu, coinbase, kuaishou, ele, dianping, dangdang, mubu, douyu, wechat-channels, binance, ke, maimai, slock, and more
+- **Desktop app adapters** — vscode (extensions, install-ext, open), obsidian (open, search, daily), chrome (bookmarks, tabs), zoom (join, start)
+- **Electron app deepening** — cursor (+export, +history), discord (+delete), slack (+search, +send, +status)
+- **Site command deepening** — zhihu +13, xiaohongshu +9, twitter +9, instagram +5, bilibili +4, youtube +3, plus 100+ commands across 40+ existing sites
+- **External CLI hub** — kimi-cli (8K★), gws (Google Workspace), deepagents (LangChain) → 35 total
+
+### Changed
+
+- `BridgeConnectionError` now includes structured JSON with retry guidance
+- Non-PipelineError catch-all in cli.ts emits full structured error (was opaque `{error: message}`)
+- AGENTS.md fully rewritten with accurate site/command counts and category listings
+
+<a id="v02090"></a>
+
+## v0.209.0 · 2026-04-10 · Vostok · Popovich
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.209.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.209.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.208.0...v0.209.0)
+
+> Discover, Evolve, Connect. 167 sites · 756 commands.
+> Auto-discovery pipeline, AutoResearch self-improvement loop, Adapter Hub,
+> 29 new adapter sites spanning AI/ML, finance, music, news, devtools, and
+> enterprise collaboration. MiniMax MMX-CLI integration (day-0), Feishu/Lark
+> CLI bridge, and 5 security hardening fixes from triple-review audit.
+
+### Added
+
+- **Auto-discovery engine** — `src/engine/endpoint.ts` (unified endpoint analysis with role-based field mapping), `src/engine/probe.ts` (snapshot-based interactive probing), `src/engine/framework.ts` (React/Vue/Next/Nuxt/Svelte/Angular detection + Pinia/Vuex store discovery), `src/engine/capability.ts` (12 EN+ZH goal aliases, 5 pipeline patterns: public-fetch, cookie-fetch, browser-evaluate, intercept, store-action). Builds on existing `explore`/`synthesize`/`generate` commands.
+- **AutoResearch engine** — `unicli research run &lt;site&gt;` — Karpathy-style 8-phase self-improvement loop (precondition → review → modify via Claude Code → commit → verify via eval → guard → decide keep/discard → log). 4 presets: reliability, coverage, freshness, security. `unicli research log` and `unicli research report` for history and aggregation. Stuck detection at 5 consecutive discards with escalating hints.
+- **Adapter Hub** — `unicli hub search/install/publish/update/verify` — git-based community adapter registry via GitHub API (`olo-dot-io/unicli-hub`). Install adapters from hub, publish via PR.
+- **Test generator** — `unicli test-gen generate &lt;site&gt;` auto-generates Vitest tests from eval files. `unicli test-gen ci` tests only adapters changed in current commit.
+- **Multi-harness AGENTS.md** — `unicli agents generate --for cursor|codex|goose|generic` generates harness-optimized discovery files.
+- **MCP discover tool** — `unicli_discover` exposed as MCP tool in expanded mode. URL → explore → generate, callable from any MCP client.
+- **Auto-eval generation** — `unicli generate` now auto-creates `evals/smoke/&lt;site&gt;.yaml` when installing a new adapter.
+- **Response caching** — `cache: &lt;seconds&gt;` field on `fetch` pipeline step. Cached to `~/.unicli/cache/` with 10MB per-entry limit.
+- **Strategy fallback** — `fetch` step auto-retries with cookie injection on 401/403 responses.
+- **29 new adapter sites** — minimax (chat, models, tts), feishu (send, docs, calendar, tasks), gitlab (trending, search), netease-music (hot, search), techcrunch (latest), theverge (latest), nytimes (top), cnn (top), sspai (latest, hot), ithome (news), infoq (articles), eastmoney (hot, search), mastodon (trending, search), twitch (top), openrouter (models), huggingface-papers (daily), replicate (trending, search), ycombinator (launches), gitee (trending, search), crates-io (search), pypi (info), homebrew (info), npm-trends (compare), docker-hub (search), cocoapods (search), unsplash (search), pexels (search), exchangerate (convert), ip-info (lookup), qweather (now), itch-io (popular), meituan (search), pinduoduo (hot).
+
+### Security
+
+- **Shell injection prevention in research engine** — all scope pattern resolution uses Node `readdirSync` (no shell). `runVerify` and `runGuard` use `execFileSync("unicli", [...args])` instead of `sh -c`. Site names validated against `/^[a-zA-Z0-9_-]+$/`.
+- **Hub path traversal prevention** — site/command names validated in all subcommands (install, publish, verify). `execFileSync` with args array instead of shell interpolation.
+- **MCP HTTP loopback binding** — HTTP transport explicitly binds to `127.0.0.1`, not `0.0.0.0`.
+- **Probe ref validation** — CSS selector injection prevented by `/^\d+$/` check on snapshot refs.
+- **Cache size limit** — 10MB per-entry cap prevents disk exhaustion from oversized API responses.
+- **Claude Code tool restriction** — research engine uses `--allowedTools "Read,Edit,Glob,Grep"` (no Write, no Bash).
+
+### Changed
+
+- **All adapters always visible** — `detect:` field is informational only, does not gate adapter registration. Desktop adapters appear in `unicli list` regardless of whether the binary is installed. Runtime errors give clear install instructions.
+- **`agents generate` multi-format** — new `--for` flag generates Cursor Rules, Codex-optimized, Goose recipe, or generic markdown formats.
+- **`generate` auto-eval** — installing an adapter via `unicli generate` now auto-creates a smoke eval file.
+
+<a id="v02080"></a>
+
+## v0.208.0 · 2026-04-08 · Vostok · Titov
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.208.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.208.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.207.0...v0.208.0)
+
+> Standards, Distribution, and Self-Improvement. 134 sites · 711 commands.
+> Skills export, hardened MCP gateway, eval catalog, `observe()` verb,
+> and sensitive-path deny list.
+>
+> **Post-release hardening:** a 4-reviewer audit of the initial release
+> commit (`a1e75cb`) surfaced 6 BLOCKERs and 9 MAJORs. All were fixed in
+> `5e6237f` before the tag was cut — the release-facing SHA. See the
+> "Post-release audit (5e6237f)" section below for the full list.
+
+### Added
+
+- **`unicli skills export` (deliverable A)** — auto-generates one Anthropic-spec SKILL.md per adapter command into `skills/`. `unicli skills publish [--to ~/.claude/skills/uni-cli/]` copies into a Claude/Cursor skills directory. `unicli skills catalog` writes the canonical machine-readable manifest at `docs/adapters-catalog.json`. `scripts/generate-catalog.ts` ships as the build-time entry point.
+- **`unicli mcp serve` (deliverable B)** — production-ready MCP gateway. Default expanded mode auto-registers one tool per adapter command (`unicli_&lt;site&gt;_&lt;command&gt;`) with input schemas derived from `args` and output schemas from `columns`. Lazy mode (`--lazy`) preserves the v0.207 2-tool surface. New `--transport http --port 19826` adds JSON-RPC over `POST /mcp` for self-hosted environments. `unicli mcp health` is the offline pre-flight check.
+- **`unicli eval` (deliverable C)** — declarative regression suites. 15 starter eval files ship under `evals/`: 12 smoke (hackernews, bilibili, github, reddit, weibo, zhihu, xiaohongshu, douyin, youtube, twitter, instagram, linkedin, hupu, douban, producthunt) + 3 regression (auth-rotation, selector-drift, api-versioning). Subcommands: `eval list`, `eval run [--all]`, `eval ci --since 7d`. Output format: `SCORE=N/M` plus structured JSON for CI.
+- **Per-call cost ledger (deliverable D)** — append-only JSONL at `~/.unicli/usage.jsonl` capturing `{ts, site, cmd, strategy, tokens, ms, bytes, exit}` for every CLI invocation. `unicli usage report [--since 7d] [--slow] [--failing]` aggregates by site+cmd with median, p95, error rate, and bytes. Opt out with `UNICLI_NO_LEDGER=1`.
+- **`unicli operate observe &lt;query&gt;` (deliverable I)** — Preview verb. Snapshots the page, ranks interactive elements against the natural-language query (token overlap, exact label, role/aria bonuses), returns `{action, ref, selector, confidence, reason}` candidates. Caches every observation to `~/.unicli/observe-cache.jsonl` for self-healing audits.
+- **8 strategic adapters (deliverable F)** — `hermes`, `openharness`, `motion-studio`, `stagehand`, `godot`, `renderdoc`, `autoagent`, `visual`. +14 commands total.
+- **AgentLint integration (deliverable E)** — `scripts/lint-context.sh` runs Agent Lint against the workspace and gates `npm run verify` on context quality. Default threshold 60/100, override with `UNICLI_LINT_THRESHOLD`. Disable with `UNICLI_LINT_DISABLE=1`.
+- **Documentation (deliverable H)** — maintenance and integration docs now live in `docs/reference/maintenance.md` and `docs/guide/integrations.md`.
+
+### Security
+
+- **Sensitive path deny list (deliverable J)** — `src/permissions/sensitive-paths.ts` blocks access to sensitive paths (`.ssh`, `.aws/credentials`, `.gnupg`, `.kube/config`, `.docker/config.json`, `.npmrc`, cookie/credential files). Enforced in `unicli operate upload` and the `exec` pipeline step. Returns structured error JSON on stderr.
+
+### Changed
+
+- **MCP server default mode** — `unicli mcp serve` now boots in expanded mode (one tool per adapter command). Lazy mode (the v0.207 default) is opt-in via `--lazy`. The existing `tests/unit/mcp-server.test.ts` was updated to spawn with `--lazy` to preserve the 2-tool contract; new `tests/unit/mcp-server-expanded.test.ts` covers the expanded surface.
+- **`npm run verify`** — chains `lint:context` between `lint` and `test`. Soft-skips when Agent Lint is not installed.
+- **`recordUsage` cli.ts hook** — every dynamic site command writes a ledger entry on success, empty result, pipeline error, and generic error.
+
+### Post-release audit (5e6237f)
+
+A 4-reviewer parallel audit (plumbing / runtime / security / release-wiring) over `a1e75cb` identified 6 BLOCKERs and 9 MAJORs. All fixed in commit `5e6237f` before the v0.208.0 tag was cut. The numbered list below is the authoritative record for anyone tracing "what did v0.208 change beyond its own release notes."
+
+**BLOCKERs fixed:**
+
+1. **Shell injection in 4 new adapter YAMLs.** `hermes/skills-read`, `hermes/sessions-search`, `openharness/memory-read`, `renderdoc/capture-list` used `bash -c` with `${{ args.* }}` raw-interpolated into the script body. The template engine emits `String(value)` with no shell quoting, so a crafted arg like `foo"; printf OWNED; #` escaped the string literal. **Fix:** rewrote all bash adapters to pass user input via environment variables (`UNICLI_NAME`, `UNICLI_TOPIC`, `UNICLI_QUERY`, etc.) and reference them as `"$VAR"` bash literals. Added path-traversal rejection (case globs for `..` and `/`) where the name flows into a file path. PoC was verified by Codex against the live engine.
+
+2. **SQL injection in `hermes/sessions-search.yaml`.** `${{ args.query }}` was spliced into the FTS5 `MATCH` and `LIKE` clauses. Verified against `sqlite3 :memory:`: `query=hello' UNION SELECT '999','888','PWN' --` returned the injected row. **Fix:** the env-var rewrite above plus bash `${UNICLI_QUERY//\'/\'\'}` parameter expansion to SQL-escape single quotes. `LIMIT` clause strips non-digits via `${UNICLI_LIMIT//[^0-9]/}`.
+
+3. **Eval runner shell injection in `src/commands/eval.ts`.** `runCase()` used `execSync` with a string-concatenated command line, so positional values with spaces, quotes, or shell metachars were reinterpreted. **Fix:** replaced with `spawnSync(executable, argv)`. Added `parseCliCommand()` to handle `UNICLI_BIN="npx tsx src/main.ts"` dev invocations without reintroducing shell parsing. The `eval ci --since` git log call was also converted from `execSync` to `spawnSync`, and `--since` is now regex-validated before being passed to git.
+
+4. **Pre-existing: dist-mode loader could not see YAML adapters.** `src/discovery/loader.ts` set `BUILTIN_DIR = join(__dirname, "..", "adapters")` which resolves to `dist/adapters` in built mode, but `tsc` does not copy YAML files — only `.js` + `.d.ts`. Compounding this, `collectTsFiles` matched `.d.ts` declaration files via `extname(file) === ".ts"` and imported them as empty ES modules, silently inflating the TS adapter count to 81 while registering zero commands. `node dist/main.js doctor` reported `Sites: 0`. This bug existed since v0.1.0 but was dormant until the package was first published to npm in v0.207.1 (commit `607cedb`). **Fix:** new `findAdapterDirs()` resolves the YAML directory to whichever candidate (`src/adapters` or `dist/adapters`) actually contains `.yaml` files — works in dev, production builds, and global npm installs. `collectTsFiles` now auto-detects the entry-point extension (`.ts` in dev, `.js` in built mode) by probing the first site directory, and explicitly excludes `.d.ts`, `.d.ts.map`, `.js.map`, `.test.ts`, `.test.js`. Post-fix verification: `node dist/main.js list --format json | count` returns 134 sites / 711 commands, matching src mode.
+
+5. **`unicli operate observe` ranker was blind to attributes.** `src/browser/snapshot.ts` emitted raw refs as `{ref, tag, text}` but `scoreCandidate` in `src/browser/observe.ts` awarded confidence for `role` and `aria-label` bonuses. Interactive elements with empty text (search boxes with only `aria-label`) were dropped at confidence 0 in `rankCandidates`. Tests passed because they constructed fake refs with attrs. **Fix:** refactored `getAttrs` to `collectAttrs` returning an object bag; each interactive ref now carries `{ref, tag, text, attrs}` so the ranker's role/aria-label logic actually fires in production.
+
+6. **MCP expanded-mode dispatch broken for hyphenated command filenames.** `buildToolName` normalizes non-alphanumeric chars to `_`, but `handleExpandedTool` attempted to reverse the normalization by trying to split `unicli_&lt;site&gt;_&lt;command&gt;` at adapter-name prefixes and look up `adapter.commands[strippedSuffix]`. Command file names preserve hyphens (`skills-list.yaml` → `skills-list` key), so the reverse lookup never matched. Every v0.208 new command (`skills-list`, `capture-list`, `component-get`, `scene-export`, `project-run`, `sessions-search`, `skills-read`, `memory-read`, `eval-run`, `bench-list`, `bench-run`, `frame-export`, `wrap-observe`) was unreachable via MCP. **Fix:** `buildExpandedTools` now builds a `Map<toolName, {adapter, cmdName, cmd}>` at tool-list time and `handleExpandedTool` does a single O(1) lookup. Collision detection writes shadow warnings to stderr. Regression test asserts all 5 representative hyphenated names appear in the registered tool list.
+
+**MAJORs fixed:**
+
+7. **Symlink bypass** — `operate upload` and the exec pipeline step used string-based guards. `ln -s ~/.ssh/id_rsa /tmp/pretty.txt` defeated the check. **Fix:** new `matchSensitivePathRealpath` / `isSensitivePathRealpath` follow the symlink via `realpathSync` before matching, with a graceful fallback to string-only checking on broken symlinks. Both callers switched.
+
+8. **Pattern coverage** — 9 new credential paths: `.pgpass`, `.netrc` (+ Windows `_netrc`), `.wgetrc`, `.my.cnf`, Azure CLI (`accessTokens.json`, `azureProfile.json`), GitHub CLI (`hosts.yml`), 1Password CLI (`~/.config/op/`), rclone (`rclone.conf`).
+
+9. **Case-insensitive filesystem bypass (macOS/Windows)** — `/Users/x/.SSH/id_rsa` slipped past the case-sensitive regexes. **Fix:** new `normalizeForMatch()` lowercases the path on Darwin and Win32 before matching; POSIX paths stay case-sensitive.
+
+10. **`eval run --all` absolute-path branch was broken.** `f.path.includes(\`/${target}/\`)`produced`//tmp/evals/smoke/`for absolute targets and never matched. **Fix:** two-branch logic: relative names match`f.relative`prefix, absolute paths match`f.path`prefix after`resolve()`.
+
+11. **Version residue** in `AGENTS.md`, `docs/ROADMAP.md`, `contributing/COPY.md` — still said `0.207.1 — Vostok · Gagarin`. Updated.
+
+12. **Missing `docs/adapters-catalog.json`** — the CHANGELOG promised a canonical machine-readable manifest but the generator was never run. Ran `tsx scripts/generate-catalog.ts` → 134 sites / 711 commands / 467KB JSON. Committed.
+
+13. **Denial error shape mismatch** — `operate upload` emitted top-level `{error: "sensitive_path_denied", ...}` while the exec step wrapped the denial in `PipelineError.detail.config.denial` with `error = "exec blocked: sensitive_path_denied"`. Agents pattern-matching the canonical identifier had to handle two shapes. **Fix:** exec step now throws `PipelineError("sensitive_path_denied", ...)` so `toAgentJSON()` surfaces the same top-level identifier. Denial path + pattern inlined into `config.denial_path` / `config.denial_pattern`.
+
+**Known limitations (not fixed in v0.208):**
+
+- `detect:` YAML field is loader decoration — parsed but never executed. Adapters that rely on `detect` for registration gating do not currently self-disable on machines missing the binary. Moving this to a real `existsSync`/`statSync` probe is deferred to v0.209 because changing the loader semantics could introduce surprising adapter warnings in existing installs.
+
+**Test-count delta:** 753 → 769 (26 → 40 sensitive-paths tests after adding case-insensitive, extended pattern, and symlink realpath suites; 5 → 7 MCP expanded tests after adding hyphen registration + dispatch coverage).
+
+### Fixed
+
+- **Node 20 compatibility**: replaced `node:fs` `globSync` (Node 22+) with manual glob implementation in repair engine
+- **Shell injection prevention**: all `execSync` string interpolation in repair engine replaced with `execFileSync` + argument arrays; site/command names validated against `[a-z0-9._-]` pattern
+- **Lower-direction metric**: verify failures now return `Infinity` (not `0`) for `direction: "lower"`, preventing broken commits from being kept as improvements
+- **CDP flat session protocol**: `sessionId` now placed at top-level of JSON-RPC envelope (not inside `params`), fixing multi-tab recording
+- **Interceptor data pipeline**: JS interceptor now captures HTTP method, status code, and request body — enables write candidate detection (POST/PUT/PATCH) in `unicli record`
+- **Diagnostic crash prevention**: `parseDiagnostic` validates parsed JSON shape before cast, preventing TypeError on truncated payloads
+- **DaemonPage network capture**: `startNetworkCapture` and `readNetworkCapture` methods added to DaemonPage, enabling CDP-first path in `unicli operate`
+
+### Security
+
+- **JWT full redaction**: entire JWT token replaced with `[JWT-REDACTED]` (previously only signature was redacted, leaking payload claims)
+- **Upload path boundary**: `operate upload` now blocks paths outside workspace and home directory
+- **Bracket-notation param redaction**: `token[]`, `auth[token]` etc. now matched by sensitive param filter
+- **Body redaction depth limit**: recursive `redactBody` capped at 50 levels to prevent stack overflow
+
+### Changed
+
+- Failure classifier: 404 status only classified as `api_versioned` when URL contains API path pattern; generic 404 falls through to `unknown`
+- `extractPerfectScore` cached from first successful verify output instead of re-running verify command each iteration
+- `safeRevert` uses `git reset --hard HEAD~1` directly instead of creating noisy revert commits
+- `isNoiseUrl` now correctly filters `facebook.com` domain (was dead code with `/tr` path in hostname check)
+- `endpointSortKey` uses first array item's key count for wrapped responses like `{data: [...], total: N}`
+- `explore.ts` uses real interceptor method/status data instead of fabricating `GET`/`200`
+- Record and explore request capture arrays capped at 10,000 entries to prevent OOM
+- Record polling has re-entrancy guard to prevent overlapping captures
+- `extractMetric` resets `lastIndex` before exec for global/sticky regex safety
+- `EvalJudge` type changed to discriminated union for type-safe value access
+- `operate` string escaping uses `JSON.stringify` instead of hand-rolled replace chains
+- `templatizeUrl` skips duplicate query parameters
+
+<a id="v02070"></a>
+
+## v0.207.0 · 2026-04-06 · Vostok · Gagarin
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.207.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.207.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.206.0...v0.207.0)
+
+### Added
+
+- **Self-Repair Loop**: `unicli repair &lt;site&gt; [cmd] --loop` — Karpathy-style autonomous adapter repair with failure-type-aware prompting (selector_miss, auth_expired, api_versioned, rate_limited). 8-phase loop: review → classify → modify (Claude Code) → commit → verify → guard → decide → log. Stuck hint escalation at 3/5/7/9/11 consecutive discards.
+- **Eval Harness**: `unicli repair --eval &lt;file&gt;` — run evaluation suite with 4 judge criteria (contains, arrayMinLength, nonEmpty, matchesPattern). Outputs `SCORE=N/M` for metric extraction.
+- **Endpoint Analysis Module**: `src/engine/analysis.ts` — shared boolean filters (`isNoiseUrl`, `isStaticResource`, `isUsefulEndpoint`) + transparent sort key (`endpointSortKey`) replacing opaque numeric scoring.
+- **Record Multi-Tab**: CDP `Target.setDiscoverTargets` for cross-tab network capture, write candidate generation (POST/PUT/PATCH replay), URL parameter templatization (query → `${{ args.query }}`), request deduplication.
+- **Explore Interactive Fuzzing**: `unicli explore --interactive` — click buttons, tabs, and anchors to trigger additional XHR endpoints. iframe re-fetch for empty-body GET JSON endpoints.
+- **Operate CDP-First Network**: `operate open` pre-navigation capture, `operate network` prefers CDP `readNetworkCapture()` with JS interceptor fallback.
+
+### Changed
+
+- Endpoint scoring replaced: numeric `scoreEndpoint()` → boolean filter cascade (`isNoiseUrl` → `isStaticResource` → `isUsefulEndpoint`) + `endpointSortKey([itemCount, fieldCount, isApiPath, hasParams])`
+- `endpoint-scorer.ts` rewritten as thin facade re-exporting from `analysis.ts`
+- `synthesize.ts`: removed `--min-score` parameter, uses `isUsefulEndpoint()` instead
+
+### Security
+
+- Diagnostic redaction: JWT signature stripping (Cloudflare har-sanitizer pattern), sensitive header/URL param/body key redaction, 3-level size degradation (128KB/192KB/256KB cap)
+- `redactUrl` handles relative URLs safely, `redactBody` has circular reference protection (WeakSet guard)
+- `isNoiseUrl` matches against hostname only (not full URL string), preventing false positives from query parameters
+
+### Fixed
+
+- RegExp matching in analysis: noise domains checked against hostname, capability patterns against pathname only
+- Record URL templatization preserves URL auth credentials and port numbers in dedup keys
+- Record generates correct YAML args shape (mapping, not list) matching loader expectations
+- Repair engine: correct metric comparison for `direction: 'lower'`, scope file re-resolution after Claude modifications
+
+<a id="v02060"></a>
+
+## v0.206.0 · 2026-04-05 · Vostok · Tereshkova
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.206.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.206.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.205.0...v0.206.0)
+
+### Added
+
+- **Adapter Generation Engine**: `unicli explore &lt;url&gt;` (API discovery), `unicli synthesize &lt;site&gt;` (YAML candidate generation), `unicli generate &lt;url&gt;` (one-shot explore+synthesize+select) — complete adapter generation pipeline with endpoint scoring algorithm
+- **Browser Enhancements**: DOM settle detection via MutationObserver, network body capture with `startNetworkCapture`/`readNetworkCapture`, navigate with `waitUntil: networkidle`, click with x/y coordinates, interceptor regex patterns + text capture + multi-capture
+- **Diagnostic Engine**: `RepairContext` module — full error context with DOM snapshot, network requests, console errors, and adapter source for AI agent self-repair. Triggered via `UNICLI_DIAGNOSTIC=1`
+- **Plugin System v1**: Custom step registration (`registerStep`), manifest-based plugin loader (`unicli-plugin.json`), `unicli plugin install/uninstall/list/create/steps` commands
+- **Agent-Native Primitives**: `assert` step (URL/selector/text/condition), `extract` step (structured browser data extraction with CSS selectors and type coercion), `retry` property on any step with exponential backoff
+- **Smart Cookie Refresh**: Auto-detect 401/403 on cookie/header adapters → navigate Chrome → re-extract cookies via CDP
+- **Infrastructure**: HTTP proxy support (`http_proxy`/`https_proxy`/`no_proxy` via undici), update auto-checker (24h cache, non-blocking), `unicli health [site]` (adapter health monitoring), `unicli agents generate` (AGENTS.md auto-generation)
+- **New Sites (8)**: linkedin, jd, weixin, reuters, barchart, 1688, smzdm, sinablog — 26 new adapter commands
+- **Operate Enhancements**: `operate upload &lt;ref&gt; &lt;path&gt;`, `operate hover &lt;ref&gt;`
+- **Pipeline Steps**: assert, extract → 30 → 35 total (including retry as a cross-cutting property)
+
+### Changed
+
+- Pipeline engine: `SIBLING_KEYS` extended with `retry`, `backoff`; `executeStep` default case checks plugin custom step registry
+- `fetchJson` and `stepFetchText` now use proxy agent when proxy env vars set
+- `BrowserPage.goto()` uses DOM settle detection (MutationObserver) instead of simple setTimeout
+- CLI startup: non-blocking update check + plugin loading before hook emission
+
+<a id="v02050"></a>
+
+## v0.205.0 · 2026-04-05 · Vostok · Bykovsky
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.205.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.205.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.204.0...v0.205.0)
+
+### Added
+
+- **Pipeline**: 7 new steps — `set`, `if/else`, `append`, `each`, `parallel`, `rate_limit`, plus `fallback` property (23 → 30 steps)
+- **CDP Direct Mode**: Zero-extension browser auth — direct CDP connection, smart cookie extraction, auto-launch Chrome
+- **Self-Repair**: Level 1 auto-fix (detect `selector_miss`, suggest alternative paths), Level 3 community-fix stub
+- **Bridge CLIs**: 19 new bridges — vercel, supabase, wrangler, lark, dingtalk, hf, claude-code, codex-cli, opencode, aws, gcloud, az, doctl, netlify, railway, flyctl, pscale, neonctl, slack
+- **DX**: `unicli init` (adapter scaffolding), `unicli dev` (hot-reload), `unicli adapter install/list` (marketplace)
+- **Documentation**: VitePress site with DESIGN.md theme (Geist Mono + Terminal Green), 7 content pages
+- **Browser**: `unicli browser cookies &lt;domain&gt;`, `--profile`, `--headless` options
+- **Infrastructure**: npm publish config, rate limiter module, cookie extractor module
+
+### Changed
+
+- `acquirePage()` now prioritizes direct CDP over daemon (CDP → daemon → auto-launch)
+- Cookie loading now transparently falls back to CDP extraction from Chrome
+- Pipeline engine refactored: `executeStep()` helper, `getActionEntry()` + `SIBLING_KEYS`
+
+### Security
+
+- Path traversal guard on cookie `saveCookies()` and `loadCookies()`
+- Port validation for `UNICLI_CDP_PORT` environment variable
+- Recursion depth limit (max 10) for nested `if` and `each` steps
+
+---
+
+<a id="v02040"></a>
+
+## v0.204.0 · Vostok · Nikolayev
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.204.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.204.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.203.0...v0.204.0)
+
+### Engine Core (Sub-Project A)
+
+- **6 new pipeline steps** — press, scroll, snapshot (DOM a11y tree), tap (Vue Store Bridge), download (HTTP+yt-dlp), websocket (OBS auth)
+- **9 new BrowserPage methods** — insertText, nativeClick, nativeKeyPress, setFileInput, autoScroll, screenshot, networkRequests, snapshot, closeWindow
+- **9 new pipe filters** — slugify, sanitize, ext, basename, keys, json, abs, round, ceil, floor, int, float, str, reverse, unique (total: 29)
+- **VM sandbox migration** — replaced `new Function()` with hardened `vm.runInNewContext()` (null-prototype, frozen built-ins, 50ms timeout)
+- **Dual interceptor** — fetch + XHR monkey-patching with WeakMap anti-detection stealth
+- **Stealth upgrade** — 6 → 13 anti-detection patches (CDP cleanup, Error.stack filter, Performance API, iframe chrome consistency)
+
+### Daemon + Browser Bridge (Sub-Project B)
+
+- **Browser daemon** — standalone HTTP+WS server (port 19825), auto-spawn, 4h idle timeout, CSRF protection
+- **DaemonPage** — IPage implementation over daemon HTTP (reuses Chrome login sessions)
+- **Chrome extension** — Manifest V3 service worker, workspace isolation, command dispatch via chrome.debugger
+- **`operate` command** — 16 interactive browser subcommands (open, state, click, type, keys, scroll, screenshot, eval, network, etc.)
+- **`record` command** — capture network requests and auto-generate YAML adapters
+- **Shell completion** — bash, zsh, fish tab completion
+- **Daemon-first page acquisition** — yaml-runner tries daemon before direct CDP
+
+### Electron App Control (Sub-Project C)
+
+- **8 Electron apps** — Cursor, Codex, ChatGPT, Notion, Discord, ChatWise, Doubao, Antigravity
+- **66 commands** via shared AI chat pattern + per-app specialization
+- **App registry** — auto-discovery, CDP port assignment, user-extensible via ~/.unicli/apps.yaml
+
+### New Web Sites (Sub-Project D)
+
+- **+39 sites, +293 commands** — xiaohongshu (13), douyin (13), instagram (19), tiktok (15), facebook (10), amazon (8), boss (14), pixiv (6), hupu (7), xianyu (3), ones (11), notebooklm (15), doubao-web (9), lesswrong (15), gemini (+2 deep-research), yollomi (12), and 13 more P2 sites
+- **Existing site gaps filled** — xueqiu fund-holdings, hupu mentions
+
+### Desktop Expansion (Sub-Project E)
+
+- **FreeCAD** 2→15 commands, **Blender** 4→13, **GIMP** 3→12
+- **13 new apps** — OBS Studio (8, WebSocket), Zotero (8), Audacity/Sox (8), Krita (4), Kdenlive (3), Shotcut (3), MuseScore (5), CloudCompare (4), WireMock (5), AdGuardHome (5), Novita (3), Sketch (3), Slay the Spire II (6)
+
+### Ecosystem (Sub-Project F)
+
+- **Plugin system** — `unicli plugin install/uninstall/list/update` with GitHub/local sources
+- **Lifecycle hooks** — onStartup, onBeforeExecute, onAfterExecute (globalThis singleton, sequential execution)
+
+### Security
+
+- Shell injection fix in plugin.ts (execFileSync replaces execSync)
+- Path traversal prevention (plugin name validation + startsWith guard)
+- JS injection prevention in operate commands (ref validation, JSON.stringify selectors)
+- VM sandbox hardening (null-prototype, frozen built-ins, contextCodeGeneration restrictions)
+- Tap step sanitization (identifier regex for store/action names)
+- Fetch concurrency cap (mapConcurrent with limit=5)
+- Network buffer cap (500 entries max)
+
+### Metrics
+
+| Metric          | v0.203.0 | v0.204.0 |
+| --------------- | -------- | -------- |
+| Sites           | 57       | 96       |
+| Commands        | 289      | 582      |
+| Pipeline steps  | 17       | 23       |
+| Pipe filters    | 14       | 29       |
+| Stealth patches | 6        | 13       |
+| Tests           | ~137     | 2272     |
+
+---
+
+<a id="v02030"></a>
+
+## v0.203.0 · Vostok · Leonov
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.203.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.203.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.202.0...v0.203.0)
+
+### Engine — Browser Strategy
+
+- **CDP client** — raw WebSocket Chrome DevTools Protocol, zero new runtime dependencies
+- **BrowserPage** — goto, evaluate, click, type, press, cookies, scroll, waitForSelector
+- **Chrome launcher** — auto-discover/start Chrome with `--remote-debugging-port`
+- **Stealth injection** — anti-detection evasions (webdriver, plugins, permissions, toString)
+- **6 new pipeline steps** — navigate, evaluate, click, type, wait, intercept
+- **Strategy cascade** — auto-probe PUBLIC → COOKIE → HEADER
+- CLI: `unicli browser start`, `unicli browser status`
+
+### Web Adapters — Write Operations
+
+- twitter: +15 write commands (post, like, reply, follow, unfollow, block, unblock, bookmark, unbookmark, delete, hide-reply, download, article, accept, reply-dm) — total 25 commands
+
+### Web Adapters — Platform Expansions
+
+- jike: +9 (create, like, repost, comment, search, notifications, post, topic, user)
+- douban: +6 (subject, top250, marks, reviews, photos, download)
+- weibo: +4 (feed, post, search, user)
+- weread: +4 (book, highlights, notebooks, notes)
+- zsxq: +3 (dynamics, search, topic)
+- reddit: +7 (comment, read, save, saved, subscribe, upvote, upvoted)
+- linux-do: +8 (categories, category, feed, search, tags, topic, user-posts, user-topics)
+- xueqiu: +8 (stock, fund-snapshot, comments, feed, watchlist, search, hot-stock, earnings-date)
+- medium: +2 (feed, user)
+- producthunt: +3 (browse, posts, today)
+- sinafinance: +2 (news, stock)
+- 36kr: +3 (article, hot, search)
+- v2ex: +2 (daily, user)
+- substack: +2 (feed, publication)
+- imdb: +2 (person, reviews)
+- bloomberg: +1 (news), google: +2 (search, trends), bilibili: +1 (dynamic), zhihu: +1 (download), tieba: +1 (read)
+
+### Infrastructure
+
+- Manifest builder includes TS adapter metadata
+- Browser module: cdp-client.ts, page.ts, launcher.ts, stealth.ts
+- 119 unit tests (was 42)
+
+**Stats: 57 sites, 289 commands (was 203 — +86 commands, +77 tests)**
+
+---
+
+<a id="v02020"></a>
+
+## v0.202.0 · Vostok · Tereshkova
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.202.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.202.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.201.0...v0.202.0)
+
+### Engine
+
+- Cookie authentication strategy — reads cookies from `~/.unicli/cookies/&lt;site&gt;.json`
+- Cookie injection in fetch/fetch_text pipeline steps (strategy=cookie)
+- `write_temp` pipeline step for desktop adapters (temp file creation + auto-cleanup)
+- `auth` CLI commands: `auth setup`, `auth check`, `auth list`
+- Async TS adapter loading via dynamic import (loadTsAdapters)
+- `PipelineOptions` for passing site/strategy context to pipeline engine
+
+### Web Adapters — Chinese Platforms (3 new sites, 18 commands)
+
+- bilibili: 12 commands (hot, ranking, feed, following, me, history, favorites, search, user-videos, comments, subtitle, download) — WBI signed + cookie auth
+- weibo: 5 commands (hot, timeline, profile, comments, me) — cookie auth
+- zhihu: 6 commands (hot, feed, question, search, me, notifications) — cookie auth
+
+### Web Adapters — International (2 new sites, 15 commands)
+
+- twitter: 10 commands (search, profile, timeline, bookmarks, trending, likes, thread, followers, following, notifications) — GraphQL + Bearer token + cookie auth
+- youtube: 5 commands (search, video, channel, comments, transcript) — InnerTube API
+
+### Web Adapters — P1/P2 Sites (8 new sites, 19 commands)
+
+- douban: 3 commands (movie-hot, book-hot, search)
+- xueqiu: 2 commands (hot, quote)
+- linux-do: 2 commands (hot, latest) — Discourse API
+- jike: 1 command (feed) — GraphQL
+- zsxq: 2 commands (groups, topics) — cookie auth
+- medium: 1 command (search)
+- sinafinance: 2 commands (rolling-news, stock-rank)
+- Expanded: v2ex (+2: notifications, me), weread (+1: shelf), tieba (+2: search, posts), reddit (+1: comments)
+
+### Desktop Adapters (2 new apps, 5 commands)
+
+- gimp: 3 commands (resize, convert, info) — Script-Fu via exec stdin
+- freecad: 2 commands (export-stl, info) — Python via write_temp + exec
+
+### Infrastructure
+
+- `authCookies` field in adapter manifests for declaring required cookies
+- `Strategy` re-exported from registry.ts for TS adapter pattern
+- Manifest builder now includes TS adapter metadata (regex extraction from source)
+- Fixed `sync:ref` script to use `--rebase` for divergent branches
+
+**Stats: 57 sites, 203 commands (was 43 sites, 141 commands — +14 sites, +62 commands)**
+
+---
+
+<a id="v02010"></a>
+
+## v0.201.0 · Vostok · Chaika II
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.201.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.201.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0)
+
+### Engine
+
+- POST JSON body template resolution in fetch steps
+- Exec stdin pipe for desktop tools (mermaid, pandoc, jq)
+- Exec environment variables and file output support
+- HTML-to-Markdown conversion step via turndown
+- Retry with exponential backoff for fetch steps (429/5xx)
+
+### Web Adapters (12 new sites)
+
+- tieba, 36kr, substack, producthunt
+- google (suggest, news), imdb (search, title, top, trending)
+- web/read (HTML to Markdown), ctrip, paperreview, spotify
+- xiaoyuzhou expanded (episode, podcast-episodes)
+
+### Bridge Adapters (4 new tools, 16 commands)
+
+- gh (repo, issue, pr, release, run)
+- docker (ps, images, run, build, logs)
+- yt-dlp (download, info, search, extract-audio)
+- jq (query, format)
+
+### Desktop Adapters (10 new apps, 36 commands)
+
+- ffmpeg expanded to 11 commands (probe, trim, gif, etc.)
+- imagemagick (convert, resize, identify, composite, montage, compare)
+- pandoc (universal document converter)
+- libreoffice (headless convert, print)
+- mermaid (diagram rendering via stdin)
+- inkscape (SVG export, convert, optimize)
+- blender expanded (info, convert, animation)
+- musescore (export, convert)
+- drawio (diagram export)
+- comfyui (generate, status, history, nodes)
+
+### Stats
+
+- Sites/apps: 21 → 43 (+22)
+- Commands: 74 → 141 (+67)
+- Engine steps: 9 → 10 (html_to_md)
+- Unit tests: 18 → 27
+
+<a id="v02000"></a>
+
+## v0.200.0 · Vostok · Chaika
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.200.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.200.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0)
+
+> _1961 — First human in space. Yuri Gagarin orbited Earth in 108 minutes._
+> _Chaika (Seagull) — Valentina Tereshkova's call sign. First woman in space._
+
+### Engine
+
+- Pipe filter system: 15 filters (join, urlencode, truncate, strip_html, slice, replace, split, first, last, length, trim, default, lowercase, uppercase)
+- RSS/XML parsing: `fetch_text` + `parse_rss` pipeline steps
+- Desktop exec: `exec` step with json/lines/csv/text output parsing
+- Sort step: `sort` with by/order
+- Resilient loader: skip malformed YAML gracefully
+
+### Self-Repair Architecture
+
+- Structured pipeline errors: JSON with adapter_path, step, action, suggestion
+- `unicli repair &lt;site&gt; &lt;command&gt;` — diagnostic + fix suggestions
+- `unicli test [site]` — smoke test runner
+- User adapter overlay: `~/.unicli/adapters/` overrides built-in (survives updates)
+
+### Adapters (21 sites, 74 commands)
+
+New sites: lobsters (4), stackoverflow (4), bluesky (9), devto (3), dictionary (3), steam (1), bbc (1), wikipedia (4), arxiv (2), apple-podcasts (3), hf (1), bloomberg (9), v2ex (7), weread (2), xiaoyuzhou (1)
+Completed: hackernews (8/8), reddit (8/8)
+Pre-existing: github-trending (1), ollama (1), blender (1), ffmpeg (1)
+
+### Infrastructure
+
+- Build manifest: auto-generated dist/manifest.json
+- Version bump: 0.100.1 → 0.200.0
+
+<a id="v01001"></a>
+
+## v0.100.1 · Sputnik · Kedr
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v0.100.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/0.100.1)
+
+> _1957 — The first artificial satellite. First signal from orbit. Proof that it works._
+> _Kedr (Cedar) — Gagarin's call sign. The very first patch._
+
+### Added
+
+- YAML pipeline execution engine: `fetch`, `select`, `map`, `filter`, `limit`
+- 5 adapter types: `web-api`, `desktop`, `browser`, `bridge`, `service`
+- TypeScript adapter support via `cli()` registration helper
+- Multi-format output: `table`, `json`, `yaml`, `csv`, `md`
+- Auto-detection of piped output (switches to JSON for AI agents)
+- Adapter discovery from `src/adapters/` and `~/.unicli/adapters/`
+- Exit codes following `sysexits.h` conventions
+- Positional and option argument parsing from YAML adapter definitions
+
+### Adapters (6 sites, 8 commands)
+
+- **hackernews**: `top`, `search` — web-api, public
+- **reddit**: `hot`, `search` — web-api, public
+- **github-trending**: `daily` — web-api, public
+- **blender**: `render` — desktop (requires blender)
+- **ffmpeg**: `convert` — desktop (requires ffmpeg)
+- **ollama**: `list` — service (requires ollama at localhost:11434)
+
+### Agent Integration
+
+- Agent Skills: `unicli-usage`, `unicli-explorer`, `unicli-operate`, `unicli-oneshot`
+- AGENTS.md for cross-agent discoverability (Codex, Copilot, Cursor, OpenCode)
+- CLAUDE.md for Claude Code integration
+- MCP server stub for universal agent connectivity
+
+### Community
+
+- Apache-2.0 license
+- CODE_OF_CONDUCT.md, GOVERNANCE.md, CODEOWNERS
+- Issue templates: bug report, feature request, adapter request
+- CI workflow: Node.js 20/22 matrix on Ubuntu
+- Aerospace theme system: [contributing/COPY.md](https://github.com/olo-dot-io/Uni-CLI/blob/main/contributing/COPY.md)
+- Full release label rules: [docs/reference/release.md](https://github.com/olo-dot-io/Uni-CLI/blob/main/docs/reference/release.md)

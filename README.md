@@ -34,6 +34,15 @@ unicli search "list the top Hacker News stories"
 unicli hackernews top --limit 3 -f json
 ```
 
+Check releases or open an interactive Y/N update choice.
+
+```bash
+unicli upgrade --check -f json
+unicli upgrade
+```
+
+Persistent non-interactive Agent installations update in a detached worker by default. Structured output reports progress through `meta.update.automatic_update`. Interactive terminals keep the Y/N choice, and `unicli upgrade --no-auto-update` switches a machine back to explicit approval.
+
 ## Route By Task
 
 The catalog handles discovery and operation contracts. Execution then selects the strongest operator with the smallest effective scope. One provider runs; a failed path keeps its original cause and repair command.
@@ -56,20 +65,20 @@ unicli repair reddit saved                 # verify a supported drift path
 
 ## The Operation Contract
 
-The public model stays compact:
+The public model stays compact.
 
 ```text
 intent → candidate operations → explicit selection → policy → substrate → receipt
 ```
 
-| Stage    | Runtime behavior                                                                         |
-| -------- | ---------------------------------------------------------------------------------------- |
-| Discover | BM25 bilingual search returns a small ranked candidate set                               |
-| Select   | The caller chooses one operation with a declared strategy and substrate                  |
-| Govern   | `open`, `confirm`, and `locked` profiles evaluate effect and capability scope            |
-| Act      | The selected adapter, core command, browser, desktop, or protocol path executes          |
-| Observe  | Every normal command returns a stable success or error envelope                          |
-| Repair   | Owned drift paths expose their source, failed boundary, and bounded verification command |
+| Stage    | Runtime behavior                                                                          |
+| -------- | ----------------------------------------------------------------------------------------- |
+| Discover | Compiled intent and bilingual retrieval return a small ranked set with selection evidence |
+| Select   | The caller chooses one operation with a declared strategy and substrate                   |
+| Govern   | `open`, `confirm`, and `locked` profiles evaluate effect and capability scope             |
+| Act      | The selected adapter, core command, browser, desktop, or protocol path executes           |
+| Observe  | Every normal command returns a stable success or error envelope                           |
+| Repair   | Owned drift paths expose their source, failed boundary, and bounded verification command  |
 
 Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sandbox remain independent choices.
 
@@ -84,13 +93,13 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 | Protocols | Native CLI, MCP stdio, MCP Streamable HTTP, ACP, generated configs, and agent skills         |
 | Policy    | Permission profiles, deny rules, scoped approvals, recordings, replay, and evidence          |
 
-Static catalog:
+Static catalog
 
 - <!-- STATS:site_count -->337<!-- /STATS --> sites
-- <!-- STATS:command_count -->1884<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1261<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10237<!-- /STATS --> tests
+- <!-- STATS:test_count -->10314<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -98,12 +107,12 @@ Fixed core and host-discovered commands join at runtime.
 <!-- prettier-ignore -->
 | Surface | Sites | Operations | Examples |
 | --- | ---: | ---: | --- |
-| social | 33 | 395 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| social | 33 | 396 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
 | video | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
 | news | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
 | finance | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | shopping | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
-| dev | 37 | 180 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
+| dev | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
 | ai | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | scholarly | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | patent | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
@@ -150,7 +159,7 @@ covers authenticated, resumable conference and multi-year research archives.
 }
 ```
 
-Equivalent command:
+Equivalent command
 
 ```bash
 npx -y @zenalexa/unicli mcp serve
@@ -171,7 +180,7 @@ Desktop actions prefer accessibility references. Visual routes require an explic
 
 ## Results That Explain Themselves
 
-Success:
+Success
 
 ```yaml
 ok: true
@@ -186,7 +195,7 @@ data:
 error: null
 ```
 
-Failure:
+Failure
 
 ```yaml
 ok: false
@@ -205,7 +214,7 @@ Exit codes distinguish success, empty results, unavailable dependencies, tempora
 
 ## Repair Drift At The Owned Boundary
 
-Adapters stay agent-readable and locally replaceable:
+Adapters stay agent-readable and locally replaceable.
 
 ```text
 run → read error.adapter_path → patch the owned step → save override → verify once
@@ -217,7 +226,7 @@ unicli repair <site> <command>
 
 `repair` does not edit source or Git state. It reruns the original command as a bounded subprocess and succeeds only when the target returns `ok: true` with exit code `0`. Local overrides under `~/.unicli/adapters/` survive npm updates.
 
-A minimal YAML adapter:
+A minimal YAML adapter follows.
 
 ```yaml
 site: example
@@ -261,7 +270,9 @@ npm run verify   # full E2E and adapter coverage; required before release
 
 Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter and engine conventions.
 
-<p align="center"><sub>v1.0.4 — Artemis · Glover</sub></p>
+Browse every published version on the [generated release history](docs/releases.md). The same data is available to Agents through `docs/public/release-history.json`.
+
+<p align="center"><sub>v1.1.1 — Artemis · Koch</sub></p>
 
 ## License
 

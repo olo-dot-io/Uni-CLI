@@ -27,6 +27,17 @@ const ignoredPathFragments = [
   "/docs/.vitepress/dist/assets/inter-",
   "/docs/.vitepress/dist/vp-icons.css",
 ];
+// Generated release archives preserve immutable historical wording while current docs remain fully scanned.
+const historicalArchivePaths = new Set([
+  "/docs/public/release-history.json",
+  "/docs/public/markdown/releases.md",
+  "/docs/public/markdown/zh/releases.md",
+  "/docs/.vitepress/dist/release-history.json",
+  "/docs/.vitepress/dist/markdown/releases.md",
+  "/docs/.vitepress/dist/markdown/zh/releases.md",
+  "/docs/.vitepress/dist/releases.html",
+  "/docs/.vitepress/dist/zh/releases.html",
+]);
 const cjkPattern =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
 const bannedPatterns = [/\bper-call\b/iu, /internal source maps?/iu];
@@ -45,6 +56,10 @@ function toPosix(path: string): string {
 
 function shouldScan(filePath: string): boolean {
   const normalized = `/${toPosix(relative(process.cwd(), filePath))}`;
+
+  if (historicalArchivePaths.has(normalized)) {
+    return false;
+  }
 
   if (ignoredPathFragments.some((fragment) => normalized.includes(fragment))) {
     return false;

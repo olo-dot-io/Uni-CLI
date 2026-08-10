@@ -39,7 +39,7 @@ export interface UpdateRefreshOptions {
 }
 
 function defaultCachePath(): string {
-  return join(homedir(), ".unicli", "update-check.json");
+  return join(process.env.HOME || homedir(), ".unicli", "update-check.json");
 }
 
 function removeTempFile(path: string, original: unknown): never {

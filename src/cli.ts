@@ -1,11 +1,11 @@
 /**
  * @owner       src::cli
  * @does        Builds the Commander command tree and dispatches full CLI operations after the manifest fast path.
- * @needs       command registrars, adapter registry/loader, pipeline engine, proxy-aware network, update check, Commander error boundary
+ * @needs       command registrars, adapter registry/loader, pipeline engine, proxy-aware network, Commander error boundary
  * @feeds       src/main.ts and CLI-focused integration tests
  * @breaks      Command parsing, adapter loading, or command handlers propagate semantic CLI exit codes.
  * @invariants  One command tree owns every non-fast-path invocation; proxy installation precedes network-capable handlers; unknown user tokens never become diagnostic command identities.
- * @side-effects Loads adapters, installs global proxy-aware fetch, checks cached updates, writes CLI output.
+ * @side-effects Loads adapters, installs global proxy-aware fetch, and writes CLI output.
  * @perf        Full path loads the adapter registry; discovery-only invocations stay on src/fast-path.ts.
  * @concurrency One command tree per createCli call; process-wide network installation is idempotent.
  * @test        tests/unit/cli, tests/unit/commands, tests/unit/integration-fixtures
@@ -82,7 +82,6 @@ import { registerAdapterDispatch } from "./commands/dispatch.js";
 import { registerDescribeCommand } from "./commands/describe.js";
 import { registerArchitectureCommand } from "./commands/architecture.js";
 import { emitHook } from "./hooks.js";
-import { checkForUpdates } from "./engine/update-check.js";
 import { installProxyAwareFetch } from "./engine/proxy.js";
 import type { OutputFormat } from "./types.js";
 import { runBrowserDoctor } from "./browser/doctor.js";
@@ -99,9 +98,6 @@ export async function createCli(): Promise<Command> {
   installCommanderErrorBoundary(program);
 
   installProxyAwareFetch();
-
-  // Non-blocking update check (fire-and-forget)
-  checkForUpdates();
 
   program
     .name("unicli")
@@ -174,6 +170,10 @@ export async function createCli(): Promise<Command> {
     .option("--site <site>", "filter by site name")
     .option("--category <cat>", "filter by site category")
     .option("--type <type>", "filter by adapter type")
+    .option(
+      "--personalized",
+      "only current-user feeds, saved items, account, network, or activity commands",
+    )
     .action((opts) => {
       const listStarted = Date.now();
       let commands = [
@@ -185,6 +185,8 @@ export async function createCli(): Promise<Command> {
           category: command.category,
           type: command.type,
           auth: false,
+          authRequirement: "none" as const,
+          personalization: undefined,
           quarantined: false,
         })),
       ];
@@ -197,6 +199,9 @@ export async function createCli(): Promise<Command> {
       }
       if (opts.type) {
         commands = commands.filter((c) => c.type === opts.type);
+      }
+      if (opts.personalized) {
+        commands = commands.filter((c) => Boolean(c.personalization));
       }
       commands = commands.sort(
         (a, b) =>
@@ -217,13 +222,22 @@ export async function createCli(): Promise<Command> {
           category: c.category,
           type: c.type,
           auth: tags.join(" "),
+          personalization: c.personalization ?? "",
         };
       });
 
       console.log(
         format(
           rows,
-          ["site", "command", "description", "category", "type", "auth"],
+          [
+            "site",
+            "command",
+            "description",
+            "personalization",
+            "category",
+            "type",
+            "auth",
+          ],
           fmt,
           {
             command: "core.list",

@@ -1,0 +1,95 @@
+site: gh
+name: search-code
+description: Search GitHub source code for a feature, API, dependency, symbol, filename, or implementation detail
+type: bridge
+strategy: public
+operation_effect: read
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Code search phrase or raw GitHub code qualifiers
+  repo:
+    type: str
+    default: ""
+    pattern: "^$|^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Optional repository in OWNER/REPO form
+  owner:
+    type: str
+    default: ""
+    description: Optional user or organization login
+  language:
+    type: str
+    default: ""
+    description: Programming language filter
+  filename:
+    type: str
+    default: ""
+    description: Exact filename filter, such as package.json
+  extension:
+    type: str
+    default: ""
+    description: File extension without the leading dot
+  match:
+    type: str
+    default: any
+    choices: [any, file, path]
+    description: Restrict matches to file contents or paths
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - search
+        - code
+        - ${{ args.query }}
+        - "${{ args.repo ? '--repo=' + args.repo : '' }}"
+        - "${{ args.owner ? '--owner=' + args.owner : '' }}"
+        - "${{ args.language ? '--language=' + args.language : '' }}"
+        - "${{ args.filename ? '--filename=' + args.filename : '' }}"
+        - "${{ args.extension ? '--extension=' + args.extension : '' }}"
+        - "${{ args.match !== 'any' ? '--match=' + args.match : '' }}"
+        - --limit
+        - ${{ args.limit }}
+        - --json
+        - path,repository,sha,textMatches,url
+      parse: json
+      timeout: 30000
+
+  - map:
+      repository: "${{ item.repository ? item.repository.nameWithOwner : '' }}"
+      path: ${{ item.path }}
+      sha: ${{ item.sha }}
+      summary: "${{ item.textMatches && item.textMatches.length ? item.textMatches[0].fragment : '' }}"
+      matches: "${{ JSON.stringify(item.textMatches || []) }}"
+      url: ${{ item.url }}
+
+columns: [repository, path, sha, summary, url]
+
+retrieval:
+  operation: discover
+  result_kind: source-code
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    repository: repo
+    owner: owner
+    language: language
+capabilities: ["subprocess.exec", "auth.executable.gh"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

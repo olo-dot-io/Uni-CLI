@@ -8,7 +8,9 @@ describe("root startup help", () => {
     expect(help).toContain("Usage: unicli");
     expect(help).toContain("Open Agent-Computer Interface runtime");
     expect(help).toContain("search <intent...>");
+    expect(help).toContain("do <goal...>");
     expect(help).toContain("list [--site <site>]");
+    expect(help).toContain("--personalized");
     expect(help).toContain("unicli help <command>");
     expect(help).not.toContain("Commands for bilibili");
     expect(help.split("\n").length).toBeLessThan(40);

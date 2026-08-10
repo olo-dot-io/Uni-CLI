@@ -61,10 +61,18 @@ describe("high-value social adapter quality gates", () => {
 
     expect(searchRepos?.adapterArgs?.map((arg) => arg.name)).toEqual([
       "query",
-      "limit",
+      "owner",
+      "language",
+      "topic",
+      "match",
+      "min-stars",
+      "min-forks",
+      "pushed",
+      "archived",
+      "include-forks",
       "sort",
       "order",
-      "language",
+      "limit",
     ]);
   });
 

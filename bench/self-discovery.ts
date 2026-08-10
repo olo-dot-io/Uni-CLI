@@ -92,7 +92,11 @@ function runCli(args: string[]): RunResult {
   const start = performance.now();
   const res = spawnSync(process.execPath, [CLI_ENTRY, ...args], {
     encoding: "utf-8",
-    env: { ...process.env, NO_COLOR: "1" },
+    env: {
+      ...process.env,
+      NO_COLOR: "1",
+      UNICLI_SKIP_UPDATE_CHECK: "1",
+    },
     timeout: 15_000,
   });
   const end = performance.now();

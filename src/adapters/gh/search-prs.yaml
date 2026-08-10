@@ -1,8 +1,9 @@
 site: gh
 name: search-prs
-description: Search current GitHub pull requests across repositories
+description: Search GitHub pull requests for a feature, implementation, author, review, branch, or repository
 type: bridge
 strategy: public
+operation_effect: read
 lint_listing_detail: skip
 binary: gh
 detect: which gh
@@ -12,10 +13,67 @@ args:
     type: str
     required: true
     positional: true
-    description: GitHub pull-request search query; raw qualifiers such as repo:OWNER/REPO are supported
+    minLength: 1
+    description: Pull-request phrase or raw GitHub PR qualifiers
+  repo:
+    type: str
+    default: ""
+    pattern: "^$|^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Optional repository in OWNER/REPO form
+  owner:
+    type: str
+    default: ""
+    description: Optional repository owner
+  author:
+    type: str
+    default: ""
+    description: Optional pull-request author login
+  state:
+    type: str
+    default: any
+    choices: [any, open, closed]
+  label:
+    type: str
+    default: ""
+    description: Exact pull-request label
+  base:
+    type: str
+    default: ""
+    description: Base branch
+  head:
+    type: str
+    default: ""
+    description: Head branch
+  match:
+    type: str
+    default: any
+    choices: [any, title, body, comments]
+  sort:
+    type: str
+    default: updated
+    choices:
+      [
+        comments,
+        created,
+        interactions,
+        reactions,
+        reactions-+1,
+        reactions--1,
+        reactions-heart,
+        reactions-smile,
+        reactions-tada,
+        reactions-thinking_face,
+        updated,
+      ]
+  order:
+    type: str
+    default: desc
+    choices: [asc, desc]
   limit:
     type: int
     default: 20
+    minimum: 1
+    maximum: 100
 
 pipeline:
   - exec:
@@ -24,14 +82,22 @@ pipeline:
         - search
         - prs
         - ${{ args.query }}
+        - "${{ args.repo ? '--repo=' + args.repo : '' }}"
+        - "${{ args.owner ? '--owner=' + args.owner : '' }}"
+        - "${{ args.author ? '--author=' + args.author : '' }}"
+        - "${{ args.state !== 'any' ? '--state=' + args.state : '' }}"
+        - "${{ args.label ? '--label=' + args.label : '' }}"
+        - "${{ args.base ? '--base=' + args.base : '' }}"
+        - "${{ args.head ? '--head=' + args.head : '' }}"
+        - "${{ args.match !== 'any' ? '--match=' + args.match : '' }}"
         - --limit
         - ${{ args.limit }}
         - --json
-        - number,title,state,author,createdAt,updatedAt,closedAt,url,repository,body,commentsCount,isDraft
+        - number,title,state,author,createdAt,updatedAt,closedAt,url,repository,body,commentsCount,isDraft,labels,isLocked
         - --sort
-        - updated
+        - ${{ args.sort }}
         - --order
-        - desc
+        - ${{ args.order }}
         - --visibility
         - public
       parse: json
@@ -49,6 +115,8 @@ pipeline:
       updatedAt: ${{ item.updatedAt }}
       closedAt: ${{ item.closedAt }}
       comments: ${{ item.commentsCount }}
+      labels: "${{ JSON.stringify(item.labels || []) }}"
+      locked: ${{ item.isLocked }}
       summary: "${{ (item.body || '').slice(0,4000) }}"
       url: ${{ item.url }}
 
@@ -62,6 +130,9 @@ retrieval:
   arguments:
     query: query
     limit: limit
+    repository: repo
+    owner: owner
+    author: author
 capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user

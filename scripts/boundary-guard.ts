@@ -184,6 +184,8 @@ const ALLOWLIST: readonly RegExp[] = [
   /\.vitepress\/dist\//,
   /^docs\/public\//, // generated agent-assets — boundary-checked at source
   /^CHANGELOG\.md$/, // frozen historical record
+  /^docs\/releases\.md$/, // generated projection of the frozen CHANGELOG history
+  /^docs\/zh\/releases\.md$/, // localized route preserves the same generated history
   /^scripts\/boundary-guard\.ts$/, // this file
   /^tests\/unit\/public-private-boundary\.test\.ts$/, // mirror test file
   /^AGENTS\.md$/, // doctrine spec — enumerates the banned patterns by name

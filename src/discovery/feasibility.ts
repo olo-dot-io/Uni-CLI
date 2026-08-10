@@ -18,16 +18,8 @@ import {
   buildCoreCommandContract,
   type CommandContract,
 } from "../core/command-contract.js";
-import {
-  getCoreDiscoveryCommand,
-  listCoreDiscoverySites,
-} from "./core-catalog.js";
-import {
-  getAllAdapters,
-  getRegistryVersion,
-  resolveCommand,
-} from "../registry.js";
-import { SITE_ALIASES } from "./aliases.js";
+import { getCoreDiscoveryCommand } from "./core-catalog.js";
+import { getRegistryVersion, resolveCommand } from "../registry.js";
 import type {
   ExecutionOperator,
   OperationFamily,
@@ -35,25 +27,15 @@ import type {
   OperatorTargetScope,
   TargetSurface,
 } from "../types.js";
-import { inferIntentOperationFamily } from "../core/operation-family.js";
-import { resolveTaskIntentFrame } from "../core/intent-frame.js";
+import type {
+  CapabilityRequirements,
+  InteractionImpact,
+} from "./intent-plan.js";
 
-export type InteractionImpact = "background" | "target-scoped" | "foreground";
-
-export interface CapabilityRequirements {
-  operator?: ExecutionOperator;
-  operation_family?: OperationFamily;
-  required_sites?: string[];
-  forbidden_operators?: ExecutionOperator[];
-  allow_browser?: boolean;
-  target_surface?: TargetSurface;
-  target_scope?: OperatorTargetScope;
-  effect?: OperationEffect;
-  max_interaction_impact?: InteractionImpact;
-  platform?: NodeJS.Platform;
-  /** Whether coordinate-based actuation is explicitly authorized. */
-  allow_coordinate_actuation?: boolean;
-}
+export type {
+  CapabilityRequirements,
+  InteractionImpact,
+} from "./intent-plan.js";
 
 export interface CommandFeasibility {
   contract_compatible: boolean;
@@ -249,186 +231,6 @@ export function commandFeasibilityProfile(
   };
 }
 
-/**
- * Infer only explicit substrate language. Ordinary mentions of a website,
- * application, click, or screenshot do not authorize a broader operator.
- */
-export function inferCapabilityRequirements(
-  intent: string,
-): CapabilityRequirements {
-  const normalized = intent.normalize("NFKC").toLowerCase();
-  const frame = resolveTaskIntentFrame(normalized);
-  const operator = frame.operator ?? explicitOperator(normalized);
-  const operationFamily =
-    frame.operation_family ?? inferIntentOperationFamily(normalized);
-  const requiredSites = [
-    ...new Set([...inferExplicitSites(normalized), ...frame.site_hints]),
-  ].sort();
-  return {
-    ...(operator ? { operator } : {}),
-    ...(operationFamily ? { operation_family: operationFamily } : {}),
-    ...(requiredSites.length > 0 ? { required_sites: requiredSites } : {}),
-    ...(operator === "visual-coordinate"
-      ? { allow_coordinate_actuation: true }
-      : {}),
-  };
-}
-
-function inferExplicitSites(intent: string): string[] {
-  const normalized = normalizeSiteText(intent);
-  const nonProviderSiteIds = new Set([
-    "browser",
-    "compute",
-    "operate",
-    "auth",
-    "repair",
-    "core",
-  ]);
-  const sites = new Set([
-    ...getAllAdapters().map((adapter) => adapter.name),
-    ...listCoreDiscoverySites().map((site) => site.site),
-  ]);
-  const highConfidenceBareSites = new Set([
-    "reddit",
-    "twitter",
-    "gh",
-    "gitlab",
-    "hackernews",
-    "linux-do",
-    "youtube",
-    "bilibili",
-    "zhihu",
-    "xiaohongshu",
-    "douyin",
-    "notion",
-    "slack",
-    "spotify",
-    "figma",
-    "discord",
-    "instagram",
-    "facebook",
-    "tiktok",
-    "linkedin",
-    "stackoverflow",
-  ]);
-  const required = new Set<string>();
-  for (const site of sites) {
-    if (nonProviderSiteIds.has(site) || !highConfidenceBareSites.has(site)) {
-      continue;
-    }
-    const phrase = normalizeSiteText(site);
-    const explicitHandle = intent.includes(`@${site}`);
-    const explicitUrl = new RegExp(
-      `https?://[^\\s/]*${escapeRegex(site.replaceAll("-", ""))}`,
-      "iu",
-    ).test(intent.replaceAll("-", ""));
-    if (
-      explicitHandle ||
-      explicitUrl ||
-      (phrase && hasBoundedPhrase(normalized, phrase))
-    ) {
-      required.add(site);
-    }
-  }
-  const canonicalPhrases: ReadonlyArray<readonly [string, string]> = [
-    ["hacker news", "hackernews"],
-    ["linux do", "linux-do"],
-    ["little red book", "xiaohongshu"],
-  ];
-  for (const [phrase, site] of canonicalPhrases) {
-    if (sites.has(site) && hasBoundedPhrase(normalized, phrase)) {
-      required.add(site);
-    }
-  }
-  for (const [alias, site] of SITE_ALIASES) {
-    if (!sites.has(site)) continue;
-    const escaped = escapeRegex(alias.normalize("NFKC").toLowerCase());
-    const normalizedAlias = normalizeSiteText(alias);
-    const distinctiveAlias = /[\u3400-\u9fff]/u.test(normalizedAlias)
-      ? normalizedAlias.length >= 2
-      : normalizedAlias.length >= 4;
-    if (
-      highConfidenceBareSites.has(site) &&
-      distinctiveAlias &&
-      hasBoundedPhrase(normalized, normalizedAlias)
-    ) {
-      required.add(site);
-    }
-    const explicitContext = new RegExp(
-      `(?:\\b(?:on|from|via|through|using)\\s+${escaped}\\b|(?:在|从|通过|使用)\\s*${escaped})`,
-      "iu",
-    );
-    if (explicitContext.test(intent)) required.add(site);
-  }
-  return [...required].sort();
-}
-
-function normalizeSiteText(value: string): string {
-  return value
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[^a-z0-9\u3400-\u9fff]+/gu, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function hasBoundedPhrase(value: string, phrase: string): boolean {
-  return ` ${value} `.includes(` ${phrase} `);
-}
-
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-export interface IntentCapabilityPlan {
-  task_text: string;
-  requirements: CapabilityRequirements;
-}
-
-/** Separate task semantics from substrate constraints before lexical ranking. */
-export function parseIntentCapabilityPlan(
-  intent: string,
-): IntentCapabilityPlan {
-  const normalized = intent.normalize("NFKC");
-  const requirements = inferCapabilityRequirements(normalized);
-  const withoutBrowser = resolveTaskIntentFrame(normalized).without_browser;
-  if (withoutBrowser) {
-    requirements.allow_browser = false;
-    requirements.forbidden_operators = ["browser-protocol", "browser-semantic"];
-  }
-  const taskText = normalized
-    .replace(
-      /\b(?:using|use|via|through|with)\s+(?:a\s+)?(?:native cli|command[- ]line interface|structured api|service api|direct http|http api|browser protocol|browser context api|browser semantic|desktop accessibility|accessibility tree|visual observation|visual screenshot|pixel screenshot|pixel capture|screen capture|visual[- ]coordinate|(?:absolute\s+)?(?:desktop|screen|pixel)[- ]coordinates?|cua driver|computer[- ]use driver|local runtime)\b/gi,
-      " ",
-    )
-    .replace(
-      /\b(?:without|no|not using|do not use|don't use)\s+(?:a\s+)?browser\b/gi,
-      " ",
-    )
-    .replace(
-      /(?:使用|通过|采用)?(?:原生命令行|结构化接口|服务接口|直接\s*HTTP|HTTP\s*接口|浏览器协议接口|浏览器语义|桌面无障碍|辅助功能树|视觉观察|视觉截图|像素截图|像素捕获|视觉坐标|本地运行时)|不(?:要|用|通过)浏览器|无需浏览器|非浏览器/g,
-      " ",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
-  return {
-    task_text: taskText || normalized.trim(),
-    requirements,
-  };
-}
-
-export function mergeCapabilityRequirements(
-  inferred: CapabilityRequirements,
-  explicit: CapabilityRequirements,
-): CapabilityRequirements {
-  return {
-    ...inferred,
-    ...Object.fromEntries(
-      Object.entries(explicit).filter(([, value]) => value !== undefined),
-    ),
-  };
-}
-
 function commandContract(
   site: string,
   command: string,
@@ -481,74 +283,4 @@ function interactionRank(impact: InteractionImpact): number {
     case "foreground":
       return 2;
   }
-}
-
-function explicitOperator(intent: string): ExecutionOperator | undefined {
-  if (
-    /\b(visual|pixel|screen)\b.{0,30}\b(screenshot|screen capture|pixel capture)\b/.test(
-      intent,
-    ) ||
-    /\b(screenshot|screen capture|pixel capture|capture)\b.{0,40}\b(visually|by pixels?|pixels?|visual observation)\b/.test(
-      intent,
-    ) ||
-    /\bvisual observation\b/.test(intent) ||
-    /视觉观察|视觉截图|像素截图|截图像素|屏幕像素捕获|像素捕获/.test(intent)
-  ) {
-    return "visual-observation";
-  }
-  if (
-    /\b(visual[- ]coordinate|pixel[- ]only|coordinate action|point[- ]click|cua driver|computer[- ]use driver)\b/.test(
-      intent,
-    ) ||
-    /\b(click|tap|drag|move|press|scroll)\b.{0,40}\b((?:absolute )?(?:desktop|screen|pixel) coordinates?|visually|by pixels?)\b/.test(
-      intent,
-    ) ||
-    /\b((?:absolute )?(?:desktop|screen|pixel) coordinates?|visually|by pixels?)\b.{0,40}\b(click|tap|drag|move|press|scroll)\b/.test(
-      intent,
-    ) ||
-    /视觉坐标|纯像素|按屏幕坐标(?:点击|拖动|操作)/.test(intent)
-  ) {
-    return "visual-coordinate";
-  }
-  if (
-    /\b(desktop accessibility|accessibility tree|using accessibility|via accessibility|uia|at-spi|desktop-ax)\b/.test(
-      intent,
-    ) ||
-    /桌面无障碍|辅助功能树/.test(intent)
-  ) {
-    return "desktop-accessibility";
-  }
-  if (
-    /\b(browser protocol|browser context api|renderer api)\b/.test(intent) ||
-    /浏览器协议接口|浏览器上下文接口/.test(intent)
-  ) {
-    return "browser-protocol";
-  }
-  if (
-    /\b(browser semantic|dom ref|css selector|cdp renderer)\b/.test(intent) ||
-    /浏览器语义|dom 引用|选择器/.test(intent)
-  ) {
-    return "browser-semantic";
-  }
-  if (
-    /\b(native cli|command[- ]line interface|via gh cli)\b/.test(intent) ||
-    /原生命令行/.test(intent)
-  ) {
-    return "native-cli";
-  }
-  if (
-    /\b(structured api|service api|direct http|http api|protocol call)\b/.test(
-      intent,
-    ) ||
-    /结构化接口|服务接口|直接\s*HTTP|HTTP\s*接口/i.test(intent)
-  ) {
-    return "structured-api";
-  }
-  if (
-    /\b(local runtime|pure local transform)\b/.test(intent) ||
-    /本地运行时/.test(intent)
-  ) {
-    return "local-runtime";
-  }
-  return undefined;
 }

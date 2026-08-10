@@ -1,0 +1,102 @@
+site: gh
+name: search-users
+description: Find GitHub authors, maintainers, users, or organizations by login and profile qualifiers
+type: bridge
+strategy: public
+operation_effect: read
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: User query with optional qualifiers such as followers:>100 or repos:>20
+  sort:
+    type: str
+    default: best-match
+    choices: [best-match, followers, repositories, joined]
+  order:
+    type: str
+    default: desc
+    choices: [asc, desc]
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+
+pipeline:
+  - if: "args.sort === 'best-match'"
+    then:
+      - exec:
+          command: gh
+          args:
+            - api
+            - --method
+            - GET
+            - search/users
+            - -H
+            - "Accept: application/vnd.github.text-match+json"
+            - -f
+            - q=${{ args.query }}
+            - -F
+            - per_page=${{ args.limit }}
+          parse: json
+          timeout: 30000
+    else:
+      - exec:
+          command: gh
+          args:
+            - api
+            - --method
+            - GET
+            - search/users
+            - -H
+            - "Accept: application/vnd.github.text-match+json"
+            - -f
+            - q=${{ args.query }}
+            - -f
+            - sort=${{ args.sort }}
+            - -f
+            - order=${{ args.order }}
+            - -F
+            - per_page=${{ args.limit }}
+          parse: json
+          timeout: 30000
+
+  - set:
+      incomplete: ${{ item.incomplete_results || false }}
+      total_count: ${{ item.total_count || 0 }}
+
+  - select: items
+
+  - map:
+      id: ${{ item.id }}
+      login: ${{ item.login }}
+      type: ${{ item.type }}
+      score: ${{ item.score }}
+      avatarUrl: ${{ item.avatar_url }}
+      matches: "${{ JSON.stringify(item.text_matches || []) }}"
+      totalCount: ${{ vars.total_count }}
+      incomplete: ${{ vars.incomplete }}
+      url: ${{ item.html_url }}
+
+columns: [login, type, score, url]
+
+retrieval:
+  operation: discover
+  result_kind: person
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+capabilities: ["subprocess.exec", "auth.executable.gh"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

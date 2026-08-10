@@ -14,8 +14,10 @@
  */
 
 import {
+  buildRequiredUsage,
   searchDocuments,
   type CommandSearchDocument,
+  type SearchRankingEvidence,
 } from "../../discovery/search.js";
 import {
   getCoreDiscoveryCommand,
@@ -31,19 +33,23 @@ import {
 import {
   commandFeasibilityProfile,
   evaluateFeasibilityProfile,
-  parseIntentCapabilityPlan,
-  type CapabilityRequirements,
 } from "../../discovery/feasibility.js";
+import {
+  compileIntentPlan,
+  type CapabilityRequirements,
+} from "../../discovery/intent-plan.js";
 import type {
   ExecutionOperator,
   OperationEffect,
   TargetSurface,
 } from "../../types.js";
 import {
+  metadataAuthRequirement,
   metadataAuthSetupCommand,
   metadataHasOptionalAuth,
   metadataRequiresAuth,
 } from "../../core/auth-contract.js";
+import { classifyPersonalization } from "../../discovery/personalization.js";
 import {
   buildMacosDynamicCommands,
   discoverMacosDynamicData,
@@ -128,6 +134,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   let siteFilter: string | undefined;
   let typeFilter: string | undefined;
   let categoryFilter: string | undefined;
+  let personalizedOnly = false;
 
   for (let i = 0; i < parsed.rest.length; i += 1) {
     const arg = parsed.rest[i];
@@ -158,6 +165,10 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
       categoryFilter = arg.slice("--category=".length);
       continue;
     }
+    if (arg === "--personalized") {
+      personalizedOnly = true;
+      continue;
+    }
     return false;
   }
 
@@ -180,6 +191,17 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
           tags.push("[auth optional]");
         }
         if (command.quarantined === true) tags.push("[quarantined]");
+        const authRequirement = metadataAuthRequirement(
+          strategy,
+          command.capabilities,
+          command.auth_requirement,
+        );
+        const personalization = classifyPersonalization({
+          command: command.name,
+          description: command.description,
+          category,
+          auth: authRequirement,
+        });
         return {
           site,
           command: command.name,
@@ -187,6 +209,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
           category,
           type: command.type ?? "web-api",
           auth: tags.join(" "),
+          personalization: personalization ?? "",
         };
       }),
     )
@@ -195,6 +218,7 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
     .filter((row) => !siteFilter || row.site.includes(siteFilter))
     .filter((row) => !categoryFilter || row.category === categoryFilter)
     .filter((row) => !typeFilter || row.type === typeFilter)
+    .filter((row) => !personalizedOnly || Boolean(row.personalization))
     .sort(
       (a, b) =>
         a.site.localeCompare(b.site) || a.command.localeCompare(b.command),
@@ -203,7 +227,15 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   emit(
     io,
     rows,
-    ["site", "command", "description", "category", "type", "auth"],
+    [
+      "site",
+      "command",
+      "description",
+      "personalization",
+      "category",
+      "type",
+      "auth",
+    ],
     parsed.format,
     "core.list",
     startedAt,
@@ -218,6 +250,7 @@ function dynamicListRows(): Array<{
   category: string;
   type: string;
   auth: string;
+  personalization: string;
 }> {
   if (!dynamicMacosDiscoveryEnabled()) return [];
 
@@ -230,6 +263,7 @@ function dynamicListRows(): Array<{
     category: "desktop",
     type: "desktop",
     auth: "",
+    personalization: "",
   }));
 }
 
@@ -240,6 +274,7 @@ function coreListRows(): Array<{
   category: string;
   type: string;
   auth: string;
+  personalization: string;
 }> {
   return listCoreDiscoveryCommands().map((command) => ({
     site: command.site,
@@ -248,6 +283,7 @@ function coreListRows(): Array<{
     category: command.category,
     type: command.type,
     auth: "",
+    personalization: "",
   }));
 }
 
@@ -259,6 +295,7 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
   let surface: TargetSurface | undefined;
   let effect: OperationEffect | undefined;
   let platform: NodeJS.Platform | undefined = process.platform;
+  let personalizedOnly = false;
   const queryParts: string[] = [];
 
   for (let i = 0; i < parsed.rest.length; i += 1) {
@@ -339,6 +376,10 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
       platform = value;
       continue;
     }
+    if (arg === "--personalized") {
+      personalizedOnly = true;
+      continue;
+    }
     if (arg.startsWith("-")) return false;
     queryParts.push(arg);
   }
@@ -366,7 +407,7 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
     manifestSearchDocuments(readManifest()),
     query,
     limit,
-    { category, requirements },
+    { category, personalized: personalizedOnly, requirements },
   );
   if (results.length === 0) {
     emitError(
@@ -396,13 +437,28 @@ export function handleSearch(parsed: ParsedArgv, io: Io): boolean {
           runtime_readiness: "not_evaluated",
         }
       : {}),
+    ranking: result.ranking,
     usage: result.usage,
+    inspect: `unicli describe ${result.site} ${result.command}`,
+    auth: result.auth,
+    ...(result.auth_setup ? { auth_setup: result.auth_setup } : {}),
+    ...(result.personalization
+      ? { personalization: result.personalization }
+      : {}),
   }));
 
   emit(
     io,
     rows,
-    ["command", "description", "operator", "effect", "score", "usage"],
+    [
+      "command",
+      "description",
+      "personalization",
+      "auth",
+      "score",
+      "usage",
+      "inspect",
+    ],
     parsed.format,
     "core.search",
     startedAt,
@@ -420,11 +476,32 @@ export function manifestSearchDocuments(
     for (const command of info.commands) {
       const id = `${site}/${command.name}`;
       seen.add(id);
+      const auth = metadataAuthRequirement(
+        command.strategy,
+        command.capabilities,
+        command.auth_requirement,
+      );
+      const authSetup = metadataAuthSetupCommand(
+        site,
+        command.strategy,
+        command.capabilities,
+        command.auth_requirement,
+      );
+      const personalization = classifyPersonalization({
+        command: command.name,
+        description: command.description,
+        category: info.category,
+        auth,
+      });
       documents.push({
         site,
         command: command.name,
         description: command.description ?? "",
         category: info.category,
+        auth,
+        ...(authSetup ? { auth_setup: authSetup } : {}),
+        ...(personalization ? { personalization } : {}),
+        usage: buildRequiredUsage(site, command.name, command.args),
         feasibility: commandFeasibilityProfile(
           buildManifestCommandContract({
             site,
@@ -447,6 +524,8 @@ export function manifestSearchDocuments(
       command: command.command,
       description: command.description,
       category: command.category,
+      auth: "none",
+      ...(command.channels?.shell ? { usage: command.channels.shell } : {}),
       feasibility: commandFeasibilityProfile(
         buildCoreCommandContract({ command }),
       ),
@@ -462,6 +541,7 @@ interface FastDoMatch {
   score: number;
   description: string;
   category: string;
+  ranking: SearchRankingEvidence;
   invocation: string;
   operator: ReturnType<typeof buildManifestCommandContract>["execution"];
   args_schema?: Record<string, unknown>;
@@ -509,7 +589,7 @@ export function handleDo(parsed: ParsedArgv, io: Io): boolean {
 
   const intent = intentParts.join(" ").trim();
   if (!intent || compileObjectivePlan(intent)) return false;
-  const intentPlan = parseIntentCapabilityPlan(intent);
+  const intentPlan = compileIntentPlan(intent);
   const requirements: CapabilityRequirements = {
     ...intentPlan.requirements,
     platform: process.platform,
@@ -554,6 +634,7 @@ export function handleDo(parsed: ParsedArgv, io: Io): boolean {
       description: best.description,
       invocation: best.invocation,
       operator: best.operator,
+      ranking: best.ranking,
     },
     candidates: matches.map(stripFastDoInternalFields),
     blocked_candidates: [],
@@ -581,6 +662,7 @@ export function handleDo(parsed: ParsedArgv, io: Io): boolean {
           invocation: best.invocation,
           description: best.description,
           score: best.score,
+          ranking_signals: best.ranking.signals,
           operator: best.operator.operator,
           operation_family: best.feasibility.contract?.operation_family,
           provider: best.operator.provider,
@@ -630,6 +712,7 @@ function buildFastDoMatch(
       score: Math.round(result.score * 10_000) / 10_000,
       description: result.description,
       category: result.category,
+      ranking: result.ranking,
       invocation: buildChannels(result.site, result.command, args).shell,
       operator: contract.execution,
       ...(includeSchema
@@ -661,6 +744,7 @@ function buildFastDoMatch(
     score: Math.round(result.score * 10_000) / 10_000,
     description: result.description,
     category: result.category,
+    ranking: result.ranking,
     invocation:
       coreCommand.channels?.shell ??
       buildChannels(result.site, result.command, args).shell,
@@ -750,14 +834,32 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   const [site, cmdName] = positionals;
 
   if (!site) {
-    const adapterSites = Object.entries(manifest.sites).map(([name, info]) => ({
-      name,
-      display_name: name,
-      type: info.commands[0]?.type ?? "web-api",
-      strategy: info.commands[0]?.strategy ?? "public",
-      commands_count: info.commands.length,
-      description: "",
-    }));
+    const adapterSites = Object.entries(manifest.sites).map(([name, info]) => {
+      const personalizedCommands = info.commands.filter((command) => {
+        const auth = metadataAuthRequirement(
+          command.strategy,
+          command.capabilities,
+          command.auth_requirement,
+        );
+        return Boolean(
+          classifyPersonalization({
+            command: command.name,
+            description: command.description,
+            category: info.category,
+            auth,
+          }),
+        );
+      }).length;
+      return {
+        name,
+        display_name: name,
+        type: info.commands[0]?.type ?? "web-api",
+        strategy: info.commands[0]?.strategy ?? "public",
+        commands_count: info.commands.length,
+        personalized_commands_count: personalizedCommands,
+        description: "",
+      };
+    });
     const sites = adapterSites
       .concat(
         listCoreDiscoverySites().map((coreSite) => ({
@@ -766,6 +868,7 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
           type: coreSite.type,
           strategy: "public",
           commands_count: coreSite.commands.length,
+          personalized_commands_count: 0,
           description: "Core Uni-CLI command group",
         })),
       )
@@ -859,6 +962,11 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   if (!cmdName) {
     const commands = info.commands.map((command) => {
       const strategy = command.strategy ?? "public";
+      const auth = metadataAuthRequirement(
+        strategy,
+        command.capabilities,
+        command.auth_requirement,
+      );
       const authSetup = metadataAuthSetupCommand(
         site,
         strategy,
@@ -866,18 +974,23 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         command.auth_requirement,
       );
       const authOptional = metadataHasOptionalAuth(command.auth_requirement);
+      const personalization = classifyPersonalization({
+        command: command.name,
+        description: command.description,
+        category: info.category,
+        auth,
+      });
       return {
         name: command.name,
+        command: `unicli ${site} ${command.name}`,
+        inspect: `unicli describe ${site} ${command.name}`,
         description: command.description ?? "",
         quarantined: command.quarantined === true,
         strategy,
-        auth: metadataRequiresAuth(
-          strategy,
-          command.capabilities,
-          command.auth_requirement,
-        ),
+        auth: auth === "required",
         ...(authOptional ? { auth_optional: true } : {}),
         ...(authSetup ? { auth_setup: authSetup } : {}),
+        ...(personalization ? { personalization } : {}),
         browser: manifestCommandUsesBrowser(
           command,
           command.type ?? info.commands[0]?.type ?? "web-api",
@@ -892,6 +1005,14 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
         display_name: site,
         type: info.commands[0]?.type ?? "web-api",
         strategy: info.commands[0]?.strategy ?? "public",
+        personalized_commands_count: commands.filter(
+          (command) => command.personalization,
+        ).length,
+        personalization_families: [
+          ...new Set(
+            commands.map((command) => command.personalization).filter(Boolean),
+          ),
+        ],
         commands,
       },
       parsed,
@@ -957,6 +1078,17 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     command.auth_requirement,
   );
   const authOptional = metadataHasOptionalAuth(command.auth_requirement);
+  const auth = metadataAuthRequirement(
+    strategy,
+    command.capabilities,
+    command.auth_requirement,
+  );
+  const personalization = classifyPersonalization({
+    command: cmdName,
+    description: command.description,
+    category: info.category,
+    auth,
+  });
   const contract = buildManifestCommandContract({
     site,
     commandName: cmdName,
@@ -979,6 +1111,7 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
       ),
       ...(authOptional ? { auth_optional: true } : {}),
       ...(authSetup ? { auth_setup: authSetup } : {}),
+      ...(personalization ? { personalization } : {}),
       browser: manifestCommandUsesBrowser(command, adapterType),
       target_surface: targetSurface,
       adapter_path: adapterPath,

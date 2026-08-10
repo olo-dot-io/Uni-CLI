@@ -13,6 +13,8 @@ const fullPayload = {
   quarantined: false,
   strategy: "public",
   auth: false,
+  auth_setup: "unicli auth setup demo",
+  personalization: "library",
   browser: false,
   target_surface: "web",
   adapter_path: "src/adapters/demo/search.yaml",
@@ -68,6 +70,8 @@ describe("describe Agent UX", () => {
       idempotency: "guaranteed",
       interaction_impact: "background",
       minimum_capability: "http.fetch",
+      auth_setup: "unicli auth setup demo",
+      personalization: "library",
       args_schema: fullPayload.args_schema,
       channels: fullPayload.channels,
       contract_ref: {
@@ -94,6 +98,8 @@ describe("describe Agent UX", () => {
     for (const value of [
       "unicli demo search",
       "structured-api",
+      "unicli auth setup demo",
+      "library",
       "Search query",
       "unicli demo search <query> [--limit <int>]",
       "unicli demo search --dry-run",

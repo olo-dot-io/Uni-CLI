@@ -14,9 +14,19 @@ description: >
 
 ```bash
 unicli search "intent"                # Find the right command first
+unicli do "goal" -f json              # Get candidates, schema, and next action
+unicli describe <site> <command>      # Inspect exact args and recovery steps
 unicli list                           # List all available commands
 unicli list --type web-api            # Filter by adapter type
 unicli list --site bilibili           # Filter by site name
+unicli list --personalized            # Find signed-in user data operations
+unicli search "my saved posts" --personalized
+
+unicli upgrade --check -f json         # Compare installed and latest releases
+unicli upgrade                         # Interactive Y/N choice
+unicli upgrade --yes -f json           # Unattended Agent update
+unicli upgrade --no -f json            # Remind again after 24 hours
+unicli upgrade --no-auto-update         # Require explicit approval on this machine
 
 unicli <site> <command> [options]     # Run any command
 unicli hackernews top --limit 5       # Example: HN top stories
@@ -31,7 +41,12 @@ unicli browser --focus start          # Explicit existing-Chrome foreground cont
 
 ## Output Formats
 
-All commands support `--format` / `-f`:
+Every structured envelope may include `meta.update`. Persistent non-interactive
+installations schedule the exact release automatically and expose progress in
+`meta.update.automatic_update`. Confirm the installed version before retrying a
+version-sensitive task. Non-interactive calls never open a prompt.
+
+All commands support `--format` / `-f`.
 
 | Format    | Use Case                            |
 | --------- | ----------------------------------- |
@@ -58,7 +73,7 @@ unicli hackernews top -f csv > stories.csv
 
 ## Exit Codes
 
-Use exit codes for scripting:
+Use exit codes for scripting.
 
 ```bash
 unicli hackernews top || echo "exit $?"
@@ -76,7 +91,9 @@ unicli hackernews top || echo "exit $?"
 
 ```bash
 unicli browser profiles --json
+unicli auth setup <site>
 unicli auth import <site> --domain <domain>
+unicli auth check <site>
 unicli browser cookies <domain> --profile-id <id>
 unicli repair <site> <command> # verifier after evidence-backed adapter edit
 ```
@@ -87,6 +104,22 @@ provider is hidden; the Chrome provider requires explicit `background` or
 browser providers, or placeholder tabs. `--focus` is the explicit foreground
 escape hatch.
 
+## Personalized Operations
+
+Use the shared personalization filter for the signed-in user's feed, saved
+library, network, account, and activity surfaces.
+
+```bash
+unicli list --personalized
+unicli list --site xiaohongshu --personalized
+unicli search "my saved Xiaohongshu notes" --personalized
+unicli describe xiaohongshu saved
+```
+
+Search and describe results expose `personalization`, `auth`, `auth_setup`,
+`usage`, and `inspect` where those fields apply. Execute the listed setup
+command before a personalized operation that requires cookies.
+
 Chrome 136+ rejects CDP on the browser's default user-data-dir. Uni-CLI should
 therefore launch CDP against its own automation profile under `~/.unicli/` and
 reuse login state by importing cookies from `unicli browser profiles --json`.
@@ -96,7 +129,7 @@ Chrome; that policy does not bypass the default-profile restriction. If a
 browser command fails, diagnose the automation profile and cookie import path
 before asking the user to foreground Chrome.
 
-Agent loop for delivery:
+Use this delivery sequence.
 
 1. Run `unicli browser doctor --json`.
 2. If `default_path.available` is true, run the requested command.

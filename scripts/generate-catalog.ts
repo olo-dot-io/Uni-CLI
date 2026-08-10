@@ -25,6 +25,11 @@ type CatalogCommand = {
   description?: string;
   when_to_use?: string;
   command: string;
+  auth?: boolean;
+  auth_requirement?: "required" | "optional" | "none";
+  auth_setup?: string;
+  browser?: boolean;
+  personalization?: "account" | "feed" | "library" | "network" | "activity";
 };
 
 type CatalogAdapter = {
@@ -33,6 +38,11 @@ type CatalogAdapter = {
   domain?: string;
   auth?: boolean;
   strategy?: string;
+  description?: string;
+  personalized_commands?: number;
+  personalization_families?: Array<
+    "account" | "feed" | "library" | "network" | "activity"
+  >;
   commands: CatalogCommand[];
 };
 
@@ -56,7 +66,10 @@ function buildDocsSiteIndex(catalog: {
       domain: adapter.domain,
       auth: adapter.auth ?? false,
       strategy: adapter.strategy,
+      description: adapter.description,
       command_count: adapter.commands.length,
+      personalized_commands: adapter.personalized_commands ?? 0,
+      personalization_families: adapter.personalization_families ?? [],
       commands: adapter.commands.map((command) => ({
         name: command.name,
         description: publicEnglishDescription(
@@ -64,6 +77,11 @@ function buildDocsSiteIndex(catalog: {
           command.name,
         ),
         command: command.command,
+        auth: command.auth ?? false,
+        auth_requirement: command.auth_requirement ?? "none",
+        auth_setup: command.auth_setup,
+        browser: command.browser ?? false,
+        personalization: command.personalization,
       })),
     })),
   };

@@ -112,6 +112,14 @@ function renderFrontmatter(env: AgentEnvelope): string {
   // FIX B2: command value is inline — sanitizeInline.
   lines.push(`command: ${sanitizeInline(env.command)}`);
   lines.push(`duration_ms: ${env.meta.duration_ms}`);
+  if (env.meta.update) {
+    lines.push("update_available: true");
+    lines.push(`update_current: ${sanitizeInline(env.meta.update.current)}`);
+    lines.push(`update_latest: ${sanitizeInline(env.meta.update.latest)}`);
+    lines.push(
+      `update_command: ${sanitizeInline(env.meta.update.unattended_command)}`,
+    );
+  }
 
   if (env.ok) {
     const meta = env.meta;
@@ -241,6 +249,27 @@ function renderContextSection(meta: AgentMeta): string {
   return ["## Context", "", ...bullets].join("\n");
 }
 
+function renderUpdateSection(meta: AgentMeta): string {
+  const update = meta.update;
+  if (!update) return "";
+  return [
+    "## Update Available",
+    "",
+    `Uni-CLI ${update.current} is behind ${update.latest}.`,
+    "",
+    `- **Manual update**: \`${sanitizeInline(update.unattended_command)}\``,
+    `- **Interactive choice**: \`${sanitizeInline(update.interactive_command)}\``,
+    `- **Remind later**: \`${sanitizeInline(update.decline_command)}\``,
+    ...(update.automatic_update
+      ? [
+          `- **Automatic update**: ${sanitizeInline(update.automatic_update.status)}`,
+          `- **Opt out**: \`${sanitizeInline(update.automatic_update.opt_out)}\``,
+        ]
+      : []),
+    `- **Release notes**: ${sanitizeInline(update.release_notes)}`,
+  ].join("\n");
+}
+
 /**
  * Render ## Content section from optional `envelope.content[]`.
  *
@@ -325,6 +354,10 @@ function renderAlternativesSection(err: AgentError): string {
 function renderSuccess(env: AgentEnvelopeOk): string {
   const parts: string[] = [];
   parts.push(renderFrontmatter(env));
+
+  const update = renderUpdateSection(env.meta);
+  if (update) parts.push(update);
+
   parts.push(renderDataSection(env.data));
 
   const contentSection = renderContentSection(env.content);
@@ -343,6 +376,10 @@ function renderSuccess(env: AgentEnvelopeOk): string {
 function renderError(env: AgentEnvelopeErr): string {
   const parts: string[] = [];
   parts.push(renderFrontmatter(env));
+
+  const update = renderUpdateSection(env.meta);
+  if (update) parts.push(update);
+
   parts.push(renderErrorSection(env.error));
 
   const contentSection = renderContentSection(env.content);

@@ -154,6 +154,8 @@ describe("buildCatalog — machine-readable single source of truth", () => {
     expect(fixture).toBeDefined();
     expect(fixture!.commands.length).toBe(2);
     expect(fixture!.commands[0].command).toMatch(/^unicli fixture-site /);
+    expect(fixture!.personalized_commands).toBe(0);
+    expect(fixture!.commands[0].auth_requirement).toBe("none");
     // Round-trips through JSON without error
     expect(() => JSON.stringify(catalog)).not.toThrow();
   });

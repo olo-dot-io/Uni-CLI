@@ -34,9 +34,10 @@ npm run changeset
 # Commit the generated `.changeset/<hash>-<slug>.md` alongside your code.
 ```
 
-The changeset note lands verbatim in `CHANGELOG.md` at release time. Write it
-for downstream agents, not for the reviewer — state the behavior change, not
-the implementation detail.
+The changeset note enters `CHANGELOG.md` at release time. Write it for
+downstream agents and state the observable behavior change. `npm run docs:prepare`
+then generates the public cross-version pages and
+`release-history.json` from that canonical file.
 
 ## 2. Version bump on main
 
@@ -82,7 +83,7 @@ the package's **Trusted Publishing** configuration (set once via
    - Organization: `olo-dot-io`
    - Repository: `Uni-CLI`
    - Workflow filename: `release.yml`
-   - Environment: _(leave blank)_
+   - Environment: `npm-publish`
 5. Save.
 
 Until this is done, the workflow falls back to `NODE_AUTH_TOKEN` from

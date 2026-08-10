@@ -1,5 +1,56 @@
 # Changelog
 
+## [1.1.1] — 2026-08-10 — Artemis · Koch
+
+> `1.1.0` was the internal Changesets candidate. `1.1.1` is the first public
+> release in the 1.1 line.
+
+### Added
+
+- Add default detached updates for persistent non-interactive Agent
+  installations. Every exact-version install records durable progress, uses one
+  lease across concurrent Agent processes, retries bounded failures, and exposes
+  opt-out state through structured CLI and MCP metadata.
+- Add `unicli upgrade` with live version checks, interactive Y/N approval,
+  unattended installation, 24-hour deferral, exact-release dismissal, persistent
+  automatic-update settings, and npm, pnpm, or Bun detection.
+- Add one intent plan shared by search, describe, one-shot execution, fast paths,
+  and MCP. The plan carries task semantics, personalization, target scope,
+  feasibility, named ranking evidence, and typo-aware site resolution.
+- Add GitHub code, commit, topic, user, repository, issue, pull-request, and file
+  discovery through structured `gh` commands. Repository and issue searches keep
+  best-match and hybrid retrieval available as explicit modes.
+- Add generated English and Chinese release pages plus
+  `release-history.json`. Every historical entry links to its npm artifact,
+  GitHub Release, and exact Git comparison.
+- Add current-user discovery through `--personalized`, including saved-item,
+  feed, network, account, and activity operations. Xiaohongshu saved notes now
+  have an owned authenticated command.
+
+### Changed
+
+- Replace parallel intent-frame and intent-boost paths with one bounded ranking
+  pipeline. Bilingual discovery now compiles the task once, applies one site
+  resolution policy, and returns executable usage with its ranking signals.
+- Align root help, onboarding, Agent skills, operation descriptions, and public
+  catalog pages around the same search, execution, personalization, repair, and
+  update paths.
+- Benchmark the current product surface against pinned OpenCLI and CLI-Anything
+  snapshots. The maintained task set covers 11 executable intents, five personal
+  content intents, root discovery, catalog breadth, and actionability.
+- Run release discovery from a daily local cache. Ordinary commands stay free of
+  foreground registry waits, while interactive terminals retain explicit choice
+  and non-interactive Agents can adopt the next release automatically.
+
+### Fixed
+
+- Preserve authentication requirements, effective operators, exact usage, and
+  structured causes across search, describe, fast-path, and MCP projections.
+- Keep benchmarks deterministic by disabling detached release checks inside
+  measured child processes.
+- Remove stale duplicate `Unreleased` sections and replace the manually copied
+  historical release audit with generated cross-version documentation.
+
 ## [1.0.4] — 2026-08-10 — Artemis · Glover
 
 > Published from annotated tag `v1.0.4` at commit `8289f86c` through GitHub
@@ -549,8 +600,6 @@
   declarations used by scholarly adapters, preventing source-mode/dist parity
   drift after adapter refactors.
 
-## [Unreleased]
-
 ## [0.225.2] — 2026-06-15 — Apollo · Gordon
 
 ### Security
@@ -1014,10 +1063,6 @@ Version format: `MAJOR.MINOR.PATCH` — see [contributing/COPY.md](./contributin
 - Deprecated upstream-named transport adapter, sample adapters, unit tests, and
   docs were removed from the public product surface in favor of the owned
   `visual` abstraction.
-
-## [Unreleased]
-
-_No changes yet._
 
 ## [0.221.1] — 2026-05-19 — Apollo · Anders
 

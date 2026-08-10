@@ -1,0 +1,66 @@
+site: gh
+name: file
+description: Read a repository README, manifest, source file, or documentation file as text
+type: bridge
+strategy: public
+operation_effect: read
+binary: gh
+detect: which gh
+
+args:
+  repo:
+    type: str
+    required: true
+    positional: true
+    pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Repository in OWNER/REPO form
+  path:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$"
+    description: Repository-relative file path, such as README.md or package.json
+  ref:
+    type: str
+    default: ""
+    description: Optional branch, tag, or commit SHA
+
+pipeline:
+  - if: "args.ref"
+    then:
+      - exec:
+          command: gh
+          args:
+            - api
+            - "repos/${{ args.repo }}/contents/${{ args.path.split('/').map(part => encodeURIComponent(part)).join('/') }}?ref=${{ encodeURIComponent(args.ref) }}"
+            - -H
+            - "Accept: application/vnd.github.raw+json"
+          parse: text
+          timeout: 30000
+    else:
+      - exec:
+          command: gh
+          args:
+            - api
+            - "repos/${{ args.repo }}/contents/${{ args.path.split('/').map(part => encodeURIComponent(part)).join('/') }}"
+            - -H
+            - "Accept: application/vnd.github.raw+json"
+          parse: text
+          timeout: 30000
+
+  - map:
+      repository: ${{ args.repo }}
+      path: ${{ args.path }}
+      ref: "${{ args.ref || 'default branch' }}"
+      content: ${{ item }}
+      url: "${{ 'https://github.com/' + args.repo + '/blob/' + (args.ref || 'HEAD') + '/' + args.path }}"
+
+columns: [repository, path, ref, content, url]
+
+capabilities: ["subprocess.exec", "auth.executable.gh"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

@@ -5,7 +5,7 @@ description: Follow an intent from local discovery to execution, structured outp
 
 # How Uni-CLI works
 
-Uni-CLI gives agents one command model for websites, browsers, desktop applications, local tools, files, and protocol servers. Every call follows the same four-part path: find an operation, inspect its contract, run it through a declared interface, and read a structured result.
+Uni-CLI gives agents one command model for websites, browsers, desktop applications, local tools, files, and protocol servers. Every call follows four steps. It finds an operation, inspects its contract, runs through a declared interface, and returns a structured result.
 
 ## 1. Discovery stays local
 
@@ -13,7 +13,7 @@ Uni-CLI gives agents one command model for websites, browsers, desktop applicati
 unicli search "top Hacker News stories"
 ```
 
-Search runs against the installed catalog. It ranks bilingual descriptions and can filter by effect, operator, target surface, category, and platform. The result identifies a concrete command; it performs no external action.
+Search runs against the installed catalog. It compiles the task once, resolves exact or typo-tolerant provider names, and ranks bilingual command descriptions. Filters for effect, operator, target surface, category, and platform remove incompatible commands during retrieval. Each result includes named ranking signals. Discovery performs no external action.
 
 ## 2. The operation describes itself
 
@@ -21,7 +21,7 @@ Search runs against the installed catalog. It ranks bilingual descriptions and c
 unicli describe hackernews top
 ```
 
-The operation contract includes:
+The operation contract includes the following fields.
 
 - accepted arguments and defaults
 - authentication requirements

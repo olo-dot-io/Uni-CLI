@@ -1,5 +1,5 @@
 /**
- * @owner   src/discovery/intents.ts
+ * @owner   src/discovery/intent-ranking.ts
  * @does    Owns discovery semantic routing: hard intent frames plus soft ranking signals above lexical BM25/TF-IDF.
  * @needs   Search document metadata, site category map, vertical command capability knowledge.
  * @feeds   src/discovery/search.ts
@@ -125,6 +125,8 @@ const BOOST_SCHOLARLY_CONFERENCE_PAPER_DISCOVERY = 132.0;
 const BOOST_COMPUTE_CONTEXT = 52.0;
 const BOOST_SOCIAL_USER_TIMELINE_INTENT = 18.0;
 const BOOST_MARXISTS_ARCHIVE_INTENT = 50.0;
+const BOOST_AUTH_WORKFLOW_INTENT = 52.0;
+const BOOST_UNICLI_UPDATE_INTENT = 88.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "scholar/search",
@@ -235,9 +237,85 @@ export function intentBoost(
     weatherIntentBoost(doc, terms) +
     computeContextIntentBoost(doc, terms) +
     socialUserTimelineIntentBoost(doc, terms) +
+    authWorkflowIntentBoost(doc, terms) +
+    unicliUpdateIntentBoost(doc, terms) +
     marxistsArchiveIntentBoost(doc, terms) +
     scholarlyIntentBoost(doc, terms, siteHints)
   );
+}
+
+function unicliUpdateIntentBoost(
+  doc: SearchIndex["documents"][number],
+  terms: ReadonlySet<string>,
+): number {
+  if (doc.site !== "upgrade") return 0;
+  const updateIntent = hasAny(terms, [
+    "update",
+    "upgrade",
+    "outdated",
+    "version",
+    "更新",
+    "升级",
+    "版本",
+  ]);
+  const unicliContext = hasAny(terms, ["unicli", "agent", "cli", "代理"]);
+  if (!updateIntent || !unicliContext) return 0;
+  if (
+    doc.command === "check" &&
+    hasAny(terms, ["check", "latest", "status", "检查", "最新", "状态"])
+  ) {
+    return BOOST_UNICLI_UPDATE_INTENT + 20;
+  }
+  if (
+    doc.command === "install" &&
+    hasAny(terms, ["install", "update", "upgrade", "安装", "更新", "升级"])
+  ) {
+    return BOOST_UNICLI_UPDATE_INTENT + 20;
+  }
+  return BOOST_UNICLI_UPDATE_INTENT;
+}
+
+function authWorkflowIntentBoost(
+  doc: SearchIndex["documents"][number],
+  terms: ReadonlySet<string>,
+): number {
+  if (doc.site !== "auth") return 0;
+  const authIntent = hasAny(terms, [
+    "auth",
+    "authenticate",
+    "authentication",
+    "cookie",
+    "cookies",
+    "credential",
+    "credentials",
+    "login",
+    "signin",
+    "登录",
+    "认证",
+  ]);
+  if (!authIntent) return 0;
+  if (
+    doc.command === "setup" &&
+    hasAny(terms, ["setup", "login", "signin", "登录", "认证"])
+  ) {
+    return BOOST_AUTH_WORKFLOW_INTENT;
+  }
+  if (
+    doc.command === "import" &&
+    hasAny(terms, ["browser", "cookie", "cookies", "import", "导入"])
+  ) {
+    return BOOST_AUTH_WORKFLOW_INTENT * 0.9;
+  }
+  if (
+    doc.command === "check" &&
+    hasAny(terms, ["check", "status", "validate", "检查", "状态"])
+  ) {
+    return BOOST_AUTH_WORKFLOW_INTENT * 0.84;
+  }
+  if (doc.command === "audit" && hasAny(terms, ["audit", "doctor", "审计"])) {
+    return BOOST_AUTH_WORKFLOW_INTENT * 0.76;
+  }
+  return BOOST_AUTH_WORKFLOW_INTENT * 0.34;
 }
 
 function isAudioPlaybackIntent(

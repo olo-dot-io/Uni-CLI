@@ -5,13 +5,15 @@ description: Uni-CLI 如何把 Agent 意图转换为经过验证的操作与结�
 
 # 架构
 
-Uni-CLI 是操作真实软件的本地命令运行时。核心抽象是 operation：带名称、参数、目标、effect、execution operator 和结果合同的动作。
+Uni-CLI 是操作真实软件的本地命令运行时。核心抽象是 operation，它包含名称、参数、目标、effect、execution operator 和结果合同。
 
 ## 运行流程
 
 ```text
 意图
-  → 本地目录搜索
+  → 编译意图计划
+  → 筛选可行候选
+  → 返回带依据的排序结果
   → operation contract
   → 参数与权限检查
   → execution operator
@@ -23,18 +25,26 @@ CLI、MCP、ACP、生成的 Agent asset 和文档目录都可以发现同一条 
 
 ## Catalog
 
-目录合并四类来源：
+目录合并四类来源。
 
 1. packaged YAML 与 TypeScript adapter
 2. fixed core command
 3. `~/.unicli/adapters/` 下的 user adapter
 4. plugin 与主机发现的外部 CLI
 
-`unicli search` 按意图排序，`unicli describe` 返回选中操作的合同。本地开发时，user adapter 可以覆盖同名 packaged entry。
+`unicli search` 先编译任务，再对目录排序。`unicli describe` 返回选中操作的合同。本地开发时，user adapter 可以覆盖同名 packaged entry。
+
+## 意图编译与排序
+
+Discovery 在读取 posting list 前只编译一次请求。计划把剩余任务文本与 entity、cardinality、site、operation family、operator、浏览器禁用条件及其他硬约束放在一起。
+
+Site id 和维护过的 alias 通过哈希索引解析。多词名称使用有边界的短语匹配。预计算的 symmetric-delete 索引先提出拼写候选，随后由有界 Damerau-Levenshtein 距离确认唯一最近的 provider。存在歧义时，不添加 site 约束。
+
+双语倒排索引结合 BM25 与 TF-IDF。Entity、workflow、operation family 和 feasibility 信号会调整词法候选。硬能力要求在有界 top-k 选择前移除不兼容命令。每条结果都带有 `ranking.lexical_score`、`ranking.semantic_score`、`ranking.prior` 和具名 `ranking.signals`，Agent 可以据此检查排序来源。
 
 ## Operation contract
 
-一条 operation contract 记录：
+一条 operation contract 记录以下字段。
 
 - site、command、description 与 argument schema
 - target surface 与兼容平台
@@ -47,7 +57,7 @@ Discovery、dry-run、执行、权限检查和协议 projection 共享这些字�
 
 ## Control kernel
 
-Control kernel 先验证输入并协调 policy，再让 operator 取得目标。它负责：
+Control kernel 先验证输入并协调 policy，再让 operator 取得目标。它负责以下工作。
 
 - argument schema 与输入 channel
 - permission profile 与 approval
@@ -90,7 +100,7 @@ State read 返回与 snapshot 和 target 绑定的 ref，后续 action 在同一
 
 ## Result envelope
 
-常规命令都返回 v2 AgentEnvelope：
+常规命令都返回 v2 AgentEnvelope。
 
 ```json
 {
@@ -118,6 +128,11 @@ Native CLI 暴露完整 runtime。MCP 提供 compact、deferred 和 expanded too
 | 区域                      | 源码                               |
 | ------------------------- | ---------------------------------- |
 | Catalog 与 registry       | `src/registry.ts`、`src/adapters/` |
+| 意图编译                  | `src/discovery/intent-plan.ts`     |
+| 目录排序                  | `src/discovery/search.ts`          |
+| 排序语义                  | `src/discovery/intent-ranking.ts`  |
+| Site identity 解析        | `src/discovery/site-resolver.ts`   |
+| 能力可行性                | `src/discovery/feasibility.ts`     |
 | Engine 与 pipeline        | `src/engine/`                      |
 | Command surface           | `src/commands/`                    |
 | Browser runtime           | `src/browser/`                     |

@@ -71,6 +71,7 @@ export interface CoreDiscoveryCommand {
 const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
   agents: "src/commands/agents.ts",
   architecture: "src/commands/architecture.ts",
+  auth: "src/commands/auth.ts",
   browser: "src/commands/browser/index.ts",
   compute: "src/commands/compute.ts",
   delivery: "src/commands/delivery.ts",
@@ -78,9 +79,146 @@ const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
   operate: "src/commands/operate.ts",
   runs: "src/commands/runs.ts",
   scholar: "src/commands/scholar.ts",
+  upgrade: "src/commands/upgrade.ts",
 };
 
 const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
+  {
+    site: "upgrade",
+    command: "check",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Check whether the installed Uni-CLI version is old or outdated and return current, latest, suppression, and install-method metadata.",
+    operation_effect: "read",
+    operation_family: "get",
+    channels: { shell: "unicli upgrade --check" },
+  },
+  {
+    site: "upgrade",
+    command: "install",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Update an old Uni-CLI installation to an exact newer release with default Agent automation, interactive Y/N choice, or persistent explicit approval.",
+    operation_effect: "local_file",
+    operation_family: "update",
+    args: [
+      {
+        name: "yes",
+        type: "bool",
+        description: "Install without an interactive prompt",
+      },
+      {
+        name: "no",
+        type: "bool",
+        description: "Remind again after 24 hours",
+      },
+      {
+        name: "skip-version",
+        type: "bool",
+        description: "Hide only the currently offered release",
+      },
+      {
+        name: "auto-update",
+        type: "bool",
+        description: "Enable automatic updates on this machine",
+      },
+      {
+        name: "no-auto-update",
+        type: "bool",
+        description: "Require explicit approval on this machine",
+      },
+      {
+        name: "package-manager",
+        type: "str",
+        choices: ["npm", "pnpm", "bun"],
+        description: "Override the detected global package manager",
+      },
+    ],
+    channels: {
+      shell:
+        "unicli upgrade [--yes|--no|--skip-version|--auto-update|--no-auto-update] [--package-manager <npm|pnpm|bun>]",
+    },
+  },
+  {
+    site: "auth",
+    command: "setup",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Show the authentication strategy, required cookie names, storage path, and next import command for one site.",
+    operation_effect: "read",
+    operation_family: "get",
+    args: [{ name: "site", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli auth setup <site>" },
+  },
+  {
+    site: "auth",
+    command: "import",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Import one site's cookies from an installed Chromium browser into owner-only Uni-CLI storage.",
+    operation_effect: "local_file",
+    operation_family: "update",
+    args: [
+      { name: "site", type: "str", required: true, positional: true },
+      { name: "browser", type: "str" },
+      { name: "profile", type: "str" },
+      { name: "domain", type: "str" },
+    ],
+    channels: {
+      shell:
+        "unicli auth import <site> [--browser <str>] [--profile <str>] [--domain <str>]",
+    },
+  },
+  {
+    site: "auth",
+    command: "check",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Validate the stored authentication material and required cookie names for one site.",
+    operation_effect: "read",
+    operation_family: "get",
+    args: [{ name: "site", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli auth check <site>" },
+  },
+  {
+    site: "auth",
+    command: "list",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description: "List sites with locally configured authentication cookies.",
+    operation_effect: "read",
+    operation_family: "list",
+    channels: { shell: "unicli auth list" },
+  },
+  {
+    site: "auth",
+    command: "audit",
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    description:
+      "Audit cookie and header adapters against installed browser profiles without exposing credential values.",
+    operation_effect: "read",
+    operation_family: "list",
+    args: [
+      { name: "browser", type: "str" },
+      { name: "limit", type: "int" },
+    ],
+    channels: {
+      shell: "unicli auth audit [--browser <str>] [--limit <int>]",
+    },
+  },
   {
     site: "scholar",
     command: "search",

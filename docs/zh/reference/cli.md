@@ -25,7 +25,7 @@ description: Uni-CLI 的发现、执行、认证、浏览器、修复和协议�
 unicli <site> <command> [options]
 ```
 
-全局输出格式：
+可以使用以下全局输出格式。
 
 ```text
 -f json
@@ -36,6 +36,21 @@ unicli <site> <command> [options]
 ```
 
 `--dry-run` 会预览参数解析和选中的 pipeline。
+
+## 更新
+
+| 命令                                         | 用途                     |
+| -------------------------------------------- | ------------------------ |
+| `unicli upgrade --check -f json`             | 比较已安装版本和可用版本 |
+| `unicli upgrade`                             | 打开交互式 Y/N 选择      |
+| `unicli upgrade --yes`                       | 免交互安装               |
+| `unicli upgrade --no`                        | 24 小时后再次提醒        |
+| `unicli upgrade --skip-version`              | 隐藏当前提示版本         |
+| `unicli upgrade --auto-update`               | 为当前机器启用自动更新   |
+| `unicli upgrade --no-auto-update`            | 要求明确确认             |
+| `unicli upgrade --package-manager <manager>` | 指定 npm、pnpm 或 Bun    |
+
+Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 
 ## 登录与认证
 

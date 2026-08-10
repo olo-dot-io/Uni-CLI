@@ -109,16 +109,16 @@ describe("stats SSOT", () => {
   });
 
   it("bounds vitest test-list enumeration time", () => {
-    expect(resolveVitestListTimeoutMs({})).toBe(45_000);
+    expect(resolveVitestListTimeoutMs({})).toBe(90_000);
     expect(
       resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "5000" }),
     ).toBe(5000);
     expect(
       resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "999" }),
-    ).toBe(45_000);
+    ).toBe(90_000);
     expect(
       resolveVitestListTimeoutMs({ UNICLI_STATS_VITEST_TIMEOUT_MS: "oops" }),
-    ).toBe(45_000);
+    ).toBe(90_000);
   });
 
   it("keeps generated manifest categories aligned with runtime search categories", () => {

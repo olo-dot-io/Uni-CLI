@@ -1,0 +1,260 @@
+{
+  "generated_at": "2026-08-10T15:00:42.276Z",
+  "passed": true,
+  "sources": {
+    "captured_at": "2026-08-10",
+    "opencli": {
+      "repository": "https://github.com/jackwener/opencli",
+      "commit": "a86d64705c526dc710f790e66cfcabf6ecf786b9",
+      "commit_date": "2026-08-09T23:46:03+08:00",
+      "package_version": "1.8.6",
+      "catalog": { "sites": 176, "commands": 1331 },
+      "declared_boundary": "Websites, browser sessions, Electron applications, and local tools through adapters and browser primitives.",
+      "evidence": [
+        "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/README.md",
+        "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json",
+        "https://github.com/jackwener/opencli/tree/a86d64705c526dc710f790e66cfcabf6ecf786b9/autoresearch"
+      ]
+    },
+    "cli_anything": {
+      "repository": "https://github.com/HKUDS/CLI-Anything",
+      "commit": "39634a640cf20bc603b4faae4d31069c44821a9a",
+      "commit_date": "2026-08-03T09:28:59Z",
+      "catalog": {
+        "harness_clis": 79,
+        "public_cli_entries": 22,
+        "matrices": 5,
+        "matrix_capabilities": 62
+      },
+      "declared_boundary": "Stateful command-line harnesses for real desktop software, codebases, and web services, distributed through CLI-Hub and capability matrices.",
+      "evidence": [
+        "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/README.md",
+        "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json",
+        "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/matrix_registry.json",
+        "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/cli-hub/README.md"
+      ]
+    }
+  },
+  "uni": {
+    "catalog": {
+      "sites": 337,
+      "commands": 1890,
+      "generated_catalog_in_sync": true
+    },
+    "personal_content": {
+      "commands": 80,
+      "sites": 38,
+      "families": { "activity": 16, "library": 38, "feed": 19, "network": 7 }
+    },
+    "root_discovery": {
+      "passed": 5,
+      "total": 5,
+      "entries": [
+        "search <intent",
+        "do <goal",
+        "list [",
+        "describe [",
+        "upgrade "
+      ]
+    }
+  },
+  "opencli": {
+    "catalog": { "sites": 176, "commands": 1331 },
+    "personal_content": {
+      "commands": 78,
+      "sites": 44,
+      "families": { "activity": 17, "library": 35, "feed": 18, "network": 8 }
+    },
+    "snapshot_in_sync": true
+  },
+  "cli_anything": {
+    "repository": "https://github.com/HKUDS/CLI-Anything",
+    "commit": "39634a640cf20bc603b4faae4d31069c44821a9a",
+    "commit_date": "2026-08-03T09:28:59Z",
+    "catalog": {
+      "harness_clis": 79,
+      "public_cli_entries": 22,
+      "matrices": 5,
+      "matrix_capabilities": 62
+    },
+    "declared_boundary": "Stateful command-line harnesses for real desktop software, codebases, and web services, distributed through CLI-Hub and capability matrices.",
+    "evidence": [
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/README.md",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/matrix_registry.json",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/cli-hub/README.md"
+    ]
+  },
+  "tasks": {
+    "total": 11,
+    "passed": 11,
+    "actionable": 11,
+    "personalized_total": 5,
+    "personalized_passed": 5,
+    "top1_accuracy": "100.0%"
+  },
+  "task_results": [
+    {
+      "id": "news-top",
+      "intent": "hackernews top stories",
+      "expected": "hackernews top",
+      "top1": "hackernews top",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli hackernews top",
+      "inspect": "unicli describe hackernews top",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "developer-trending",
+      "intent": "github trending today",
+      "expected": "github-trending daily",
+      "top1": "github-trending daily",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli github-trending daily",
+      "inspect": "unicli describe github-trending daily",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "developer-code-search",
+      "intent": "search github code for token",
+      "expected": "gh search-code",
+      "top1": "gh search-code",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli gh search-code <query>",
+      "inspect": "unicli describe gh search-code",
+      "auth": "required",
+      "auth_setup": "gh auth login"
+    },
+    {
+      "id": "media-playback",
+      "intent": "play music on spotify",
+      "expected": "spotify play-track",
+      "top1": "spotify play-track",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli spotify play-track <query>",
+      "inspect": "unicli describe spotify play-track",
+      "auth": "required",
+      "auth_setup": "unicli auth setup spotify"
+    },
+    {
+      "id": "auth-setup",
+      "intent": "setup login cookies for twitter",
+      "expected": "auth setup",
+      "top1": "auth setup",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli auth setup <site>",
+      "inspect": "unicli describe auth setup",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "cli-upgrade",
+      "intent": "update old Uni-CLI version for agent",
+      "expected": "upgrade install",
+      "top1": "upgrade install",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli upgrade [--yes|--no|--skip-version|--auto-update|--no-auto-update] [--package-manager <npm|pnpm|bun>]",
+      "inspect": "unicli describe upgrade install",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "xiaohongshu-saved",
+      "intent": "my saved Xiaohongshu notes",
+      "expected": "xiaohongshu saved",
+      "top1": "xiaohongshu saved",
+      "top1_ok": true,
+      "actionable": true,
+      "family": "library",
+      "family_ok": true,
+      "usage": "unicli xiaohongshu saved",
+      "inspect": "unicli describe xiaohongshu saved",
+      "auth": "required",
+      "auth_setup": "unicli auth setup xiaohongshu"
+    },
+    {
+      "id": "instagram-saved",
+      "intent": "my saved Instagram posts",
+      "expected": "instagram saved",
+      "top1": "instagram saved",
+      "top1_ok": true,
+      "actionable": true,
+      "family": "library",
+      "family_ok": true,
+      "usage": "unicli instagram saved",
+      "inspect": "unicli describe instagram saved",
+      "auth": "required",
+      "auth_setup": "unicli auth setup instagram"
+    },
+    {
+      "id": "zhihu-recommendations",
+      "intent": "Zhihu personalized recommendations",
+      "expected": "zhihu recommend",
+      "top1": "zhihu recommend",
+      "top1_ok": true,
+      "actionable": true,
+      "family": "feed",
+      "family_ok": true,
+      "usage": "unicli zhihu recommend",
+      "inspect": "unicli describe zhihu recommend",
+      "auth": "required",
+      "auth_setup": "unicli auth setup zhihu"
+    },
+    {
+      "id": "twitter-notifications",
+      "intent": "Twitter notifications",
+      "expected": "twitter notifications",
+      "top1": "twitter notifications",
+      "top1_ok": true,
+      "actionable": true,
+      "family": "activity",
+      "family_ok": true,
+      "usage": "unicli twitter notifications",
+      "inspect": "unicli describe twitter notifications",
+      "auth": "required",
+      "auth_setup": "unicli auth setup twitter"
+    },
+    {
+      "id": "bilibili-history",
+      "intent": "Bilibili watch history",
+      "expected": "bilibili history",
+      "top1": "bilibili history",
+      "top1_ok": true,
+      "actionable": true,
+      "family": "library",
+      "family_ok": true,
+      "usage": "unicli bilibili history",
+      "inspect": "unicli describe bilibili history",
+      "auth": "required",
+      "auth_setup": "unicli auth setup bilibili"
+    }
+  ],
+  "gates": {
+    "catalog_breadth_parity": true,
+    "personal_content_command_parity": true,
+    "task_completion": true,
+    "actionability": true,
+    "personalized_task_completion": true,
+    "generated_catalog_sync": true
+  }
+}

@@ -1,24 +1,24 @@
 {
-  "version": "1.0.4",
-  "codename": "Artemis · Glover",
+  "version": "1.1.1",
+  "codename": "Artemis · Koch",
   "date": "2026-08-10",
-  "status": "published",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.4",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#104--2026-08-10--artemis--glover",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.1.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#111--2026-08-10--artemis--koch",
   "highlights": {
     "root": [
-      "Uni-CLI 1.0.4 adds complete CCF A conference identity coverage with first-party AAAI and USENIX proceedings plus PACMPL, PACMSE, PACMMOD, and SIGGRAPH publication views.",
-      "Conference search validates the exact venue and year, follows ACM and IEEE publication changes, and removes companion material, administrative pages, and nearby acronym matches.",
-      "Cross-site traces connect OpenReview reviews and rebuttals, official awards, source-backed PDFs, code candidates, and datasets while retaining relationship evidence.",
-      "Academic requests now have bounded cancellation-aware deadlines, concurrent artifact collection, spelling recovery, structured source failures, and accurate file-writing effects."
+      "Persistent non-interactive Agent installations now schedule exact-version updates in a detached worker with durable progress, bounded retry, and explicit opt-out controls.",
+      "Search, describe, one-shot execution, fast paths, and MCP now share one intent plan with personalization, feasibility, named ranking evidence, and typo-aware site resolution.",
+      "GitHub discovery now covers repositories, issues, pull requests, code, commits, topics, users, and file reads through structured gh commands.",
+      "The documentation site now publishes an indexed cross-version history, exact comparison links, and machine-readable release data from the canonical changelog."
     ],
     "zh": [
-      "Uni-CLI 1.0.4 完整覆盖 CCF A 会议身份，并接入 AAAI 与 USENIX 官方论文来源，以及 PACMPL、PACMSE、PACMMOD 和 SIGGRAPH 出版视图。",
-      "会议检索会严格校验会议与年份，跟随 ACM 与 IEEE 出版变化，并剔除 companion 内容、管理页面和相近缩写误命中。",
-      "跨站追踪会连接 OpenReview 评审与作者回复、官方奖项、有来源依据的 PDF、代码候选和数据集，同时保留关系证据。",
-      "学术请求具备可取消的期限、并发资源收集、拼写恢复、结构化来源错误和准确的文件写入 effect。"
+      "持久化安装由非交互 Agent 使用时，Uni-CLI 会通过后台 worker 安装准确版本，并提供持久化进度、限定重试和明确的关闭选项。",
+      "Search、describe、one-shot、fast path 和 MCP 现在共用一份 intent plan，其中包含个性化、可行性、命名排序依据和容错站点解析。",
+      "GitHub discovery 现在通过结构化 gh 命令覆盖仓库、Issue、Pull Request、代码、Commit、Topic、用户和文件读取。",
+      "文档站现在从统一 CHANGELOG 生成跨版本索引、准确比较链接和机器可读版本记录。"
     ]
   }
 }

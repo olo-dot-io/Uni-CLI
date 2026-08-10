@@ -31,6 +31,10 @@ export function registerSearchCommand(program: Command): void {
     )
     .option("-n, --limit <n>", "max results", "8")
     .option("--category <cat>", "filter by category")
+    .option(
+      "--personalized",
+      "only current-user feeds, saved items, account, network, or activity commands",
+    )
     .addOption(
       new Option(
         "--operator <operator>",
@@ -81,6 +85,7 @@ export function registerSearchCommand(program: Command): void {
         opts: {
           limit: string;
           category?: string;
+          personalized?: boolean;
           operator?: ExecutionOperator;
           surface?: TargetSurface;
           effect?: OperationEffect;
@@ -115,6 +120,7 @@ export function registerSearchCommand(program: Command): void {
         };
         const results = search(query, limit, {
           category: opts.category,
+          personalized: opts.personalized === true,
           requirements,
         });
 
@@ -155,7 +161,12 @@ export function registerSearchCommand(program: Command): void {
                 runtime_readiness: "not_evaluated",
               }
             : {}),
+          ranking: r.ranking,
           usage: r.usage,
+          inspect: `unicli describe ${r.site} ${r.command}`,
+          auth: r.auth,
+          ...(r.auth_setup ? { auth_setup: r.auth_setup } : {}),
+          ...(r.personalization ? { personalization: r.personalization } : {}),
         }));
 
         const ctx: AgentContext = {
@@ -167,7 +178,15 @@ export function registerSearchCommand(program: Command): void {
         console.log(
           format(
             rows,
-            ["command", "description", "operator", "effect", "score", "usage"],
+            [
+              "command",
+              "description",
+              "personalization",
+              "auth",
+              "score",
+              "usage",
+              "inspect",
+            ],
             fmt,
             ctx,
           ),

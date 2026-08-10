@@ -6,13 +6,15 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.0.4. Its main abstraction is an operation: a named action with arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.1.1. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
 ```text
 intent
-  → local catalog search
+  → compiled intent plan
+  → feasible catalog candidates
+  → ranked operations with evidence
   → operation contract
   → argument and permission checks
   → execution operator
@@ -24,18 +26,26 @@ The same operation can be discovered from the CLI, MCP, ACP, generated agent ass
 
 ## Catalog
 
-The catalog combines four sources:
+The catalog combines four sources.
 
 1. packaged YAML and TypeScript adapters
 2. fixed core commands
 3. user adapters under `~/.unicli/adapters/`
 4. plugins and host-discovered external CLIs
 
-`unicli search` ranks the catalog by intent. `unicli describe` returns the selected operation's contract. User adapters can replace packaged entries with the same site and command during local development.
+`unicli search` compiles the task and ranks the catalog. `unicli describe` returns the selected operation's contract. User adapters can replace packaged entries with the same site and command during local development.
+
+## Intent compilation and ranking
+
+Discovery compiles each request once before it reads posting lists. The plan keeps the remaining task text together with entity, cardinality, site, operation family, operator, browser-negation, and other hard requirements.
+
+Exact site ids and maintained aliases resolve through hash indexes. Multi-word names resolve through bounded phrase matching. A precomputed symmetric-delete index proposes typo candidates, then bounded Damerau-Levenshtein distance accepts only one nearest provider. Ambiguous spellings add no site constraint.
+
+The bilingual inverted index combines BM25 and TF-IDF. Entity, workflow, operation-family, and feasibility signals refine the lexical candidate set. Hard capability requirements remove incompatible commands before bounded top-k selection. Every result includes `ranking.lexical_score`, `ranking.semantic_score`, `ranking.prior`, and named `ranking.signals` so an agent can inspect the selection basis.
 
 ## Operation contract
 
-An operation contract records:
+An operation contract records the following fields.
 
 - site, command, description, and argument schema
 - target surface and compatible platforms
@@ -48,7 +58,7 @@ These fields are shared by discovery, dry-run, execution, permission checks, and
 
 ## Control kernel
 
-The control kernel validates input and coordinates policy before an operator acquires its target. It handles:
+The control kernel validates input and coordinates policy before an operator acquires its target. It handles the following work.
 
 - argument schemas and input channels
 - permission profiles and approvals
@@ -81,7 +91,7 @@ TypeScript adapters use the same metadata and envelope contract for SDKs, stream
 
 ## Browser runtime
 
-The Browser Runtime Broker owns providers, profile partitions, agent sessions, targets, and leases. Browser commands select a visibility mode:
+The Browser Runtime Broker owns providers, profile partitions, agent sessions, targets, and leases. Browser commands select one of these visibility modes.
 
 - hidden managed browser
 - background existing Chrome
@@ -96,7 +106,7 @@ State reads produce refs tied to a snapshot and target. Later actions resolve th
 
 ## Result envelope
 
-Every normal command returns a v2 AgentEnvelope. The outer fields remain stable across interfaces:
+Every normal command returns a v2 AgentEnvelope. The outer fields remain stable across interfaces.
 
 ```json
 {
@@ -124,6 +134,11 @@ The native CLI exposes the complete runtime. MCP offers compact, deferred, and e
 | Area                       | Source                             |
 | -------------------------- | ---------------------------------- |
 | Catalog and registry       | `src/registry.ts`, `src/adapters/` |
+| Intent compilation         | `src/discovery/intent-plan.ts`     |
+| Catalog ranking            | `src/discovery/search.ts`          |
+| Ranking semantics          | `src/discovery/intent-ranking.ts`  |
+| Site identity resolution   | `src/discovery/site-resolver.ts`   |
+| Capability feasibility     | `src/discovery/feasibility.ts`     |
 | Engine and pipeline        | `src/engine/`                      |
 | Command surface            | `src/commands/`                    |
 | Browser runtime            | `src/browser/`                     |

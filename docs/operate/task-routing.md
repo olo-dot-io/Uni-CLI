@@ -22,9 +22,9 @@ merely because several providers implement verbs named `click`, `type`, or
 | Pixels plus explicit coordinates or visual target evidence       | `visual-coordinate`     | Cua Driver or visual     | desktop          | The required control has no usable semantic handle                                 |
 | Registry, ref store, planner, or pure transform                  | `local-runtime`         | Uni-CLI runtime          | local runtime    | The work is local selection, indexing, validation, or transformation               |
 
-The axes stay independent:
+The axes stay independent.
 
-- **Target surface** says where the target lives: web, desktop, system, or
+- **Target surface** says whether the target lives on web, desktop, system, or
   mobile.
 - **Operator** says how the operation is perceived and actuated.
 - **Provider** names the concrete implementation.
@@ -38,7 +38,7 @@ force every task through one mechanism.
 
 ## Agent decision sequence
 
-Agents should follow this order:
+Agents should follow this order.
 
 1. Run `unicli search "<intent>"` or inspect the relevant site.
 2. Select the exact command contract whose arguments and effect match the task.
@@ -53,8 +53,8 @@ Agents should follow this order:
 8. On failure, retry or repair that provider when the envelope permits it.
    Replanning and visual escalation are new explicit decisions.
 
-When the task already fixes a hard dimension, apply it during retrieval rather
-than filtering a short ranked list afterward:
+When the task already fixes a hard dimension, apply it during retrieval. This
+avoids filtering a short ranked list afterward.
 
 ```bash
 unicli -f json search "publish release" \
@@ -69,14 +69,16 @@ unicli -f json do "read research papers" \
   --max-impact background
 ```
 
-The same fields are available on MCP `unicli_search`: `operator`,
+MCP `unicli_search` accepts the same fields, including `operator`,
 `target_surface`, `effect`, `max_interaction_impact`, `platform`, and
 `allow_coordinate_actuation`. Each result returns its operation family,
-operator, effect, target surface, target scope, and interaction impact.
+operator, effect, target surface, target scope, interaction impact, and named
+ranking evidence. `ranking.signals` identifies decisive site, command,
+operation, intent, and operator matches without granting execution authority.
 
 ## Effect settlement
 
-Every executed operation reaches one terminal effect verdict:
+Every executed operation reaches one terminal effect verdict.
 
 | Status           | Meaning                                                                 | Agent action                                               |
 | ---------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
@@ -86,8 +88,8 @@ Every executed operation reaches one terminal effect verdict:
 | `suspected_noop` | Dispatch was rejected beforehand or fresh state stayed unchanged.       | Repair or retry only when the command contract permits it. |
 
 `confirmed` is evidence-gated. A successful process exit, click receipt, or
-generic HTTP `200` proves dispatch completion rather than the requested
-external effect. HTTP responses with authoritative creation/deletion semantics,
+generic HTTP `200` proves dispatch completion only. HTTP responses with
+authoritative creation or deletion semantics,
 committed download files, and provider-supplied fresh postconditions can confirm
 an effect. Provider verdicts are parsed against a closed status/evidence
 compatibility table; malformed claims are discarded and settled
@@ -151,7 +153,7 @@ unicli -f json compute route point-click \
   --via driver
 ```
 
-The normal compute commands accept the same explicit route:
+The normal compute commands accept the same explicit route.
 
 ```bash
 unicli compute snapshot --app Calculator --via native
@@ -177,11 +179,11 @@ require that ref. It is valid for 30 seconds, can be claimed once, and must
 match the action's provider, desktop scope, and named session. Coordinates are
 validated in screenshot-pixel space and transformed to provider action space
 from the recorded dimensions. A screenshot written directly to `path` is an
-artifact rather than an actuation capability and returns no observation ref.
+artifact. It returns no actuation capability or observation ref.
 
 ## Selection algorithm
 
-The planner applies hard constraints before preference:
+The planner applies hard constraints before preference.
 
 1. Validate the requested route and operation.
 2. Resolve a durable ref owner when present.
@@ -206,10 +208,10 @@ the candidates.
 
 ## Data structures and complexity
 
-The route planner compiles immutable provider declarations into two indexes:
+The route planner compiles immutable provider declarations into two indexes.
 
-- `PROFILE_BY_TRANSPORT`: hash lookup from provider kind to profile.
-- `PROFILES_BY_ACTION`: posting list from logical action to implementing
+- `PROFILE_BY_TRANSPORT` provides a hash lookup from provider kind to profile.
+- `PROFILES_BY_ACTION` provides a posting list from logical action to implementing
   providers.
 
 Direct selection and physical-action adaptation are expected `O(1)`. Route
@@ -217,23 +219,35 @@ explanation is `O(k)`, where `k` is the number of providers implementing one
 logical action and is currently bounded by seven compute provider declarations.
 The planner does not scan the adapter catalog.
 
-Task discovery uses its own inverted index. Each indexed manifest/core command
-also carries a compact feasibility profile. BM25 and intent signals generate a
-candidate posting-list union; exact operation, site, operator, target, effect,
-platform, coordinate-actuation, and interaction constraints remove infeasible
-documents before bounded top-k selection. Live registry commands resolve
-missing profiles lazily only for candidate documents, while the generated
-manifest fast path uses preprojected profiles. Retrieval score never grants
-execution authority.
+Task discovery compiles the request once. The compiled plan keeps task text,
+entity, cardinality, site hints, operation family, explicit operator, and
+browser negation together. Capability routing and ranking therefore consume
+one semantic interpretation.
 
-With `c` lexical candidates and requested output size `k`, feasibility
-intersection is `O(c)` with constant-time field comparisons and bounded top-k
-maintenance is `O(c log k)` with `O(k)` heap storage (hard limit 25). Contract
-projection is cached by registry version, so repeated feasibility checks are
-`O(1)` lookups. This keeps semantic ranking mistakes separate from provider
-feasibility and target binding.
+Each indexed manifest or core command carries a compact feasibility profile
+and a precomputed operation family. Provider ids, aliases, and phrases use
+immutable lookup indexes. A symmetric-delete index proposes typo candidates at
+edit distance two or less. Bounded Damerau-Levenshtein validation accepts only
+one nearest provider, so an ambiguous spelling does not become a routing hint.
 
-Independent dimensions use product types instead of one inheritance tree:
+BM25 and TF-IDF generate the candidate posting-list union. Entity, workflow,
+operation-family, and site signals adjust those candidates. Exact operation,
+site, operator, target, effect, platform, coordinate-actuation, and interaction
+constraints remove infeasible documents before bounded top-k selection. Live
+registry commands resolve missing profiles lazily only for candidate documents,
+while the generated manifest fast path uses preprojected profiles. Retrieval
+score never grants execution authority.
+
+Let `q` be request length, `p` the postings visited, `c` the resulting
+candidates, and `k` the requested output size. Intent compilation is `O(q)`.
+Typo resolution visits deletion variants from bounded-length query tokens and
+validates only indexed candidates. Lexical accumulation is `O(p)`, feasibility
+intersection is `O(c)`, and bounded top-k maintenance is `O(c log k)` with
+`O(k)` heap storage and a hard limit of 25. Contract projection is cached by
+registry version, so repeated feasibility checks use `O(1)` lookups.
+
+Independent dimensions use product types. One inheritance tree cannot represent
+these axes without false coupling.
 
 ```text
 Operation
@@ -261,7 +275,8 @@ loading every adapter.
 
 ## Recovery state graph
 
-Provider recovery is a small state graph rather than an ordered provider list:
+Provider recovery uses a small state graph. An ordered provider list could
+silently change the selected physical capability after failure.
 
 ```mermaid
 stateDiagram-v2
@@ -279,7 +294,7 @@ stateDiagram-v2
     Planned --> Escalated: explicit visual route with sufficient evidence
 ```
 
-The transitions have different meanings:
+The transitions have different meanings.
 
 - **Retry** repeats the same operation through the same provider.
 - **Repair** restores that provider or its declared dependency.
@@ -297,13 +312,13 @@ route.
 Provider profiles declare a recovery policy per logical-to-physical action.
 Read observations and captures may use one bounded
 `same-primitive-retry` after a retryable provider failure. Before the second
-attempt, an optional provider hook retires only local stale state: CDP drops the
+attempt, an optional provider hook retires only local stale state. CDP drops the
 failed page connection, UIA/AT-SPI retire the failed sidecar generation, and AX
 clears its warm accessibility session. The dispatcher then invokes the same
 adapter instance, physical action, exact target, perception, actuation, scope,
 and verification channel.
 
-Mutations declare `strategy: none` and `max_attempts: 1`; a retryable provider
+Mutations declare `strategy: none` and `max_attempts: 1`. A retryable provider
 flag cannot override that rule. Every compute result carries
 `recovery_trace` with provider, physical action, attempts, triggering failures,
 and whether recovery succeeded. Route explanation exposes the policy before
@@ -318,6 +333,10 @@ provider or operator under the original operation identity.
 
 | Concern                                           | Owning source                       |
 | ------------------------------------------------- | ----------------------------------- |
+| Intent compilation and substrate requirements     | `src/discovery/intent-plan.ts`      |
+| Lexical, semantic, and top-k ranking              | `src/discovery/search.ts`           |
+| Site identity and bounded typo resolution         | `src/discovery/site-resolver.ts`    |
+| Candidate contract feasibility                    | `src/discovery/feasibility.ts`      |
 | Task-facing operator projection                   | `src/core/operator-model.ts`        |
 | Compute provider declarations and indexes         | `src/transport/routing.ts`          |
 | Exact target binding and single-provider dispatch | `src/transport/compute-dispatch.ts` |
@@ -334,7 +353,7 @@ caller to provide a route decision.
 
 ## Conformance expectations
 
-A provider or new operator is ready when it supplies:
+A provider or new operator is ready when it supplies the following contracts.
 
 1. A declared operator, perception, actuation, target scope, verification
    channel, interaction impact, and logical-to-physical action bindings.

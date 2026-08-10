@@ -7,6 +7,12 @@
 > run `unicli auth setup <site>` once and retry. Adapter is broken?
 > Read `unicli repair <site> <command>`.
 
+Every structured response can carry `meta.update`. Persistent non-interactive
+Agent installations schedule its exact release automatically and report state
+under `automatic_update`. Confirm with `unicli --version` before retrying a
+version-sensitive task. Use `unicli upgrade --no-auto-update` for explicit
+approval. Interactive users can choose Y or N with `unicli upgrade`.
+
 Open Agent-Computer Interface runtime for real software. Rank operations by
 intent, explicitly select one with a declared substrate, inspect its structured
 result, and repair supported drift paths. Operation-specific evidence is
@@ -37,7 +43,7 @@ apply the same scan manually to chat replies.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->337<!-- /STATS --> sites, <!-- STATS:command_count -->1884<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->337<!-- /STATS --> sites, <!-- STATS:command_count -->1890<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -47,7 +53,7 @@ apply the same scan manually to chat replies.
 
 ### Web (183+ sites)
 
-**Chinese**: zhihu (37), xiaohongshu (22), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +28 more (`unicli list`)
+**Chinese**: zhihu (37), xiaohongshu (23), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +28 more (`unicli list`)
 
 **International**: twitter (52), instagram (29), reddit (24), tiktok (18), youtube (17), bluesky (16), nowcoder (16), discord-app (15), +85 more (`unicli list`)
 
@@ -55,7 +61,7 @@ apply the same scan manually to chat replies.
 
 **Finance**: eastmoney (18), xueqiu (14), binance (13), coingecko (7), sinafinance (5), barchart (4), yahoo-finance (3), coinbase (2), +2 more (`unicli list`)
 
-**Developer**: codex (19), cursor (19), gh (11), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), +29 more (`unicli list`)
+**Developer**: codex (19), cursor (19), gh (16), stackoverflow (10), vscode (10), docker-desktop (7), github-desktop (7), gitkraken (7), +29 more (`unicli list`)
 
 **News**: hackernews (11), bloomberg (10), 36kr (5), bbc (5), reuters (5), ithome (3), cnn (2), infoq (2), +3 more (`unicli list`)
 
@@ -116,7 +122,9 @@ Banned in public files: `Banach`, `Rice's restriction`, `Lehman's mandate`,
 `Deterministic Compilation Thesis`, `triple-intersection`,
 `envelope-to-operator mapping`, `|A|=5`, `Cox PH cloglog DTH GLMM`,
 `Theorem 1/2`, `Author: Claude`, `docs/superpowers/`, `internal/refs.bib`.
-Allowlist: `ref/**`, `archive/**`, `CHANGELOG.md` (frozen history).
+Allowlist: `ref/**`, `archive/**`, `CHANGELOG.md` (frozen history), and the
+generated `docs/releases.md` plus `docs/zh/releases.md` projections of that
+same history.
 
 Public OSS idiom that stays on the public surface: `structured error
 envelope`, `envelope completeness`, `agent self-repair`, `repair loop`,
@@ -129,7 +137,7 @@ allowlist entry without a one-line `// REASON:` justification in
 
 ## Version
 
-1.0.4 — Artemis · Glover
+1.1.1 — Artemis · Koch
 
 ## MCP one-liner (Claude Desktop / Cursor / Continue)
 

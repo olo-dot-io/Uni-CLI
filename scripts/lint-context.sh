@@ -34,7 +34,9 @@ THRESHOLD="${UNICLI_LINT_THRESHOLD:-60}"
 # we own publicly; local-only paths (.claude/, ref/) are exempt.
 RETIRED_PATTERN='~80 token\|80 tokens per\|~80_tokens\|80_tokens'
 RETIRED_PATHS=(README.md AGENTS.md DESIGN.md docs src)
+# Generated release archives preserve immutable wording from their original versions.
 RETIRED_HITS=$(grep -RIn --exclude-dir=node_modules --exclude-dir=dist \
+  --exclude=releases.md --exclude=release-history.json \
   "$RETIRED_PATTERN" "${RETIRED_PATHS[@]}" 2>/dev/null || true)
 if [ -n "$RETIRED_HITS" ]; then
   echo "context-lint: FAIL — retired '~80 tokens per call' claim found:"

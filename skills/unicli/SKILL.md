@@ -12,7 +12,7 @@ description: >
   major platform; run desktop workflows or system tasks; or when the user says
   "unicli", "scrape", "fetch from", "get trending", "check [site]", "find on
   [platform]", "获取", "查询", "抓取".
-version: 1.0.4
+version: 1.1.1
 category: core
 depends-on:
   - human-writing
@@ -60,6 +60,7 @@ unicli list --site hackernews            # commands for one site
 unicli hackernews top --limit 5          # run a command
 unicli hackernews top --limit 5 -f json  # machine-readable JSON envelope
 unicli describe hackernews top           # full schema + example payload
+unicli upgrade --check -f json            # compare installed and latest releases
 ```
 
 ---
@@ -165,6 +166,10 @@ every command.
     "duration_ms": 2805,
     "count": 5,
     "surface": "web",
+    "update": {
+      "latest": "1.1.0",
+      "unattended_command": "unicli upgrade --yes"
+    },
     "pagination": { "next_cursor": "...", "has_more": true }
   },
   "data": [{ "rank": 1, "title": "...", "score": 80, "url": "..." }],
@@ -183,9 +188,16 @@ every command.
 | `schema_version`  | Always `"2"` — confirms v2 envelope                          |
 | `meta.count`      | Rows returned                                                |
 | `meta.pagination` | Non-null when more pages exist; use `.next_cursor`           |
+| `meta.update`     | New release metadata and interactive or unattended commands  |
 | `data`            | Payload array or object                                      |
 | `error`           | `null` on success; structured on failure (see Step 5)        |
 | `next_actions`    | HATEOAS hints — valid commands to run next, trust these      |
+
+When `meta.update` appears, inspect `automatic_update`. Persistent
+non-interactive installations schedule the exact release automatically. Confirm
+with `unicli --version` before retrying a version-sensitive task. Use
+`unicli upgrade --no-auto-update` when the environment requires explicit
+approval. Non-interactive commands never prompt.
 
 ### Markdown format (default)
 

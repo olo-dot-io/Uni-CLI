@@ -86,6 +86,7 @@ describe("fast/live search parity", () => {
           score: row.score,
           operator: row.feasibility?.operator,
           operation_family: row.feasibility?.operation_family,
+          ranking: row.ranking,
         }));
 
       expect(project(fast)).toEqual(project(live));

@@ -1,0 +1,37 @@
+{
+  "captured_at": "2026-08-10",
+  "opencli": {
+    "repository": "https://github.com/jackwener/opencli",
+    "commit": "a86d64705c526dc710f790e66cfcabf6ecf786b9",
+    "commit_date": "2026-08-09T23:46:03+08:00",
+    "package_version": "1.8.6",
+    "catalog": {
+      "sites": 176,
+      "commands": 1331
+    },
+    "declared_boundary": "Websites, browser sessions, Electron applications, and local tools through adapters and browser primitives.",
+    "evidence": [
+      "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/README.md",
+      "https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json",
+      "https://github.com/jackwener/opencli/tree/a86d64705c526dc710f790e66cfcabf6ecf786b9/autoresearch"
+    ]
+  },
+  "cli_anything": {
+    "repository": "https://github.com/HKUDS/CLI-Anything",
+    "commit": "39634a640cf20bc603b4faae4d31069c44821a9a",
+    "commit_date": "2026-08-03T09:28:59Z",
+    "catalog": {
+      "harness_clis": 79,
+      "public_cli_entries": 22,
+      "matrices": 5,
+      "matrix_capabilities": 62
+    },
+    "declared_boundary": "Stateful command-line harnesses for real desktop software, codebases, and web services, distributed through CLI-Hub and capability matrices.",
+    "evidence": [
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/README.md",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/matrix_registry.json",
+      "https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/cli-hub/README.md"
+    ]
+  }
+}

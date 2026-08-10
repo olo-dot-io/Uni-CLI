@@ -144,6 +144,13 @@ describe("expandToken", () => {
     expect(expanded).toContain("find");
   });
 
+  it("expands personal feed and saved-item vocabulary", () => {
+    expect(expandToken("recommendations")).toContain("recommend");
+    expect(expandToken("personalized")).toContain("feed");
+    expect(expandToken("saved")).toContain("bookmarks");
+    expect(expandToken("收藏")).toContain("saved");
+  });
+
   it("expands domain terms", () => {
     const expanded = expandToken("股票");
     expect(expanded).toContain("stock");
@@ -420,6 +427,14 @@ describe("search", () => {
     expect(results[0].usage).toMatch(/^unicli hackernews/);
   });
 
+  it("includes required arguments in the returned usage command", () => {
+    expect(search("search github code for token", 1)[0]).toMatchObject({
+      site: "gh",
+      command: "search-code",
+      usage: "unicli gh search-code <query>",
+    });
+  });
+
   it("returns categories", () => {
     const results = search("twitter search", 1);
     expect(results.length).toBeGreaterThan(0);
@@ -465,6 +480,28 @@ describe("search", () => {
       expect(typeof r.score).toBe("number");
       expect(r.score).toBeGreaterThan(0);
     }
+  });
+
+  it("returns named ranking evidence for agent-side selection", () => {
+    const [result] = search("twiter search", 1);
+
+    expect(result).toMatchObject({
+      site: "twitter",
+      ranking: {
+        lexical_score: expect.any(Number),
+        semantic_score: expect.any(Number),
+        prior: expect.any(Number),
+        signals: expect.arrayContaining(["site:unique-typo"]),
+      },
+    });
+  });
+
+  it("routes site login setup intent to the centralized auth surface", () => {
+    expect(search("setup login cookies for twitter", 3)[0]).toMatchObject({
+      site: "auth",
+      command: "setup",
+      usage: "unicli auth setup <site>",
+    });
   });
 
   it("routes browser automation architecture queries to browser operator commands", () => {
@@ -945,5 +982,19 @@ describe("search", () => {
     expect(commands.slice(0, 5)).not.toEqual(
       expect.arrayContaining(["pubmed/author", "arxiv/author"]),
     );
+  });
+
+  it("routes old Uni-CLI update intents to the executable upgrade surface", () => {
+    expect(search("update old Uni-CLI version for agent", 3)[0]).toMatchObject({
+      site: "upgrade",
+      command: "install",
+      usage:
+        "unicli upgrade [--yes|--no|--skip-version|--auto-update|--no-auto-update] [--package-manager <npm|pnpm|bun>]",
+    });
+    expect(search("check latest Uni-CLI version", 3)[0]).toMatchObject({
+      site: "upgrade",
+      command: "check",
+      usage: "unicli upgrade --check",
+    });
   });
 });

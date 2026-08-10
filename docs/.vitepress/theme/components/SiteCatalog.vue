@@ -10,6 +10,9 @@ type Command = {
   command: string;
   auth?: boolean;
   browser?: boolean;
+  auth_requirement?: "required" | "optional" | "none";
+  auth_setup?: string;
+  personalization?: "account" | "feed" | "library" | "network" | "activity";
 };
 
 type Adapter = {
@@ -19,6 +22,8 @@ type Adapter = {
   auth?: boolean;
   strategy?: string;
   command_count: number;
+  personalized_commands?: number;
+  personalization_families?: string[];
   commands: Command[];
 };
 
@@ -39,6 +44,9 @@ const adapters = (siteIndex.sites as Adapter[]).map<IndexedAdapter>(
         command.description,
         command.when_to_use,
         command.command,
+        command.auth_requirement,
+        command.auth_setup,
+        command.personalization,
       ]),
     ]
       .filter(Boolean)
@@ -48,6 +56,8 @@ const adapters = (siteIndex.sites as Adapter[]).map<IndexedAdapter>(
 );
 const query = ref("");
 const selectedType = ref("all");
+const selectedMode = ref<"all" | "personalized" | "auth">("all");
+const expandedSites = ref<Set<string>>(new Set());
 const { localeIndex } = useData();
 const isZh = computed(() => localeIndex.value === "zh");
 
@@ -86,11 +96,40 @@ const filteredAdapters = computed(() => {
       (adapter) =>
         selectedType.value === "all" || adapter.type === selectedType.value,
     )
+    .filter(
+      (adapter) =>
+        selectedMode.value === "all" ||
+        (selectedMode.value === "personalized" &&
+          (adapter.personalized_commands ?? 0) > 0) ||
+        (selectedMode.value === "auth" && adapter.auth === true),
+    )
     .filter((adapter) => !needle || adapter.searchHaystack.includes(needle));
 });
+const personalizedSiteCount = computed(
+  () =>
+    adapters.filter((adapter) => (adapter.personalized_commands ?? 0) > 0)
+      .length,
+);
+const authSiteCount = computed(
+  () => adapters.filter((adapter) => adapter.auth).length,
+);
 
-function sampleCommands(adapter: Adapter): Command[] {
-  return adapter.commands.slice(0, 4);
+function visibleCommands(adapter: Adapter): Command[] {
+  if (expandedSites.value.has(adapter.site)) return adapter.commands;
+  const personalized = adapter.commands.filter(
+    (command) => command.personalization,
+  );
+  const remaining = adapter.commands.filter(
+    (command) => !command.personalization,
+  );
+  return [...personalized, ...remaining].slice(0, 4);
+}
+
+function toggleExpanded(site: string): void {
+  const next = new Set(expandedSites.value);
+  if (next.has(site)) next.delete(site);
+  else next.add(site);
+  expandedSites.value = next;
 }
 
 const copy = computed(() =>
@@ -103,12 +142,18 @@ const copy = computed(() =>
         filter: "筛选目录",
         placeholder: "twitter、office、blender、finance...",
         filterAria: "按接口类型筛选",
+        modeFilterAria: "按个人内容和认证要求筛选",
         all: "全部",
+        personalized: "个人内容",
+        authSites: "需要认证",
         showing: `正在显示 ${filteredAdapters.value.length} 个站点。`,
         commands: "命令",
+        personalizedCommands: "个人内容",
         auth: "认证",
         authRequired: "需要",
         authNone: "无",
+        showAll: "显示全部命令",
+        showLess: "收起命令",
       }
     : {
         eyebrow: "Live generated catalog",
@@ -118,12 +163,18 @@ const copy = computed(() =>
         filter: "Filter catalog",
         placeholder: "twitter, office, blender, finance...",
         filterAria: "Filter by surface",
+        modeFilterAria: "Filter by personalization and authentication",
         all: "All",
+        personalized: "Personalized",
+        authSites: "Auth required",
         showing: `Showing ${filteredAdapters.value.length} sites.`,
         commands: "commands",
+        personalizedCommands: "personalized",
         auth: "auth",
         authRequired: "required",
         authNone: "none",
+        showAll: "Show every command",
+        showLess: "Show fewer commands",
       },
 );
 </script>
@@ -166,6 +217,32 @@ const copy = computed(() =>
       </button>
     </div>
 
+    <div class="site-filter site-mode-filter" :aria-label="copy.modeFilterAria">
+      <button
+        type="button"
+        :class="{ active: selectedMode === 'all' }"
+        @click="selectedMode = 'all'"
+      >
+        {{ copy.all }} <span>{{ adapters.length }}</span>
+      </button>
+      <button
+        type="button"
+        :class="{ active: selectedMode === 'personalized' }"
+        @click="selectedMode = 'personalized'"
+      >
+        {{ copy.personalized }}
+        <span>{{ personalizedSiteCount }}</span>
+      </button>
+      <button
+        type="button"
+        :class="{ active: selectedMode === 'auth' }"
+        @click="selectedMode = 'auth'"
+      >
+        {{ copy.authSites }}
+        <span>{{ authSiteCount }}</span>
+      </button>
+    </div>
+
     <p class="site-result-count">
       {{ copy.showing }}
     </p>
@@ -174,6 +251,7 @@ const copy = computed(() =>
       <article
         v-for="adapter in filteredAdapters"
         :key="adapter.site"
+        :id="`site-${adapter.site}`"
         class="site-card"
       >
         <div class="site-card-top">
@@ -203,16 +281,40 @@ const copy = computed(() =>
               }}
             </dd>
           </div>
+          <div>
+            <dt>{{ copy.personalizedCommands }}</dt>
+            <dd>{{ adapter.personalized_commands ?? 0 }}</dd>
+          </div>
         </dl>
 
         <ul class="site-command-list">
-          <li v-for="command in sampleCommands(adapter)" :key="command.name">
+          <li v-for="command in visibleCommands(adapter)" :key="command.name">
             <code>{{ command.command }}</code>
             <span>{{
               command.description ?? command.when_to_use ?? command.name
             }}</span>
+            <span class="site-command-meta">
+              <b v-if="command.personalization">{{
+                command.personalization
+              }}</b>
+              <b v-if="command.auth_requirement === 'required'">{{
+                copy.authRequired
+              }}</b>
+              <code>{{
+                `unicli describe ${adapter.site} ${command.name}`
+              }}</code>
+            </span>
           </li>
         </ul>
+        <button
+          v-if="adapter.command_count > 4"
+          type="button"
+          class="site-command-toggle"
+          @click="toggleExpanded(adapter.site)"
+        >
+          {{ expandedSites.has(adapter.site) ? copy.showLess : copy.showAll }}
+          <span>{{ adapter.command_count }}</span>
+        </button>
       </article>
     </div>
   </section>

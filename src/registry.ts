@@ -16,10 +16,15 @@
 import { AdapterType, Strategy } from "./types.js";
 import { SITE_CATEGORIES } from "./discovery/aliases.js";
 import {
+  metadataAuthRequirement,
   metadataAuthSetupCommand,
   metadataHasOptionalAuth,
   metadataRequiresAuth,
 } from "./core/auth-contract.js";
+import {
+  classifyPersonalization,
+  type PersonalizationFamily,
+} from "./discovery/personalization.js";
 import type {
   AdapterManifest,
   AdapterCommand,
@@ -283,6 +288,10 @@ export function listCommands(): Array<{
   category: string;
   type: string;
   auth: boolean;
+  authRequirement: "required" | "optional" | "none";
+  authSetup?: string;
+  personalization?: PersonalizationFamily;
+  args: readonly AdapterArg[];
   quarantined: boolean;
   quarantineReason?: string;
 }> {
@@ -293,19 +302,41 @@ export function listCommands(): Array<{
     category: string;
     type: string;
     auth: boolean;
+    authRequirement: "required" | "optional" | "none";
+    authSetup?: string;
+    personalization?: PersonalizationFamily;
+    args: readonly AdapterArg[];
     quarantined: boolean;
     quarantineReason?: string;
   }> = [];
 
   for (const adapter of adapters.values()) {
     for (const [name, cmd] of Object.entries(adapter.commands)) {
+      const category = adapterCategory(adapter);
+      const strategy = commandStrategy(adapter, cmd);
+      const authRequirement = metadataAuthRequirement(
+        strategy,
+        cmd.capabilities,
+        cmd.auth_requirement,
+      );
+      const authSetup = commandAuthSetupCommand(adapter, cmd);
+      const personalization = classifyPersonalization({
+        command: name,
+        description: cmd.description,
+        category,
+        auth: authRequirement,
+      });
       result.push({
         site: adapter.name,
         command: name,
         description: cmd.description ?? "",
-        category: adapterCategory(adapter),
+        category,
         type: adapter.type,
-        auth: commandRequiresAuth(adapter, cmd),
+        auth: authRequirement === "required",
+        authRequirement,
+        ...(authSetup ? { authSetup } : {}),
+        ...(personalization ? { personalization } : {}),
+        args: cmd.adapterArgs ?? [],
         quarantined: cmd.quarantine === true,
         quarantineReason: cmd.quarantineReason,
       });

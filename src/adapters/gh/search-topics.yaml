@@ -1,0 +1,74 @@
+site: gh
+name: search-topics
+description: Resolve a vague technology or feature phrase to curated GitHub topics before repository search
+type: bridge
+strategy: public
+operation_effect: read
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Technology, ecosystem, or feature phrase
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+
+pipeline:
+  - exec:
+      command: gh
+      args:
+        - api
+        - --method
+        - GET
+        - search/topics
+        - -H
+        - "Accept: application/vnd.github.text-match+json"
+        - -f
+        - q=${{ args.query }}
+        - -F
+        - per_page=${{ args.limit }}
+      parse: json
+      timeout: 30000
+
+  - set:
+      incomplete: ${{ item.incomplete_results || false }}
+      total_count: ${{ item.total_count || 0 }}
+
+  - select: items
+
+  - map:
+      name: ${{ item.name }}
+      displayName: ${{ item.display_name || '' }}
+      summary: ${{ item.short_description || '' }}
+      description: ${{ item.description || '' | strip_html }}
+      featured: ${{ item.featured }}
+      curated: ${{ item.curated }}
+      score: ${{ item.score }}
+      matches: "${{ JSON.stringify(item.text_matches || []) }}"
+      totalCount: ${{ vars.total_count }}
+      incomplete: ${{ vars.incomplete }}
+      url: "${{ 'https://github.com/topics/' + item.name }}"
+
+columns: [name, displayName, summary, curated, score, url]
+
+retrieval:
+  operation: discover
+  result_kind: topic
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+capabilities: ["subprocess.exec", "auth.executable.gh"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

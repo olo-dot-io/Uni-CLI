@@ -7,9 +7,11 @@ import {
   runtimeSearchDocuments,
   search,
 } from "../../src/discovery/search.js";
+import { compileIntentPlan } from "../../src/discovery/intent-plan.js";
 
 const WARM_QUERY_P95_MS = 5;
 const INDEX_BUILD_P95_MS = 25;
+const INTENT_PLAN_P95_MS = 1;
 
 const QUERIES = [
   "search",
@@ -60,6 +62,21 @@ describe("discovery search performance budget", () => {
     }
 
     expect(percentile(samples, 0.95)).toBeLessThan(INDEX_BUILD_P95_MS);
+  });
+
+  it("keeps compiled intent semantics inside its p95 budget", () => {
+    for (const query of QUERIES) compileIntentPlan(query);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < 12; trial++) {
+      const started = performance.now();
+      for (let round = 0; round < 20; round++) {
+        for (const query of QUERIES) compileIntentPlan(query);
+      }
+      samples.push((performance.now() - started) / (QUERIES.length * 20));
+    }
+
+    expect(percentile(samples, 0.95)).toBeLessThan(INTENT_PLAN_P95_MS);
   });
 });
 

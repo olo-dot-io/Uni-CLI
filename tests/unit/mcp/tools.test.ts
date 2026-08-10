@@ -30,6 +30,11 @@ import {
   MCP_RESULT_NOT_SERIALIZABLE,
   MCP_RESULT_TOO_LARGE,
 } from "../../../src/mcp/result-budget.js";
+import {
+  buildAgentUpdateNotice,
+  clearActiveUpdateNotice,
+  setActiveUpdateNotice,
+} from "../../../src/core/update-notice.js";
 
 const originalRulesPath = process.env.UNICLI_PERMISSION_RULES_PATH;
 
@@ -93,6 +98,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
+  clearActiveUpdateNotice();
   vi.restoreAllMocks();
   if (originalRulesPath === undefined) {
     delete process.env.UNICLI_PERMISSION_RULES_PATH;
@@ -158,6 +164,26 @@ describe("deterministic tool ordering", () => {
       params: { cursor: "catalog:1" },
     });
     expect(invalid?.error).toMatchObject({ code: -32602 });
+    await handler.closeAll?.("test complete");
+  });
+
+  it("publishes a cached release update through MCP response metadata", async () => {
+    setActiveUpdateNotice(buildAgentUpdateNotice("1.0.4", "1.1.0"));
+    const handler = buildHandler(buildDefaultTools());
+    const response = await handler({
+      jsonrpc: "2.0",
+      id: 103,
+      method: "tools/list",
+      params: {},
+    });
+    const result = response?.result as
+      | { _meta?: Record<string, unknown> }
+      | undefined;
+    expect(result?._meta?.["io.unicli/update"]).toMatchObject({
+      status: "available",
+      latest: "1.1.0",
+      unattended_command: "unicli upgrade --yes",
+    });
     await handler.closeAll?.("test complete");
   });
 });
@@ -280,21 +306,23 @@ describe("DEFAULT_TOOL_NAMES registry", () => {
           arguments: { limit: 1, ...(cursor ? { cursor } : {}) },
         },
       });
-      return (
-        response?.result as {
-          structuredContent: {
-            data: {
-              total_commands: number;
-              returned_commands: number;
-              next_cursor?: string;
-              adapters: Array<{
-                site: string;
-                commands: Array<{ name: string }>;
-              }>;
+      const result = response?.result as
+        | {
+            structuredContent: {
+              data: {
+                total_commands: number;
+                returned_commands: number;
+                next_cursor?: string;
+                adapters: Array<{
+                  site: string;
+                  commands: Array<{ name: string }>;
+                }>;
+              };
             };
-          };
-        }
-      ).structuredContent.data;
+          }
+        | undefined;
+      if (!result) throw new Error("MCP list call returned no result");
+      return result.structuredContent.data;
     };
 
     const first = await readPage(103);

@@ -12,6 +12,10 @@ export type SchemaVersion = "2";
 
 import type { EffectVerdict } from "../core/effect-verdict.js";
 import type { RecoveryTrace } from "../core/recovery.js";
+import {
+  getActiveUpdateNotice,
+  type AgentUpdateNotice,
+} from "../core/update-notice.js";
 
 export type Surface = "web" | "desktop" | "system" | "mobile";
 
@@ -66,6 +70,7 @@ export interface AgentMeta {
     next_cursor?: string;
     has_more?: boolean;
   };
+  update?: AgentUpdateNotice;
 }
 
 /**
@@ -218,6 +223,8 @@ export function makeEnvelope(
   content?: AgentContent[],
 ): AgentEnvelopeOk {
   const count = Array.isArray(data) ? data.length : undefined;
+  const update = getActiveUpdateNotice();
+  const nextActions = mergeUpdateAction(ctx.next_actions, update);
   return {
     ok: true,
     schema_version: SCHEMA_VERSION,
@@ -241,13 +248,12 @@ export function makeEnvelope(
         ctx.pagination.has_more !== undefined)
         ? { pagination: ctx.pagination }
         : {}),
+      ...(update ? { update } : {}),
     },
     data,
     error: null,
     ...(content !== undefined && content.length > 0 ? { content } : {}),
-    ...(ctx.next_actions !== undefined && ctx.next_actions.length > 0
-      ? { next_actions: ctx.next_actions }
-      : {}),
+    ...(nextActions.length > 0 ? { next_actions: nextActions } : {}),
   };
 }
 
@@ -256,6 +262,8 @@ export function makeError(
   ctx: AgentContext,
   err: AgentError,
 ): AgentEnvelopeErr {
+  const update = getActiveUpdateNotice();
+  const nextActions = mergeUpdateAction(ctx.next_actions, update);
   return {
     ok: false,
     schema_version: SCHEMA_VERSION,
@@ -273,13 +281,35 @@ export function makeError(
       ...(ctx.recovery_trace !== undefined
         ? { recovery_trace: ctx.recovery_trace }
         : {}),
+      ...(update ? { update } : {}),
     },
     data: null,
     error: err,
-    ...(ctx.next_actions !== undefined && ctx.next_actions.length > 0
-      ? { next_actions: ctx.next_actions }
-      : {}),
+    ...(nextActions.length > 0 ? { next_actions: nextActions } : {}),
   };
+}
+
+function mergeUpdateAction(
+  actions: AgentNextAction[] | undefined,
+  update: AgentUpdateNotice | undefined,
+): AgentNextAction[] {
+  const merged = actions ? [...actions] : [];
+  if (
+    update &&
+    !(
+      update.automatic_update?.enabled &&
+      (update.automatic_update.status === "scheduled" ||
+        update.automatic_update.status === "running" ||
+        update.automatic_update.status === "succeeded")
+    ) &&
+    !merged.some((action) => action.command === update.unattended_command)
+  ) {
+    merged.push({
+      command: update.unattended_command,
+      description: `Upgrade Uni-CLI from ${update.current} to ${update.latest}, then retry the original task.`,
+    });
+  }
+  return merged;
 }
 
 /**

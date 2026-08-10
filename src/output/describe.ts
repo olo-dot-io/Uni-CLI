@@ -32,6 +32,7 @@ const COMMAND_SUMMARY_KEYS = [
   "auth",
   "auth_optional",
   "auth_setup",
+  "personalization",
   "browser",
   "target_surface",
   "source_path",
@@ -115,6 +116,9 @@ function renderCommand(payload: JsonObject): string[] {
     "interaction_impact",
     "strategy",
     "auth",
+    "auth_optional",
+    "auth_setup",
+    "personalization",
     "browser",
     "target_surface",
     "minimum_capability",
@@ -226,19 +230,25 @@ function renderCollection(payload: JsonObject): string[] {
   const lines = [title, ""];
   if (Array.isArray(payload.sites)) {
     lines.push(
-      "| Site | Type | Strategy | Commands | Description |",
-      "|---|---|---|---:|---|",
+      "| Site | Type | Strategy | Commands | Personalized | Description |",
+      "|---|---|---|---:|---:|---|",
     );
     for (const rawRow of rows) {
       const row = objectValue(rawRow) ?? {};
       lines.push(
-        `| ${inline(row.name)} | ${inline(row.type)} | ${inline(row.strategy)} | ${inline(row.commands_count)} | ${inline(row.description)} |`,
+        `| ${inline(row.name)} | ${inline(row.type)} | ${inline(row.strategy)} | ${inline(row.commands_count)} | ${inline(row.personalized_commands_count)} | ${inline(row.description)} |`,
       );
     }
   } else {
+    if (Array.isArray(payload.personalization_families)) {
+      lines.push(
+        `Personalized command families  ${payload.personalization_families.map(inline).join(", ") || "none"}`,
+        "",
+      );
+    }
     lines.push(
-      "| Command | Strategy | Auth | Browser | Arguments | Description |",
-      "|---|---|---:|---:|---|---|",
+      "| Command | Personalized | Strategy | Auth | Browser | Arguments | Inspect | Description |",
+      "|---|---|---|---:|---:|---|---|---|",
     );
     for (const rawRow of rows) {
       const row = objectValue(rawRow) ?? {};
@@ -251,7 +261,7 @@ function renderCollection(payload: JsonObject): string[] {
             .join(", ")
         : "";
       lines.push(
-        `| ${inline(row.name)} | ${inline(row.strategy)} | ${inline(row.auth)} | ${inline(row.browser)} | ${inline(args)} | ${inline(row.description)} |`,
+        `| ${inline(row.name)} | ${inline(row.personalization)} | ${inline(row.strategy)} | ${inline(row.auth)} | ${inline(row.browser)} | ${inline(args)} | ${inline(row.inspect)} | ${inline(row.description)} |`,
       );
     }
   }

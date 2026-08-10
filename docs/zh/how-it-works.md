@@ -5,7 +5,7 @@ description: 从意图搜索开始，了解执行、结构化结果和修复的�
 
 # Uni-CLI 的工作方式
 
-Uni-CLI 为网站、浏览器、桌面 App、本地工具、文件和协议服务提供统一命令模型。每次调用都经过四个步骤：查找操作、查看合同、通过声明的接口运行、读取结构化结果。
+Uni-CLI 为网站、浏览器、桌面 App、本地工具、文件和协议服务提供统一命令模型。每次调用都经过四个步骤。运行时查找操作并查看合同，通过声明的接口运行，随后返回结构化结果。
 
 ## 1. 在本地查找操作
 
@@ -13,7 +13,7 @@ Uni-CLI 为网站、浏览器、桌面 App、本地工具、文件和协议服�
 unicli search "查看 Hacker News 热门文章"
 ```
 
-搜索在已安装目录中完成。它支持中英文描述，也可以按 effect、operator、target surface、category 和 platform 过滤。搜索只返回候选命令。
+搜索在已安装目录中完成。运行时只编译一次任务，解析精确或带拼写误差的 provider 名称，再对中英文命令描述排序。Effect、operator、target surface、category 和 platform 过滤会在检索阶段移除不兼容命令。每条结果都带有具名排序信号。Discovery 不会执行外部操作。
 
 ## 2. 操作会说明自己的参数
 
@@ -21,7 +21,7 @@ unicli search "查看 Hacker News 热门文章"
 unicli describe hackernews top
 ```
 
-操作合同包含：
+操作合同包含以下字段。
 
 - 参数和默认值
 - 登录要求

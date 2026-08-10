@@ -50,7 +50,11 @@ type SiteIndex = {
     type: string;
     auth?: boolean;
     command_count: number;
-    commands: { command: string }[];
+    personalized_commands?: number;
+    commands: {
+      command: string;
+      personalization?: "account" | "feed" | "library" | "network" | "activity";
+    }[];
   }[];
 };
 
@@ -323,14 +327,15 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
       ? {
           title: "## 生成的站点目录",
           intro: `这个目录来自适配器 manifest：${siteIndex.total_sites} 个站点，${siteIndex.total_commands} 条命令。`,
-          headers: "| 站点 | 接口类型 | 命令数 | 认证 | 示例命令 |",
+          headers: "| 站点 | 接口类型 | 命令数 | 个人内容 | 认证 | 示例命令 |",
           authYes: "是",
           authNo: "否",
         }
       : {
           title: "## Generated Site Catalog",
           intro: `This catalog is generated from the adapter manifest: ${siteIndex.total_sites} sites, ${siteIndex.total_commands} commands.`,
-          headers: "| Site | Surface | Commands | Auth | Example commands |",
+          headers:
+            "| Site | Surface | Commands | Personalized | Auth | Example commands |",
           authYes: "yes",
           authNo: "no",
         };
@@ -340,11 +345,20 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
     "",
     copy.intro,
     "",
+    locale === "zh"
+      ? "用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。"
+      : "Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.",
+    "",
     copy.headers,
-    "| --- | --- | ---: | --- | --- |",
+    "| --- | --- | ---: | ---: | --- | --- |",
     ...siteIndex.sites
       .map((site) => {
-        const commands = site.commands
+        const commands = [...site.commands]
+          .sort(
+            (left, right) =>
+              Number(Boolean(right.personalization)) -
+              Number(Boolean(left.personalization)),
+          )
           .slice(0, 3)
           .map((command) => command.command)
           .join("<br>");
@@ -353,6 +367,7 @@ function renderSiteCatalog(siteIndex: SiteIndex, locale: LocaleKey): string {
           escapeTableCell(site.site),
           escapeTableCell(site.type),
           site.command_count,
+          site.personalized_commands ?? 0,
           site.auth ? copy.authYes : copy.authNo,
           escapeTableCell(commands),
         ].join(" | ");
@@ -672,7 +687,8 @@ function renderLlmsFullTxt(
   ];
 
   for (const { page, markdown } of renderedPages.filter(
-    (entry) => entry.page.locale === "root",
+    (entry) =>
+      entry.page.locale === "root" && entry.page.sourceLink !== "/releases",
   )) {
     lines.push(
       "---",

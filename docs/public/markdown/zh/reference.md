@@ -17,5 +17,6 @@
 | Adapter action | [Pipeline steps](/zh/reference/pipeline)     |
 | 扩展 API       | [插件开发](/zh/PLUGIN)           |
 | 产品术语       | [术语表](/zh/glossary)           |
+| 版本变化       | [版本记录](/zh/releases)         |
 
 查询本机某条命令时，`unicli describe <site> <command>` 提供最新参考。

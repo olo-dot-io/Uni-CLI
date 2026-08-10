@@ -32,7 +32,8 @@ const rootTopNav = [
   {
     text: "Docs",
     link: "/guide/getting-started",
-    activeMatch: "^/(?:zh/)?(?:guide/getting-started|how-it-works)$",
+    activeMatch:
+      "^/(?:zh/)?(?:guide/(?:getting-started|upgrading)|how-it-works)$",
   },
   {
     text: "Operations",
@@ -66,6 +67,7 @@ const rootSidebarGroups: SiteGroup[] = [
     items: [
       { text: "Overview", link: "/" },
       { text: "Quickstart", link: "/guide/getting-started" },
+      { text: "Keep Uni-CLI Current", link: "/guide/upgrading" },
       { text: "Connect An Agent", link: "/guide/integrations" },
       { text: "How Uni-CLI Works", link: "/how-it-works" },
     ],
@@ -109,6 +111,7 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/ARCHITECTURE",
     items: [
       { text: "Architecture", link: "/ARCHITECTURE" },
+      { text: "Releases", link: "/releases" },
       { text: "Benchmarks", link: "/BENCHMARK" },
       { text: "Roadmap", link: "/ROADMAP" },
       { text: "FAQ", link: "/faq" },
@@ -131,6 +134,7 @@ const zhSidebarGroups: SiteGroup[] = [
     items: [
       { text: "概览", link: "/" },
       { text: "快速开始", link: "/guide/getting-started" },
+      { text: "更新 Uni-CLI", link: "/guide/upgrading" },
       { text: "接入 Agent", link: "/guide/integrations" },
       { text: "工作原理", link: "/how-it-works" },
     ],
@@ -174,6 +178,7 @@ const zhSidebarGroups: SiteGroup[] = [
     link: "/ARCHITECTURE",
     items: [
       { text: "架构", link: "/ARCHITECTURE" },
+      { text: "版本记录", link: "/releases" },
       { text: "基准", link: "/BENCHMARK" },
       { text: "路线图", link: "/ROADMAP" },
       { text: "常见问题", link: "/faq" },

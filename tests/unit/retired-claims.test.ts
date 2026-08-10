@@ -15,8 +15,8 @@ import { fileURLToPath } from "node:url";
  * lint-context.sh enforces the same rule in CI; keeping a vitest copy
  * means local `npm run test` catches it too.
  *
- * Gitignored local-only paths (.claude/**, ref/**) and the docs/BENCHMARK.md
- * file itself (which documents the retirement) are exempt.
+ * Gitignored local-only paths (.claude/**, ref/**), docs/BENCHMARK.md, and
+ * generated release archives that preserve immutable history are exempt.
  */
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +24,13 @@ const ROOT = join(__dirname, "..", "..");
 
 const SCAN_PATHS = ["README.md", "AGENTS.md", "DESIGN.md", "docs", "src"];
 
-const EXEMPT = new Set<string>([join(ROOT, "docs", "BENCHMARK.md")]);
+const EXEMPT = new Set<string>([
+  join(ROOT, "docs", "BENCHMARK.md"),
+  join(ROOT, "docs", "releases.md"),
+  join(ROOT, "docs", "zh", "releases.md"),
+  join(ROOT, "docs", "public", "markdown", "releases.md"),
+  join(ROOT, "docs", "public", "markdown", "zh", "releases.md"),
+]);
 
 const RETIRED_PATTERNS = [/~80\s*tokens?/i, /80\s*tokens?\s+per/i, /80_tokens/];
 

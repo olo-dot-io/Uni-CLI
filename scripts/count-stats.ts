@@ -31,7 +31,7 @@ const STATS_JSON = join(ROOT, "stats.json");
 const ELECTRON_DESKTOP_BASE_COMMAND_COUNT = 7;
 const ELECTRON_DESKTOP_MEDIA_COMMAND_COUNT = 6;
 const AI_CHAT_BASE_COMMAND_COUNT = 6;
-const DEFAULT_VITEST_LIST_TIMEOUT_MS = 45_000;
+const DEFAULT_VITEST_LIST_TIMEOUT_MS = 90_000;
 
 export interface Stats {
   adapter_count_yaml: number;

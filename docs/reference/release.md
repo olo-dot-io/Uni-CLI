@@ -45,73 +45,25 @@ Before any release, the macOS dynamic discovery work from
 ancestor of `HEAD`, and checking that the first-class `macos app-actions` and
 `macos automation-smoke` manifest entries are present before publish.
 
-## Historical Release Audit
+## Cross-Version Release History
 
-The public git/tag history starts in 2026 with the `0.200.x` line. The current
-release, `1.0.2 — Artemis · Glover`, is published on npm and GitHub from the
-exact annotated tag recorded below. The immutable `v1.0.0` candidate tag
-remains as the record of a performance-gate failure that stopped before either
-publication endpoint; `1.0.1` became the first public 1.x package.
+`CHANGELOG.md` is the canonical authored release history. Every production
+change enters through one `.changeset/*.md` file. `changeset version` consumes
+those files into the next version block, and `scripts/release.ts` adds the final
+date and release label.
 
-Release facts:
+The documentation build runs `scripts/generate-release-history.ts`. It publishes
+two views from that same source.
 
-- npm registry state after publication:
-  `@zenalexa/unicli@latest` is `1.0.2`;
-- annotated tag `v1.0.2` resolves to main commit
-  `d6940a1cf80383f0ff36aed64feb3171b6775ed1`;
-- tag workflow `30747691291` rebuilt both Windows sidecars, repeated the complete
-  release gate, and published through npm Trusted Publishers without a fallback
-  token;
-- npm records a SLSA v1 provenance attestation for the tagged workflow. The
-  published artifact has 4,216 files, SHA-1
-  `aa257ec2bc2efa1529ebcb5ffc2d729113b972d9`, and integrity
-  `sha512-UrUyshOBITqxqUpIOFUIzFiozP/ey0Cp9vzCQOKIbLcgI6wicRAoHAhAC7/zEGaFiZJRlT/1fKDMDfzKKZvJnA==`;
-- the GitHub Release contains arm64 and x64 Windows process-owner executables
-  with SHA-256 digests `95c96d89d8b0702bbbac36ebcdec25572577b3df86b239bf565a0194b74a2cd8`
-  and `f09eec5847825037a0c4a80776c417adeff72ca86edfbb9a56a661dda9909749`;
-- the complete repository gate passed 3,523 unit tests (3 skipped), 94
-  integration tests (16 platform-skipped), 6,472 adapter tests, 9 performance
-  tests (1 skipped), and 44 targeted coverage behaviors at 100%; the production
-  audit found zero vulnerabilities.
+- [`/releases`](../releases) provides the complete version index, release links,
+  npm links, and exact Git comparisons.
+- [`release-history.json`](../release-history.json) provides the same history as
+  structured data for Agents and other tooling.
 
-| Release line | Historical role                                                                                                  | Audit lesson                                                                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `0.200.0`    | First Vostok public adapter platform with build manifest and self-repair architecture.                           | A release must expose a machine-readable surface, not just prose.                                                              |
-| `0.208.0`    | Skills export, MCP gateway, eval catalog, usage ledger, operate/observe, and documented 4-reviewer hardening.    | Review findings must be explicit and fixed before tag, especially security and release wiring.                                 |
-| `0.213.0`    | GA for engine rigor, split executor/runtime/steps, schema-v2 adapters, and v2 `AgentEnvelope`.                   | Stable behavior contracts outrank marketing claims.                                                                            |
-| `0.217.0`    | Execution-substrate framing with operation policy, run recording, browser evidence, and agent backend matrix.    | Product framing can become too small as real control surfaces expand.                                                          |
-| `0.218.0`    | Cross-platform browser cookie import and auth diagnostics.                                                       | Auth and platform boundaries must be explicit; unsupported paths must fail honestly.                                           |
-| `0.221.0`    | Patent and scholarly verticals with typed records and source routing.                                            | Vertical breadth matters only when records, provenance, and tests stay coherent.                                               |
-| `0.222.0`    | Local computer-use and compute capture entered the release surface.                                              | Desktop/computer control is a core substrate, not a sidecar demo.                                                              |
-| `0.224.0`    | Callable architecture audit/tree and live registry-backed search caching.                                        | Architecture audit must not omit core control commands or reduce the product to adapter lifecycle.                             |
-| `0.225.0`    | Universal computer-control platform framing with intent, policy, action substrates, evidence, delivery, repair.  | Product claims need live health gates, not catalog counts alone.                                                               |
-| `0.227.1`    | Portable release truth, credential privacy, exact repair, and cross-platform publication gates.                  | A release candidate must stop before publication when host-contaminated evidence fails.                                        |
-| `0.400.0`    | Shared browser/computer runtime plus direct generic Agent browser control, search, and foreground presence.      | Runtime reuse is safe only with explicit target ownership, bounded perception, and no-focus truth.                             |
-| `0.400.1`    | Domain-neutral federated retrieval plus a role-aware AI infrastructure intelligence overlay.                     | Breadth stays maintainable only when source execution, evidence contracts, and domain attribution remain separate.             |
-| `0.400.2`    | Open Agent-Computer Interface framing plus exact retrieval, diagnostics, and target-bound compute execution.     | Broad control stays trustworthy only when routing, evidence, operation identity, and target ownership remain exact.            |
-| `1.0.0`      | Unpublished stable-major candidate stopped by the shared-runner index-construction performance budget.           | An immutable failed tag preserves release evidence while the next version carries the measured correction.                     |
-| `1.0.1`      | First public stable-major operation contract across CLI, MCP, browser, desktop, HTTP, app, and subprocess.       | Deterministic provider selection needs exact feasibility, effects, targets, evidence, recovery, and bounded costs.             |
-| `1.0.2`      | Resumable OpenReview lifecycle archives plus cross-platform accessibility, evidence, and task-persistence fixes. | Large research archives need group-driven discovery, public ACL filtering, durable cursors, paced access, and exact artifacts. |
-
-`0.400.0` is an epoch-scale minor release because it changes the runtime
-ownership and Agent-facing browser protocol surfaces while keeping the package
-name and command-envelope contract stable.
-
-`0.400.1` is a patch release because it extends that stable package surface with
-backward-compatible retrieval commands and closes production-package parity,
-cross-platform broker-launch verification, and publication-truth gaps.
-
-`0.400.2` is a patch release because it preserves the package and envelope
-contracts while making retrieval relevance, cross-transport diagnostics, MCP
-routing boundaries, and compute target ownership exact.
-
-`1.0.1` is the first published stable-major release. It preserves the `1.0.0`
-operation contract and includes the bounded prepared-document cache and fused
-index construction required to pass the release performance budget.
-
-`1.0.2` is a patch release. It preserves the stable operation contract while
-adding a first-class OpenReview conference archive and closing AT-SPI naming,
-visual-claim concurrency, and Windows durable-task persistence gaps.
+The generated English and Chinese pages stay out of the editing path. Historical
+claims are corrected in `CHANGELOG.md`, then regenerated with `npm run
+docs:prepare`. This keeps the repository record, documentation site, Agent
+assets, GitHub Releases, and npm versions tied to one version identity.
 
 ## Changesets
 

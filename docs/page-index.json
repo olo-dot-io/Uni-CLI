@@ -34,6 +34,26 @@
       ]
     },
     {
+      "title": "Keep Uni-CLI Current",
+      "description": "Automatic Agent updates, interactive approval, release checks, and exact package-manager recovery.",
+      "locale": "root",
+      "routePath": "/guide/upgrading",
+      "markdownPath": "/markdown/guide/upgrading.md",
+      "sourceLink": "/guide/upgrading",
+      "sourcePath": "docs/guide/upgrading.md",
+      "section": "Start",
+      "parent": {
+        "text": "Start",
+        "link": "/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Start",
+          "link": "/"
+        }
+      ]
+    },
+    {
       "title": "Connect An Agent",
       "description": "Use Uni-CLI from shell-based agents, MCP clients, and ACP clients.",
       "locale": "root",
@@ -382,6 +402,26 @@
       "breadcrumbs": []
     },
     {
+      "title": "Releases",
+      "description": "Browse every Uni-CLI release with additions, behavior changes, fixes, and exact comparison links.",
+      "locale": "root",
+      "routePath": "/releases",
+      "markdownPath": "/markdown/releases.md",
+      "sourceLink": "/releases",
+      "sourcePath": "docs/releases.md",
+      "section": "Project",
+      "parent": {
+        "text": "Project",
+        "link": "/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Project",
+          "link": "/ARCHITECTURE"
+        }
+      ]
+    },
+    {
       "title": "Benchmarks",
       "description": "Reproducible startup, catalog-size, and response-budget measurements for Uni-CLI.",
       "locale": "root",
@@ -461,6 +501,26 @@
       "markdownPath": "/markdown/zh/guide/getting-started.md",
       "sourceLink": "/guide/getting-started",
       "sourcePath": "docs/zh/guide/getting-started.md",
+      "section": "上手",
+      "parent": {
+        "text": "上手",
+        "link": "/zh/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "上手",
+          "link": "/zh/"
+        }
+      ]
+    },
+    {
+      "title": "更新 Uni-CLI",
+      "description": "管理 Agent 自动更新、交互式确认、版本检查和包管理器恢复。",
+      "locale": "zh",
+      "routePath": "/zh/guide/upgrading",
+      "markdownPath": "/markdown/zh/guide/upgrading.md",
+      "sourceLink": "/guide/upgrading",
+      "sourcePath": "docs/zh/guide/upgrading.md",
       "section": "上手",
       "parent": {
         "text": "上手",
@@ -820,6 +880,26 @@
       "section": "项目",
       "parent": null,
       "breadcrumbs": []
+    },
+    {
+      "title": "版本记录",
+      "description": "按版本查看 Uni-CLI 的新增能力、行为变化、修复和完整比较链接。",
+      "locale": "zh",
+      "routePath": "/zh/releases",
+      "markdownPath": "/markdown/zh/releases.md",
+      "sourceLink": "/releases",
+      "sourcePath": "docs/zh/releases.md",
+      "section": "项目",
+      "parent": {
+        "text": "项目",
+        "link": "/zh/ARCHITECTURE"
+      },
+      "breadcrumbs": [
+        {
+          "text": "项目",
+          "link": "/zh/ARCHITECTURE"
+        }
+      ]
     },
     {
       "title": "基准",

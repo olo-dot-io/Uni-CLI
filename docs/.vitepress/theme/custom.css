@@ -2336,7 +2336,7 @@ body:has(.uni-docs-home) .VPNav {
   display: grid;
   gap: 8px;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 560;
 }
 
@@ -2374,7 +2374,7 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: 999px;
   background: var(--appica-background-muted);
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 560;
   cursor: pointer;
   transition:
@@ -2399,7 +2399,7 @@ body:has(.uni-docs-home) .VPNav {
 
 .site-result-count {
   margin: 0 0 18px;
-  font-size: 13px !important;
+  font-size: 14px !important;
 }
 
 .site-grid {
@@ -2433,7 +2433,7 @@ body:has(.uni-docs-home) .VPNav {
 .site-card-top p {
   margin: 4px 0 0;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .site-pill {
@@ -2442,13 +2442,13 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: 999px;
   background: var(--appica-background-muted);
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 620;
 }
 
 .site-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 18px 0 0;
 }
@@ -2463,7 +2463,7 @@ body:has(.uni-docs-home) .VPNav {
 .site-meta dd {
   margin: 0;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .site-meta dd {
@@ -2491,7 +2491,7 @@ body:has(.uni-docs-home) .VPNav {
 .site-command-list code {
   overflow: hidden;
   color: var(--appica-foreground-emphasis);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2499,9 +2499,50 @@ body:has(.uni-docs-home) .VPNav {
 .site-command-list span {
   overflow: hidden;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.site-command-list .site-command-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  white-space: normal;
+}
+
+.site-command-meta b {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--appica-background-muted);
+  color: var(--appica-foreground-muted);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.site-command-meta code {
+  margin-left: auto;
+  color: var(--appica-foreground-muted);
+  font-size: 14px;
+}
+
+.site-command-toggle {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--appica-background-muted);
+  color: var(--appica-foreground-emphasis);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.site-command-toggle span {
+  margin-left: 5px;
+  color: var(--appica-foreground-muted);
 }
 
 /* Optional homepage stats component */

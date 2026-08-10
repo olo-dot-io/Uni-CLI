@@ -27,7 +27,7 @@ Use `unicli help <command>` for command-specific flags.
 unicli <site> <command> [options]
 ```
 
-Global output formats:
+Available global output formats follow.
 
 ```text
 -f json
@@ -38,6 +38,21 @@ Global output formats:
 ```
 
 Preview argument resolution and the selected pipeline with `--dry-run`.
+
+## Updates
+
+| Command                                      | Purpose                                  |
+| -------------------------------------------- | ---------------------------------------- |
+| `unicli upgrade --check -f json`             | Compare installed and available releases |
+| `unicli upgrade`                             | Open the interactive Y/N choice          |
+| `unicli upgrade --yes`                       | Install without an interactive prompt    |
+| `unicli upgrade --no`                        | Remind again after 24 hours              |
+| `unicli upgrade --skip-version`              | Hide the currently offered release       |
+| `unicli upgrade --auto-update`               | Enable automatic updates on this machine |
+| `unicli upgrade --no-auto-update`            | Require explicit approval                |
+| `unicli upgrade --package-manager <manager>` | Override npm, pnpm, or Bun detection     |
+
+See [Keep Uni-CLI current](/guide/upgrading) for Agent metadata and installation boundaries.
 
 ## Authentication
 

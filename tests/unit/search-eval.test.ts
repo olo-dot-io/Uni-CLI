@@ -7,7 +7,7 @@
  *   - Top-K accuracy = fraction of queries where expected result appears in top K
  *   - Queries are half Chinese, half English, covering all categories
  *
- * Target: Top-1 > 35%, Top-3 > 65%, Top-5 > 80%
+ * Regression floors are defined with the dated baseline near the assertions.
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
@@ -589,6 +589,20 @@ const EVAL_CASES: EvalCase[] = [
   { query: "github PR", site: "gh", command: "pr" },
   { query: "github release", site: "gh", command: "release" },
   { query: "gh repo", site: "gh", command: "repo" },
+  {
+    query: "find GitHub repositories by stack",
+    site: "gh",
+    command: "search-repos",
+  },
+  { query: "根据功能模糊关键词找仓库", site: "gh", command: "search-repos" },
+  {
+    query: "find feat commits in a repo",
+    site: "gh",
+    command: "search-commits",
+  },
+  { query: "search repo pull requests", site: "gh", command: "search-prs" },
+  { query: "模糊搜索 GitHub issue", site: "gh", command: "search-issues" },
+  { query: "搜索源码实现", site: "gh", command: "search-code" },
   { query: "gh actions run", site: "gh", command: "run" },
   { query: "yt-dlp下载", site: "yt-dlp", command: "download" },
   { query: "download youtube video", site: "yt-dlp", command: "download" },
@@ -758,7 +772,7 @@ const EVAL_CASES: EvalCase[] = [
     ],
   },
   { query: "podcast episodes", site: "apple-podcasts", command: "episodes" },
-  { query: "code repository", site: "github-trending", command: "daily" },
+  { query: "code repository", site: "gh", command: "search-repos" },
   { query: "read article", site: "web", command: "read" },
   { query: "chat with AI", site: "deepseek", command: "chat" },
   { query: "generate image", site: "novita", command: "generate" },
@@ -954,10 +968,11 @@ describe("Search Engine Evaluation", () => {
   // Regression-lock thresholds are dated baselines minus ~3 points, NOT
   // aspirational targets. Re-baseline (and re-date) whenever a deliberate
   // ranking change moves the metrics.
-  // Baseline 2026-06-10 (multi-gold, 611 cases): Top-1 79.38, Top-3 91.82,
-  // Top-5 93.94, zh Top-5 93.48, en Top-5 94.15.
+  // Baseline 2026-08-10 (unified intent compiler, 617 cases): Top-1 78.28,
+  // Top-3 89.95, Top-5 93.03, MRR@5 0.8437, zh Top-5 91.98,
+  // en Top-5 93.49, negative filter 84.62.
 
-  it("Top-1 accuracy stays above baseline-3 (76%)", () => {
+  it("Top-1 accuracy stays above the unified-intent floor (77%)", () => {
     const result = runEval(EVAL_CASES, 1);
     console.log(`Top-1: ${result.accuracy}% (${result.hits}/${result.total})`);
     if (result.misses.length > 0 && result.misses.length <= 20) {
@@ -968,25 +983,25 @@ describe("Search Engine Evaluation", () => {
           .map((m) => `"${m.query}" → ${m.site}/${m.command}`),
       );
     }
-    expect(result.accuracy).toBeGreaterThan(76);
+    expect(result.accuracy).toBeGreaterThan(77);
   });
 
-  it("Top-3 accuracy stays above baseline-3 (88%)", () => {
+  it("Top-3 accuracy stays above the unified-intent floor (89%)", () => {
     const result = runEval(EVAL_CASES, 3);
     console.log(`Top-3: ${result.accuracy}% (${result.hits}/${result.total})`);
-    expect(result.accuracy).toBeGreaterThan(88);
+    expect(result.accuracy).toBeGreaterThan(89);
   });
 
-  it("Top-5 accuracy stays above baseline-3 (91%)", () => {
+  it("Top-5 accuracy stays above the unified-intent floor (92%)", () => {
     const result = runEval(EVAL_CASES, 5);
     console.log(`Top-5: ${result.accuracy}% (${result.hits}/${result.total})`);
-    expect(result.accuracy).toBeGreaterThan(91);
+    expect(result.accuracy).toBeGreaterThan(92);
   });
 
   it("MRR@5 catches rank slides that Hit@5 cannot see", () => {
     const result = runEval(EVAL_CASES, 5);
     console.log(`MRR@5: ${result.mrr}`);
-    expect(result.mrr).toBeGreaterThan(0.8);
+    expect(result.mrr).toBeGreaterThan(0.83);
   });
 
   it("Chinese queries have reasonable accuracy", () => {
@@ -997,7 +1012,7 @@ describe("Search Engine Evaluation", () => {
     console.log(
       `Chinese Top-5: ${result.accuracy}% (${result.hits}/${result.total}, ${chineseCases.length} cases)`,
     );
-    expect(result.accuracy).toBeGreaterThan(90);
+    expect(result.accuracy).toBeGreaterThan(91);
   });
 
   it("English queries have reasonable accuracy", () => {
@@ -1008,7 +1023,7 @@ describe("Search Engine Evaluation", () => {
     console.log(
       `English Top-5: ${result.accuracy}% (${result.hits}/${result.total}, ${englishCases.length} cases)`,
     );
-    expect(result.accuracy).toBeGreaterThan(91);
+    expect(result.accuracy).toBeGreaterThan(92.5);
   });
 
   it("negative queries return few or no high-confidence results", () => {
@@ -1026,8 +1041,7 @@ describe("Search Engine Evaluation", () => {
     console.log(
       `Negative filter: ${ratio}% correct (${lowScoreCount}/${NEGATIVE_QUERIES.length})`,
     );
-    // At least 60% of gibberish queries should not produce high-confidence results
-    expect(ratio).toBeGreaterThan(60);
+    expect(ratio).toBeGreaterThan(80);
   });
 
   it(`total eval coverage: ${EVAL_CASES.length} positive + ${NEGATIVE_QUERIES.length} negative = ${EVAL_CASES.length + NEGATIVE_QUERIES.length}`, () => {

@@ -18,7 +18,13 @@ import {
   isNewer,
   isValidVersion,
 } from "../../src/engine/update-check.js";
+import {
+  clearActiveUpdateNotice,
+  getActiveUpdateNotice,
+} from "../../src/core/update-notice.js";
+import { dismissUpdate } from "../../src/engine/update-preferences.js";
 import { refreshUpdateCache } from "../../src/engine/update-check-worker.js";
+import { VERSION } from "../../src/constants.js";
 
 let root = "";
 
@@ -27,6 +33,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  clearActiveUpdateNotice();
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -110,6 +117,42 @@ describe("foreground update check", () => {
         UNICLI_UPDATE_CHECK_WORKER_PATH: join(root, "missing-worker.js"),
       }),
     ).toBe("fresh");
+  });
+
+  it("publishes cached updates to non-interactive Agent envelopes", () => {
+    const cachePath = join(root, "update-check.json");
+    const preferencesPath = join(root, "update-preferences.json");
+    writeFileSync(
+      cachePath,
+      JSON.stringify({ latest: "9.9.9", checkedAt: Date.now() }),
+    );
+    expect(
+      checkForUpdates({
+        ...process.env,
+        CI: "1",
+        UNICLI_UPDATE_CHECK_FORCE: "1",
+        UNICLI_UPDATE_CHECK_CACHE_PATH: cachePath,
+        UNICLI_UPDATE_PREFERENCES_PATH: preferencesPath,
+      }),
+    ).toBe("fresh");
+    expect(getActiveUpdateNotice()).toMatchObject({
+      current: VERSION,
+      latest: "9.9.9",
+      unattended_command: "unicli upgrade --yes",
+    });
+
+    dismissUpdate("9.9.9", {
+      ...process.env,
+      UNICLI_UPDATE_PREFERENCES_PATH: preferencesPath,
+    });
+    checkForUpdates({
+      ...process.env,
+      CI: "1",
+      UNICLI_UPDATE_CHECK_FORCE: "1",
+      UNICLI_UPDATE_CHECK_CACHE_PATH: cachePath,
+      UNICLI_UPDATE_PREFERENCES_PATH: preferencesPath,
+    });
+    expect(getActiveUpdateNotice()).toBeUndefined();
   });
 
   it("launches a detached worker for stale cache data", () => {

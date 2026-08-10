@@ -1,8 +1,8 @@
 # Uni-CLI Copy Rules
 
-> Current version: v1.0.4 — Artemis · Glover.
+> Current version: v1.1.1 — Artemis · Koch.
 >
-> Current static adapter catalog: <!-- STATS:site_count -->337<!-- /STATS --> sites, <!-- STATS:command_count -->1884<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1261<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1003<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->258<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10237<!-- /STATS --> tests.
+> Current static adapter catalog: <!-- STATS:site_count -->337<!-- /STATS --> sites, <!-- STATS:command_count -->1890<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1008<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->259<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10314<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

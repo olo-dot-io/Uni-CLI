@@ -29,11 +29,17 @@ import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import chalk from "chalk";
 import {
+  commandAuthSetupCommand,
   commandRequiresAuth,
   commandStrategy,
   commandUsesBrowser,
   getAllAdapters,
 } from "../registry.js";
+import { metadataAuthRequirement } from "../core/auth-contract.js";
+import {
+  classifyPersonalization,
+  type PersonalizationFamily,
+} from "../discovery/personalization.js";
 import { VERSION } from "../constants.js";
 import type {
   AdapterManifest,
@@ -257,12 +263,17 @@ export function buildCatalog(): {
     domain?: string;
     auth: boolean;
     strategy?: string;
+    personalized_commands: number;
+    personalization_families: PersonalizationFamily[];
     commands: Array<{
       name: string;
       description: string;
       when_to_use: string;
       command: string;
       auth: boolean;
+      auth_requirement: "required" | "optional" | "none";
+      auth_setup?: string;
+      personalization?: PersonalizationFamily;
       strategy?: string;
       browser: boolean;
       columns?: string[];
@@ -282,13 +293,29 @@ export function buildCatalog(): {
     const commands = Object.entries(adapter.commands).map(([cmdName, cmd]) => {
       totalCommands++;
       const skill = buildSkillForCommand(adapter, cmdName, cmd);
+      const strategy = commandStrategy(adapter, cmd);
+      const authRequirement = metadataAuthRequirement(
+        strategy,
+        cmd.capabilities,
+        cmd.auth_requirement,
+      );
+      const authSetup = commandAuthSetupCommand(adapter, cmd);
+      const personalization = classifyPersonalization({
+        command: cmdName,
+        description: cmd.description,
+        category: adapter.category,
+        auth: authRequirement,
+      });
       return {
         name: cmdName,
         description: skill.description,
         when_to_use: skill.whenToUse,
         command: skill.command,
-        auth: commandRequiresAuth(adapter, cmd),
-        strategy: commandStrategy(adapter, cmd),
+        auth: authRequirement === "required",
+        auth_requirement: authRequirement,
+        ...(authSetup ? { auth_setup: authSetup } : {}),
+        ...(personalization ? { personalization } : {}),
+        strategy,
         browser: commandUsesBrowser(adapter, cmd),
         columns: cmd.columns,
         args: cmd.adapterArgs?.map((a) => ({
@@ -309,6 +336,18 @@ export function buildCatalog(): {
         commandRequiresAuth(adapter, cmd),
       ),
       strategy: adapter.strategy,
+      personalized_commands: commands.filter(
+        (command) => command.personalization,
+      ).length,
+      personalization_families: [
+        ...new Set(
+          commands
+            .map((command) => command.personalization)
+            .filter(
+              (family): family is PersonalizationFamily => family !== undefined,
+            ),
+        ),
+      ],
       commands,
     };
   });

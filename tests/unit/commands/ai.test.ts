@@ -271,7 +271,7 @@ describe("AI source discovery", () => {
         `#!/bin/sh
 printf '%s\\n' "$@" > "$UNICLI_TEST_GH_ARGS"
 cat <<'JSON'
-[{"fullName":"XUANTIE-RV/openc910","description":"Open C910 processor","stargazersCount":1,"forksCount":1,"language":"Verilog","url":"https://github.com/XUANTIE-RV/openc910","updatedAt":"2026-07-17T00:00:00Z"}]
+{"total_count":1,"incomplete_results":false,"items":[{"id":1,"full_name":"XUANTIE-RV/openc910","owner":{"login":"XUANTIE-RV"},"description":"Open C910 processor","topics":[],"language":"Verilog","stargazers_count":1,"forks_count":1,"open_issues_count":0,"license":null,"archived":false,"fork":false,"created_at":"2025-01-01T00:00:00Z","updated_at":"2026-07-17T00:00:00Z","pushed_at":"2026-07-17T00:00:00Z","score":1,"text_matches":[],"html_url":"https://github.com/XUANTIE-RV/openc910"}]}
 JSON
 `,
       );

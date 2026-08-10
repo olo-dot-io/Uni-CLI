@@ -444,8 +444,12 @@ describe("CLI fast path", () => {
       command: string;
       data: Array<{
         command: string;
+        usage?: string;
+        inspect?: string;
+        auth?: string;
         evidence_scope?: string;
         runtime_readiness?: string;
+        ranking?: { signals?: string[] };
       }>;
     };
     expect(env.command).toBe("core.search");
@@ -454,7 +458,70 @@ describe("CLI fast path", () => {
     ).toMatchObject({
       evidence_scope: "catalog_contract",
       runtime_readiness: "not_evaluated",
+      usage: "unicli twitter trending",
+      inspect: "unicli describe twitter trending",
+      auth: "required",
+      ranking: {
+        signals: expect.arrayContaining(["site:exact-or-alias"]),
+      },
     });
+  });
+
+  it("filters and labels personalized commands on list and search", () => {
+    const listed = makeIo();
+    expect(
+      tryRunFastPath(
+        [
+          "node",
+          "unicli",
+          "-f",
+          "json",
+          "list",
+          "--site",
+          "twitter",
+          "--personalized",
+        ],
+        listed.io,
+      ),
+    ).toBe(true);
+    const listRows = (
+      JSON.parse(listed.stdout.join("")) as {
+        data: Array<{ command: string; personalization?: string }>;
+      }
+    ).data;
+    expect(listRows.length).toBeGreaterThan(0);
+    expect(listRows.every((row) => Boolean(row.personalization))).toBe(true);
+    expect(listRows).toContainEqual(
+      expect.objectContaining({
+        command: "bookmarks",
+        personalization: "library",
+      }),
+    );
+
+    const searched = makeIo();
+    expect(
+      tryRunFastPath(
+        [
+          "node",
+          "unicli",
+          "-f",
+          "json",
+          "search",
+          "twitter",
+          "saved",
+          "posts",
+          "--personalized",
+        ],
+        searched.io,
+      ),
+    ).toBe(true);
+    const searchRows = (
+      JSON.parse(searched.stdout.join("")) as {
+        data: Array<{ personalization?: string }>;
+      }
+    ).data;
+    expect(searchRows.length).toBeGreaterThan(0);
+    expect(searchRows.every((row) => Boolean(row.personalization))).toBe(true);
   });
 
   it("hard-filters fast-path search results by category", () => {

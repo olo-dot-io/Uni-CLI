@@ -1,0 +1,140 @@
+site: gh
+name: search-commits
+description: Find GitHub feature, fix, refactor, or release commits across repositories or by author
+type: bridge
+strategy: public
+operation_effect: read
+lint_listing_detail: skip
+binary: gh
+detect: which gh
+
+args:
+  query:
+    type: str
+    default: ""
+    positional: true
+    description: Commit message phrase or raw GitHub commit qualifiers
+  repo:
+    type: str
+    default: ""
+    pattern: "^$|^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Optional repository in OWNER/REPO form
+  owner:
+    type: str
+    default: ""
+    description: Optional repository owner
+  author:
+    type: str
+    default: ""
+    description: GitHub login that authored the commit
+  committer:
+    type: str
+    default: ""
+    description: GitHub login that committed the change
+  author-date:
+    type: str
+    default: ""
+    description: GitHub date expression for authored time
+  committer-date:
+    type: str
+    default: ""
+    description: GitHub date expression for committed time
+  merge:
+    type: str
+    default: any
+    choices: [any, "true", "false"]
+    description: Filter merge commits
+  sort:
+    type: str
+    default: best-match
+    choices: [best-match, author-date, committer-date]
+  order:
+    type: str
+    default: desc
+    choices: [asc, desc]
+  limit:
+    type: int
+    default: 20
+    minimum: 1
+    maximum: 100
+
+pipeline:
+  - if: "args.sort === 'best-match'"
+    then:
+      - exec:
+          command: gh
+          args:
+            - search
+            - commits
+            - "${{ args.query + (args.merge !== 'any' ? ' merge:' + args.merge : '') }}"
+            - "${{ args.repo ? '--repo=' + args.repo : '' }}"
+            - "${{ args.owner ? '--owner=' + args.owner : '' }}"
+            - "${{ args.author ? '--author=' + args.author : '' }}"
+            - "${{ args.committer ? '--committer=' + args.committer : '' }}"
+            - "${{ args['author-date'] ? '--author-date=' + args['author-date'] : '' }}"
+            - "${{ args['committer-date'] ? '--committer-date=' + args['committer-date'] : '' }}"
+            - --limit
+            - ${{ args.limit }}
+            - --json
+            - author,commit,committer,id,parents,repository,sha,url
+            - --visibility
+            - public
+          parse: json
+          timeout: 30000
+    else:
+      - exec:
+          command: gh
+          args:
+            - search
+            - commits
+            - "${{ args.query + (args.merge !== 'any' ? ' merge:' + args.merge : '') }}"
+            - "${{ args.repo ? '--repo=' + args.repo : '' }}"
+            - "${{ args.owner ? '--owner=' + args.owner : '' }}"
+            - "${{ args.author ? '--author=' + args.author : '' }}"
+            - "${{ args.committer ? '--committer=' + args.committer : '' }}"
+            - "${{ args['author-date'] ? '--author-date=' + args['author-date'] : '' }}"
+            - "${{ args['committer-date'] ? '--committer-date=' + args['committer-date'] : '' }}"
+            - --sort
+            - ${{ args.sort }}
+            - --order
+            - ${{ args.order }}
+            - --limit
+            - ${{ args.limit }}
+            - --json
+            - author,commit,committer,id,parents,repository,sha,url
+            - --visibility
+            - public
+          parse: json
+          timeout: 30000
+
+  - map:
+      id: ${{ item.id }}
+      repository: "${{ item.repository ? item.repository.fullName : '' }}"
+      sha: ${{ item.sha }}
+      headline: "${{ item.commit && item.commit.message ? item.commit.message.split('\\n')[0] : '' }}"
+      summary: "${{ item.commit && item.commit.message ? item.commit.message.slice(0,4000) : '' }}"
+      author: "${{ item.author ? item.author.login : (item.commit && item.commit.author ? item.commit.author.name : '') }}"
+      committer: "${{ item.committer ? item.committer.login : (item.commit && item.commit.committer ? item.commit.committer.name : '') }}"
+      authoredAt: "${{ item.commit && item.commit.author ? item.commit.author.date : '' }}"
+      committedAt: "${{ item.commit && item.commit.committer ? item.commit.committer.date : '' }}"
+      parents: "${{ JSON.stringify(item.parents || []) }}"
+      url: ${{ item.url }}
+
+columns: [repository, sha, headline, author, committedAt, url]
+
+retrieval:
+  operation: discover
+  result_kind: commit
+  source_class: hosted-artifact
+  arguments:
+    query: query
+    limit: limit
+    repository: repo
+    owner: owner
+    author: author
+capabilities: ["subprocess.exec", "auth.executable.gh"]
+minimum_capability: subprocess.exec
+trust: user
+confidentiality: public
+quarantine: false
+schema_version: v2

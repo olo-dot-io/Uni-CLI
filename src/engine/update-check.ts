@@ -1,10 +1,10 @@
 /**
  * @owner       src::engine::update-check
- * @does        Reads cached npm release metadata and launches a detached refresh worker without retaining the CLI process.
- * @needs       node fs/path/os/url/child_process, package VERSION, compiled update-check-worker
- * @feeds       src::cli interactive update notice
+ * @does        Reads cached npm release metadata, publishes Agent update metadata, and launches a detached refresh worker.
+ * @needs       node fs/path/os/url/child_process, package VERSION, update preferences, compiled update-check-worker
+ * @feeds       every structured response plus the interactive terminal update notice
  * @breaks      Invalid or stale cache data triggers a background refresh; worker launch errors are explicit in debug mode.
- * @invariants  The scoped package URL matches package.json; network I/O never runs in the foreground CLI process; explicit force overrides CI/non-TTY suppression but not explicit disable controls.
+ * @invariants  The scoped package URL matches package.json; network I/O never runs in the foreground CLI process; explicit force overrides CI suppression but not explicit disable controls.
  * @side-effects Reads one cache file, may register an exit notice, and may spawn one detached background worker.
  * @perf        Fresh-cache reads are synchronous and bounded; refresh launch returns without awaiting network I/O.
  * @concurrency The cache worker owns atomic replacement; duplicate CLI launches may race safely with last-completed write winning.
@@ -20,6 +20,19 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import { VERSION } from "../constants.js";
+import {
+  buildAgentUpdateNotice,
+  clearActiveUpdateNotice,
+  setActiveUpdateNotice,
+} from "../core/update-notice.js";
+import {
+  readUpdatePreferences,
+  updateSuppression,
+} from "./update-preferences.js";
+import {
+  scheduleAutomaticUpdate,
+  type AutomaticUpdateDecision,
+} from "./update-auto.js";
 
 export const UPDATE_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
 export const UPDATE_REGISTRY_URL =
@@ -109,14 +122,14 @@ export function isNewer(latest: string, current: string): boolean {
   return comparePrerelease(left.prerelease, right.prerelease) > 0;
 }
 
-function cachePath(env: NodeJS.ProcessEnv): string {
+export function updateCachePath(env: NodeJS.ProcessEnv): string {
   return (
     env.UNICLI_UPDATE_CHECK_CACHE_PATH ??
-    join(homedir(), ".unicli", "update-check.json")
+    join(env.HOME || homedir(), ".unicli", "update-check.json")
   );
 }
 
-function readCache(path: string): UpdateCache | undefined {
+function readCacheFile(path: string): UpdateCache | undefined {
   try {
     const parsed = JSON.parse(readFileSync(path, "utf-8")) as unknown;
     if (
@@ -133,6 +146,12 @@ function readCache(path: string): UpdateCache | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function readUpdateCache(
+  env: NodeJS.ProcessEnv = process.env,
+): UpdateCache | undefined {
+  return readCacheFile(updateCachePath(env));
 }
 
 function compiledWorkerPath(env: NodeJS.ProcessEnv): string {
@@ -183,13 +202,25 @@ function startRefreshWorker(env: NodeJS.ProcessEnv): UpdateCheckStatus {
 }
 
 let registeredNotice = false;
-function registerExitMessage(latest: string): void {
-  if (registeredNotice) return;
+function registerExitMessage(
+  latest: string,
+  automaticUpdate: AutomaticUpdateDecision,
+): void {
+  if (registeredNotice || !process.stderr.isTTY) return;
   registeredNotice = true;
   process.on("exit", (code) => {
     if (code === 0) {
       process.stderr.write(
-        `\n${chalk.yellow(`Update available: ${VERSION} → ${latest}`)} — run ${chalk.cyan("npm i -g @zenalexa/unicli")} to upgrade\n`,
+        [
+          "",
+          chalk.yellow(`┌ Uni-CLI update available ${VERSION} -> ${latest}`),
+          automaticUpdate.enabled
+            ? `│ Agent auto-update ${chalk.cyan(automaticUpdate.status)}`
+            : `│ Choose Y or N with ${chalk.cyan("unicli upgrade")}`,
+          `│ Stop automatic updates with ${chalk.cyan(automaticUpdate.opt_out)}`,
+          `└ Release notes https://github.com/olo-dot-io/Uni-CLI/releases/tag/v${latest}`,
+          "",
+        ].join("\n"),
       );
     }
   });
@@ -198,19 +229,34 @@ function registerExitMessage(latest: string): void {
 export function checkForUpdates(
   env: NodeJS.ProcessEnv = process.env,
 ): UpdateCheckStatus {
+  clearActiveUpdateNotice();
   const forced = env.UNICLI_UPDATE_CHECK_FORCE === "1";
   if (
-    env.NO_UPDATE_NOTIFIER === "1" ||
+    env.NO_UPDATE_NOTIFIER !== undefined ||
     env.UNICLI_DISABLE_UPDATE_CHECK === "1" ||
-    ((Boolean(env.CI) || !process.stderr.isTTY) && !forced)
+    env.UNICLI_SKIP_UPDATE_CHECK === "1" ||
+    ((Boolean(env.CI) || env.NODE_ENV === "test") && !forced)
   ) {
     return "disabled";
   }
 
   const now = Date.now();
-  const cached = readCache(cachePath(env));
+  const cached = readUpdateCache(env);
   if (cached && isNewer(cached.latest, VERSION)) {
-    registerExitMessage(cached.latest);
+    const suppression = updateSuppression(
+      cached.latest,
+      readUpdatePreferences(env),
+      now,
+    );
+    if (!suppression) {
+      const automaticUpdate = scheduleAutomaticUpdate(cached.latest, env, {
+        scriptPath: fileURLToPath(import.meta.url),
+      });
+      setActiveUpdateNotice(
+        buildAgentUpdateNotice(VERSION, cached.latest, automaticUpdate),
+      );
+      registerExitMessage(cached.latest, automaticUpdate);
+    }
   }
   if (cached) {
     const age = now - cached.checkedAt;

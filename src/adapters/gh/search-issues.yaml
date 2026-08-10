@@ -1,8 +1,9 @@
 site: gh
 name: search-issues
-description: Search current GitHub issues across repositories
+description: Search GitHub issues by fuzzy feature or problem intent with hybrid, semantic, or lexical matching
 type: bridge
 strategy: public
+operation_effect: read
 lint_listing_detail: skip
 binary: gh
 detect: which gh
@@ -12,45 +13,180 @@ args:
     type: str
     required: true
     positional: true
-    description: GitHub issue search query; raw qualifiers such as repo:OWNER/REPO are supported
+    minLength: 1
+    description: Natural-language issue intent or raw GitHub issue qualifiers
+  repo:
+    type: str
+    default: ""
+    pattern: "^$|^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    description: Optional repository in OWNER/REPO form
+  owner:
+    type: str
+    default: ""
+    description: Optional repository owner
+  author:
+    type: str
+    default: ""
+    description: Optional issue author login
+  state:
+    type: str
+    default: any
+    choices: [any, open, closed]
+  label:
+    type: str
+    default: ""
+    description: Exact issue label
+  language:
+    type: str
+    default: ""
+    description: Repository primary language
+  match:
+    type: str
+    default: any
+    choices: [any, title, body, comments]
+    description: Restrict lexical matching to one issue field
+  mode:
+    type: str
+    default: hybrid
+    choices: [hybrid, semantic, lexical]
+    description: GitHub issue search mode; hybrid combines vector and lexical ranking
+  sort:
+    type: str
+    default: updated
+    choices:
+      [
+        comments,
+        created,
+        interactions,
+        reactions,
+        reactions-+1,
+        reactions--1,
+        reactions-heart,
+        reactions-smile,
+        reactions-tada,
+        reactions-thinking_face,
+        updated,
+      ]
+    description: Lexical-mode sort
+  order:
+    type: str
+    default: desc
+    choices: [asc, desc]
   limit:
     type: int
     default: 20
+    minimum: 1
+    maximum: 100
 
 pipeline:
-  - exec:
-      command: gh
-      args:
-        - search
-        - issues
-        - ${{ args.query }}
-        - --limit
-        - ${{ args.limit }}
-        - --json
-        - number,title,state,author,createdAt,updatedAt,url,repository,body,commentsCount
-        - --sort
-        - updated
-        - --order
-        - desc
-        - --visibility
-        - public
-      parse: json
-      timeout: 30000
+  - if: "args.mode === 'lexical'"
+    then:
+      - exec:
+          command: gh
+          args:
+            - search
+            - issues
+            - ${{ args.query }}
+            - "${{ args.repo ? '--repo=' + args.repo : '' }}"
+            - "${{ args.owner ? '--owner=' + args.owner : '' }}"
+            - "${{ args.author ? '--author=' + args.author : '' }}"
+            - "${{ args.state !== 'any' ? '--state=' + args.state : '' }}"
+            - "${{ args.label ? '--label=' + args.label : '' }}"
+            - "${{ args.language ? '--language=' + args.language : '' }}"
+            - "${{ args.match !== 'any' ? '--match=' + args.match : '' }}"
+            - --limit
+            - ${{ args.limit }}
+            - --json
+            - number,title,state,author,createdAt,updatedAt,url,repository,body,commentsCount,labels,isLocked
+            - --sort
+            - ${{ args.sort }}
+            - --order
+            - ${{ args.order }}
+            - --visibility
+            - public
+          parse: json
+          timeout: 30000
+      - map:
+          id: ${{ item.id || item.number }}
+          number: ${{ item.number }}
+          title: ${{ item.title }}
+          state: ${{ item.state }}
+          author: "${{ item.author ? item.author.login : '' }}"
+          repository: "${{ item.repository ? item.repository.nameWithOwner : '' }}"
+          createdAt: ${{ item.createdAt }}
+          updatedAt: ${{ item.updatedAt }}
+          comments: ${{ item.commentsCount }}
+          labels: "${{ JSON.stringify(item.labels || []) }}"
+          locked: ${{ item.isLocked }}
+          summary: "${{ (item.body || '').slice(0,4000) }}"
+          searchMode: lexical
+          url: ${{ item.url }}
+    else:
+      - exec:
+          command: gh
+          args:
+            - api
+            - --method
+            - GET
+            - search/issues
+            - -H
+            - "Accept: application/vnd.github+json"
+            - -f
+            - >-
+              q=${{ args.query
+              + ' is:issue is:public'
+              + (args.repo ? ' repo:' + args.repo : '')
+              + (args.owner ? ' user:' + args.owner : '')
+              + (args.author ? ' author:' + args.author : '')
+              + (args.state !== 'any' ? ' state:' + args.state : '')
+              + (args.label ? ' label:"' + args.label + '"' : '')
+              + (args.language ? ' language:' + args.language : '')
+              + (args.match !== 'any' ? ' in:' + args.match : '') }}
+            - -f
+            - search_type=${{ args.mode }}
+            - -F
+            - per_page=${{ args.limit }}
+          parse: json
+          timeout: 30000
+      - set:
+          effective_search_type: ${{ item.search_type || args.mode }}
+          fallback_reason: "${{ JSON.stringify(item.lexical_fallback_reason || []) }}"
+          incomplete: ${{ item.incomplete_results || false }}
+          total_count: ${{ item.total_count || 0 }}
+      - select: items
+      - map:
+          id: ${{ item.id }}
+          number: ${{ item.number }}
+          title: ${{ item.title }}
+          state: ${{ item.state }}
+          author: "${{ item.user ? item.user.login : '' }}"
+          repository: "${{ (item.repository_url || '').replace('https://api.github.com/repos/', '') }}"
+          createdAt: ${{ item.created_at }}
+          updatedAt: ${{ item.updated_at }}
+          comments: ${{ item.comments }}
+          labels: "${{ JSON.stringify(item.labels || []) }}"
+          locked: ${{ item.locked }}
+          score: ${{ item.score }}
+          summary: "${{ (item.body || '').slice(0,4000) }}"
+          searchMode: ${{ vars.effective_search_type }}
+          fallbackReason: ${{ vars.fallback_reason }}
+          totalCount: ${{ vars.total_count }}
+          incomplete: ${{ vars.incomplete }}
+          url: ${{ item.html_url }}
 
-  - map:
-      id: ${{ item.id || item.number }}
-      number: ${{ item.number }}
-      title: ${{ item.title }}
-      state: ${{ item.state }}
-      author: "${{ item.author ? item.author.login : '' }}"
-      repository: "${{ item.repository ? item.repository.nameWithOwner : '' }}"
-      createdAt: ${{ item.createdAt }}
-      updatedAt: ${{ item.updatedAt }}
-      comments: ${{ item.commentsCount }}
-      summary: "${{ (item.body || '').slice(0,4000) }}"
-      url: ${{ item.url }}
-
-columns: [repository, number, title, state, author, updatedAt, comments, url]
+columns:
+  [
+    repository,
+    number,
+    title,
+    state,
+    author,
+    updatedAt,
+    comments,
+    searchMode,
+    score,
+    url,
+  ]
 
 retrieval:
   operation: discover
@@ -59,6 +195,9 @@ retrieval:
   arguments:
     query: query
     limit: limit
+    repository: repo
+    owner: owner
+    author: author
 capabilities: ["subprocess.exec", "auth.executable.gh"]
 minimum_capability: subprocess.exec
 trust: user

@@ -1,6 +1,6 @@
-# `bench/` — Reproducible Token and Latency Harness
+# Reproducible token and latency harness
 
-Run `npm run bench` from the repo root. The harness:
+Run `npm run bench` from the repository root. The harness performs these steps.
 
 1. Re-measures root `--version`, root `--help`, and `unicli list` as separate
    cold subprocess boundaries (wall-clock p50/p95).
@@ -10,6 +10,12 @@ Run `npm run bench` from the repo root. The harness:
 3. Reports invocation tokens, response tokens, and total call budgets.
 4. Writes `bench/results.json` and patches `docs/BENCHMARK.md` between
    the `<!-- BENCH:begin -->` and `<!-- BENCH:end -->` markers.
+
+Run `npm run bench:product-surface` to measure user-visible discovery,
+actionability, personalized content coverage, generated catalog consistency,
+and the pinned OpenCLI and CLI-Anything source snapshots. The command writes
+`bench/product-surface-results.json` and refreshes the matching English and
+Chinese documentation sections.
 
 ## Modes
 
@@ -32,7 +38,7 @@ are useful during iteration; 50 is the reported number in
 ## Fixtures
 
 Fixtures are real JSON responses captured on 2026-04-15 from the listed
-commands at `--limit 5 -f json`. Refresh via:
+commands at `--limit 5 -f json`. Refresh them with the following commands.
 
 ```bash
 npm run build
@@ -40,21 +46,25 @@ node dist/main.js hackernews top -f json --limit 5 > bench/fixtures/hackernews-t
 # ... etc
 ```
 
-Commit fixture diffs when upstream schema changes. Do not "massage" them
-to make numbers prettier — the point of this harness is honest reporting.
+Commit fixture diffs when upstream schema changes. Keep the captured values
+unchanged so the report stays honest.
 
-## Not part of `npm run verify`
+## Verification boundary
 
-Bench is network-flaky and slow; it is deliberately excluded from the default
-verification chain. CI runs fixture mode as a separate scheduled/manual job,
-not as a pull-request verify gate.
+The latency and adapter response suite can use live network calls, so it stays
+outside the default verification command. `npm run verify` runs
+`bench:product-surface:check`, which is network-free and does not rewrite
+generated reports.
 
 ## Files
 
-- `tokens.ts` — o200k_base heuristic tokeniser (no native deps).
-- `cold-start.ts` — cold-process runner for root metadata and `unicli list`.
-- `adapter-call.ts` — per-command p50/p95 runner.
-- `report.ts` — orchestrator, writes `results.json` and patches `docs/BENCHMARK.md`.
-- `fixtures/*.json` — committed response captures.
-- `results.json` — last run's full report (gitignored if you want; the
+- `tokens.ts` provides the o200k_base heuristic tokeniser with no native dependencies.
+- `cold-start.ts` runs cold processes for root metadata and `unicli list`.
+- `adapter-call.ts` runs each p50 and p95 command sample.
+- `report.ts` writes `results.json` and patches `docs/BENCHMARK.md`.
+- `product-surface.ts` runs discovery tasks, catalog checks, and current source comparisons.
+- `product-baselines.json` pins current-source revisions and catalog counts.
+- `product-surface-results.json` stores the last generated product-surface report.
+- `fixtures/*.json` contains committed response captures.
+- `results.json` contains the last full report. It can remain committed because the
   file is tiny and helpful in PR reviews, so we commit it).
