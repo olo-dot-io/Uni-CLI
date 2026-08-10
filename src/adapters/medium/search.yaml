@@ -1,6 +1,7 @@
 site: medium
 name: search
 description: Search Medium articles
+operation_effect: read
 domain: medium.com
 type: web-api
 strategy: public
@@ -42,5 +43,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "legacy JSON search endpoint returns HTTP 403 (2026-08-10)"
 schema_version: v2

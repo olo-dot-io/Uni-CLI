@@ -49,6 +49,10 @@
   candidates before exact filtering.
 - Constrain title-based traces by the requested venue and year, reuse resolved
   OpenReview forum identifiers, and reject similarly named resource records.
+- Make the live adapter health probe honor authentication and read-only
+  contracts while retaining public HTTP 401 and 403 responses as drift. Repair
+  the current 36Kr and Medium RSS routes, and quarantine endpoints with
+  reproducible upstream blocks.
 
 ## [1.0.3] — 2026-08-08 — Artemis · Glover
 

@@ -14,6 +14,7 @@ operation_effect: remote_resource
 type: web-api
 domain: api.linear.app
 strategy: public # auth is via Authorization header from env, no cookies
+auth_requirement: required
 
 # schema-v2 fields
 capabilities: ["http.fetch"]

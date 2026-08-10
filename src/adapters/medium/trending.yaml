@@ -1,6 +1,7 @@
 site: medium
 name: trending
 description: Medium trending articles
+operation_effect: read
 type: web-api
 domain: medium.com
 strategy: public
@@ -35,5 +36,6 @@ capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public
-quarantine: false
+quarantine: true
+quarantineReason: "legacy trending endpoint returns HTTP 403; use medium feed for topic RSS (2026-08-10)"
 schema_version: v2

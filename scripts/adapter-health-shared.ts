@@ -14,7 +14,6 @@
  */
 
 import { execSync } from "node:child_process";
-import { PipelineError } from "../src/engine/executor.js";
 import type { AdapterCommand } from "../src/types.js";
 
 const MACOS_MANUAL_HEALTH_COMMANDS = new Set([
@@ -126,12 +125,6 @@ export function isEnvironmentMissing(message: string): string | undefined {
   ) {
     return "missing browser cookie source (cdp unavailable)";
   }
-  if (
-    /HTTP 40[13] /i.test(message) ||
-    /authentication required/i.test(message)
-  ) {
-    return "auth required (HTTP 401/403)";
-  }
   if (/PATENT_API_DEPRECATED/i.test(message)) {
     return "upstream API deprecated (intentional placeholder)";
   }
@@ -153,6 +146,9 @@ export function isEnvironmentMissing(message: string): string | undefined {
       message,
     )
   ) {
+    return "cloud CLI not authenticated";
+  }
+  if (/no access token available[\s\S]*flyctl auth login/i.test(message)) {
     return "cloud CLI not authenticated";
   }
   if (
@@ -177,6 +173,13 @@ export function isEnvironmentMissing(message: string): string | undefined {
   if (/Step \d+ \(fetch(_text)?\) failed: fetch failed/i.test(message)) {
     return "probe network unreachable (transient)";
   }
+  if (
+    /Network request failed for https?:\/\/\S+: fetch failed:[\s\S]*(?:ECONNRESET|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT)/i.test(
+      message,
+    )
+  ) {
+    return "probe network unreachable (transient)";
+  }
   if (/\bfetch_text failed for https?:\/\/\S+: fetch failed/i.test(message)) {
     return "probe network unreachable (transient)";
   }
@@ -187,22 +190,9 @@ export function isEnvironmentMissing(message: string): string | undefined {
 }
 
 export function isProbeEnvironmentMissing(
-  error: unknown,
+  _error: unknown,
   message: string,
 ): string | undefined {
-  if (error instanceof PipelineError) {
-    const preview = error.detail.responsePreview ?? "";
-    if (
-      error.detail.statusCode !== undefined &&
-      error.detail.statusCode >= 400 &&
-      error.detail.statusCode < 500 &&
-      /login_required|authentication|required|not authenticated|用户不存在/i.test(
-        preview,
-      )
-    ) {
-      return `auth required (HTTP ${error.detail.statusCode})`;
-    }
-  }
   return isEnvironmentMissing(message);
 }
 
