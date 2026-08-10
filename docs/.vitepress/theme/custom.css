@@ -19,31 +19,31 @@
   color-scheme: light;
   --uni-font: "Geist Variable", sans-serif;
 
-  /* Viridian paper recipe shared by marketing and documentation. */
-  --appica-foreground: oklch(0.37 0.035 154);
-  --appica-foreground-subtle: oklch(0.69 0.026 135);
-  --appica-foreground-muted: oklch(0.52 0.038 153);
-  --appica-foreground-strong: oklch(0.3 0.05 157);
-  --appica-foreground-emphasis: oklch(0.235 0.052 157);
-  --appica-foreground-intense: oklch(0.17 0.055 158);
-  --appica-foreground-inverse: oklch(0.975 0.02 92);
-  --appica-background: oklch(0.975 0.018 92);
-  --appica-background-subtle: oklch(0.955 0.023 96);
-  --appica-background-muted: oklch(0.925 0.03 105);
-  --appica-background-strong: oklch(0.885 0.035 114);
-  --appica-background-inverse: oklch(0.16 0.05 158);
-  --appica-primary: oklch(0.215 0.06 158);
-  --appica-primary-muted: oklch(0.3 0.07 157);
-  --appica-primary-foreground: oklch(0.975 0.02 92);
-  --appica-secondary: oklch(0.65 0.15 47);
-  --appica-secondary-subtle: oklch(0.65 0.15 47 / 10%);
-  --appica-secondary-soft: oklch(0.65 0.15 47 / 18%);
+  /* Neutral documentation palette. Homepage colors remain locally scoped. */
+  --appica-foreground: oklch(0.38 0.018 255);
+  --appica-foreground-subtle: oklch(0.68 0.014 255);
+  --appica-foreground-muted: oklch(0.51 0.02 255);
+  --appica-foreground-strong: oklch(0.3 0.022 255);
+  --appica-foreground-emphasis: oklch(0.235 0.024 255);
+  --appica-foreground-intense: oklch(0.18 0.026 255);
+  --appica-foreground-inverse: oklch(0.975 0.004 255);
+  --appica-background: oklch(0.985 0.004 255);
+  --appica-background-subtle: oklch(0.965 0.006 255);
+  --appica-background-muted: oklch(0.94 0.008 255);
+  --appica-background-strong: oklch(0.89 0.012 255);
+  --appica-background-inverse: oklch(0.18 0.026 255);
+  --appica-primary: oklch(0.47 0.15 257);
+  --appica-primary-muted: oklch(0.55 0.14 257);
+  --appica-primary-foreground: oklch(0.985 0.004 255);
+  --appica-secondary: oklch(0.47 0.15 257);
+  --appica-secondary-subtle: oklch(0.47 0.15 257 / 9%);
+  --appica-secondary-soft: oklch(0.47 0.15 257 / 16%);
   --appica-success: oklch(0.57 0.12 157);
   --appica-success-subtle: oklch(0.57 0.12 157 / 11%);
   --appica-error: oklch(0.58 0.18 31);
-  --appica-focus: oklch(0.65 0.15 47 / 34%);
-  --appica-shadow-color: oklch(0.16 0.05 158 / 14%);
-  --appica-selection: oklch(0.3 0.07 157 / 14%);
+  --appica-focus: oklch(0.55 0.14 257 / 28%);
+  --appica-shadow-color: oklch(0.18 0.026 255 / 11%);
+  --appica-selection: oklch(0.47 0.15 257 / 14%);
   --appica-radius: 14px;
   --appica-radius-sm: 12px;
   --appica-radius-lg: 16px;
@@ -86,8 +86,8 @@
   --vp-c-text-1: var(--appica-foreground-intense);
   --vp-c-text-2: var(--appica-foreground-muted);
   --vp-c-text-3: var(--appica-foreground-subtle);
-  --vp-c-divider: transparent;
-  --vp-c-border: transparent;
+  --vp-c-divider: var(--appica-background-strong);
+  --vp-c-border: var(--appica-background-strong);
   --vp-nav-bg-color: var(--appica-background);
   --vp-sidebar-bg-color: var(--appica-background-subtle);
   --vp-code-block-bg: var(--appica-background-muted);
@@ -96,30 +96,30 @@
 
 .dark {
   color-scheme: dark;
-  --appica-foreground: oklch(0.87 0.024 106);
-  --appica-foreground-subtle: oklch(0.64 0.035 142);
-  --appica-foreground-muted: oklch(0.75 0.032 122);
-  --appica-foreground-strong: oklch(0.92 0.024 98);
-  --appica-foreground-emphasis: oklch(0.945 0.022 94);
-  --appica-foreground-intense: oklch(0.975 0.02 92);
-  --appica-foreground-inverse: oklch(0.18 0.048 158);
-  --appica-background: oklch(0.17 0.034 158);
-  --appica-background-subtle: oklch(0.195 0.036 158);
-  --appica-background-muted: oklch(0.235 0.04 157);
-  --appica-background-strong: oklch(0.29 0.045 157);
-  --appica-background-inverse: oklch(0.975 0.02 92);
-  --appica-primary: oklch(0.94 0.025 96);
-  --appica-primary-muted: oklch(0.86 0.03 105);
-  --appica-primary-foreground: oklch(0.17 0.055 158);
-  --appica-secondary: oklch(0.72 0.14 54);
-  --appica-secondary-subtle: oklch(0.72 0.14 54 / 14%);
-  --appica-secondary-soft: oklch(0.72 0.14 54 / 24%);
+  --appica-foreground: oklch(0.84 0.012 255);
+  --appica-foreground-subtle: oklch(0.56 0.016 255);
+  --appica-foreground-muted: oklch(0.7 0.014 255);
+  --appica-foreground-strong: oklch(0.88 0.01 255);
+  --appica-foreground-emphasis: oklch(0.92 0.008 255);
+  --appica-foreground-intense: oklch(0.96 0.006 255);
+  --appica-foreground-inverse: oklch(0.18 0.018 255);
+  --appica-background: oklch(0.18 0.018 255);
+  --appica-background-subtle: oklch(0.205 0.018 255);
+  --appica-background-muted: oklch(0.24 0.02 255);
+  --appica-background-strong: oklch(0.3 0.022 255);
+  --appica-background-inverse: oklch(0.96 0.006 255);
+  --appica-primary: oklch(0.76 0.115 255);
+  --appica-primary-muted: oklch(0.7 0.12 255);
+  --appica-primary-foreground: oklch(0.18 0.018 255);
+  --appica-secondary: oklch(0.76 0.115 255);
+  --appica-secondary-subtle: oklch(0.76 0.115 255 / 12%);
+  --appica-secondary-soft: oklch(0.76 0.115 255 / 20%);
   --appica-success: oklch(0.72 0.12 153);
   --appica-success-subtle: oklch(0.72 0.12 153 / 12%);
   --appica-error: oklch(0.72 0.16 35);
-  --appica-focus: oklch(0.72 0.14 54 / 44%);
-  --appica-shadow-color: oklch(0.06 0.025 158 / 38%);
-  --appica-selection: oklch(0.94 0.025 96 / 14%);
+  --appica-focus: oklch(0.76 0.115 255 / 32%);
+  --appica-shadow-color: oklch(0.08 0.01 255 / 44%);
+  --appica-selection: oklch(0.76 0.115 255 / 18%);
 }
 
 * {
@@ -271,11 +271,67 @@ textarea:focus-visible {
 .VPNavBarSearch .DocSearch-Button,
 .VPNavBarSearch .VPNavBarSearchButton {
   min-height: 40px;
-  border: 0;
+  border: 1px solid var(--appica-background-strong);
   border-radius: var(--appica-radius);
   background: var(--appica-background-muted);
   color: var(--appica-foreground-muted);
   box-shadow: none;
+}
+
+/* Local search owns one focus treatment at the form boundary. The generic
+ * input ring otherwise draws a second, inset rectangle around VitePress's
+ * borderless search input. */
+body .VPLocalSearchBox > .backdrop {
+  background: oklch(0.13 0.018 255 / 62%);
+  backdrop-filter: blur(8px) saturate(80%);
+}
+
+body .VPLocalSearchBox > .shell {
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--appica-background-strong);
+  border-radius: 18px;
+  background: var(--appica-background);
+  box-shadow: var(--appica-shadow-2xl);
+}
+
+body .VPLocalSearchBox .search-bar {
+  min-height: 56px;
+  border: 1px solid var(--appica-background-strong);
+  border-radius: 12px;
+  background: var(--appica-background-subtle);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+body .VPLocalSearchBox .search-bar:focus-within {
+  border-color: var(--appica-primary);
+  background: var(--appica-background);
+  box-shadow: 0 0 0 3px var(--appica-focus);
+}
+
+body .VPLocalSearchBox .search-input:focus-visible {
+  outline: 0;
+}
+
+body .VPLocalSearchBox .search-keyboard-shortcuts {
+  color: var(--appica-foreground-muted);
+  opacity: 1;
+}
+
+body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
+  border: 1px solid var(--appica-background-strong);
+  background: var(--appica-background-muted);
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  body .VPLocalSearchBox > .shell {
+    border: 0;
+    border-radius: 0;
+  }
 }
 
 .VPSocialLink,
@@ -511,11 +567,11 @@ textarea:focus-visible {
 }
 
 .dark .vp-doc div[class*="language-"] {
-  background: oklch(0.215 0.045 157) !important;
+  background: oklch(0.22 0.018 255) !important;
 }
 
 .dark .vp-doc div[class*="language-"] code {
-  color: oklch(0.94 0.025 96);
+  color: oklch(0.94 0.008 255);
 }
 
 .vp-doc blockquote,
