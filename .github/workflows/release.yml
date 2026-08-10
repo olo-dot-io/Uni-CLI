@@ -131,9 +131,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
-      - name: Verify release package surface
+      # Full tests and platform matrices run before tagging. The release job
+      # rebuilds the exact package and keeps only fast, package-facing gates so
+      # publishing does not repeat the entire suite.
+      - name: Build and verify release package
         run: |
-          npm run verify
+          npm run lint
+          npm run build:release
+          npm run bench:product-surface:check
           npm audit --omit=dev --audit-level=moderate
 
       - name: Validate release metadata

@@ -159,6 +159,7 @@
   "scripts": {
     "dev": "tsx src/main.ts",
     "build": "npm run clean && tsc && npm run build:extension && tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts && prettier --write AGENTS.md && tsx scripts/build-identity.ts",
+    "build:release": "npm run clean && tsc && npm run build:extension && tsx scripts/build-manifest.js && tsx scripts/build-identity.ts && npm run postbuild",
     "build:extension": "tsx scripts/build-browser-extension.ts",
     "postbuild": "node -e \"const fs=require('fs'); fs.chmodSync('dist/main.js', 0o755); fs.chmodSync('dist/bin/unicli-mcp.js', 0o755); fs.chmodSync('bin/unicli-mcp', 0o755); fs.chmodSync('bin/unicli-browser-native-host', 0o755);\"",
     "stats": "tsx scripts/build-manifest.js && tsx scripts/count-stats.ts && tsx scripts/build-readme.ts && tsx scripts/build-agents.ts && prettier --write AGENTS.md",
