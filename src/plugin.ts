@@ -16,11 +16,16 @@ import {
   symlinkSync,
 } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
 import { execFileSync } from "node:child_process";
+import { userDataRoot } from "./engine/user-home.js";
 
-const PLUGINS_DIR = join(homedir(), ".unicli", "plugins");
-const LOCK_FILE = join(homedir(), ".unicli", "plugins.lock.json");
+function pluginsDir(): string {
+  return join(userDataRoot(), "plugins");
+}
+
+function lockFile(): string {
+  return join(userDataRoot(), "plugins.lock.json");
+}
 
 export interface PluginInfo {
   name: string;
@@ -42,15 +47,15 @@ type LockFile = Record<string, LockEntry>;
 
 function readLock(): LockFile {
   try {
-    return JSON.parse(readFileSync(LOCK_FILE, "utf-8")) as LockFile;
+    return JSON.parse(readFileSync(lockFile(), "utf-8")) as LockFile;
   } catch {
     return {};
   }
 }
 
 function writeLock(lock: LockFile): void {
-  mkdirSync(join(homedir(), ".unicli"), { recursive: true });
-  writeFileSync(LOCK_FILE, JSON.stringify(lock, null, 2), "utf-8");
+  mkdirSync(userDataRoot(), { recursive: true });
+  writeFileSync(lockFile(), JSON.stringify(lock, null, 2), "utf-8");
 }
 
 /**
@@ -92,9 +97,14 @@ function parseSource(source: string): {
  * Validate plugin name to prevent path traversal.
  */
 function validatePluginName(name: string): void {
-  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+  if (
+    !/^[a-zA-Z0-9_.-]+$/.test(name) ||
+    name === "." ||
+    name === ".." ||
+    name.includes("..")
+  ) {
     throw new Error(
-      `Invalid plugin name "${name}". Only alphanumeric, dash, and underscore allowed.`,
+      `Invalid plugin name "${name}". Use alphanumeric characters, dots, dashes, or underscores without path segments.`,
     );
   }
 }
@@ -105,7 +115,8 @@ function validatePluginName(name: string): void {
 export function installPlugin(source: string): PluginInfo {
   const parsed = parseSource(source);
   validatePluginName(parsed.name);
-  const destDir = join(PLUGINS_DIR, parsed.name);
+  const root = pluginsDir();
+  const destDir = join(root, parsed.name);
 
   if (existsSync(destDir)) {
     throw new Error(
@@ -113,7 +124,7 @@ export function installPlugin(source: string): PluginInfo {
     );
   }
 
-  mkdirSync(PLUGINS_DIR, { recursive: true });
+  mkdirSync(root, { recursive: true });
 
   if (parsed.type === "git") {
     execFileSync("git", ["clone", "--depth", "1", parsed.url, destDir], {
@@ -159,8 +170,9 @@ export function installPlugin(source: string): PluginInfo {
  */
 export function uninstallPlugin(name: string): void {
   validatePluginName(name);
-  const destDir = join(PLUGINS_DIR, name);
-  if (!destDir.startsWith(PLUGINS_DIR)) {
+  const root = pluginsDir();
+  const destDir = join(root, name);
+  if (!destDir.startsWith(root)) {
     throw new Error(`Invalid plugin name: ${name}`);
   }
   if (!existsSync(destDir)) {
@@ -177,13 +189,14 @@ export function uninstallPlugin(name: string): void {
  * List all installed plugins.
  */
 export function listPlugins(): PluginInfo[] {
-  if (!existsSync(PLUGINS_DIR)) return [];
+  const root = pluginsDir();
+  if (!existsSync(root)) return [];
   const lock = readLock();
 
-  return readdirSync(PLUGINS_DIR, { withFileTypes: true })
+  return readdirSync(root, { withFileTypes: true })
     .filter((d) => d.isDirectory() || d.isSymbolicLink())
     .map((d) => {
-      const pluginDir = join(PLUGINS_DIR, d.name);
+      const pluginDir = join(root, d.name);
       const lockEntry = lock[d.name];
       return {
         name: d.name,
@@ -199,7 +212,7 @@ export function listPlugins(): PluginInfo[] {
  * Update a plugin (git pull or re-clone).
  */
 export function updatePlugin(name: string): PluginInfo {
-  const destDir = join(PLUGINS_DIR, name);
+  const destDir = join(pluginsDir(), name);
   if (!existsSync(destDir)) {
     throw new Error(`Plugin "${name}" is not installed.`);
   }

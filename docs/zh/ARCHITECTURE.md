@@ -119,6 +119,18 @@ State read 返回与 snapshot 和 target 绑定的 ref，后续 action 在同一
 
 Adapter failure 可以暴露 `adapter_path` 和 `step`。Agent 更新对应源文件后运行 `unicli repair`，它会调用原目标完成验证。User adapter 提供本机测试路径。
 
+## Harness evolution kernel
+
+Evolution kernel 把选定的 run trace 转换为受控的 adapter 更新。它负责五个边界。
+
+1. `runs distill` 生成私有 evidence packet，不写入 replay 参数和 secret event field。
+2. `evolve adapter` 把 baseline 与 candidate 放入独立的 user-adapter overlay。
+3. Proposal run、validation run 和 held-out run 保持互斥。Eval file 可以用 `train`、`validation` 或 `held-out` 标记 case。
+4. `evolve verify` 通过公开 CLI 执行两套 overlay，并记录 pass rate、duration、case 变化和 effect verdict。
+5. `evolve promote` 要求 candidate 已修改、validation 严格提升且 held-out 没有回退。晋级操作写入 user override，同时保存精确 rollback artifact。
+
+上层 Agent 负责提出并编辑 candidate。Uni-CLI 负责执行证据和 promotion decision。1.2 版本把 editable evolution component 限定为单个 YAML adapter。可能改变外部状态的命令需要显式允许 eval。
+
 ## 协议入口
 
 Native CLI 暴露完整 runtime。MCP 提供 compact、deferred 和 expanded tool profile。ACP 与其他生成 surface 从同一目录投影操作。`unicli mcp health` 会报告当前安装版本的 profile 和工具数量。
@@ -134,6 +146,7 @@ Native CLI 暴露完整 runtime。MCP 提供 compact、deferred 和 expanded too
 | Site identity 解析        | `src/discovery/site-resolver.ts`   |
 | 能力可行性                | `src/discovery/feasibility.ts`     |
 | Engine 与 pipeline        | `src/engine/`                      |
+| Harness evolution         | `src/engine/evolution/`            |
 | Command surface           | `src/commands/`                    |
 | Browser runtime           | `src/browser/`                     |
 | Desktop 与 visual control | `src/compute/`、`src/transport/`   |

@@ -71,14 +71,15 @@ unicli repair reddit saved               # 验证受支持的漂移路径
 intent → candidate operations → explicit selection → policy → substrate → receipt
 ```
 
-| 阶段     | Runtime 行为                                                        |
-| -------- | ------------------------------------------------------------------- |
-| Discover | 编译意图与双语检索返回一组带选择依据的小型候选集                    |
-| Select   | 调用方选择一条声明了 strategy 和 substrate 的 operation             |
-| Govern   | `open`、`confirm`、`locked` profile 检查 effect 和 capability scope |
-| Act      | 执行选中的 adapter、core command、browser、desktop 或 protocol 路径 |
-| Observe  | 每条普通命令返回稳定的成功或错误 envelope                           |
-| Repair   | Owned drift path 给出源文件、失败边界和有界验证命令                 |
+| 阶段     | Runtime 行为                                                         |
+| -------- | -------------------------------------------------------------------- |
+| Discover | 编译意图与双语检索返回一组带选择依据的小型候选集                     |
+| Select   | 调用方选择一条声明了 strategy 和 substrate 的 operation              |
+| Govern   | `open`、`confirm`、`locked` profile 检查 effect 和 capability scope  |
+| Act      | 执行选中的 adapter、core command、browser、desktop 或 protocol 路径  |
+| Observe  | 每条普通命令返回稳定的成功或错误 envelope                            |
+| Repair   | Owned drift path 给出源文件、失败边界和有界验证命令                  |
+| Evolve   | Recorded failure 生成隔离 candidate，通过成对和 held-out eval 后晋级 |
 
 Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都可以独立选择。
 
@@ -99,7 +100,7 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 - <!-- STATS:command_count -->1890<!-- /STATS --> 条注册命令
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10314<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10334<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -225,6 +226,17 @@ unicli repair <site> <command>
 ```
 
 `repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
+
+对于重复出现的 failure，`evolve adapter` 会分开保存 proposal evidence、validation 和 held-out case。Agent 只编辑隔离的 YAML candidate。Uni-CLI 完成 baseline 对照并通过 promotion gate 后，才会安装 user override。
+
+```bash
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --validation-run <validation-run> \
+  --held-out-run <held-out-run>
+unicli evolve verify <session-id>
+unicli evolve promote <session-id>
+```
 
 下面是一份最小 YAML adapter。
 

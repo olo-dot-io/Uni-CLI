@@ -11,12 +11,13 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { writeFileSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { userAdapterRoot } from "../engine/user-home.js";
 
 const REGISTRY_URL =
   "https://raw.githubusercontent.com/olo-dot-io/unicli-registry/main";
 
 function userAdapterDir(): string {
-  return join(process.env.HOME ?? "~", ".unicli", "adapters");
+  return userAdapterRoot();
 }
 
 export function registerAdapterCommands(program: Command): void {

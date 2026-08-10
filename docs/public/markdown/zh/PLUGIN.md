@@ -7,7 +7,7 @@
 - 栏目: 扩展
 - 上级: 扩展 (/zh/guide/adapters)
 
-Plugin 把 adapter 和可选 JavaScript extension 组织在主仓库外。安装后的 plugin 位于 `~/.unicli/plugins/`，并在启动时加入 runtime catalog。
+Plugin 可以组合 portable Agent Skill、Uni-CLI adapter 和 runtime extension。安装后的 plugin 位于 `~/.unicli/plugins/`，并在启动时加入 runtime catalog。
 
 ## 创建 plugin
 
@@ -16,23 +16,56 @@ unicli plugin create astronomy
 cd unicli-plugin-astronomy
 ```
 
-Scaffold 包含：
+Scaffold 包含以下文件。
 
 ```text
 unicli-plugin-astronomy/
+├── plugin.json
 ├── unicli-plugin.json
+├── skills/
+│   └── example/
+│       └── SKILL.md
 ├── README.md
 ├── adapters/
 └── steps/
 ```
 
-## Manifest
+## Portable manifest
+
+`plugin.json` 遵循 [Agent Plugins 1.0](https://agent-plugins.org/specification)。Uni-CLI 会验证 closed manifest，发现 `skills/` 下的直接子目录，并把每个有效 Skill 投影为 operation catalog 中的 `agent-plugin.<plugin-name>.<skill-name>`。Portable Skill 始终按 instruction 加载，即使 frontmatter 含有 Uni-CLI `pipeline` 字段也不会执行。
+
+```json
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "astronomy",
+  "version": "1.0.0",
+  "description": "Portable astronomy skills",
+  "extensions": {
+    "dev.unicli": {
+      "manifest": "./unicli-plugin.json"
+    }
+  }
+}
+```
+
+安装前可以检查本地 package，安装后也可以按名称检查。
+
+```bash
+unicli plugin inspect ./unicli-plugin-astronomy -f json
+unicli plugin inspect astronomy -f json
+```
+
+可选的根目录 `mcp.json` 会逐项验证。有效 config 会生成只读的 `agent-plugin.<plugin-name>.__mcp_servers` 描述 operation，并保持 `configuration-only`。Portable loader 不会启动或连接这些 server。MCP config 无效时，其他有效 Skill 仍可加载。
+
+## Uni-CLI runtime manifest
+
+`unicli-plugin.json` 声明 native adapter、custom pipeline step 和可选 JavaScript entry point。
 
 ```json
 {
   "name": "astronomy",
   "version": "1.0.0",
-  "unicli": ">=0.206.0",
+  "unicli": ">=1.2.0",
   "description": "Astronomy operations for Uni-CLI",
   "adapters": "adapters/",
   "steps": "steps/",
@@ -40,11 +73,11 @@ unicli-plugin-astronomy/
 }
 ```
 
-`adapters`、`steps` 和 `main` 都是 plugin 目录中的路径。按 package 实际内容填写。
+`adapters`、`steps` 和 `main` 都是 plugin 目录中的路径。按 package 实际内容填写。`plugin.json` 出现 fatal error 时，该 package 的 client-specific runtime 也不会加载。
 
 ## 添加 adapter
 
-Plugin YAML 与 packaged adapter 使用同一 schema：
+Plugin YAML 与 packaged adapter 使用同一 schema。
 
 ```yaml
 site: observatory
@@ -81,7 +114,7 @@ schema_version: v2
 
 ## 添加 pipeline step
 
-从 `@zenalexa/unicli/engine/registry` 导入 public step registry，在 plugin entry point 注册：
+从 `@zenalexa/unicli/engine/registry` 导入 public step registry，然后在 plugin entry point 注册。
 
 ```typescript
 import { registerStep } from "@zenalexa/unicli/engine/registry";
@@ -91,7 +124,7 @@ registerStep("astronomy_normalize", (ctx, config) => {
 });
 ```
 
-查看已加载的 custom step：
+用下面的命令查看已加载的 custom step。
 
 ```bash
 unicli plugin steps
@@ -99,7 +132,7 @@ unicli plugin steps
 
 ## Public package imports
 
-Uni-CLI 为 registry、errors、types、output、engine、transport、browser helper、protocol schema 和 download 发布 versioned subpath：
+Uni-CLI 为 registry、errors、types、output、engine、transport、browser helper、protocol schema 和 download 发布 versioned subpath。下面的 import 使用这组公开入口。
 
 ```typescript
 import { cli } from "@zenalexa/unicli/registry";
@@ -156,7 +189,7 @@ unicli plugin update astronomy
 unicli plugin uninstall astronomy
 ```
 
-安装后检查新目录项：
+安装后检查新目录项。
 
 ```bash
 unicli search "search observatory objects"

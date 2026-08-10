@@ -14,7 +14,6 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
@@ -29,6 +28,7 @@ import type {
   RetrievalMetadata,
   TargetSurface,
 } from "../types.js";
+import { userAdapterRoot } from "../engine/user-home.js";
 
 export type ManifestArg = AdapterArg;
 
@@ -135,11 +135,7 @@ function overlayUserAdapters(packaged: Manifest): Manifest {
       })),
     };
   }
-  const userDirectory = join(
-    process.env.HOME ?? homedir(),
-    ".unicli",
-    "adapters",
-  );
+  const userDirectory = userAdapterRoot();
   if (!existsSync(userDirectory)) return { ...packaged, sites };
 
   for (const site of readdirSync(userDirectory).sort()) {

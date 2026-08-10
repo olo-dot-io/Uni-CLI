@@ -9,13 +9,13 @@ description: 读取 adapter failure，更新对应源文件，并验证原操作
 
 ## 读取 envelope
 
-用 JSON 运行目标操作，并保留原参数：
+用 JSON 运行目标操作，并保留原参数。
 
 ```bash
 unicli <site> <command> [args] -f json
 ```
 
-Adapter failure 可能包含：
+Adapter failure 可能包含以下字段。
 
 ```json
 {
@@ -38,7 +38,7 @@ Adapter failure 可能包含：
 unicli repair <site> <command> --dry-run
 ```
 
-带参数的命令可以传入原 argv：
+带参数的命令可以传入原 argv。
 
 ```bash
 unicli repair <site> <command> \
@@ -50,7 +50,7 @@ unicli repair <site> <command> \
 
 ## 更新对应实现
 
-查看命名的 adapter，以及上游响应或页面状态。常见变化包括：
+查看命名的 adapter，以及上游响应或页面状态。常见变化包括以下情况。
 
 - endpoint 或 response field 发生变化
 - selector 更新
@@ -75,10 +75,37 @@ unicli repair <site> <command> \
 
 ## Quarantined adapter
 
-列出等待修复的命令：
+列出等待修复的命令。
 
 ```bash
 unicli repair --quarantined
 ```
 
 源文件更新且目标 verifier 成功后，维护者可以把 adapter 放回常规测试集合。
+
+## 把重复 repair 接入 evolution
+
+一次成功 replay 不足以支持持久 override 时，可以创建 evolution session。Proposal、validation 和 held-out run 需要分别录制。
+
+```bash
+unicli --record <site> <command> [args]
+unicli runs list -f json
+
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --validation-run <validation-run> \
+  --held-out-run <held-out-run> \
+  -f json
+```
+
+返回的 session 包含 `candidate.path`。Agent 可以编辑这个隔离 YAML 文件，也可以通过 `--candidate <path>` 传入已有 candidate。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field。
+
+```bash
+unicli evolve diff <session-id> -f json
+unicli evolve verify <session-id> -f json
+unicli evolve promote <session-id> -f json
+```
+
+Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。`promote` 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
+
+Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复 endpoint、selector、extraction 和 pipeline behavior，不能改变 session 的 authorization 或 execution scope。

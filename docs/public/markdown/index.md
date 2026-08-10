@@ -39,7 +39,7 @@ unicli hackernews top --limit 5 -f json
 - Static adapter sites: 337
 - Registered adapter operations: 1890
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10314
+- Tests: 10334
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 

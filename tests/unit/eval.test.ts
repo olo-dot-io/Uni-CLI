@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -38,6 +38,18 @@ describe("applyJudge — nonEmpty", () => {
     expect(applyJudge(null, "   \n\n", 0, { type: "nonEmpty" }).passed).toBe(
       false,
     );
+  });
+});
+
+describe("applyJudge — effectStatus", () => {
+  it("reads the operation effect verdict from the envelope", () => {
+    const parsed = { meta: { effect_verdict: { status: "confirmed" } } };
+    expect(
+      applyJudge(parsed, JSON.stringify(parsed), 0, {
+        type: "effectStatus",
+        equals: "confirmed",
+      }).passed,
+    ).toBe(true);
   });
 });
 
@@ -135,6 +147,74 @@ describe("loadEvalFile", () => {
       const file = join(dir, "bad.yaml");
       writeFileSync(file, "name: only-name\n");
       expect(() => loadEvalFile(file)).toThrow(/missing/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects invalid evolution split metadata", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-evals-"));
+    try {
+      const file = join(dir, "bad-split.yaml");
+      writeFileSync(
+        file,
+        [
+          "name: bad-split",
+          "adapter: fixture",
+          "cases:",
+          "  - command: probe",
+          "    split: heldout",
+          "    judges:",
+          "      - { type: exitCode, equals: 0 }",
+        ].join("\n"),
+      );
+      expect(() => loadEvalFile(file)).toThrow(/split must be/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects duplicate case ids used by paired comparison", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-evals-"));
+    try {
+      const file = join(dir, "duplicate-ids.yaml");
+      writeFileSync(
+        file,
+        [
+          "name: duplicate-ids",
+          "adapter: fixture",
+          "cases:",
+          "  - id: repeated",
+          "    command: probe",
+          "    judges:",
+          "      - { type: exitCode, equals: 0 }",
+          "  - id: repeated",
+          "    command: probe",
+          "    judges:",
+          "      - { type: exitCode, equals: 0 }",
+        ].join("\n"),
+      );
+      expect(() => loadEvalFile(file)).toThrow(/case ids must be unique/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects cases without an executable verifier", () => {
+    const dir = mkdtempSync(join(tmpdir(), "unicli-evals-"));
+    try {
+      const file = join(dir, "no-judge.yaml");
+      writeFileSync(
+        file,
+        [
+          "name: no-judge",
+          "adapter: fixture",
+          "cases:",
+          "  - command: probe",
+          "    judges: []",
+        ].join("\n"),
+      );
+      expect(() => loadEvalFile(file)).toThrow(/at least one judge/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

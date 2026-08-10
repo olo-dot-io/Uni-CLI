@@ -3,13 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -103,7 +97,9 @@ describe("plugin scaffold (createPlugin)", () => {
   it("creates plugin directory with manifest", () => {
     const dir = createPlugin("my-test", tmpDir);
     expect(dir).toBe(tmpDir);
+    expect(existsSync(join(dir, "plugin.json"))).toBe(true);
     expect(existsSync(join(dir, "unicli-plugin.json"))).toBe(true);
+    expect(existsSync(join(dir, "skills", "example", "SKILL.md"))).toBe(true);
     expect(existsSync(join(dir, "adapters"))).toBe(true);
     expect(existsSync(join(dir, "steps"))).toBe(true);
     expect(existsSync(join(dir, "README.md"))).toBe(true);
@@ -117,7 +113,14 @@ describe("plugin scaffold (createPlugin)", () => {
     expect(manifest.version).toBe("1.0.0");
     expect(manifest.adapters).toBe("adapters/");
     expect(manifest.steps).toBe("steps/");
-    expect(manifest.unicli).toBe(">=0.206.0");
+    expect(manifest.unicli).toBe(">=1.2.0");
+    const portable = JSON.parse(
+      readFileSync(join(tmpDir, "plugin.json"), "utf-8"),
+    ) as { $schema: string; name: string };
+    expect(portable.$schema).toBe(
+      "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    );
+    expect(portable.name).toBe("my-test");
   });
 });
 
@@ -126,8 +129,7 @@ describe("plugin scaffold (createPlugin)", () => {
 // ---------------------------------------------------------------------------
 describe("listManifestPlugins", () => {
   it("returns empty array when plugins dir does not exist", () => {
-    // listManifestPlugins checks ~/.unicli/plugins/ which may or may not exist
-    // but it should never throw
+    // The installed plugin directory may or may not exist, but listing is safe.
     const result = listManifestPlugins();
     expect(Array.isArray(result)).toBe(true);
   });

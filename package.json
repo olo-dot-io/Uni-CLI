@@ -83,6 +83,10 @@
       "types": "./dist/engine/steps/index.d.ts",
       "import": "./dist/engine/steps/index.js"
     },
+    "./engine/evolution": {
+      "types": "./dist/engine/evolution/index.d.ts",
+      "import": "./dist/engine/evolution/index.js"
+    },
     "./transport": {
       "types": "./dist/transport/bus.d.ts",
       "import": "./dist/transport/bus.js"

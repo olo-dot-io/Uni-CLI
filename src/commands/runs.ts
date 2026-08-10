@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import type { Command } from "commander";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx, type AgentError } from "../output/envelope.js";
@@ -23,6 +24,13 @@ import {
 import { compareRunEvents } from "../engine/session/compare.js";
 import { buildInvocation } from "../engine/invoke.js";
 import { executeWithRunRecording } from "../engine/session/run-loop.js";
+import { resolveCommand } from "../registry.js";
+import {
+  createEvolutionStore,
+  distillRunEvidence,
+  EvidenceDistillError,
+  writePrivateJson,
+} from "../engine/evolution/index.js";
 
 interface RunsListOptions {
   root?: string;
@@ -45,6 +53,13 @@ interface RunsStreamOptions {
 
 interface RunsProbeOptions {
   root?: string;
+}
+
+interface RunsDistillOptions {
+  root?: string;
+  output?: string;
+  model?: string[];
+  domain?: string;
 }
 
 interface RunsReplayOptions {
@@ -331,6 +346,98 @@ export function registerRunsCommand(program: Command): void {
           makeCtx("runs.probe", startedAt),
         ),
       );
+    });
+
+  runs
+    .command("distill <run_ids...>")
+    .description(
+      "Distill same-command run traces into a private evolution evidence packet",
+    )
+    .option("--root <path>", "Override run trace root")
+    .option("--output <path>", "Write the evidence packet to this path")
+    .option("--model <names...>", "Models for which the evidence is relevant")
+    .option("--domain <name>", "Task-domain scope")
+    .action(async (runIds: string[], opts: RunsDistillOptions) => {
+      const startedAt = Date.now();
+      const store = createRunStore({ rootDir: opts.root });
+      try {
+        const firstEvents = await readRunEvents(store, runIds[0]);
+        if (firstEvents.length === 0 || !firstEvents[0]?.metadata) {
+          printRunError(program, "runs.distill", startedAt, {
+            code: "not_found",
+            message: `run trace not found or empty: ${runIds[0]}`,
+            suggestion: "run `unicli runs list` and choose recorded run ids",
+            retryable: false,
+          });
+          return;
+        }
+        const metadata = firstEvents[0].metadata;
+        const resolved = resolveCommand(metadata.site, metadata.cmd);
+        if (!resolved) {
+          printRunError(program, "runs.distill", startedAt, {
+            code: "invalid_input",
+            message: `recorded command is not registered: ${metadata.command}`,
+            suggestion:
+              "restore the adapter or use the Uni-CLI version that recorded this run",
+            retryable: false,
+          });
+          return;
+        }
+        const domain = opts.domain ?? resolved.command.domain;
+        const packet = await distillRunEvidence({
+          store,
+          runIds,
+          component: {
+            kind: "adapter",
+            id: `adapter:${metadata.site}.${metadata.cmd}`,
+            site: metadata.site,
+            command: metadata.cmd,
+            source_path: resolved.command.adapter_path ?? metadata.adapter_path,
+            source_tier: resolved.command.source_tier ?? "runtime",
+          },
+          scope: {
+            ...(domain ? { domain } : {}),
+            model_affinity: [...new Set(opts.model ?? [])],
+            permission_profile: metadata.permission_profile,
+            target_surface: metadata.target_surface,
+            ...(resolved.command.operation_effect
+              ? { operation_effect: resolved.command.operation_effect }
+              : {}),
+            ...(resolved.command.execution_operator
+              ? { execution_operator: resolved.command.execution_operator }
+              : {}),
+          },
+        });
+        const outputPath = opts.output
+          ? resolve(opts.output)
+          : join(
+              createEvolutionStore().root_dir,
+              "evidence",
+              `${packet.packet_id}.json`,
+            );
+        await writePrivateJson(outputPath, packet);
+        console.log(
+          format(
+            { path: outputPath, packet },
+            undefined,
+            fmt(program),
+            makeCtx("runs.distill", startedAt),
+          ),
+        );
+      } catch (error) {
+        if (error instanceof EvidenceDistillError) {
+          printRunError(program, "runs.distill", startedAt, {
+            code:
+              error.code === "run_not_found" ? "not_found" : "invalid_input",
+            message: error.message,
+            suggestion:
+              "select recorded runs for one adapter command and retry",
+            retryable: false,
+          });
+          return;
+        }
+        throw error;
+      }
     });
 
   runs

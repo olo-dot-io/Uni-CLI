@@ -29,6 +29,7 @@ import {
   yamlSiteMetadata,
   type YamlAdapterDocument,
 } from "../core/yaml-adapter.js";
+import { userAdapterRoot } from "../engine/user-home.js";
 
 /**
  * Upper bound on YAML adapter file size. A legitimate YAML adapter is
@@ -134,7 +135,9 @@ function findAdapterDirs(): { yamlDir: string; tsDir: string } {
 }
 
 const { yamlDir: BUILTIN_YAML_DIR, tsDir: BUILTIN_TS_DIR } = findAdapterDirs();
-const USER_DIR = join(process.env.HOME ?? "~", ".unicli", "adapters");
+function userDirectory(): string {
+  return userAdapterRoot();
+}
 
 function adapterSourcePath(absPath: string): string {
   const normalized = absPath.split(sep).join("/");
@@ -175,7 +178,7 @@ export function loadAdaptersFromDir(
     sourceTier ??
     (dir === BUILTIN_YAML_DIR || dir === BUILTIN_TS_DIR
       ? "packaged"
-      : dir === USER_DIR ||
+      : dir === userDirectory() ||
           dir.split(sep).join("/").includes("/.unicli/adapters")
         ? "user"
         : "runtime");
@@ -368,7 +371,7 @@ export function loadAllAdapters(options: { strict?: boolean } = {}): number {
     strict: false,
   });
   failures.push(...lastYamlAdapterLoadFailures);
-  total += loadAdaptersFromDir(USER_DIR, "user", { strict: false });
+  total += loadAdaptersFromDir(userDirectory(), "user", { strict: false });
   failures.push(...lastYamlAdapterLoadFailures);
   lastYamlAdapterLoadFailures = failures;
   const strict = options.strict ?? SCHEMA_MODE === "strict";
@@ -388,7 +391,7 @@ export async function loadTsAdapters(
   tsAdapterLoadGeneration++;
   const files = [
     ...collectTsFiles(BUILTIN_TS_DIR),
-    ...collectTsFiles(USER_DIR),
+    ...collectTsFiles(userDirectory()),
   ];
   let count = 0;
   const failures: AdapterLoadFailure[] = [];

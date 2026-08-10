@@ -7,7 +7,7 @@
 - Section: Build
 - Parent: Build (/guide/adapters)
 
-A plugin groups adapters and optional JavaScript extensions outside the main repository. Installed plugins live under `~/.unicli/plugins/` and join the runtime catalog at startup.
+A plugin can combine portable Agent Skills with Uni-CLI adapters and runtime extensions. Installed plugins live under `~/.unicli/plugins/` and join the runtime catalog at startup.
 
 ## Create a plugin
 
@@ -16,23 +16,56 @@ unicli plugin create astronomy
 cd unicli-plugin-astronomy
 ```
 
-The scaffold contains:
+The scaffold contains these files.
 
 ```text
 unicli-plugin-astronomy/
+├── plugin.json
 ├── unicli-plugin.json
+├── skills/
+│   └── example/
+│       └── SKILL.md
 ├── README.md
 ├── adapters/
 └── steps/
 ```
 
-## Manifest
+## Portable manifest
+
+`plugin.json` follows [Agent Plugins 1.0](https://agent-plugins.org/specification). Uni-CLI validates the closed manifest, discovers immediate child skills under `skills/`, and projects each valid Skill as `agent-plugin.<plugin-name>.<skill-name>` in the operation catalog. Portable Skills remain instruction-only, including when their frontmatter contains a Uni-CLI `pipeline` field.
+
+```json
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "astronomy",
+  "version": "1.0.0",
+  "description": "Portable astronomy skills",
+  "extensions": {
+    "dev.unicli": {
+      "manifest": "./unicli-plugin.json"
+    }
+  }
+}
+```
+
+Inspect a package before installation or inspect an installed package by name.
+
+```bash
+unicli plugin inspect ./unicli-plugin-astronomy -f json
+unicli plugin inspect astronomy -f json
+```
+
+An optional root `mcp.json` is validated entry by entry. Valid configuration adds the read-only `agent-plugin.<plugin-name>.__mcp_servers` descriptor operation and remains `configuration-only`; the portable loader does not start or connect to those servers. Invalid MCP configuration does not disable independently valid Skills.
+
+## Uni-CLI runtime manifest
+
+`unicli-plugin.json` declares native adapters, custom pipeline steps, and an optional JavaScript entry point.
 
 ```json
 {
   "name": "astronomy",
   "version": "1.0.0",
-  "unicli": ">=0.206.0",
+  "unicli": ">=1.2.0",
   "description": "Astronomy operations for Uni-CLI",
   "adapters": "adapters/",
   "steps": "steps/",
@@ -40,11 +73,11 @@ unicli-plugin-astronomy/
 }
 ```
 
-`adapters`, `steps`, and `main` are paths inside the plugin directory. Include the entries your package uses.
+`adapters`, `steps`, and `main` are paths inside the plugin directory. Include the entries your package uses. A fatal `plugin.json` error stops client-specific runtime loading for that package.
 
 ## Add adapters
 
-Plugin YAML uses the same schema as packaged adapters:
+Plugin YAML uses the same schema as packaged adapters.
 
 ```yaml
 site: observatory
@@ -91,7 +124,7 @@ registerStep("astronomy_normalize", (ctx, config) => {
 });
 ```
 
-List loaded custom steps:
+List loaded custom steps with this command.
 
 ```bash
 unicli plugin steps
@@ -99,7 +132,7 @@ unicli plugin steps
 
 ## Public package imports
 
-Uni-CLI publishes versioned subpaths for registry, errors, types, output, engine, transports, browser helpers, protocol schemas, and downloads. Examples:
+Uni-CLI publishes versioned subpaths for registry, errors, types, output, engine, transports, browser helpers, protocol schemas, and downloads. The imports below use that surface.
 
 ```typescript
 import { cli } from "@zenalexa/unicli/registry";
@@ -109,7 +142,7 @@ import { registerStep } from "@zenalexa/unicli/engine/registry";
 import { getTransportBus } from "@zenalexa/unicli/transport";
 ```
 
-Use package exports rather than `dist/` paths so the import tracks the supported public surface.
+Use package exports so the import tracks the supported public surface without depending on internal `dist/` paths.
 
 ## Broker-owned browser invocation pattern
 
@@ -156,7 +189,7 @@ unicli plugin update astronomy
 unicli plugin uninstall astronomy
 ```
 
-After installation, verify the new catalog entries:
+After installation, verify the new catalog entries.
 
 ```bash
 unicli search "search observatory objects"

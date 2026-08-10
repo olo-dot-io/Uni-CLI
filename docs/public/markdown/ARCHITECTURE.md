@@ -125,6 +125,18 @@ Failed calls place their stable code, message, suggestion, and available repair 
 
 Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs that are still being tested.
 
+## Harness evolution kernel
+
+The evolution kernel turns selected run traces into a controlled adapter update. It owns five boundaries.
+
+1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
+2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays.
+3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
+4. `evolve verify` executes both overlays through the public CLI and records pass rate, duration, changed cases, and effect verdicts.
+5. `evolve promote` requires a changed candidate, strict validation improvement, and no held-out regression. Promotion writes a user override and preserves an exact rollback artifact.
+
+The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
+
 ## Protocol projections
 
 The native CLI exposes the complete runtime. MCP offers compact, deferred, and expanded tool profiles. ACP and other generated surfaces project selected operations from the same catalog. `unicli mcp health` reports the exact MCP profile and tool counts on the installed version.
@@ -140,6 +152,7 @@ The native CLI exposes the complete runtime. MCP offers compact, deferred, and e
 | Site identity resolution   | `src/discovery/site-resolver.ts`   |
 | Capability feasibility     | `src/discovery/feasibility.ts`     |
 | Engine and pipeline        | `src/engine/`                      |
+| Harness evolution          | `src/engine/evolution/`            |
 | Command surface            | `src/commands/`                    |
 | Browser runtime            | `src/browser/`                     |
 | Desktop and visual control | `src/compute/`, `src/transport/`   |
