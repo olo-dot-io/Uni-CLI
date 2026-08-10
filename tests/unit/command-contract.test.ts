@@ -11,7 +11,10 @@ import {
   describe as describeUnicli,
   describeCommand,
 } from "../../src/commands/describe.js";
-import { getCoreDiscoveryCommand } from "../../src/discovery/core-catalog.js";
+import {
+  getCoreDiscoveryCommand,
+  listCoreDiscoveryCommands,
+} from "../../src/discovery/core-catalog.js";
 import {
   AdapterType,
   Strategy,
@@ -19,6 +22,25 @@ import {
 } from "../../src/types.js";
 
 describe("CommandContract", () => {
+  it("declares the effect of every scholarly core command", () => {
+    const scholarly = listCoreDiscoveryCommands().filter(
+      (command) => command.site === "scholar",
+    );
+    expect(scholarly.length).toBeGreaterThan(0);
+    expect(
+      scholarly.every((command) => command.operation_effect !== undefined),
+    ).toBe(true);
+    expect(
+      scholarly.every((command) => command.operation_family !== "unknown"),
+    ).toBe(true);
+    expect(getCoreDiscoveryCommand("scholar", "search")?.operation_effect).toBe(
+      "read",
+    );
+    expect(
+      getCoreDiscoveryCommand("scholar", "download")?.operation_effect,
+    ).toBe("download_file");
+  });
+
   it("treats a CDP minimum capability as browser use even on a web-api registration helper", () => {
     const adapter: AdapterManifest = {
       name: "electron-helper",

@@ -8,6 +8,7 @@ import {
   requirePmid,
   requirePubMedLimit,
   requirePubMedMaxChars,
+  requirePubMedResults,
   requirePubMedText,
 } from "./articles.js";
 
@@ -26,6 +27,19 @@ describe("pubmed agent-facing commands", () => {
     expect(requirePubMedMaxChars(undefined)).toBe(40000);
     expect(requirePubMedMaxChars("1000")).toBe(1000);
     expect(() => requirePubMedMaxChars("999")).toThrow("max-chars");
+    try {
+      requirePmid("PMID:1");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "invalid_input" });
+    }
+    expect(() => requirePubMedResults([], "No PubMed results.")).toThrow(
+      "No PubMed results",
+    );
+    try {
+      requirePubMedResults([], "No PubMed results.");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
   });
 
   it("maps PubMed summary rows in PMID order", () => {
@@ -111,6 +125,11 @@ describe("pubmed agent-facing commands", () => {
     expect(() => mapPubMedArticleRows("<root />", "123")).toThrow(
       "did not include a title",
     );
+    try {
+      mapPubMedArticleRows("<root />", "123");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "empty_result" });
+    }
   });
 
   it("maps normalized PubMed article metadata rows", () => {

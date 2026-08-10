@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  adapterLimitDefault,
   findAmbiguousLongOptionPositional,
   normalizeAdapterOptionValues,
 } from "../../../src/commands/dispatch.js";
@@ -24,6 +25,13 @@ describe("CLI dispatch positional helpers", () => {
 });
 
 describe("CLI dispatch option normalization", () => {
+  it("preserves an adapter-declared limit default", () => {
+    expect(
+      adapterLimitDefault([{ name: "limit", type: "int", default: 100 }]),
+    ).toBe("100");
+    expect(adapterLimitDefault([])).toBe("20");
+  });
+
   it("maps canonical hyphenated flags and legacy underscored flags to adapter arg names", () => {
     const args = [{ name: "max_chars_k", type: "int" as const }];
 

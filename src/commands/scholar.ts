@@ -6,7 +6,7 @@
  * @breaks      Missing capability tags make scholarly sources invisible; unfiltered internal ArgBags violate adapter schemas; weak reference routing can send DOI/arXiv/PMID/OpenReview lookups to the wrong first source; weak canonicalized availability can leave title-based Agent runbooks blocked on explicit source subsets; weak workflow/evidence classification can invite citation from metadata-only rows; weak reproducibility planning can encourage running uninspected remote code; weak review command selection can return search rows instead of review-thread evidence; missing fulltext/PDF artifact adapter blocks read; missing resource output fields hide linked code/data.
  * @invariants  --sources default is a conservative first-source set; coverage audits inspect registered capabilities without network I/O; workflow and evidence classification are derived from availability rows and never download, execute, or summarize claims; availability/evidence/source-audit/workflow/reproduce may use canonical lookup sources only to resolve an unknown title before rerunning the caller's requested source scope; reproducibility planning never executes clone/install/run commands and requires repository inspection before install; review retrieval prefers forum/thread commands over search commands; resource commands default to sources exposing the requested resource capability; availability audits fetch metadata/PDF/resource evidence without writing artifacts; source-direct fulltext is tried before PDF artifacts for `scholar read`; unknown artifact refs use every scholar.pdf source; --sources all is registry capability discovery; DOI is the primary dedupe key; internal fan-out passes only args declared by the target command.
  * @side-effects Executes adapter commands through the engine kernel; source-direct fulltext may fetch remote XML; artifact subcommands may write PDFs and execute pdftotext through scholar-artifacts.
- * @perf        Fan-out is sequential today, O(S * R), where S is source count and R is rows per source.
+ * @perf        Independent search fan-out runs concurrently; result fusion is O(S * R), where S is source count and R is rows per source.
  * @concurrency safe — Commander handlers run one at a time per process
  * @test        tests/unit/commands/scholar.test.ts
  * @stability   experimental
@@ -31,9 +31,18 @@ import type {
   OutputFormat,
 } from "../types.js";
 import type {
+  ScholarlyContextRecord,
   ScholarlyReferenceRoute,
   ScholarlyWorkRecord,
 } from "../types/scholarly.js";
+import {
+  isCrossrefResearchContent,
+  isCrossrefVenueMatch,
+} from "../adapters/_shared/crossref.js";
+import {
+  ccfResidualSearchQuery,
+  findCcfConferenceInText,
+} from "../adapters/ccf/resolve.js";
 
 export const DEFAULT_SCHOLAR_SOURCES = [
   "semantic-scholar",
@@ -43,6 +52,23 @@ export const DEFAULT_SCHOLAR_SOURCES = [
   "dblp",
   "pubmed",
 ] as const;
+
+export const DEFAULT_SCHOLAR_VENUE_SOURCES = [
+  "crossref",
+  "acm",
+  "ieee",
+  "aaai",
+  "pacmpl",
+  "usenix",
+  "dblp",
+  "sigchi",
+  "openreview",
+  "cvf",
+  "neurips",
+  "pmlr",
+] as const;
+
+const DEFAULT_SCHOLAR_TIMEOUT_MS = 20_000;
 
 const CANONICAL_REFERENCE_SOURCES = [
   "semantic-scholar",
@@ -72,6 +98,14 @@ export const SCHOLAR_CAPABILITIES = [
 ] as const;
 
 export type ScholarCapability = (typeof SCHOLAR_CAPABILITIES)[number];
+
+export const SCHOLAR_CONTEXT_CAPABILITIES = [
+  "scholar.context",
+  "scholar.awards",
+] as const;
+
+export type ScholarContextCapability =
+  (typeof SCHOLAR_CONTEXT_CAPABILITIES)[number];
 
 const SINGLE_RECORD_ARG_NAMES = new Set([
   "id",
@@ -216,6 +250,38 @@ export function listScholarSourcesByCapability(
     .map((adapter) => adapter.name);
 }
 
+export function findScholarContextCommandByCapability(
+  adapter: AdapterManifest,
+  capability: ScholarContextCapability,
+): { name: string; command: AdapterCommand } | undefined {
+  const matches = Object.entries(adapter.commands).filter(([, command]) =>
+    (command.capabilities ?? []).includes(capability),
+  );
+  if (capability === "scholar.context") {
+    const paperLookup = matches.find(
+      ([, command]) =>
+        declaresAdapterArg(command, "conference") &&
+        declaresAdapterArg(command, "query") &&
+        !(command.capabilities ?? []).includes("scholar.awards"),
+    );
+    if (paperLookup) {
+      return { name: paperLookup[0], command: paperLookup[1] };
+    }
+  }
+  const first = matches[0];
+  return first ? { name: first[0], command: first[1] } : undefined;
+}
+
+export function listScholarContextSourcesByCapability(
+  capability: ScholarContextCapability,
+): string[] {
+  return listScholarAdapters()
+    .filter((adapter) =>
+      Boolean(findScholarContextCommandByCapability(adapter, capability)),
+    )
+    .map((adapter) => adapter.name);
+}
+
 function listScholarReviewSources(): string[] {
   return listScholarAdapters()
     .filter((adapter) => findScholarReviewThreadCommand(adapter))
@@ -261,6 +327,36 @@ function listResourceDetailSourcesForSearchFallback(
   return singleRecordSources;
 }
 
+function commandAcceptsResolvedArgs(
+  command: AdapterCommand,
+  args: Record<string, unknown>,
+): boolean {
+  return (command.adapterArgs ?? [])
+    .filter((arg) => arg.required === true)
+    .every((arg) => args[arg.name] !== undefined && args[arg.name] !== "");
+}
+
+function isSingleRecordResourceSourceApplicable(
+  source: string,
+  route: ScholarlyReferenceRoute,
+  capability: Extract<ScholarCapability, "scholar.code" | "scholar.datasets">,
+): boolean {
+  const adapter = getAllAdapters().find(
+    (candidate) => candidate.name === source,
+  );
+  const found = adapter
+    ? findScholarSingleRecordCommandByCapability(adapter, capability)
+    : undefined;
+  if (!found) return false;
+  if (
+    (source === "hf" || source === "huggingface-papers") &&
+    route.kind !== "arxiv"
+  ) {
+    return false;
+  }
+  return commandAcceptsResolvedArgs(found.command, referenceArgs(route));
+}
+
 function bareDoi(value: string): string {
   return value
     .trim()
@@ -281,16 +377,28 @@ export function resolveScholarReference(ref: string): ScholarlyReferenceRoute {
   const raw = ref.trim();
   const doi = bareDoi(raw);
   if (/^10\.\S+\/\S+/i.test(doi)) {
+    const normalizedDoi = doi.toLowerCase();
+    const publisherSource = normalizedDoi.startsWith("10.1145/")
+      ? "acm"
+      : normalizedDoi.startsWith("10.1109/")
+        ? "ieee"
+        : undefined;
+    const preprintSources = ["10.1101/", "10.64898/"].some((prefix) =>
+      normalizedDoi.startsWith(prefix),
+    )
+      ? ["biorxiv", "medrxiv"]
+      : [];
     return {
       kind: "doi",
       value: doi,
       preferredSources: [
+        ...(publisherSource ? [publisherSource] : []),
         "openalex",
         "crossref",
+        ...(!publisherSource ? ["datacite"] : []),
         "semantic-scholar",
         "unpaywall",
-        "biorxiv",
-        "medrxiv",
+        ...preprintSources,
       ],
     };
   }
@@ -317,10 +425,16 @@ export function resolveScholarReference(ref: string): ScholarlyReferenceRoute {
   const openReview = raw.match(
     /^(?:openreview:\s*|https?:\/\/openreview\.net\/forum\?id=)([A-Za-z0-9_-]{6,20})/i,
   );
-  if (openReview) {
+  const bareOpenReview =
+    /^[A-Za-z0-9_-]{8,20}$/.test(raw) &&
+    ((/[a-z]/.test(raw) && /[A-Z]/.test(raw) && /\d/.test(raw)) ||
+      /[_-]/.test(raw))
+      ? raw
+      : undefined;
+  if (openReview || bareOpenReview) {
     return {
       kind: "openreview",
-      value: openReview[1],
+      value: openReview?.[1] ?? bareOpenReview!,
       preferredSources: ["openreview", "semantic-scholar", "openalex"],
     };
   }
@@ -415,6 +529,24 @@ function numberOpt(
   return n;
 }
 
+function yearOpt(raw: string | undefined): number | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  const year = Number(raw);
+  if (!Number.isInteger(year) || year < 1800 || year > 2100) {
+    throw new Error("year must be an integer in [1800, 2100].");
+  }
+  return year;
+}
+
+function timeoutOpt(raw: string | undefined): number {
+  if (raw === undefined || raw === "") return DEFAULT_SCHOLAR_TIMEOUT_MS;
+  const seconds = Number(raw);
+  if (!Number.isFinite(seconds) || seconds < 1 || seconds > 300) {
+    throw new Error("timeout must be a number of seconds in [1, 300].");
+  }
+  return Math.round(seconds * 1_000);
+}
+
 function coerceStringArray(value: unknown): string[] | undefined {
   const raw = Array.isArray(value)
     ? value
@@ -492,10 +624,16 @@ export function coerceToScholarlyRecords(
       if (Number.isInteger(dateYear)) work.year = dateYear;
     }
     if (recordDate) work.date = recordDate;
+    for (const field of ["publication_year", "conference_year"] as const) {
+      const value = coerceNumber(record[field]);
+      if (value !== undefined) work[field] = value;
+    }
     if (sourceUrl) work.source_url = sourceUrl;
     if (pdfUrl) work.pdf_url = pdfUrl;
     for (const field of [
       "venue",
+      "volume",
+      "issue",
       "type",
       "abstract",
       "doi",
@@ -510,10 +648,16 @@ export function coerceToScholarlyRecords(
       "landing_url",
       "code_url",
       "project_url",
+      "relationship",
+      "verification",
+      "match_type",
+      "evidence_url",
+      "evidence_excerpt",
       "dataset_url",
       "model_urls",
       "dataset_urls",
       "space_urls",
+      "search_query",
     ] as const) {
       if (typeof record[field] === "string" && record[field].length > 0) {
         work[field] = record[field] as never;
@@ -542,6 +686,15 @@ export function coerceToScholarlyRecords(
     if (typeof record.is_open_access === "boolean") {
       work.is_open_access = record.is_open_access;
     }
+    if (typeof record.is_official_code === "boolean") {
+      work.is_official_code = record.is_official_code;
+    }
+    const confidence = coerceNumber(record.confidence);
+    if (confidence !== undefined) work.confidence = confidence;
+    const relationshipEvidence = coerceStringArray(
+      record.relationship_evidence,
+    );
+    if (relationshipEvidence) work.relationship_evidence = relationshipEvidence;
     if (record.raw !== undefined) work.raw = record.raw;
     const matchedFields = coerceStringArray(record.matched_fields);
     if (matchedFields) work.matched_fields = matchedFields;
@@ -560,9 +713,41 @@ export function coerceToScholarlyRecords(
     if (typeof record.search_exhaustive === "boolean") {
       work.search_exhaustive = record.search_exhaustive;
     }
+    const queryCorrections = coerceStringArray(record.query_corrections);
+    if (queryCorrections) work.query_corrections = queryCorrections;
     out.push(work);
   }
   return out;
+}
+
+export function filterScholarlyRecords(
+  records: ScholarlyWorkRecord[],
+  options: {
+    year?: number;
+    venue?: string;
+    venueAlternatives?: readonly string[];
+    requirePdf?: boolean;
+    requireWork?: boolean;
+  },
+): ScholarlyWorkRecord[] {
+  const venues = [options.venue, ...(options.venueAlternatives ?? [])].filter(
+    (venue): venue is string => typeof venue === "string" && venue.length > 0,
+  );
+  return records.filter((record) => {
+    if (options.year !== undefined && record.year !== options.year)
+      return false;
+    if (
+      venues.length > 0 &&
+      !venues.some((venue) => isCrossrefVenueMatch(record.venue, venue))
+    ) {
+      return false;
+    }
+    if (options.requirePdf && !firstPdfRecord([record])) return false;
+    if (options.requireWork && record.type === "conference-ranking")
+      return false;
+    if (options.requireWork && !isCrossrefResearchContent(record)) return false;
+    return true;
+  });
 }
 
 function definedEntries(
@@ -678,7 +863,13 @@ async function executeScholarAdapterCommand(
   found: { name: string; command: AdapterCommand },
   args: Record<string, unknown>,
   capability?: ScholarCapability,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<FanoutOutcome> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_SCHOLAR_TIMEOUT_MS;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, timeoutSignal])
+    : timeoutSignal;
   const invocation = buildInvocation(
     "cli",
     source,
@@ -687,7 +878,7 @@ async function executeScholarAdapterCommand(
       args: normalizeScholarCommandArgs(found.command, args),
       source: "internal",
     },
-    { approved: true },
+    { approved: true, signal },
   );
   if (!invocation) {
     return {
@@ -700,7 +891,22 @@ async function executeScholarAdapterCommand(
       },
     };
   }
-  const result = await execute(invocation);
+  const timedOut = new Promise<undefined>((resolve) => {
+    signal.addEventListener("abort", () => resolve(undefined), { once: true });
+  });
+  const result = await Promise.race([execute(invocation), timedOut]);
+  if (!result) {
+    return {
+      source,
+      capability,
+      records: [],
+      error: {
+        code: "timeout",
+        message: `${source}.${found.name} exceeded the ${timeoutMs} ms deadline`,
+        retryable: true,
+      },
+    };
+  }
   if (result.error) {
     return {
       source,
@@ -725,6 +931,7 @@ async function executeScholarAdapterRows(
   found: { name: string; command: AdapterCommand },
   args: Record<string, unknown>,
 ): Promise<ReviewOutcome> {
+  const signal = AbortSignal.timeout(DEFAULT_SCHOLAR_TIMEOUT_MS);
   const invocation = buildInvocation(
     "cli",
     source,
@@ -733,7 +940,7 @@ async function executeScholarAdapterRows(
       args: normalizeScholarCommandArgs(found.command, args),
       source: "internal",
     },
-    { approved: true },
+    { approved: true, signal },
   );
   if (!invocation) {
     return {
@@ -745,7 +952,21 @@ async function executeScholarAdapterRows(
       },
     };
   }
-  const result = await execute(invocation);
+  const timedOut = new Promise<undefined>((resolve) => {
+    signal.addEventListener("abort", () => resolve(undefined), { once: true });
+  });
+  const result = await Promise.race([execute(invocation), timedOut]);
+  if (!result) {
+    return {
+      source,
+      rows: [],
+      error: {
+        code: "timeout",
+        message: `${source}.${found.name} exceeded the ${DEFAULT_SCHOLAR_TIMEOUT_MS} ms deadline`,
+        retryable: true,
+      },
+    };
+  }
   if (result.error) {
     return {
       source,
@@ -799,10 +1020,43 @@ async function runReviewAdapterCommand(
   return executeScholarAdapterRows(source, found, args);
 }
 
+async function runScholarContextAdapterCommand(
+  source: string,
+  capability: ScholarContextCapability,
+  args: Record<string, unknown>,
+): Promise<ReviewOutcome> {
+  const adapter = getAllAdapters().find(
+    (candidate) => candidate.name === source,
+  );
+  if (!adapter) {
+    return {
+      source,
+      rows: [],
+      error: {
+        code: "adapter_not_found",
+        message: `unknown source: ${source}`,
+      },
+    };
+  }
+  const found = findScholarContextCommandByCapability(adapter, capability);
+  if (!found) {
+    return {
+      source,
+      rows: [],
+      error: {
+        code: "capability_unsupported",
+        message: `${source} does not expose ${capability}`,
+      },
+    };
+  }
+  return executeScholarAdapterRows(source, found, args);
+}
+
 async function runAdapterCommand(
   source: string,
   capability: ScholarCapability,
   args: Record<string, unknown>,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<FanoutOutcome> {
   const adapter = getAllAdapters().find(
     (candidate) => candidate.name === source,
@@ -828,7 +1082,7 @@ async function runAdapterCommand(
       },
     };
   }
-  return executeScholarAdapterCommand(source, found, args, capability);
+  return executeScholarAdapterCommand(source, found, args, capability, options);
 }
 
 async function runSingleRecordResourceCommand(
@@ -877,19 +1131,22 @@ async function collectSingleRecords(
         opts.sources,
         sourceFallback ?? route.preferredSources,
       );
-  const outcomes: FanoutOutcome[] = [];
-  for (const source of sourceList) {
-    outcomes.push(
-      await runAdapterCommand(source, capability, {
+  const outcomes = await Promise.all(
+    sourceList.map((source) =>
+      runAdapterCommand(source, capability, {
         ...referenceArgs(route, opts),
       }),
-    );
-  }
+    ),
+  );
   return {
     sourceList,
     outcomes,
     records: reciprocalRankFusion(
-      outcomes.map((outcome) => outcome.records),
+      outcomes.map((outcome) =>
+        filterScholarlyRecords(outcome.records, {
+          requirePdf: capability === "scholar.pdf",
+        }),
+      ),
       { topN: capability === "scholar.pdf" ? 10 : 50 },
     ),
   };
@@ -906,38 +1163,35 @@ async function collectResourceSearchRecords(
         opts.sources,
         listResourceSearchScholarSourcesByCapability(capability),
       );
-  const outcomes: FanoutOutcome[] = [];
-  for (const source of sourceList) {
-    const adapter = getAllAdapters().find(
-      (candidate) => candidate.name === source,
-    );
-    const found = adapter
-      ? findScholarResourceSearchCommandByCapability(adapter, capability)
-      : undefined;
-    if (!adapter) {
-      outcomes.push({
-        source,
-        records: [],
-        error: {
-          code: "adapter_not_found",
-          message: `unknown source: ${source}`,
-        },
-      });
-      continue;
-    }
-    if (!found) {
-      outcomes.push({
-        source,
-        records: [],
-        error: {
-          code: "capability_unsupported",
-          message: `${source} does not expose queryable ${capability}`,
-        },
-      });
-      continue;
-    }
-    outcomes.push(
-      await executeScholarAdapterCommand(
+  const outcomes = await Promise.all(
+    sourceList.map(async (source) => {
+      const adapter = getAllAdapters().find(
+        (candidate) => candidate.name === source,
+      );
+      const found = adapter
+        ? findScholarResourceSearchCommandByCapability(adapter, capability)
+        : undefined;
+      if (!adapter) {
+        return {
+          source,
+          records: [],
+          error: {
+            code: "adapter_not_found",
+            message: `unknown source: ${source}`,
+          },
+        } satisfies FanoutOutcome;
+      }
+      if (!found) {
+        return {
+          source,
+          records: [],
+          error: {
+            code: "capability_unsupported",
+            message: `${source} does not expose queryable ${capability}`,
+          },
+        } satisfies FanoutOutcome;
+      }
+      return executeScholarAdapterCommand(
         source,
         found,
         {
@@ -945,9 +1199,9 @@ async function collectResourceSearchRecords(
           limit: "5",
         },
         capability,
-      ),
-    );
-  }
+      );
+    }),
+  );
   return {
     sourceList,
     outcomes,
@@ -963,10 +1217,6 @@ async function collectResourceDetailRecordsFromSearch(
   searchRecords: ScholarlyWorkRecord[],
   opts: { source?: string; sources?: string },
 ): Promise<SingleCollectResult> {
-  const sourceList = listResourceDetailSourcesForSearchFallback(
-    capability,
-    opts,
-  );
   const refs = [
     ...new Set(
       searchRecords
@@ -974,16 +1224,34 @@ async function collectResourceDetailRecordsFromSearch(
         .filter((ref) => /^\d{4}\.\d{4,5}(?:v\d+)?$/i.test(ref)),
     ),
   ].slice(0, 3);
-  const outcomes: FanoutOutcome[] = [];
-  for (const ref of refs) {
-    for (const source of sourceList) {
-      outcomes.push(
-        await runAdapterCommand(source, capability, {
-          ...referenceArgs(resolveScholarReference(ref)),
-        }),
+  const sourceList = uniqueStrings(
+    refs.flatMap((ref) => {
+      const route = resolveScholarReference(ref);
+      return listResourceDetailSourcesForSearchFallback(
+        capability,
+        opts,
+      ).filter((source) =>
+        isSingleRecordResourceSourceApplicable(source, route, capability),
       );
-    }
-  }
+    }),
+  );
+  const outcomes = await Promise.all(
+    refs.flatMap((ref) =>
+      sourceList
+        .filter((source) =>
+          isSingleRecordResourceSourceApplicable(
+            source,
+            resolveScholarReference(ref),
+            capability,
+          ),
+        )
+        .map((source) =>
+          runAdapterCommand(source, capability, {
+            ...referenceArgs(resolveScholarReference(ref)),
+          }),
+        ),
+    ),
+  );
   return {
     sourceList,
     outcomes,
@@ -1011,63 +1279,61 @@ async function collectPdfCandidates(
     opts.sources,
     route,
   );
-  const outcomes: FanoutOutcome[] = [];
-  for (const source of sourceList) {
-    outcomes.push(
-      await runAdapterCommand(source, "scholar.pdf", {
+  const outcomes: FanoutOutcome[] = await Promise.all(
+    sourceList.map((source) =>
+      runAdapterCommand(source, "scholar.pdf", {
         ...referenceArgs(route, opts),
       }),
-    );
-  }
+    ),
+  );
 
   if (
     route.kind === "unknown" ||
     outcomes.every((outcome) => outcome.records.length === 0)
   ) {
-    for (const source of sourceList) {
-      const adapter = getAllAdapters().find(
-        (candidate) => candidate.name === source,
-      );
-      const found = adapter
-        ? findScholarQueryableSearchCommand(adapter)
-        : undefined;
-      if (!adapter) {
-        outcomes.push({
+    const fallbackOutcomes = await Promise.all(
+      sourceList.map(async (source): Promise<FanoutOutcome> => {
+        const adapter = getAllAdapters().find(
+          (candidate) => candidate.name === source,
+        );
+        const found = adapter
+          ? findScholarQueryableSearchCommand(adapter)
+          : undefined;
+        if (!adapter) {
+          return {
+            source,
+            records: [],
+            error: {
+              code: "adapter_not_found",
+              message: `unknown source: ${source}`,
+            },
+          };
+        }
+        if (!found) {
+          return {
+            source,
+            records: [],
+            error: {
+              code: "capability_unsupported",
+              message: `${source} does not expose queryable scholar.search`,
+            },
+          };
+        }
+        const outcome = await executeScholarAdapterCommand(
           source,
-          records: [],
-          error: {
-            code: "adapter_not_found",
-            message: `unknown source: ${source}`,
+          found,
+          {
+            query: ref,
+            limit: "5",
           },
-        });
-        continue;
-      }
-      if (!found) {
-        outcomes.push({
-          source,
-          records: [],
-          error: {
-            code: "capability_unsupported",
-            message: `${source} does not expose queryable scholar.search`,
-          },
-        });
-        continue;
-      }
-      const outcome = await executeScholarAdapterCommand(
-        source,
-        found,
-        {
-          query: ref,
-          limit: "5",
-        },
-        "scholar.pdf",
-      );
-      outcomes.push(
-        route.kind === "unknown"
+          "scholar.pdf",
+        );
+        return route.kind === "unknown"
           ? onlyRelevantUnknownQueryRecords(outcome, ref)
-          : outcome,
-      );
-    }
+          : outcome;
+      }),
+    );
+    outcomes.push(...fallbackOutcomes);
   }
 
   return {
@@ -1096,6 +1362,244 @@ function normalizedTitleKey(value: string): string {
     .replace(/\s+/g, " ");
 }
 
+function editDistance(left: string, right: string): number {
+  const previous = Array.from(
+    { length: right.length + 1 },
+    (_, index) => index,
+  );
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= right.length; j += 1) {
+      current[j] = Math.min(
+        (current[j - 1] ?? 0) + 1,
+        (previous[j] ?? 0) + 1,
+        (previous[j - 1] ?? 0) + (left[i - 1] === right[j - 1] ? 0 : 1),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length] ?? Math.max(left.length, right.length);
+}
+
+interface DatamuseCandidate {
+  word?: unknown;
+  tags?: unknown;
+}
+
+function datamuseFrequency(candidate: DatamuseCandidate): number {
+  const tags = Array.isArray(candidate.tags) ? candidate.tags : [];
+  const value = tags.find(
+    (tag): tag is string => typeof tag === "string" && tag.startsWith("f:"),
+  );
+  const frequency = Number(value?.slice(2));
+  return Number.isFinite(frequency) ? frequency : 0;
+}
+
+export function selectDatamuseCorrection(
+  token: string,
+  candidates: DatamuseCandidate[],
+): string | undefined {
+  const original = token.toLowerCase();
+  const exact = candidates.find(
+    (candidate) => String(candidate.word ?? "").toLowerCase() === original,
+  );
+  const exactFrequency = exact ? datamuseFrequency(exact) : 0;
+  const ranked = candidates
+    .map((candidate) => ({
+      word: String(candidate.word ?? "").toLowerCase(),
+      frequency: datamuseFrequency(candidate),
+    }))
+    .filter(
+      (candidate) =>
+        /^[a-z]+$/.test(candidate.word) &&
+        candidate.word !== original &&
+        editDistance(original, candidate.word) <= 2,
+    )
+    .sort(
+      (left, right) =>
+        editDistance(original, left.word) -
+          editDistance(original, right.word) ||
+        right.frequency - left.frequency,
+    );
+  const best = ranked[0];
+  if (!best || best.frequency < 0.5) return undefined;
+  if (exactFrequency > 0 && best.frequency < exactFrequency * 3)
+    return undefined;
+  return best.word;
+}
+
+async function correctAcademicQuery(query: string): Promise<{
+  query: string;
+  corrections: string[];
+}> {
+  const tokens = query.split(/(\s+)/);
+  const replacements = await Promise.all(
+    tokens.map(async (token) => {
+      if (!/^[a-z]{5,}$/i.test(token) || /^[A-Z]{2,12}$/.test(token)) {
+        return undefined;
+      }
+      try {
+        const params = new URLSearchParams({ sp: token, md: "f", max: "8" });
+        const response = await fetch(
+          `https://api.datamuse.com/words?${params}`,
+          {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(4_000),
+          },
+        );
+        if (!response.ok) return undefined;
+        const candidates = (await response.json()) as DatamuseCandidate[];
+        return selectDatamuseCorrection(token, candidates);
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  const corrections: string[] = [];
+  const corrected = tokens
+    .map((token, index) => {
+      const replacement = replacements[index];
+      if (!replacement) return token;
+      corrections.push(`${token} -> ${replacement}`);
+      return replacement;
+    })
+    .join("");
+  return { query: corrected, corrections };
+}
+
+function scholarlyQueryCoverage(
+  record: ScholarlyWorkRecord,
+  query: string,
+): number {
+  const queryTokens = normalizedTitleKey(query).split(" ").filter(Boolean);
+  if (queryTokens.length === 0) return 1;
+  const titleTokens = new Set(
+    normalizedTitleKey(record.title).split(" ").filter(Boolean),
+  );
+  return (
+    queryTokens.filter((token) => titleTokens.has(token)).length /
+    queryTokens.length
+  );
+}
+
+function filterSearchRelevance(
+  records: ScholarlyWorkRecord[],
+  query: string,
+): ScholarlyWorkRecord[] {
+  const tokenCount = normalizedTitleKey(query)
+    .split(" ")
+    .filter(Boolean).length;
+  const threshold = tokenCount >= 4 ? 0.5 : tokenCount >= 2 ? 0.67 : 1;
+  return records.filter(
+    (record) =>
+      isScholarlyRecordRelevantToQuery(record, query) ||
+      scholarlyQueryCoverage(record, query) >= threshold,
+  );
+}
+
+export function parseScholarVenueInput(
+  requestedVenue: string,
+  explicitYear?: string,
+): { venue: string; year?: number } {
+  const embeddedYear = requestedVenue.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  return {
+    venue: embeddedYear
+      ? requestedVenue
+          .replace(new RegExp(`\\b${embeddedYear}\\b`), " ")
+          .replace(/\s+/g, " ")
+          .trim()
+      : requestedVenue.trim(),
+    year:
+      yearOpt(explicitYear) ??
+      (embeddedYear ? Number.parseInt(embeddedYear, 10) : undefined),
+  };
+}
+
+export function filterScholarVenueRecords(
+  records: ScholarlyWorkRecord[],
+  options: {
+    year?: number;
+    venue: string;
+    venueAlternatives?: readonly string[];
+    query?: string;
+  },
+): ScholarlyWorkRecord[] {
+  const filtered = filterScholarlyRecords(records, {
+    venue: options.venue,
+    venueAlternatives: options.venueAlternatives,
+    requireWork: true,
+  })
+    .filter(
+      (record) =>
+        options.year === undefined ||
+        record.conference_year === options.year ||
+        (record.conference_year === undefined && record.year === options.year),
+    )
+    .map((record) =>
+      record.conference_year !== undefined
+        ? {
+            ...record,
+            publication_year: record.publication_year ?? record.year,
+            year: record.conference_year,
+          }
+        : record,
+    );
+  return options.query
+    ? filterSearchRelevance(filtered, options.query)
+    : filtered;
+}
+
+export function filterScholarSearchRecords(
+  records: ScholarlyWorkRecord[],
+  options: {
+    query: string;
+    year?: number;
+    venue?: string;
+    venueAlternatives?: readonly string[];
+  },
+): ScholarlyWorkRecord[] {
+  const scoped = options.venue
+    ? filterScholarVenueRecords(records, {
+        year: options.year,
+        venue: options.venue,
+        venueAlternatives: options.venueAlternatives,
+      })
+    : filterScholarlyRecords(records, {
+        year: options.year,
+        requireWork: true,
+      });
+  return filterSearchRelevance(scoped, options.query);
+}
+
+export function filterScholarTraceCandidates(
+  records: ScholarlyWorkRecord[],
+  options: {
+    ref: string;
+    routeKind: ScholarlyReferenceRoute["kind"];
+    year?: number;
+    venue?: string;
+    venueAlternatives?: readonly string[];
+  },
+): ScholarlyWorkRecord[] {
+  return filterScholarlyRecords(records, {
+    year: options.year,
+    venue: options.venue,
+    venueAlternatives: options.venueAlternatives,
+    requireWork: true,
+  }).filter((record) =>
+    options.routeKind === "unknown"
+      ? isScholarlyRecordRelevantToQuery(record, options.ref)
+      : isScholarlyRecordRelevantToRef(record, options.ref),
+  );
+}
+
+export function inferredConferenceSearchTerms(
+  query: string,
+  conference: NonNullable<ReturnType<typeof findCcfConferenceInText>>,
+): string {
+  return ccfResidualSearchQuery(query, conference) ?? "";
+}
+
 export function isScholarlyRecordRelevantToQuery(
   record: ScholarlyWorkRecord,
   query: string,
@@ -1113,6 +1617,42 @@ export function isScholarlyRecordRelevantToQuery(
   const titleTokens = new Set(titleKey.split(" ").filter(Boolean));
   const matched = queryTokens.filter((token) => titleTokens.has(token)).length;
   return matched / queryTokens.length >= 0.8;
+}
+
+export function selectOpenReviewTraceRecords(
+  records: ScholarlyWorkRecord[],
+  title: string,
+  canonicalOpenReviewId?: string,
+): ScholarlyWorkRecord[] {
+  const relevant = records.filter((record) =>
+    isScholarlyRecordRelevantToQuery(record, title),
+  );
+  if (canonicalOpenReviewId) {
+    const canonical = relevant.filter(
+      (record) => (record.openreview_id ?? record.id) === canonicalOpenReviewId,
+    );
+    if (canonical.length > 0) return canonical;
+  }
+  const exact = relevant.filter(
+    (record) => normalizedTitleKey(record.title) === normalizedTitleKey(title),
+  );
+  return exact.length > 0 ? exact : relevant;
+}
+
+export function openReviewRecordFromTraceAvailability(
+  availability: Record<string, unknown>,
+): ScholarlyWorkRecord | undefined {
+  const openReviewId = rowString(availability, "openreview_id");
+  if (!openReviewId) return undefined;
+  const record = coerceToScholarlyRecords([availability], "openreview")[0];
+  if (!record) return undefined;
+  return {
+    ...record,
+    id: openReviewId,
+    openreview_id: openReviewId,
+    source_adapter: "openreview",
+    source_url: `https://openreview.net/forum?id=${encodeURIComponent(openReviewId)}`,
+  };
 }
 
 function onlyRelevantUnknownQueryRecords(
@@ -1206,7 +1746,11 @@ function columns(detailed = false): string[] {
         "title",
         "authors",
         "year",
+        "publication_year",
+        "conference_year",
         "venue",
+        "volume",
+        "issue",
         "type",
         "doi",
         "arxiv_id",
@@ -1231,6 +1775,8 @@ function columns(detailed = false): string[] {
         "search_scope",
         "search_window",
         "search_exhaustive",
+        "search_query",
+        "query_corrections",
       ]
     : ["id", "title", "year", "venue", "doi", "pdf_url", "source_adapter"];
 }
@@ -1244,6 +1790,14 @@ function resourceColumns(detailed = false): string[] {
     "pdf_url",
     "code_url",
     "project_url",
+    "relationship",
+    "is_official_code",
+    "verification",
+    "match_type",
+    "confidence",
+    "evidence_url",
+    "evidence_excerpt",
+    "relationship_evidence",
     "dataset_url",
     "model_urls",
     "dataset_urls",
@@ -1291,23 +1845,115 @@ function reviewColumns(detailed = false): string[] {
 async function runSearch(
   program: Command,
   query: string,
-  opts: { sources?: string; limit?: string; detailed?: boolean },
+  opts: {
+    sources?: string;
+    limit?: string;
+    year?: string;
+    venue?: string;
+    detailed?: boolean;
+    timeout?: string;
+  },
 ): Promise<void> {
   const startedAt = Date.now();
   const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
   const ctx = makeCtx("scholar.search", startedAt);
   const limit = numberOpt(opts.limit, 20, 100);
+  const timeoutMs = timeoutOpt(opts.timeout);
+  const signal = AbortSignal.timeout(timeoutMs);
+  const inferredConference = opts.venue
+    ? undefined
+    : findCcfConferenceInText(query);
+  const embeddedYear = query.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  const year =
+    yearOpt(opts.year) ?? (embeddedYear ? Number(embeddedYear) : undefined);
+  const venueResolution = opts.venue
+    ? await resolveCcfVenue(opts.venue)
+    : inferredConference
+      ? {
+          title: inferredConference.name,
+          venue: inferredConference.acronym,
+          category: inferredConference.category,
+        }
+      : undefined;
+  const venue = venueResolution?.venue ?? opts.venue;
+  const venueAlternatives = venueResolution
+    ? [venueResolution.title, opts.venue ?? ""]
+    : [];
   const sources = resolveScholarSources(opts.sources);
-  const outcomes: FanoutOutcome[] = [];
-  for (const source of sources) {
-    outcomes.push(
-      await runAdapterCommand(source, "scholar.search", { query, limit }),
-    );
-  }
-  const fused = reciprocalRankFusion(
-    outcomes.map((outcome) => outcome.records),
+  let effectiveQuery = query;
+  let relevanceQuery = inferredConference
+    ? inferredConferenceSearchTerms(query, inferredConference)
+    : query;
+  let corrections: string[] = [];
+  let outcomes = await Promise.all(
+    sources.map((source) =>
+      runAdapterCommand(
+        source,
+        "scholar.search",
+        {
+          query,
+          limit,
+          year,
+          venue,
+          conference: venue,
+        },
+        { signal, timeoutMs },
+      ),
+    ),
+  );
+  let fused = reciprocalRankFusion(
+    outcomes.map((outcome) =>
+      filterScholarSearchRecords(outcome.records, {
+        query: relevanceQuery,
+        year,
+        venue,
+        venueAlternatives,
+      }),
+    ),
     { topN: limit },
   );
+  if (fused.length === 0 && !signal.aborted) {
+    const corrected = await correctAcademicQuery(query);
+    if (corrected.corrections.length > 0 && corrected.query !== query) {
+      effectiveQuery = corrected.query;
+      relevanceQuery = inferredConference
+        ? inferredConferenceSearchTerms(effectiveQuery, inferredConference)
+        : effectiveQuery;
+      corrections = corrected.corrections;
+      const correctedOutcomes = await Promise.all(
+        sources.map((source) =>
+          runAdapterCommand(
+            source,
+            "scholar.search",
+            {
+              query: effectiveQuery,
+              limit,
+              year,
+              venue,
+              conference: venue,
+            },
+            { signal, timeoutMs },
+          ),
+        ),
+      );
+      outcomes = [...outcomes, ...correctedOutcomes];
+      fused = reciprocalRankFusion(
+        correctedOutcomes.map((outcome) =>
+          filterScholarSearchRecords(outcome.records, {
+            query: relevanceQuery,
+            year,
+            venue,
+            venueAlternatives,
+          }).map((record) => ({
+            ...record,
+            search_query: effectiveQuery,
+            query_corrections: corrections,
+          })),
+        ),
+        { topN: limit },
+      );
+    }
+  }
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (fused.length === 0) {
@@ -1319,6 +1965,213 @@ async function runSearch(
         errors.length > 0
           ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
           : "Try --sources all or a more specific query.",
+      retryable: errors.some((outcome) =>
+        isRetryableScholarError(outcome.error),
+      ),
+    };
+    console.error(format(null, undefined, fmt, ctx));
+    process.exit(ExitCode.EMPTY_RESULT);
+  }
+  console.log(format(fused, columns(opts.detailed), fmt, ctx));
+}
+
+interface ResolvedCcfVenue {
+  title: string;
+  venue: string;
+  category?: string;
+  publisher?: string;
+}
+
+async function resolveCcfVenue(
+  venue: string,
+): Promise<ResolvedCcfVenue | undefined> {
+  const outcome = await runAdapterCommand("ccf", "scholar.venue", {
+    query: venue,
+    limit: 1,
+  });
+  const record = outcome.records.find(
+    (candidate) => candidate.type === "conference-ranking",
+  );
+  if (!record || !record.venue) return undefined;
+  const raw =
+    record.raw && typeof record.raw === "object"
+      ? (record.raw as Record<string, unknown>)
+      : undefined;
+  return {
+    title: record.title,
+    venue: record.venue,
+    category: typeof raw?.category === "string" ? raw.category : undefined,
+    publisher: typeof raw?.publisher === "string" ? raw.publisher : undefined,
+  };
+}
+
+export function isScholarContextSourceApplicable(
+  source: string,
+  venue: string,
+  ccfCategory?: string,
+  _publisher?: string,
+): boolean {
+  const normalized = venue
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  if (source === "iclr") {
+    return (
+      normalized.split(" ").includes("iclr") ||
+      normalized.includes("learning representations")
+    );
+  }
+  if (source === "sigchi") {
+    if (ccfCategory?.includes("人机交互")) return true;
+    return /\b(?:chi|uist|ubicomp|cscw|iui|dis|mobilehci|iss|group)\b/i.test(
+      normalized,
+    );
+  }
+  if (source === "usenix") {
+    return /\b(?:fast|nsdi|osdi|atc|usenix security)\b/i.test(normalized);
+  }
+  if (source === "aaai") {
+    return /\baaai\b|artificial intelligence/i.test(normalized);
+  }
+  if (source === "pacmpl") {
+    return /\b(?:oopsla|popl|pldi|icfp)\b/i.test(normalized);
+  }
+  if (source === "cvf") {
+    return /\b(?:cvpr|iccv)\b/i.test(normalized);
+  }
+  if (source === "neurips") {
+    return /\b(?:neurips|nips)\b|neural information processing systems/i.test(
+      normalized,
+    );
+  }
+  if (source === "pmlr") {
+    return /\b(?:icml|colt|aistats)\b|machine learning/i.test(normalized);
+  }
+  if (source === "openreview") {
+    return /\b(?:iclr|neurips|nips)\b/i.test(normalized);
+  }
+  if (source === "acm" || source === "ieee") return true;
+  return true;
+}
+
+async function runVenue(
+  program: Command,
+  requestedVenue: string,
+  opts: {
+    sources?: string;
+    query?: string;
+    limit?: string;
+    year?: string;
+    detailed?: boolean;
+    timeout?: string;
+  },
+): Promise<void> {
+  const startedAt = Date.now();
+  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  const ctx = makeCtx("scholar.venue", startedAt);
+  const limit = numberOpt(opts.limit, 50, 100);
+  const timeoutMs = timeoutOpt(opts.timeout);
+  const signal = AbortSignal.timeout(timeoutMs);
+  const parsedVenue = parseScholarVenueInput(requestedVenue, opts.year);
+  const year = parsedVenue.year;
+  const resolution = await resolveCcfVenue(parsedVenue.venue);
+  const venue = resolution?.venue ?? parsedVenue.venue;
+  const venueAlternatives = resolution
+    ? [resolution.title, parsedVenue.venue]
+    : [];
+  const resolvedSources = resolveScholarSources(
+    opts.sources,
+    DEFAULT_SCHOLAR_VENUE_SOURCES,
+  );
+  const sources = opts.sources
+    ? resolvedSources
+    : resolvedSources.filter((source) =>
+        isScholarContextSourceApplicable(
+          source,
+          venue,
+          resolution?.category,
+          resolution?.publisher,
+        ),
+      );
+  const outcomes = await Promise.all(
+    sources.map(async (source) => {
+      const adapter = getAllAdapters().find(
+        (candidate) => candidate.name === source,
+      );
+      const found = adapter
+        ? source === "dblp"
+          ? findScholarQueryableSearchCommand(adapter)
+          : findScholarCommandByCapability(adapter, "scholar.venue")
+        : undefined;
+      if (!adapter) {
+        return {
+          source,
+          records: [],
+          error: {
+            code: "adapter_not_found",
+            message: `unknown source: ${source}`,
+          },
+        } satisfies FanoutOutcome;
+      }
+      if (!found) {
+        return {
+          source,
+          records: [],
+          error: {
+            code: "capability_unsupported",
+            message: `${source} does not expose scholar.venue`,
+          },
+        } satisfies FanoutOutcome;
+      }
+      const queryOnlyVenueLocator =
+        declaresAdapterArg(found.command, "query") &&
+        !declaresAdapterArg(found.command, "venue") &&
+        !declaresAdapterArg(found.command, "conference");
+      const queryArg =
+        source === "dblp"
+          ? [venue, year].filter(Boolean).join(" ")
+          : queryOnlyVenueLocator
+            ? (resolution?.title ?? parsedVenue.venue)
+            : opts.query;
+      const sourceLimit = source === "dblp" ? Math.max(limit, 20) : limit;
+      return executeScholarAdapterCommand(
+        source,
+        found,
+        {
+          venue,
+          conference: venue,
+          query: queryArg,
+          year,
+          limit: sourceLimit,
+        },
+        "scholar.venue",
+        { signal, timeoutMs },
+      );
+    }),
+  );
+
+  const fused = reciprocalRankFusion(
+    outcomes.map((outcome) =>
+      filterScholarVenueRecords(outcome.records, {
+        year,
+        venue,
+        venueAlternatives,
+        query: opts.query,
+      }),
+    ),
+    { topN: limit },
+  );
+  ctx.duration_ms = Date.now() - startedAt;
+  ctx.surface = "web";
+  if (fused.length === 0) {
+    const errors = outcomes.filter((outcome) => outcome.error);
+    ctx.error = {
+      code: "SCHOLAR_NOT_FOUND",
+      message: `no proceedings papers returned for "${requestedVenue}" across [${sources.join(", ")}]`,
+      suggestion:
+        errors.length > 0
+          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
+          : "Try a full conference name, an exact year, or another source.",
       retryable: errors.some((outcome) =>
         isRetryableScholarError(outcome.error),
       ),
@@ -1354,8 +2207,14 @@ async function runSingle(
   if (records.length === 0) {
     const errors = outcomes.filter((outcome) => outcome.error);
     ctx.error = {
-      code: "SCHOLAR_NOT_FOUND",
-      message: `no scholarly records returned for "${ref}" across [${sourceList.join(", ")}]`,
+      code:
+        capability === "scholar.pdf"
+          ? "SCHOLAR_PDF_NOT_FOUND"
+          : "SCHOLAR_NOT_FOUND",
+      message:
+        capability === "scholar.pdf"
+          ? `no source-backed scholarly PDF returned for "${ref}" across [${sourceList.join(", ")}]`
+          : `no scholarly records returned for "${ref}" across [${sourceList.join(", ")}]`,
       suggestion:
         errors.length > 0
           ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
@@ -1501,15 +2360,20 @@ async function collectResourceRecords(
             opts.sources,
             listSingleRecordScholarSourcesByCapability(capability),
           );
+  if (route.kind !== "unknown") {
+    sourceList = sourceList.filter((source) =>
+      isSingleRecordResourceSourceApplicable(source, route, capability),
+    );
+  }
   let outcomes: FanoutOutcome[] = [];
   if (route.kind !== "unknown") {
-    for (const source of sourceList) {
-      outcomes.push(
-        await runSingleRecordResourceCommand(source, capability, {
+    outcomes = await Promise.all(
+      sourceList.map((source) =>
+        runSingleRecordResourceCommand(source, capability, {
           ...referenceArgs(route),
         }),
-      );
-    }
+      ),
+    );
   }
   let resourceRecords = reciprocalRankFusion(
     outcomes.map((outcome) => outcome.records),
@@ -2179,6 +3043,7 @@ export function buildScholarAvailabilityRow(
     id: representative?.id,
     title: representative?.title,
     year: representative?.year,
+    venue: representative?.venue,
     doi: representative?.doi,
     arxiv_id: representative?.arxiv_id,
     pmid: representative?.pmid,
@@ -3540,6 +4405,7 @@ function availabilityColumns(detailed = false): string[] {
         "route_value",
         "id",
         "year",
+        "venue",
         "pmc_id",
         "source_adapter",
         "source_url",
@@ -3573,10 +4439,12 @@ async function collectAvailabilityEvidence(
   },
 ): Promise<ScholarAvailabilityCollect> {
   const route = resolveScholarReference(ref);
-  const metadata = await collectSingleRecords("scholar.get", ref, opts);
-  const pdf = await collectPdfCandidates(ref, opts);
-  const code = await collectResourceRecords("scholar.code", ref, opts);
-  const datasets = await collectResourceRecords("scholar.datasets", ref, opts);
+  const [metadata, pdf, code, datasets] = await Promise.all([
+    collectSingleRecords("scholar.get", ref, opts),
+    collectPdfCandidates(ref, opts),
+    collectResourceRecords("scholar.code", ref, opts),
+    collectResourceRecords("scholar.datasets", ref, opts),
+  ]);
   const outcomes = [
     ...metadata.outcomes,
     ...pdf.outcomes,
@@ -3695,6 +4563,538 @@ async function collectCanonicalizedAvailability(
     opts,
   );
   return mergeCanonicalAvailability(availability, canonicalAvailability);
+}
+
+function contextRowString(
+  row: Record<string, unknown>,
+  field: string,
+): string | undefined {
+  const value = row[field];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function traceColumns(detailed = false): string[] {
+  const base = [
+    "relation",
+    "title",
+    "award",
+    "year",
+    "venue",
+    "doi",
+    "openreview_id",
+    "source_adapter",
+    "source_url",
+    "pdf_url",
+    "next_command",
+  ];
+  return detailed
+    ? [
+        "id",
+        ...base,
+        "authors",
+        "type",
+        "abstract",
+        "landing_url",
+        "source_errors",
+        "retrieved_at",
+        "raw",
+      ]
+    : base;
+}
+
+function contextColumns(detailed = false): string[] {
+  const base = [
+    "relation",
+    "title",
+    "award",
+    "year",
+    "venue",
+    "doi",
+    "authors",
+    "source_adapter",
+    "source_url",
+  ];
+  return detailed
+    ? ["id", ...base, "type", "abstract", "landing_url", "retrieved_at", "raw"]
+    : base;
+}
+
+function canonicalRefFromTraceRow(row: ScholarAvailabilityRow): string {
+  return (
+    rowString(row, "doi") ??
+    rowString(row, "arxiv_id") ??
+    rowString(row, "pmid") ??
+    rowString(row, "openreview_id") ??
+    rowString(row, "canonical_ref") ??
+    rowString(row, "id") ??
+    rowString(row, "ref") ??
+    ""
+  );
+}
+
+export function resourceRefFromTraceAvailability(
+  row: ScholarAvailabilityRow,
+  title: string,
+): string {
+  return (
+    rowString(row, "doi") ??
+    rowString(row, "arxiv_id") ??
+    rowString(row, "pmid") ??
+    title
+  );
+}
+
+export function filterTraceResourceRecords(
+  records: ScholarlyWorkRecord[],
+  title: string,
+): ScholarlyWorkRecord[] {
+  const titleKey = normalizedTitleKey(title);
+  return records.filter(
+    (record) => normalizedTitleKey(record.title) === titleKey,
+  );
+}
+
+export function buildScholarTraceRows(input: {
+  availability: ScholarAvailabilityRow;
+  openReviewRecords: ScholarlyWorkRecord[];
+  contextRows: Record<string, unknown>[];
+  resourceRecords?: Array<{
+    relation: "code" | "dataset";
+    record: ScholarlyWorkRecord;
+  }>;
+  sourceErrors?: string[];
+}): ScholarlyContextRecord[] {
+  const availability = input.availability;
+  const title = rowString(availability, "title") ?? "";
+  const canonicalRef = canonicalRefFromTraceRow(availability);
+  const rows: Array<ScholarlyContextRecord & Record<string, unknown>> = [];
+  if (title) {
+    rows.push({
+      id: rowString(availability, "id") ?? canonicalRef,
+      title,
+      relation: "publisher-record",
+      year:
+        typeof availability.year === "number" ? availability.year : undefined,
+      venue: rowString(availability, "venue"),
+      doi: rowString(availability, "doi"),
+      openreview_id: rowString(availability, "openreview_id"),
+      pdf_url: rowString(availability, "pdf_url"),
+      landing_url: rowString(availability, "source_url"),
+      source_adapter: rowString(availability, "source_adapter") ?? "scholar",
+      source_url: rowString(availability, "source_url"),
+      retrieved_at:
+        rowString(availability, "retrieved_at") ?? new Date().toISOString(),
+      next_command: canonicalRef
+        ? `unicli scholar get ${quoteCliArg(canonicalRef)} -D`
+        : undefined,
+      source_errors: input.sourceErrors,
+    });
+  }
+
+  for (const record of input.openReviewRecords) {
+    const forum = record.openreview_id ?? record.id;
+    rows.push({
+      ...record,
+      relation: "peer-review-thread",
+      openreview_id: forum,
+      next_command: `unicli scholar reviews ${quoteCliArg(forum)} -D`,
+    });
+  }
+
+  for (const context of input.contextRows) {
+    const relation =
+      contextRowString(context, "relation") ?? "official-program";
+    const id =
+      contextRowString(context, "id") ??
+      contextRowString(context, "doi") ??
+      title;
+    const contextTitle = contextRowString(context, "title") ?? title;
+    const contextDoi = contextRowString(context, "doi");
+    const contextOpenReviewId = contextRowString(context, "openreview_id");
+    const contextNextCommand = contextRowString(context, "next_command");
+    if (!id || !contextTitle) continue;
+    rows.push({
+      ...(context as unknown as ScholarlyContextRecord),
+      id,
+      title: contextTitle,
+      relation,
+      source_adapter: contextRowString(context, "source_adapter") ?? "scholar",
+      retrieved_at:
+        contextRowString(context, "retrieved_at") ?? new Date().toISOString(),
+      next_command:
+        relation === "official-award" && contextDoi
+          ? `unicli scholar trace ${quoteCliArg(contextDoi)}`
+          : relation === "official-award" && contextOpenReviewId
+            ? `unicli scholar reviews ${quoteCliArg(contextOpenReviewId)} -D`
+            : contextNextCommand,
+    });
+  }
+
+  const pdfUrl = rowString(availability, "pdf_url");
+  if (pdfUrl && title) {
+    rows.push({
+      id: pdfUrl,
+      title,
+      relation: "pdf",
+      year:
+        typeof availability.year === "number" ? availability.year : undefined,
+      venue: rowString(availability, "venue"),
+      doi: rowString(availability, "doi"),
+      pdf_url: pdfUrl,
+      landing_url: pdfUrl,
+      source_adapter: "scholar",
+      source_url: pdfUrl,
+      retrieved_at: new Date().toISOString(),
+      next_command: canonicalRef
+        ? `unicli scholar read ${quoteCliArg(canonicalRef)}`
+        : undefined,
+    });
+  }
+
+  for (const [relation, field, command] of [
+    ["code", "code_url", "code"],
+    ["dataset", "dataset_url", "datasets"],
+  ] as const) {
+    const url = rowString(availability, field);
+    if (!url || !title) continue;
+    rows.push({
+      id: url,
+      title,
+      relation,
+      year:
+        typeof availability.year === "number" ? availability.year : undefined,
+      venue: rowString(availability, "venue"),
+      doi: rowString(availability, "doi"),
+      landing_url: url,
+      source_adapter: "scholar",
+      source_url: url,
+      retrieved_at: new Date().toISOString(),
+      next_command: canonicalRef
+        ? `unicli scholar ${command} ${quoteCliArg(canonicalRef)} -D`
+        : undefined,
+    });
+  }
+
+  for (const resource of input.resourceRecords ?? []) {
+    const record = resource.record;
+    const url =
+      resource.relation === "code"
+        ? (record.code_url ?? record.project_url)
+        : (record.dataset_url ?? record.dataset_urls?.[0]);
+    if (!url) continue;
+    rows.push({
+      ...record,
+      id: url,
+      title: record.title || title,
+      relation: resource.relation,
+      landing_url: url,
+      source_url: record.source_url ?? url,
+      next_command: canonicalRef
+        ? `unicli scholar ${resource.relation === "code" ? "code" : "datasets"} ${quoteCliArg(canonicalRef)} -D`
+        : undefined,
+    });
+  }
+
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = [
+      row.relation,
+      row.source_adapter,
+      row.openreview_id,
+      row.doi,
+      row.source_url,
+      row.id,
+    ]
+      .filter(Boolean)
+      .join("|")
+      .toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function resolveTraceAvailability(
+  ref: string,
+  opts: {
+    source?: string;
+    sources?: string;
+    unpaywallEmail?: string;
+    venue?: string;
+    year?: string;
+  },
+): Promise<ScholarAvailabilityCollect> {
+  const route = resolveScholarReference(ref);
+  const parsedVenue = opts.venue
+    ? parseScholarVenueInput(opts.venue, opts.year)
+    : { venue: "", year: yearOpt(opts.year) };
+  const venueResolution = parsedVenue.venue
+    ? await resolveCcfVenue(parsedVenue.venue)
+    : undefined;
+  const venue = (venueResolution?.venue ?? parsedVenue.venue) || undefined;
+  const venueAlternatives = venueResolution
+    ? [venueResolution.title, parsedVenue.venue]
+    : [];
+  const titleSources = uniqueStrings([
+    ...DEFAULT_SCHOLAR_SOURCES.slice(0, 3),
+    venue &&
+    isScholarContextSourceApplicable(
+      "openreview",
+      venue,
+      venueResolution?.category,
+      venueResolution?.publisher,
+    )
+      ? "openreview"
+      : undefined,
+  ]);
+  const sources = opts.source
+    ? [opts.source]
+    : resolveScholarSources(
+        opts.sources,
+        route.kind === "unknown"
+          ? titleSources
+          : route.preferredSources.slice(0, 3),
+      );
+  const outcomes = await Promise.all(
+    sources.map((source) =>
+      runAdapterCommand(
+        source,
+        route.kind === "unknown" ? "scholar.search" : "scholar.get",
+        route.kind === "unknown"
+          ? { query: ref, limit: 5 }
+          : { ...referenceArgs(route, opts) },
+      ),
+    ),
+  );
+  const matches = reciprocalRankFusion(
+    outcomes.map((outcome) =>
+      filterScholarTraceCandidates(outcome.records, {
+        ref,
+        routeKind: route.kind,
+        year: parsedVenue.year,
+        venue,
+        venueAlternatives,
+      }),
+    ),
+    { topN: 10 },
+  );
+  const match = matches[0];
+  if (!match) {
+    return {
+      row: {
+        ref,
+        route_kind: route.kind,
+        route_value: route.value,
+        record_found: false,
+        source_errors: collectSourceErrors(outcomes),
+      },
+      outcomes,
+    };
+  }
+  const canonical =
+    match.doi ??
+    match.arxiv_id ??
+    match.pmid ??
+    match.openreview_id ??
+    match.id;
+  const pdfRecord = matches.find((record) => Boolean(record.pdf_url));
+  const codeRecord = matches.find((record) => Boolean(record.code_url));
+  const datasetRecord = matches.find((record) => Boolean(record.dataset_url));
+  return {
+    row: {
+      ref,
+      route_kind: route.kind,
+      route_value: route.value,
+      canonical_ref: canonical,
+      canonical_ref_kind: resolveScholarReference(canonical).kind,
+      record_found: true,
+      ...match,
+      pdf_url: pdfRecord?.pdf_url ?? match.pdf_url,
+      code_url: codeRecord?.code_url ?? match.code_url,
+      dataset_url: datasetRecord?.dataset_url ?? match.dataset_url,
+      metadata_sources: sourcesForRecords(matches),
+      source_errors: collectSourceErrors(outcomes),
+    },
+    outcomes,
+  };
+}
+
+async function runTrace(
+  program: Command,
+  ref: string,
+  opts: {
+    source?: string;
+    sources?: string;
+    contextSources?: string;
+    venue?: string;
+    year?: string;
+    limit?: string;
+    detailed?: boolean;
+    unpaywallEmail?: string;
+  },
+): Promise<void> {
+  const startedAt = Date.now();
+  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  const ctx = makeCtx("scholar.trace", startedAt);
+  const availability = await resolveTraceAvailability(ref, opts);
+  const title = rowString(availability.row, "title");
+  if (!title) {
+    ctx.duration_ms = Date.now() - startedAt;
+    ctx.surface = "web";
+    ctx.error = {
+      code: "SCHOLAR_TRACE_NOT_FOUND",
+      message: `no scholarly record could be resolved for "${ref}"`,
+      suggestion:
+        "Try a DOI, exact paper title, arXiv id, PMID, or OpenReview forum URL.",
+      retryable: availability.outcomes.some((outcome) =>
+        isRetryableScholarError(outcome.error),
+      ),
+    };
+    console.error(format(null, undefined, fmt, ctx));
+    process.exit(ExitCode.EMPTY_RESULT);
+  }
+
+  const resourceRef = resourceRefFromTraceAvailability(availability.row, title);
+  const availabilityOpenReview = openReviewRecordFromTraceAvailability(
+    availability.row,
+  );
+  const [openReviewOutcome, code, datasets] = await Promise.all([
+    availabilityOpenReview
+      ? Promise.resolve<FanoutOutcome>({
+          source: "openreview",
+          capability: "scholar.search",
+          records: [availabilityOpenReview],
+        })
+      : runAdapterCommand("openreview", "scholar.search", {
+          query: title,
+          limit: 10,
+        }),
+    collectResourceRecords("scholar.code", resourceRef, opts),
+    collectResourceRecords("scholar.datasets", resourceRef, opts),
+  ]);
+  const openReviewRecords = selectOpenReviewTraceRecords(
+    openReviewOutcome.records,
+    title,
+    rowString(availability.row, "openreview_id"),
+  );
+  const allContextSources = resolveScholarSources(
+    opts.contextSources,
+    listScholarContextSourcesByCapability("scholar.context"),
+  );
+  const venue = opts.venue ?? rowString(availability.row, "venue");
+  const year = opts.year ?? String(availability.row.year ?? "");
+  const limit = numberOpt(opts.limit, 20, 100);
+  const ccfVenue = venue ? await resolveCcfVenue(venue) : undefined;
+  const contextSources = opts.contextSources
+    ? allContextSources
+    : allContextSources.filter((source) =>
+        isScholarContextSourceApplicable(
+          source,
+          ccfVenue?.venue ?? venue ?? "",
+          ccfVenue?.category,
+        ),
+      );
+  const contextOutcomes: ReviewOutcome[] = [];
+  if (venue) {
+    for (const source of contextSources) {
+      contextOutcomes.push(
+        await runScholarContextAdapterCommand(source, "scholar.context", {
+          conference: venue,
+          venue,
+          year: year || undefined,
+          query: title,
+          limit,
+        }),
+      );
+    }
+  }
+  const contextRows = contextOutcomes.flatMap((outcome) => outcome.rows);
+  const sourceErrors = uniqueStrings([
+    ...collectSourceErrors(availability.outcomes),
+    openReviewOutcome.error
+      ? formatScholarOutcomeError(openReviewOutcome)
+      : undefined,
+    ...collectSourceErrors(code.outcomes),
+    ...collectSourceErrors(datasets.outcomes),
+    ...contextOutcomes.map((outcome) =>
+      outcome.error ? formatScholarOutcomeError(outcome) : undefined,
+    ),
+  ]);
+  const rows = buildScholarTraceRows({
+    availability: availability.row,
+    openReviewRecords,
+    contextRows,
+    resourceRecords: [
+      ...filterTraceResourceRecords(code.records, title)
+        .filter((record) => hasCodeResource(record))
+        .map((record) => ({ relation: "code" as const, record })),
+      ...filterTraceResourceRecords(datasets.records, title)
+        .filter((record) => hasDatasetResource(record))
+        .map((record) => ({ relation: "dataset" as const, record })),
+    ],
+    sourceErrors,
+  });
+  ctx.duration_ms = Date.now() - startedAt;
+  ctx.surface = "web";
+  console.log(format(rows, traceColumns(opts.detailed), fmt, ctx));
+}
+
+async function runAwards(
+  program: Command,
+  venue: string,
+  opts: {
+    source?: string;
+    sources?: string;
+    year?: string;
+    query?: string;
+    award?: string;
+    limit?: string;
+    detailed?: boolean;
+  },
+): Promise<void> {
+  const startedAt = Date.now();
+  const fmt = detectFormat(program.opts().format as OutputFormat | undefined);
+  const ctx = makeCtx("scholar.awards", startedAt);
+  const sources = opts.source
+    ? [opts.source]
+    : resolveScholarSources(
+        opts.sources,
+        listScholarContextSourcesByCapability("scholar.awards"),
+      );
+  const limit = numberOpt(opts.limit, 100, 500);
+  const outcomes: ReviewOutcome[] = [];
+  for (const source of sources) {
+    outcomes.push(
+      await runScholarContextAdapterCommand(source, "scholar.awards", {
+        conference: venue,
+        venue,
+        year: opts.year,
+        query: opts.query,
+        award: opts.award,
+        limit,
+      }),
+    );
+  }
+  const rows = outcomes.flatMap((outcome) => outcome.rows);
+  ctx.duration_ms = Date.now() - startedAt;
+  ctx.surface = "web";
+  if (rows.length === 0) {
+    const errors = outcomes.filter((outcome) => outcome.error);
+    ctx.error = {
+      code: "SCHOLAR_AWARDS_NOT_FOUND",
+      message: `no official award records returned for "${venue}"`,
+      suggestion:
+        errors.length > 0
+          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
+          : "Pass a supported conference acronym and year, such as CHI --year 2026.",
+      retryable: errors.some((outcome) =>
+        isRetryableScholarError(outcome.error),
+      ),
+    };
+    console.error(format(null, undefined, fmt, ctx));
+    process.exit(ExitCode.EMPTY_RESULT);
+  }
+  console.log(format(rows, contextColumns(opts.detailed), fmt, ctx));
 }
 
 async function runAvailability(
@@ -4477,14 +5877,52 @@ export function registerScholarCommand(program: Command): void {
     .command("search <query>")
     .description("Fan-out scholarly paper search across first-source adapters")
     .option("--sources <csv>", "comma-separated source list, or `all`")
+    .option("--venue <venue>", "require a matching conference or venue")
+    .option("--year <year>", "require an exact publication year")
     .option("--limit <n>", "maximum fused result count", "20")
+    .option("--timeout <seconds>", "overall source deadline in seconds", "20")
     .option("-D, --detailed", "include richer metadata columns")
     .action(
       async (
         query: string,
-        opts: { sources?: string; limit?: string; detailed?: boolean },
+        opts: {
+          sources?: string;
+          venue?: string;
+          year?: string;
+          limit?: string;
+          detailed?: boolean;
+          timeout?: string;
+        },
       ) => {
         await runSearch(program, query, opts);
+      },
+    );
+
+  scholar
+    .command("venue <venue>")
+    .alias("proceedings")
+    .description(
+      "Resolve a conference name or CCF A alias, then search source-specific proceedings with exact venue and year validation",
+    )
+    .option("--sources <csv>", "comma-separated proceedings source list")
+    .option("--query <query>", "optional paper-title query within the venue")
+    .option("--year <year>", "require an exact publication year")
+    .option("--limit <n>", "maximum fused result count", "50")
+    .option("--timeout <seconds>", "overall source deadline in seconds", "20")
+    .option("-D, --detailed", "include richer metadata columns")
+    .action(
+      async (
+        venue: string,
+        opts: {
+          sources?: string;
+          query?: string;
+          year?: string;
+          limit?: string;
+          detailed?: boolean;
+          timeout?: string;
+        },
+      ) => {
+        await runVenue(program, venue, opts);
       },
     );
 
@@ -4659,6 +6097,83 @@ export function registerScholarCommand(program: Command): void {
         detailed?: boolean;
       }) => {
         await runCoverage(program, opts);
+      },
+    );
+
+  scholar
+    .command("trace <ref>")
+    .alias("links")
+    .description(
+      "Trace one paper across publisher metadata, official conference programs and awards, OpenReview threads, PDFs, code, and datasets",
+    )
+    .option("--source <site>", "force one bibliographic source")
+    .option("--sources <csv>", "override bibliographic source list")
+    .option(
+      "--context-sources <csv>",
+      "override official program and award sources",
+    )
+    .option("--venue <venue>", "override the resolved conference or venue")
+    .option("--year <year>", "override the resolved conference year")
+    .option("--limit <n>", "maximum context rows per source", "20")
+    .option(
+      "--unpaywall-email <email>",
+      "requester email for Unpaywall DOI lookup",
+    )
+    .option(
+      "-D, --detailed",
+      "include abstracts, raw context, and source errors",
+    )
+    .action(
+      async (
+        ref: string,
+        opts: {
+          source?: string;
+          sources?: string;
+          contextSources?: string;
+          venue?: string;
+          year?: string;
+          limit?: string;
+          detailed?: boolean;
+          unpaywallEmail?: string;
+        },
+      ) => {
+        await runTrace(program, ref, opts);
+      },
+    );
+
+  scholar
+    .command("awards <venue>")
+    .description(
+      "List source-backed official conference award records and their paper identifiers",
+    )
+    .option("--source <site>", "force one award-capable source")
+    .option("--sources <csv>", "override award-capable source list")
+    .option("--year <year>", "conference year")
+    .option(
+      "--query <query>",
+      "filter award titles, authors, abstracts, or DOI",
+    )
+    .option(
+      "--award <kind>",
+      "award kind: all, best-paper, or honorable-mention",
+      "all",
+    )
+    .option("--limit <n>", "maximum award rows", "100")
+    .option("-D, --detailed", "include abstracts and raw official metadata")
+    .action(
+      async (
+        venue: string,
+        opts: {
+          source?: string;
+          sources?: string;
+          year?: string;
+          query?: string;
+          award?: string;
+          limit?: string;
+          detailed?: boolean;
+        },
+      ) => {
+        await runAwards(program, venue, opts);
       },
     );
 

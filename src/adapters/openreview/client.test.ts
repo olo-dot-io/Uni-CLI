@@ -151,4 +151,82 @@ describe("OpenReview authenticated paced client", () => {
       seen.filter((call) => call.headers.Authorization === "Bearer fresh"),
     ).toHaveLength(2);
   });
+
+  it("bounds each HTTP attempt even when a custom fetcher ignores abort", async () => {
+    const client = new OpenReviewHttpClient({
+      fetcher: vi.fn<typeof fetch>(() => new Promise<Response>(() => {})),
+      rpm: 180,
+      maxRetries: 1,
+      requestTimeoutMs: 5,
+      random: () => 0,
+      sleep: async () => undefined,
+      loadCookies: async () => null,
+    });
+
+    await expect(
+      client.json("/notes?id=slow", "slow note"),
+    ).rejects.toMatchObject({
+      code: "timeout",
+      retryable: true,
+    });
+  });
+
+  it("cancels retry backoff with the caller signal and preserves its reason", async () => {
+    const controller = new AbortController();
+    const reason = Object.assign(new Error("caller deadline"), {
+      name: "TimeoutError",
+    });
+    const fetcher = vi.fn<typeof fetch>(
+      async () =>
+        new Response('{"name":"RateLimitError"}', {
+          status: 429,
+          headers: { "retry-after": "60" },
+        }),
+    );
+    const client = new OpenReviewHttpClient({
+      fetcher,
+      rpm: 180,
+      maxRetries: 1,
+      sleep: () => new Promise<void>(() => {}),
+      loadCookies: async () => null,
+    });
+
+    const pending = client.json(
+      "/notes?id=limited",
+      "limited note",
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
+  });
+
+  it("cancels a queued scheduler wait with the caller signal", async () => {
+    const waits: number[] = [];
+    const client = new OpenReviewHttpClient({
+      fetcher: vi.fn<typeof fetch>(
+        async () => new Response('{"notes":[]}', { status: 200 }),
+      ),
+      rpm: 1,
+      sleep: (milliseconds) => {
+        waits.push(milliseconds);
+        return new Promise<void>(() => {});
+      },
+      loadCookies: async () => null,
+    });
+    await client.json("/notes?id=first", "first note");
+
+    const controller = new AbortController();
+    const reason = Object.assign(new Error("cancel queued request"), {
+      name: "AbortError",
+    });
+    const pending = client.json(
+      "/notes?id=second",
+      "second note",
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(waits.length).toBeGreaterThan(0));
+    controller.abort(reason);
+    await expect(pending).rejects.toBe(reason);
+  });
 });

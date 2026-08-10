@@ -18,8 +18,12 @@ export interface ScholarlyWorkRecord {
   title: string;
   authors?: string[];
   year?: number;
+  publication_year?: number;
+  conference_year?: number;
   date?: string;
   venue?: string;
+  volume?: string;
+  issue?: string;
   type?: string;
   abstract?: string;
   doi?: string;
@@ -38,6 +42,14 @@ export interface ScholarlyWorkRecord {
   landing_url?: string;
   code_url?: string;
   project_url?: string;
+  relationship?: string;
+  is_official_code?: boolean;
+  verification?: string;
+  match_type?: string;
+  confidence?: number;
+  evidence_url?: string;
+  evidence_excerpt?: string;
+  relationship_evidence?: string[];
   dataset_url?: string;
   model_urls?: string;
   dataset_urls?: string;
@@ -54,6 +66,46 @@ export interface ScholarlyWorkRecord {
   search_scanned_records?: number;
   search_total_records?: number;
   search_exhaustive?: boolean;
+  search_query?: string;
+  query_corrections?: string[];
+  retrieved_at: string;
+  raw?: unknown;
+}
+
+/**
+ * A source-backed relationship around a scholarly work or venue.
+ *
+ * Context records keep official awards, conference-program entries, review
+ * threads, announcements, and artifacts separate from bibliographic work
+ * metadata while retaining the identifiers needed to join them.
+ */
+export interface ScholarlyContextRecord {
+  id: string;
+  title: string;
+  relation:
+    | "official-conference"
+    | "official-program"
+    | "official-award"
+    | "peer-review-thread"
+    | "publisher-record"
+    | "pdf"
+    | "code"
+    | "dataset"
+    | string;
+  authors?: string[];
+  year?: number;
+  venue?: string;
+  type?: string;
+  abstract?: string;
+  doi?: string;
+  openreview_id?: string;
+  award?: string;
+  pdf_url?: string;
+  landing_url?: string;
+  source_adapter: string;
+  source_url?: string;
+  next_command?: string;
+  source_errors?: string[];
   retrieved_at: string;
   raw?: unknown;
 }

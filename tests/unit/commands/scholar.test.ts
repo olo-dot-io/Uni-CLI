@@ -9,32 +9,49 @@ import { Command } from "commander";
 
 import {
   DEFAULT_SCHOLAR_SOURCES,
+  DEFAULT_SCHOLAR_VENUE_SOURCES,
   SCHOLAR_CAPABILITIES,
+  SCHOLAR_CONTEXT_CAPABILITIES,
   buildScholarAvailabilityRow,
   buildScholarCoverageRows,
   buildScholarEvidenceRow,
   buildScholarReproducibilityRow,
   buildScholarSourceAuditRows,
   buildScholarWorkflowRow,
+  buildScholarTraceRows,
   classifyScholarLiveProbeError,
   coerceToScholarlyRecords,
   findScholarCommandByCapability,
+  findScholarContextCommandByCapability,
   findScholarQueryableSearchCommand,
   findScholarResourceSearchCommandByCapability,
   findScholarReviewThreadCommand,
+  filterScholarlyRecords,
+  filterScholarSearchRecords,
+  filterScholarTraceCandidates,
+  filterScholarVenueRecords,
+  filterTraceResourceRecords,
   hasResourceForCapability,
+  inferredConferenceSearchTerms,
   isScholarlyRecordRelevantToRef,
   isScholarlyRecordRelevantToQuery,
+  isScholarContextSourceApplicable,
   listScholarSourcesByCapability,
   listScholarAdapters,
   normalizeScholarCommandArgs,
+  openReviewRecordFromTraceAvailability,
+  parseScholarVenueInput,
   reciprocalRankFusion,
   registerScholarCommand,
+  resourceRefFromTraceAvailability,
   resolveScholarArtifactSources,
   resolveScholarFulltextSources,
   resolveScholarReference,
   resolveScholarSources,
+  selectOpenReviewTraceRecords,
+  selectDatamuseCorrection,
 } from "../../../src/commands/scholar.js";
+import { findCcfConferenceInText } from "../../../src/adapters/ccf/resolve.js";
 import { registerAdapter } from "../../../src/registry.js";
 import { AdapterType } from "../../../src/types.js";
 import type { AdapterCommand } from "../../../src/types.js";
@@ -90,12 +107,16 @@ describe("unicli scholar — argv surface", () => {
 
     for (const sub of [
       "search",
+      "venue",
+      "proceedings",
       "availability",
       "sources",
       "workflow",
       "evidence",
       "reproduce",
       "coverage",
+      "trace",
+      "awards",
       "reviews",
       "get",
       "pdf",
@@ -125,6 +146,232 @@ describe("unicli scholar — argv surface", () => {
       "scholar.review",
       "scholar.fulltext",
     ]);
+    expect(SCHOLAR_CONTEXT_CAPABILITIES).toEqual([
+      "scholar.context",
+      "scholar.awards",
+    ]);
+    expect(DEFAULT_SCHOLAR_VENUE_SOURCES).toContain("crossref");
+    expect(DEFAULT_SCHOLAR_VENUE_SOURCES).toContain("acm");
+    expect(DEFAULT_SCHOLAR_VENUE_SOURCES).toContain("openreview");
+    expect(DEFAULT_SCHOLAR_VENUE_SOURCES).toContain("usenix");
+  });
+
+  it("enforces exact year, venue, work, and PDF constraints after fan-out", () => {
+    const rows: ScholarlyWorkRecord[] = [
+      {
+        id: "right",
+        title: "Right paper",
+        year: 2024,
+        venue: "IEEE Symposium on Foundations of Computer Science",
+        pdf_url: "https://example.test/right.pdf",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-09T00:00:00.000Z",
+      },
+      {
+        id: "wrong-venue",
+        title: "Wrong venue",
+        year: 2024,
+        venue: "IEEE Computer Security Foundations Symposium",
+        pdf_url: "https://example.test/wrong.pdf",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-09T00:00:00.000Z",
+      },
+      {
+        id: "wrong-year",
+        title: "Wrong year",
+        year: 2023,
+        venue: "FOCS",
+        pdf_url: "https://example.test/old.pdf",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-09T00:00:00.000Z",
+      },
+      {
+        id: "metadata-only",
+        title: "Metadata only",
+        year: 2024,
+        venue: "FOCS",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-09T00:00:00.000Z",
+      },
+      {
+        id: "directory",
+        title: "Directory row",
+        year: 2024,
+        venue: "FOCS",
+        type: "conference-ranking",
+        pdf_url: "https://example.test/directory.pdf",
+        source_adapter: "ccf",
+        retrieved_at: "2026-08-09T00:00:00.000Z",
+      },
+    ];
+
+    expect(
+      filterScholarlyRecords(rows, {
+        year: 2024,
+        venue: "FOCS",
+        requirePdf: true,
+        requireWork: true,
+      }).map((row) => row.id),
+    ).toEqual(["right"]);
+  });
+
+  it("parses a venue year from the positional value unless an explicit year wins", () => {
+    expect(parseScholarVenueInput("PPoPP 2025")).toEqual({
+      venue: "PPoPP",
+      year: 2025,
+    });
+    expect(parseScholarVenueInput("AAAI 2024", "2025")).toEqual({
+      venue: "AAAI",
+      year: 2025,
+    });
+  });
+
+  it("applies a topical venue query after source-specific routing", () => {
+    const rows: ScholarlyWorkRecord[] = [
+      {
+        id: "matching",
+        title: "Reliable Agent Planning",
+        year: 2025,
+        venue: "AAAI",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-10T00:00:00.000Z",
+      },
+      {
+        id: "unrelated",
+        title: "Vision Language Models",
+        year: 2025,
+        venue: "AAAI",
+        source_adapter: "fixture",
+        retrieved_at: "2026-08-10T00:00:00.000Z",
+      },
+    ];
+
+    expect(
+      filterScholarVenueRecords(rows, {
+        year: 2025,
+        venue: "AAAI",
+        query: "reliable agent planning",
+      }).map((row) => row.id),
+    ).toEqual(["matching"]);
+    expect(
+      filterScholarVenueRecords(rows, {
+        year: 2025,
+        venue: "AAAI",
+        query: "qzxv impossible title",
+      }),
+    ).toEqual([]);
+  });
+
+  it("uses a DBLP conference year while preserving its publication year", () => {
+    const [record] = filterScholarVenueRecords(
+      [
+        {
+          id: "fm-2024",
+          title: "Formal Methods 2024",
+          year: 2025,
+          publication_year: 2025,
+          conference_year: 2024,
+          venue: "FM,Lecture Notes in Computer Science",
+          source_adapter: "dblp",
+          retrieved_at: "2026-08-10T00:00:00.000Z",
+        },
+      ],
+      { year: 2024, venue: "FM" },
+    );
+
+    expect(record).toMatchObject({ year: 2024, publication_year: 2025 });
+    expect(
+      filterScholarSearchRecords(
+        [
+          {
+            id: "fm-2024",
+            title: "Formal Methods 2024",
+            year: 2025,
+            publication_year: 2025,
+            conference_year: 2024,
+            venue: "FM,Lecture Notes in Computer Science",
+            source_adapter: "dblp",
+            retrieved_at: "2026-08-10T00:00:00.000Z",
+          },
+        ],
+        { query: "", year: 2024, venue: "FM" },
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("removes an inferred conference identity before title relevance checks", () => {
+    const ase = findCcfConferenceInText(
+      "IEEE ACM Automated Software Engineering 2024",
+    );
+    expect(ase?.acronym).toBe("ASE");
+    expect(
+      inferredConferenceSearchTerms(
+        "IEEE ACM Automated Software Engineering 2024",
+        ase!,
+      ),
+    ).toBe("");
+    expect(
+      inferredConferenceSearchTerms("ASE 2024 flaky test repair", ase!),
+    ).toBe("flaky test repair");
+    const oopsla = findCcfConferenceInText(
+      "Proceedings of the ACM on Programming Languages OOPSLA 2024",
+    );
+    expect(oopsla?.acronym).toBe("OOPSLA");
+    expect(
+      inferredConferenceSearchTerms(
+        "Proceedings of the ACM on Programming Languages OOPSLA 2024",
+        oopsla!,
+      ),
+    ).toBe("");
+    expect(findCcfConferenceInText("ACM SIGCOMM 2025")?.acronym).toBe(
+      "SIGCOMM",
+    );
+  });
+
+  it("scopes official conference context sources to supported venues", () => {
+    expect(isScholarContextSourceApplicable("iclr", "ICLR", "人工智能")).toBe(
+      true,
+    );
+    expect(isScholarContextSourceApplicable("iclr", "CAV", "理论")).toBe(false);
+    expect(
+      isScholarContextSourceApplicable(
+        "sigchi",
+        "UbiComp",
+        "人机交互与普适计算",
+      ),
+    ).toBe(true);
+    expect(
+      isScholarContextSourceApplicable("sigchi", "SIGCOMM", "计算机网络"),
+    ).toBe(false);
+    expect(
+      isScholarContextSourceApplicable("usenix", "USENIX Security", "安全"),
+    ).toBe(true);
+    expect(
+      isScholarContextSourceApplicable("usenix", "SIGCOMM", "计算机网络"),
+    ).toBe(false);
+    expect(isScholarContextSourceApplicable("aaai", "AAAI", "人工智能")).toBe(
+      true,
+    );
+    expect(isScholarContextSourceApplicable("aaai", "ICML", "人工智能")).toBe(
+      false,
+    );
+    expect(
+      isScholarContextSourceApplicable("pacmpl", "OOPSLA", "软件工程"),
+    ).toBe(true);
+    expect(
+      isScholarContextSourceApplicable("acm", "SIGCOMM", "计算机网络", "ACM"),
+    ).toBe(true);
+    expect(
+      isScholarContextSourceApplicable("ieee", "SIGCOMM", "计算机网络", "ACM"),
+    ).toBe(true);
+    expect(
+      isScholarContextSourceApplicable(
+        "ieee",
+        "DAC",
+        "计算机体系结构/并行与分布计算/存储系统",
+        "ACM",
+      ),
+    ).toBe(true);
   });
 
   it("classifies live doctor no-match errors as empty rather than failed", () => {
@@ -144,6 +391,24 @@ describe("unicli scholar — argv surface", () => {
         message: "CVF CVPR2024 failed: HTTP 406.",
       }).live_health,
     ).toBe("failed");
+  });
+});
+
+describe("scholarly typo recovery", () => {
+  it("selects a frequent near spelling while preserving a valid exact word", () => {
+    expect(
+      selectDatamuseCorrection("recyling", [
+        { word: "recyling", tags: ["f:0.01"] },
+        { word: "recycling", tags: ["f:3.039"] },
+        { word: "relying", tags: ["f:10.0"] },
+      ]),
+    ).toBe("recycling");
+    expect(
+      selectDatamuseCorrection("privacy", [
+        { word: "privacy", tags: ["f:10.20"] },
+        { word: "piracy", tags: ["f:4.0"] },
+      ]),
+    ).toBeUndefined();
   });
 });
 
@@ -297,6 +562,46 @@ describe("unicli scholar — source discovery", () => {
       source: "fixture-scholar-review-thread",
       next_review: "unicli fixture-scholar-review-thread reviews <id-or-ref>",
     });
+  });
+
+  it("selects paper context separately from official award commands", () => {
+    registerAdapter({
+      name: "fixture-scholar-context",
+      type: AdapterType.WEB_API,
+      commands: {
+        conferences: {
+          name: "conferences",
+          capabilities: ["http.fetch", "scholar.context"],
+          adapterArgs: [{ name: "query", type: "str" }],
+        },
+        papers: {
+          name: "papers",
+          capabilities: ["http.fetch", "scholar.venue", "scholar.context"],
+          adapterArgs: [
+            { name: "conference", type: "str", required: true },
+            { name: "query", type: "str" },
+          ],
+        },
+        awards: {
+          name: "awards",
+          capabilities: ["http.fetch", "scholar.awards", "scholar.context"],
+          adapterArgs: [
+            { name: "conference", type: "str", required: true },
+            { name: "query", type: "str" },
+          ],
+        },
+      },
+    });
+    const adapter = listScholarAdapters().find(
+      (candidate) => candidate.name === "fixture-scholar-context",
+    )!;
+
+    expect(
+      findScholarContextCommandByCapability(adapter, "scholar.context")?.name,
+    ).toBe("papers");
+    expect(
+      findScholarContextCommandByCapability(adapter, "scholar.awards")?.name,
+    ).toBe("awards");
   });
 
   it("surfaces missing closed-loop capabilities for discovery-only sources", () => {
@@ -722,12 +1027,24 @@ describe("unicli scholar — reference routing", () => {
       preferredSources: [
         "openalex",
         "crossref",
+        "datacite",
         "semantic-scholar",
         "unpaywall",
-        "biorxiv",
-        "medrxiv",
       ],
     });
+    expect(
+      resolveScholarReference("10.1101/2026.01.02.123456").preferredSources,
+    ).toEqual(expect.arrayContaining(["biorxiv", "medrxiv"]));
+  });
+
+  it("routes ACM and IEEE DOI prefixes through publisher-aware sources", () => {
+    expect(resolveScholarReference("10.1145/123.456").preferredSources[0]).toBe(
+      "acm",
+    );
+    expect(
+      resolveScholarReference("https://doi.org/10.1109/5.771073")
+        .preferredSources[0],
+    ).toBe("ieee");
   });
 
   it("routes arXiv ids to arxiv first", () => {
@@ -757,6 +1074,11 @@ describe("unicli scholar — reference routing", () => {
     ).toEqual({
       kind: "openreview",
       value: "abcDEF123",
+      preferredSources: ["openreview", "semantic-scholar", "openalex"],
+    });
+    expect(resolveScholarReference("6Mxhg9PtDE")).toEqual({
+      kind: "openreview",
+      value: "6Mxhg9PtDE",
       preferredSources: ["openreview", "semantic-scholar", "openalex"],
     });
   });
@@ -791,6 +1113,274 @@ describe("unicli scholar — reciprocal-rank fusion", () => {
     expect(
       reciprocalRankFusion([[rec("a"), rec("b"), rec("c")]], { topN: 2 }),
     ).toHaveLength(2);
+  });
+});
+
+describe("unicli scholar — cross-site trace", () => {
+  it("excludes similarly named resources from another paper", () => {
+    const records: ScholarlyWorkRecord[] = [
+      {
+        id: "related",
+        title:
+          "Safety Alignment Should Be Made More Than Just A Few Attention Heads",
+        code_url: "https://github.com/example/attention-heads",
+        source_adapter: "hf",
+        retrieved_at: "2026-08-10T00:00:00Z",
+      },
+      {
+        id: "exact",
+        title:
+          "Safety Alignment Should be Made More Than Just a Few Tokens Deep",
+        code_url: "https://github.com/example/tokens-deep",
+        source_adapter: "hf",
+        retrieved_at: "2026-08-10T00:00:00Z",
+      },
+    ];
+
+    expect(
+      filterTraceResourceRecords(
+        records,
+        "Safety Alignment Should be Made More Than Just a Few Tokens Deep",
+      ).map((record) => record.id),
+    ).toEqual(["exact"]);
+  });
+
+  it("uses a title for resource discovery when only an OpenReview id is known", () => {
+    expect(
+      resourceRefFromTraceAvailability(
+        { openreview_id: "forum123" },
+        "A Connected Paper",
+      ),
+    ).toBe("A Connected Paper");
+    expect(
+      resourceRefFromTraceAvailability(
+        { doi: "10.1145/123.456", openreview_id: "forum123" },
+        "A Connected Paper",
+      ),
+    ).toBe("10.1145/123.456");
+  });
+
+  it("reuses a resolved OpenReview forum without a second title search", () => {
+    expect(
+      openReviewRecordFromTraceAvailability({
+        id: "source-local-id",
+        title: "A Connected Paper",
+        openreview_id: "forum123",
+        year: 2025,
+        venue: "ICLR 2025",
+        source_adapter: "semantic-scholar",
+        source_url: "https://example.org/record",
+        retrieved_at: "2026-08-10T00:00:00Z",
+      }),
+    ).toMatchObject({
+      id: "forum123",
+      openreview_id: "forum123",
+      source_adapter: "openreview",
+      source_url: "https://openreview.net/forum?id=forum123",
+    });
+  });
+
+  it("applies an explicit venue and year before ranking title matches", () => {
+    const records: ScholarlyWorkRecord[] = [
+      {
+        id: "wrong-year",
+        title:
+          "Safety Alignment Should be Made More Than Just a Few Tokens Deep",
+        year: 2026,
+        venue: "International Conference on Learning Representations",
+        source_adapter: "crossref",
+        retrieved_at: "2026-08-10T00:00:00Z",
+      },
+      {
+        id: "correct-year",
+        title:
+          "Safety Alignment Should be Made More Than Just a Few Tokens Deep",
+        year: 2025,
+        venue: "ICLR",
+        source_adapter: "openreview",
+        retrieved_at: "2026-08-10T00:00:00Z",
+      },
+    ];
+
+    expect(
+      filterScholarTraceCandidates(records, {
+        ref: "Safety Alignment Should be Made More Than Just a Few Tokens Deep",
+        routeKind: "unknown",
+        year: 2025,
+        venue: "ICLR",
+        venueAlternatives: [
+          "International Conference on Learning Representations",
+        ],
+      }).map((record) => record.id),
+    ).toEqual(["correct-year"]);
+  });
+
+  it("keeps the canonical OpenReview forum when another forum reused the title", () => {
+    const records: ScholarlyWorkRecord[] = [
+      {
+        id: "preprintForum",
+        title: "A Connected Paper",
+        openreview_id: "preprintForum",
+        source_adapter: "openreview",
+        retrieved_at: "2026-08-09T00:00:00Z",
+      },
+      {
+        id: "conferenceForum",
+        title: "A Connected Paper",
+        openreview_id: "conferenceForum",
+        source_adapter: "openreview",
+        retrieved_at: "2026-08-09T00:00:00Z",
+      },
+    ];
+
+    expect(
+      selectOpenReviewTraceRecords(
+        records,
+        "A Connected Paper",
+        "conferenceForum",
+      ).map((record) => record.id),
+    ).toEqual(["conferenceForum"]);
+  });
+
+  it("joins publisher, OpenReview, official award, and PDF relationships", () => {
+    const rows = buildScholarTraceRows({
+      availability: {
+        ref: "10.1145/123.456",
+        record_found: true,
+        id: "10.1145/123.456",
+        title: "A Connected Paper",
+        year: 2026,
+        venue: "CHI 2026",
+        doi: "10.1145/123.456",
+        pdf_url: "https://example.org/paper.pdf",
+        source_adapter: "acm",
+        source_url: "https://doi.org/10.1145/123.456",
+      },
+      openReviewRecords: [
+        {
+          id: "abcDEF123",
+          title: "A Connected Paper",
+          openreview_id: "abcDEF123",
+          source_adapter: "openreview",
+          source_url: "https://openreview.net/forum?id=abcDEF123",
+          retrieved_at: "2026-08-09T00:00:00Z",
+        },
+      ],
+      contextRows: [
+        {
+          id: "42",
+          title: "A Connected Paper",
+          relation: "official-award",
+          award: "Best Paper",
+          doi: "10.1145/123.456",
+          source_adapter: "sigchi",
+          source_url: "https://programs.sigchi.org/chi/2026/program/content/42",
+          retrieved_at: "2026-08-09T00:00:00Z",
+        },
+      ],
+    }) as Array<Record<string, unknown>>;
+
+    expect(rows.map((row) => row.relation)).toEqual([
+      "publisher-record",
+      "peer-review-thread",
+      "official-award",
+      "pdf",
+    ]);
+    expect(rows[1]).toMatchObject({
+      openreview_id: "abcDEF123",
+      next_command: "unicli scholar reviews 'abcDEF123' -D",
+    });
+    expect(rows[2]).toMatchObject({
+      award: "Best Paper",
+      source_adapter: "sigchi",
+      next_command: "unicli scholar trace '10.1145/123.456'",
+    });
+  });
+
+  it("keeps code and dataset evidence as source-attributed trace rows", () => {
+    const rows = buildScholarTraceRows({
+      availability: {
+        ref: "2306.14289",
+        canonical_ref: "2306.14289",
+        record_found: true,
+        id: "2306.14289",
+        title: "MobileSAM",
+        source_adapter: "arxiv",
+      },
+      openReviewRecords: [],
+      contextRows: [],
+      resourceRecords: [
+        {
+          relation: "code",
+          record: {
+            id: "github:ChaoningZhang/MobileSAM",
+            title: "MobileSAM",
+            code_url: "https://github.com/ChaoningZhang/MobileSAM",
+            source_url: "https://github.com/ChaoningZhang/MobileSAM",
+            source_adapter: "github-scholar",
+            retrieved_at: "2026-08-10T00:00:00.000Z",
+            is_official_code: false,
+            relationship_evidence: ["paper DOI appears in README"],
+          },
+        },
+        {
+          relation: "dataset",
+          record: {
+            id: "hf:mobile-sam-data",
+            title: "MobileSAM",
+            dataset_url: "https://huggingface.co/datasets/mobile-sam-data",
+            source_adapter: "hf",
+            retrieved_at: "2026-08-10T00:00:00.000Z",
+          },
+        },
+      ],
+    }) as Array<Record<string, unknown>>;
+
+    expect(rows.find((row) => row.relation === "code")).toMatchObject({
+      source_adapter: "github-scholar",
+      is_official_code: false,
+      relationship_evidence: ["paper DOI appears in README"],
+      next_command: "unicli scholar code '2306.14289' -D",
+    });
+    expect(rows.find((row) => row.relation === "dataset")).toMatchObject({
+      source_adapter: "hf",
+      next_command: "unicli scholar datasets '2306.14289' -D",
+    });
+  });
+
+  it("routes official OpenReview awards directly to reviews and rebuttals", () => {
+    const rows = buildScholarTraceRows({
+      availability: {
+        ref: "openreview:abcDEF123",
+        record_found: true,
+        id: "abcDEF123",
+        title: "An ICLR Award Paper",
+        year: 2025,
+        venue: "ICLR 2025",
+        openreview_id: "abcDEF123",
+        source_adapter: "openreview",
+        source_url: "https://openreview.net/forum?id=abcDEF123",
+      },
+      openReviewRecords: [],
+      contextRows: [
+        {
+          id: "abcDEF123",
+          title: "An ICLR Award Paper",
+          relation: "official-award",
+          award: "Outstanding Paper",
+          openreview_id: "abcDEF123",
+          source_adapter: "iclr",
+          source_url: "https://blog.iclr.cc/2025/04/22/iclr-awards/",
+          retrieved_at: "2026-08-09T00:00:00Z",
+        },
+      ],
+    }) as Array<Record<string, unknown>>;
+
+    expect(rows[1]).toMatchObject({
+      relation: "official-award",
+      award: "Outstanding Paper",
+      next_command: "unicli scholar reviews 'abcDEF123' -D",
+    });
   });
 });
 

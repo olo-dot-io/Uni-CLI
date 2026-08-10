@@ -1,24 +1,24 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "codename": "Artemis · Glover",
-  "date": "2026-08-08",
-  "status": "published",
+  "date": "2026-08-10",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.3",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#103--2026-08-08--artemis--glover",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.0.4",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#104--2026-08-10--artemis--glover",
   "highlights": {
     "root": [
-      "Uni-CLI 1.0.3 adds 23 provider-native operations for Zhihu, X, Lark and Feishu, and Bluesky while preserving each official CLI and its structured response.",
-      "The external tool catalog now records official provenance, native surface, and provider scope for local CLI and MCP entry points.",
-      "Feishu operations now use the official lark-cli, while Slack content operations use the official Web API instead of the application-development CLI.",
-      "The public documentation gains a rebuilt green observatory interface, orbital operation chapters, clearer guides, and a repository-wide human-writing harness."
+      "Uni-CLI 1.0.4 adds complete CCF A conference identity coverage with first-party AAAI and USENIX proceedings plus PACMPL, PACMSE, PACMMOD, and SIGGRAPH publication views.",
+      "Conference search validates the exact venue and year, follows ACM and IEEE publication changes, and removes companion material, administrative pages, and nearby acronym matches.",
+      "Cross-site traces connect OpenReview reviews and rebuttals, official awards, source-backed PDFs, code candidates, and datasets while retaining relationship evidence.",
+      "Academic requests now have bounded cancellation-aware deadlines, concurrent artifact collection, spelling recovery, structured source failures, and accurate file-writing effects."
     ],
     "zh": [
-      "Uni-CLI 1.0.3 新增 23 个平台原生 operation，覆盖知乎、X、Lark 和飞书，以及 Bluesky，并保留官方 CLI 与结构化响应。",
-      "外部工具目录现在记录本地 CLI 与 MCP 入口的官方来源、原生形式和提供方能力范围。",
-      "飞书 operation 已迁到官方 lark-cli，Slack 内容 operation 则调用官方 Web API。",
-      "公共文档完成绿色天文台界面与轨道 operation 章节重构，同时补齐关键指南并接入统一的 human-writing harness。"
+      "Uni-CLI 1.0.4 完整覆盖 CCF A 会议身份，并接入 AAAI 与 USENIX 官方论文来源，以及 PACMPL、PACMSE、PACMMOD 和 SIGGRAPH 出版视图。",
+      "会议检索会严格校验会议与年份，跟随 ACM 与 IEEE 出版变化，并剔除 companion 内容、管理页面和相近缩写误命中。",
+      "跨站追踪会连接 OpenReview 评审与作者回复、官方奖项、有来源依据的 PDF、代码候选和数据集，同时保留关系证据。",
+      "学术请求具备可取消的期限、并发资源收集、拼写恢复、结构化来源错误和准确的文件写入 effect。"
     ]
   }
 }

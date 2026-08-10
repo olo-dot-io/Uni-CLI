@@ -12,7 +12,7 @@ description: >
   major platform; run desktop workflows or system tasks; or when the user says
   "unicli", "scrape", "fetch from", "get trending", "check [site]", "find on
   [platform]", "获取", "查询", "抓取".
-version: 1.0.3
+version: 1.0.4
 category: core
 depends-on:
   - human-writing

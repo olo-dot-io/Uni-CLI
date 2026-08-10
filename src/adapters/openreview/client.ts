@@ -48,6 +48,7 @@ export interface OpenReviewHttpClientOptions {
   apiVersion?: OpenReviewApiVersion;
   rpm?: number;
   maxRetries?: number;
+  requestTimeoutMs?: number;
   fetcher?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
   random?: () => number;
@@ -66,9 +67,59 @@ interface ActionableOpenReviewError extends Error {
 let requestTail: Promise<void> = Promise.resolve();
 let nextRequestAt = 0;
 let strictestRpm = Number.POSITIVE_INFINITY;
+const DEFAULT_REQUEST_TIMEOUT_MS = 15_000;
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function abortReason(signal: AbortSignal): unknown {
+  return (
+    signal.reason ??
+    Object.assign(new Error("OpenReview request aborted."), {
+      name: "AbortError",
+    })
+  );
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+async function settleWithSignal<T>(
+  operation: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  throwIfAborted(signal);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => reject(abortReason(signal));
+    signal.addEventListener("abort", onAbort, { once: true });
+    operation.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function cancellableSleep(
+  milliseconds: number,
+  sleep: (milliseconds: number) => Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  throwIfAborted(signal);
+  if (milliseconds <= 0) return;
+  const pending = sleep(milliseconds);
+  if (!signal) {
+    await pending;
+    return;
+  }
+  await settleWithSignal(pending, signal);
 }
 
 function positiveInteger(value: number, label: string, max: number): number {
@@ -220,15 +271,34 @@ function rateLimitError(
   );
 }
 
+function requestTimeoutError(
+  label: string,
+  timeoutMs: number,
+): ActionableOpenReviewError {
+  return actionableError(
+    `OpenReview request timed out after ${timeoutMs} ms for ${label}.`,
+    {
+      code: "timeout",
+      suggestion:
+        "Retry after OpenReview is reachable or reduce the requested result scope.",
+      retryable: true,
+      alternatives: [],
+    },
+  );
+}
+
 async function scheduleRequest(
   rpm: number,
   sleep: (milliseconds: number) => Promise<void>,
+  signal?: AbortSignal,
 ): Promise<void> {
-  strictestRpm = Math.min(strictestRpm, rpm);
-  const interval = Math.ceil(60_000 / strictestRpm);
+  throwIfAborted(signal);
   const scheduled = requestTail.then(async () => {
+    throwIfAborted(signal);
+    strictestRpm = Math.min(strictestRpm, rpm);
+    const interval = Math.ceil(60_000 / strictestRpm);
     const waitMs = Math.max(0, nextRequestAt - Date.now());
-    if (waitMs > 0) await sleep(waitMs);
+    await cancellableSleep(waitMs, sleep, signal);
     nextRequestAt = Date.now() + interval;
   });
   requestTail = scheduled.catch(() => undefined);
@@ -283,6 +353,7 @@ export class OpenReviewHttpClient {
   readonly apiVersion: OpenReviewApiVersion;
   readonly rpm: number;
   readonly maxRetries: number;
+  readonly requestTimeoutMs: number;
   private readonly fetcher: typeof fetch;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly random: () => number;
@@ -299,6 +370,11 @@ export class OpenReviewHttpClient {
       "openreview max retries",
       12,
     );
+    this.requestTimeoutMs = positiveInteger(
+      options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
+      "openreview request timeout",
+      300_000,
+    );
     this.fetcher = options.fetcher ?? fetch;
     this.sleep = options.sleep ?? delay;
     this.random = options.random ?? Math.random;
@@ -311,8 +387,13 @@ export class OpenReviewHttpClient {
     return `${OPENREVIEW_API_BASES[this.apiVersion]}${path.startsWith("/") ? path : `/${path}`}`;
   }
 
-  async headers(accept = "application/json"): Promise<Record<string, string>> {
-    const cookies = await this.cookies();
+  async headers(
+    accept = "application/json",
+    signal?: AbortSignal,
+  ): Promise<Record<string, string>> {
+    const cookies = signal
+      ? await settleWithSignal(this.cookies(), signal)
+      : await this.cookies();
     const headers: Record<string, string> = {
       "User-Agent":
         "unicli-openreview/1.0 (+https://github.com/olo-dot-io/Uni-CLI)",
@@ -332,37 +413,66 @@ export class OpenReviewHttpClient {
     return this.cookiesPromise;
   }
 
-  private async refreshAccessToken(label: string): Promise<boolean> {
+  private async fetchWithDeadline(
+    input: string,
+    init: RequestInit,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    throwIfAborted(signal);
+    const timeoutSignal = AbortSignal.timeout(this.requestTimeoutMs);
+    const requestSignal = signal
+      ? AbortSignal.any([signal, timeoutSignal])
+      : timeoutSignal;
+    return settleWithSignal(
+      this.fetcher(input, { ...init, signal: requestSignal }),
+      requestSignal,
+    );
+  }
+
+  private async refreshAccessToken(
+    label: string,
+    signal?: AbortSignal,
+  ): Promise<boolean> {
     if (this.refreshAttempted) return false;
     this.refreshAttempted = true;
-    const cookies = await this.cookies();
+    const cookies = signal
+      ? await settleWithSignal(this.cookies(), signal)
+      : await this.cookies();
     const refreshToken = cookies?.["openreview.refreshToken"];
     if (!refreshToken) return false;
 
-    await scheduleRequest(this.rpm, this.sleep);
     let response: Response;
     try {
-      response = await this.fetcher(`${OPENREVIEW_API_BASES[2]}/refreshToken`, {
-        method: "POST",
-        headers: {
-          "User-Agent":
-            "unicli-openreview/1.0 (+https://github.com/olo-dot-io/Uni-CLI)",
-          Accept: "application/json,text/*;q=0.99",
-          "Content-Type": "application/json; charset=UTF-8",
-          Cookie: formatCookieHeader({
-            "openreview.refreshToken": refreshToken,
-          }),
-          "X-Source": "unicli-openreview",
-          "X-Url": `${OPENREVIEW_API_BASES[this.apiVersion]}/${label}`,
+      await scheduleRequest(this.rpm, this.sleep, signal);
+      response = await this.fetchWithDeadline(
+        `${OPENREVIEW_API_BASES[2]}/refreshToken`,
+        {
+          method: "POST",
+          headers: {
+            "User-Agent":
+              "unicli-openreview/1.0 (+https://github.com/olo-dot-io/Uni-CLI)",
+            Accept: "application/json,text/*;q=0.99",
+            "Content-Type": "application/json; charset=UTF-8",
+            Cookie: formatCookieHeader({
+              "openreview.refreshToken": refreshToken,
+            }),
+            "X-Source": "unicli-openreview",
+            "X-Url": `${OPENREVIEW_API_BASES[this.apiVersion]}/${label}`,
+          },
         },
-      });
+        signal,
+      );
     } catch {
+      if (signal?.aborted) this.refreshAttempted = false;
+      throwIfAborted(signal);
       return false;
     }
     if (!response.ok) return false;
-    const data = (await response.json().catch(() => ({}))) as {
-      token?: unknown;
-    };
+    const data = (await response.json().catch(() => {
+      throwIfAborted(signal);
+      return {};
+    })) as { token?: unknown };
+    throwIfAborted(signal);
     if (typeof data.token !== "string" || !data.token) return false;
     this.sessionAccessToken = data.token;
     return true;
@@ -372,6 +482,7 @@ export class OpenReviewHttpClient {
     pathOrUrl: string,
     label: string,
     accept = "application/json",
+    signal?: AbortSignal,
   ): Promise<Response | undefined> {
     const url = /^https?:\/\//i.test(pathOrUrl)
       ? pathOrUrl
@@ -379,20 +490,31 @@ export class OpenReviewHttpClient {
     if (!isOpenReviewUrl(url)) {
       throw new Error(`Refusing non-OpenReview request URL: ${url}`);
     }
-    let headers = await this.headers(accept);
+    throwIfAborted(signal);
+    let headers = await this.headers(accept, signal);
+    throwIfAborted(signal);
     let lastWaitMs = 60_000;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
-      await scheduleRequest(this.rpm, this.sleep);
+      await scheduleRequest(this.rpm, this.sleep, signal);
       let response: Response;
       try {
-        response = await this.fetcher(url, { headers });
+        response = await this.fetchWithDeadline(url, { headers }, signal);
       } catch (error) {
-        if (attempt >= this.maxRetries) throw error;
+        throwIfAborted(signal);
+        if (attempt >= this.maxRetries) {
+          if (
+            error instanceof Error &&
+            (error.name === "TimeoutError" || error.name === "AbortError")
+          ) {
+            throw requestTimeoutError(label, this.requestTimeoutMs);
+          }
+          throw error;
+        }
         const waitMs =
           Math.min(120_000, 1000 * 2 ** attempt) +
           Math.floor(this.random() * 1000);
-        await this.sleep(waitMs);
+        await cancellableSleep(waitMs, this.sleep, signal);
         continue;
       }
 
@@ -403,6 +525,7 @@ export class OpenReviewHttpClient {
       }
 
       const body = await response.text().catch(() => "");
+      throwIfAborted(signal);
       const challengeUrl = openReviewChallengeUrl(body);
       if (response.status === 403 && challengeUrl) {
         throw challengeError(challengeUrl, label);
@@ -413,8 +536,8 @@ export class OpenReviewHttpClient {
         parsed.name === "TokenExpiredError" ||
         parsed.name === "UnauthenticatedError"
       ) {
-        if (await this.refreshAccessToken(label)) {
-          headers = await this.headers(accept);
+        if (await this.refreshAccessToken(label, signal)) {
+          headers = await this.headers(accept, signal);
           attempt -= 1;
           continue;
         }
@@ -447,7 +570,7 @@ export class OpenReviewHttpClient {
           Math.min(120_000, 1000 * 2 ** attempt) +
             Math.floor(this.random() * 1000);
         if (attempt < this.maxRetries) {
-          await this.sleep(lastWaitMs);
+          await cancellableSleep(lastWaitMs, this.sleep, signal);
           continue;
         }
         if (response.status === 429) {
@@ -472,21 +595,45 @@ export class OpenReviewHttpClient {
     throw rateLimitError(label, 429, lastWaitMs);
   }
 
-  async json<T>(path: string, label: string): Promise<T | undefined> {
-    const response = await this.request(path, label, "application/json");
+  async json<T>(
+    path: string,
+    label: string,
+    signal?: AbortSignal,
+  ): Promise<T | undefined> {
+    const response = await this.request(
+      path,
+      label,
+      "application/json",
+      signal,
+    );
     if (!response) return undefined;
-    return (await response.json()) as T;
+    try {
+      const value = (await response.json()) as T;
+      throwIfAborted(signal);
+      return value;
+    } catch (error) {
+      throwIfAborted(signal);
+      if (
+        error instanceof Error &&
+        (error.name === "TimeoutError" || error.name === "AbortError")
+      ) {
+        throw requestTimeoutError(label, this.requestTimeoutMs);
+      }
+      throw error;
+    }
   }
 
   async download(
     pathOrUrl: string,
     destination: string,
     label: string,
+    signal?: AbortSignal,
   ): Promise<OpenReviewDownloadResult | undefined> {
     const response = await this.request(
       pathOrUrl,
       label,
       "application/pdf,application/zip,application/octet-stream,*/*",
+      signal,
     );
     if (!response) return undefined;
     if (!response.body) {
@@ -501,13 +648,26 @@ export class OpenReviewHttpClient {
           callback(null, chunk);
         },
       });
-      await pipeline(
-        Readable.fromWeb(
-          response.body as Parameters<typeof Readable.fromWeb>[0],
-        ),
-        hasher,
-        createWriteStream(temporaryPath, { flags: "wx" }),
+      const readable = Readable.fromWeb(
+        response.body as Parameters<typeof Readable.fromWeb>[0],
       );
+      const writer = createWriteStream(temporaryPath, { flags: "wx" });
+      try {
+        if (signal) {
+          await pipeline(readable, hasher, writer, { signal });
+        } else {
+          await pipeline(readable, hasher, writer);
+        }
+      } catch (error) {
+        throwIfAborted(signal);
+        if (
+          error instanceof Error &&
+          (error.name === "TimeoutError" || error.name === "AbortError")
+        ) {
+          throw requestTimeoutError(label, this.requestTimeoutMs);
+        }
+        throw error;
+      }
     });
     const file = await stat(destination);
     return {

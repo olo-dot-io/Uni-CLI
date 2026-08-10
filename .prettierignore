@@ -8,3 +8,5 @@ stats.json
 docs/public/llms.txt
 docs/public/markdown/
 .paper-lab/
+# Raw Dogfood evidence includes third-party HTML and exact command output.
+.claude/dogfood/

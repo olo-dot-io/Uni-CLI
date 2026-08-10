@@ -116,14 +116,24 @@ const BOOST_SCHOLARLY_SOURCE_AUDIT_LOOP = 124.0;
 const BOOST_SCHOLARLY_REPRODUCE_LOOP = 108.0;
 const BOOST_SCHOLARLY_COVERAGE_LOOP = 96.0;
 const BOOST_SCHOLARLY_REVIEW_LOOP = 82.0;
+const BOOST_SCHOLARLY_TRACE_LOOP = 132.0;
+const BOOST_SCHOLARLY_AWARDS_LOOP = 126.0;
 const BOOST_SCHOLARLY_ARTIFACT_LOOP = 64.0;
 const BOOST_SCHOLARLY_RESOURCE_LOOP = 58.0;
 const BOOST_SCHOLARLY_VENUE_SOURCE = 38.0;
+const BOOST_SCHOLARLY_CONFERENCE_PAPER_DISCOVERY = 132.0;
 const BOOST_COMPUTE_CONTEXT = 52.0;
 const BOOST_SOCIAL_USER_TIMELINE_INTENT = 18.0;
 const BOOST_MARXISTS_ARCHIVE_INTENT = 50.0;
 
 const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
+  "scholar/search",
+  "scholar/venue",
+  "scholar/get",
+  "scholar/pdf",
+  "scholar/citations",
+  "scholar/references",
+  "scholar/doctor",
   "scholar/availability",
   "scholar/evidence",
   "scholar/sources",
@@ -131,6 +141,8 @@ const SCHOLARLY_WORKFLOW_COMMANDS = new Set([
   "scholar/reproduce",
   "scholar/coverage",
   "scholar/reviews",
+  "scholar/trace",
+  "scholar/awards",
   "scholar/code",
   "scholar/datasets",
   "scholar/read",
@@ -701,6 +713,15 @@ function scholarlyIntentBoost(
     "peer",
     "decision",
     "rebuttal",
+    "award",
+    "awards",
+    "best",
+    "winner",
+    "trace",
+    "link",
+    "cross-site",
+    "announcement",
+    "newsroom",
     "metareview",
     "meta-review",
     "doi",
@@ -930,6 +951,106 @@ function scholarlyIntentBoost(
     boost += BOOST_SCHOLARLY_REVIEW_LOOP;
   }
 
+  const traceIntent =
+    hasAny(terms, [
+      "trace",
+      "link",
+      "cross-site",
+      "announcement",
+      "newsroom",
+    ]) ||
+    (hasAny(terms, ["award", "awards", "best", "winner"]) &&
+      hasAny(terms, ["review", "reviews", "openreview", "pdf"]));
+  if (traceIntent && doc.site === "scholar" && doc.command === "trace") {
+    boost += BOOST_SCHOLARLY_TRACE_LOOP;
+  }
+
+  if (
+    hasAny(terms, ["award", "awards", "best", "winner"]) &&
+    doc.site === "scholar" &&
+    doc.command === "awards"
+  ) {
+    boost += BOOST_SCHOLARLY_AWARDS_LOOP;
+  }
+  if (
+    hasAny(terms, ["award", "awards", "best", "winner"]) &&
+    doc.site === "sigchi" &&
+    doc.command === "awards"
+  ) {
+    boost += 84.0;
+  }
+  if (
+    (hasAny(terms, ["award", "awards", "best", "winner"]) ||
+      hasAny(terms, ["openreview", "rebuttal", "review", "reviews"])) &&
+    terms.has("iclr") &&
+    doc.site === "iclr" &&
+    doc.command === "awards"
+  ) {
+    boost += 88.0;
+  }
+
+  if (
+    hasAny(terms, ["ccf", "ccfa", "a-class", "ranking", "directory"]) &&
+    doc.site === "ccf"
+  ) {
+    const listIntent = hasAny(terms, ["directory", "catalog", "list", "all"]);
+    boost += listIntent
+      ? doc.command === "conferences"
+        ? 176.0
+        : 152.0
+      : doc.command === "conference"
+        ? 168.0
+        : 150.0;
+  }
+
+  if (
+    hasAny(terms, ["conference", "proceedings", "venue"]) &&
+    hasAny(terms, ["paper", "papers", "journal", "publication"]) &&
+    doc.site === "scholar" &&
+    doc.command === "venue"
+  ) {
+    boost += 36.0;
+  }
+
+  const conferencePaperDiscovery =
+    searchIntent &&
+    hasAny(terms, ["paper", "papers", "publication", "publications"]) &&
+    hasAny(terms, ["exact", "title", "doi", "pdf", "conference", "venue"]) &&
+    !hasAny(terms, [
+      "award",
+      "awards",
+      "best",
+      "winner",
+      "review",
+      "reviews",
+      "rebuttal",
+    ]);
+  if (
+    conferencePaperDiscovery &&
+    doc.site === "scholar" &&
+    doc.command === "venue"
+  ) {
+    boost += BOOST_SCHOLARLY_CONFERENCE_PAPER_DISCOVERY;
+  }
+
+  const usenixIntent =
+    hasAny(terms, ["usenix", "fast", "nsdi", "osdi", "atc"]) &&
+    doc.site === "usenix";
+  if (
+    usenixIntent &&
+    hasAny(terms, ["paper", "papers", "proceedings", "conference"]) &&
+    doc.command === "venue"
+  ) {
+    boost += 48.0;
+  }
+  if (
+    usenixIntent &&
+    hasAny(terms, ["award", "awards", "best", "distinguished"]) &&
+    doc.command === "awards"
+  ) {
+    boost += 112.0;
+  }
+
   if (
     searchIntent &&
     ["search", "recent", "trending", "daily", "author", "venue"].includes(
@@ -1029,6 +1150,35 @@ function scholarlyVenueSourceBoost(
   if (wantsNeurips && doc.site === "neurips")
     return BOOST_SCHOLARLY_VENUE_SOURCE;
 
+  const wantsUsenix = hasAny(terms, ["usenix", "fast", "nsdi", "osdi", "atc"]);
+  if (wantsUsenix && doc.site === "usenix") {
+    return BOOST_SCHOLARLY_VENUE_SOURCE + 16.0;
+  }
+
+  const wantsAcm = hasAny(terms, [
+    "acm",
+    "acmmm",
+    "siggraph",
+    "sigchi",
+    "chi",
+    "hci",
+  ]);
+  if (wantsAcm && ["acm", "sigchi"].includes(doc.site)) {
+    return BOOST_SCHOLARLY_VENUE_SOURCE;
+  }
+
+  const wantsIeee = hasAny(terms, ["ieee", "ieeevis", "vis", "rtss", "xplore"]);
+  if (wantsIeee && ["ieee", "ieee-xplore"].includes(doc.site)) {
+    return BOOST_SCHOLARLY_VENUE_SOURCE;
+  }
+
+  if (
+    hasAny(terms, ["ubicomp", "imwut", "ubiquitous"]) &&
+    doc.site === "sigchi"
+  ) {
+    return BOOST_SCHOLARLY_VENUE_SOURCE;
+  }
+
   return 0;
 }
 
@@ -1041,6 +1191,11 @@ function scholarlyProviderSourceBoost(
     terms.has("open") || terms.has("access") || terms.has("oa");
 
   if (doiIntent && doc.site === "crossref") return 34.0;
+  if (
+    hasAny(terms, ["datacite", "dataset", "software"]) &&
+    doc.site === "datacite"
+  )
+    return 34.0;
   if ((doiIntent || openAccessIntent) && doc.site === "unpaywall") return 34.0;
   if (doiIntent && doc.site === "openalex") return 18.0;
   if (

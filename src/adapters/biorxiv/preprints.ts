@@ -106,6 +106,8 @@ cli({
   strategy: Strategy.PUBLIC,
   args: RXIV_READ_ARGS,
   columns: RXIV_READ_COLUMNS,
+  operation_family: "download",
+  operation_effect: "download_file",
   capabilities: RXIV_READ_CAPABILITIES,
   minimum_capability: "subprocess.exec",
   func: async (_page, kwargs) => [await readRxivPaper(CONFIG, kwargs)],

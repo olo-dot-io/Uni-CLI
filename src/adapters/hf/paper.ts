@@ -9,7 +9,34 @@
 import { cli, Strategy } from "../../registry.js";
 
 const HF_DEFAULT_ENDPOINT = "https://huggingface.co";
+const HF_TIMEOUT_MS = 15_000;
 const ARXIV_ID_PATTERN = /^\d{4}\.\d{4,5}(?:v\d+)?$/;
+
+type HfPaperErrorCode =
+  | "invalid_input"
+  | "empty_result"
+  | "timeout"
+  | "rate_limited"
+  | "upstream_error";
+
+interface HfPaperAdapterError extends Error {
+  code: HfPaperErrorCode;
+  suggestion: string;
+  retryable?: boolean;
+}
+
+function hfPaperError(
+  code: HfPaperErrorCode,
+  message: string,
+  suggestion: string,
+  retryable = false,
+): HfPaperAdapterError {
+  return Object.assign(new Error(message), {
+    code,
+    suggestion,
+    ...(retryable ? { retryable } : {}),
+  });
+}
 
 interface HfAuthor {
   name?: unknown;
@@ -52,9 +79,19 @@ function numberOrNull(value: unknown): number | null {
 
 export function requireHfPaperId(value: unknown): string {
   const id = String(value ?? "").trim();
-  if (!id) throw new Error("hf paper id cannot be empty.");
+  if (!id) {
+    throw hfPaperError(
+      "invalid_input",
+      "hf paper id cannot be empty.",
+      "Provide a modern arXiv id such as 1706.03762.",
+    );
+  }
   if (!ARXIV_ID_PATTERN.test(id)) {
-    throw new Error(`hf paper id "${String(value)}" is not a valid arXiv id.`);
+    throw hfPaperError(
+      "invalid_input",
+      `hf paper id "${String(value)}" is not a valid arXiv id.`,
+      "Provide a modern arXiv id such as 1706.03762.",
+    );
   }
   return id;
 }
@@ -110,7 +147,13 @@ export function mapHfPaperRow(
   endpoint = HF_DEFAULT_ENDPOINT,
 ): Record<string, unknown> {
   const id = stringField(paper.id);
-  if (!id) throw new Error("Hugging Face returned no paper data.");
+  if (!id) {
+    throw hfPaperError(
+      "empty_result",
+      "Hugging Face returned no paper data.",
+      "Verify the arXiv id or query arXiv directly.",
+    );
+  }
   const sourceUrl = `${hfEndpoint(endpoint)}/papers/${id}`;
   const datasetUrls = linkedResourceUrls(
     paper.linkedDatasets,
@@ -149,24 +192,55 @@ export function mapHfPaperRow(
 
 async function fetchHfPaper(id: string): Promise<HfPaper> {
   const endpoint = hfEndpoint();
-  const response = await fetch(
-    `${endpoint}/api/papers/${encodeURIComponent(id)}`,
-    {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "unicli-hf/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+  try {
+    const response = await fetch(
+      `${endpoint}/api/papers/${encodeURIComponent(id)}`,
+      {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "unicli-hf/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+        },
+        signal: AbortSignal.timeout(HF_TIMEOUT_MS),
       },
-    },
-  );
-  if (response.status === 404) {
-    throw new Error(`Hugging Face has no paper page for "${id}".`);
+    );
+    if (response.status === 404) {
+      throw hfPaperError(
+        "empty_result",
+        `Hugging Face has no paper page for "${id}".`,
+        "Verify the arXiv id or query arXiv directly.",
+      );
+    }
+    if (response.status === 429) {
+      throw hfPaperError(
+        "rate_limited",
+        "Hugging Face paper API returned HTTP 429.",
+        "Retry after the Hugging Face rate-limit window.",
+        true,
+      );
+    }
+    if (!response.ok) {
+      throw hfPaperError(
+        "upstream_error",
+        `Hugging Face paper API returned HTTP ${response.status}.`,
+        "Retry after the Hugging Face papers API is healthy.",
+        response.status >= 500,
+      );
+    }
+    return (await response.json()) as HfPaper;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw hfPaperError(
+        "timeout",
+        `Hugging Face paper API timed out after ${HF_TIMEOUT_MS} ms.`,
+        "Retry later or query arXiv directly.",
+        true,
+      );
+    }
+    throw error;
   }
-  if (response.status === 429) {
-    throw new Error("Hugging Face paper API returned HTTP 429.");
-  }
-  if (!response.ok)
-    throw new Error(`Hugging Face paper API returned HTTP ${response.status}.`);
-  return (await response.json()) as HfPaper;
 }
 
 cli({
@@ -176,6 +250,8 @@ cli({
   domain: "huggingface.co",
   strategy: Strategy.PUBLIC,
   browser: false,
+  operation_effect: "read",
+  operation_family: "get",
   args: [
     {
       name: "id",

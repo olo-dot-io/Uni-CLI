@@ -83,6 +83,136 @@ const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
 const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   {
     site: "scholar",
+    command: "search",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Search scholarly papers across first-source adapters with fused ranking and optional exact conference and publication-year constraints.",
+    capabilities: ["http.fetch", "scholar.search"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "query", type: "str", required: true, positional: true },
+      { name: "sources", type: "str" },
+      { name: "venue", type: "str" },
+      { name: "year", type: "str" },
+      { name: "limit", type: "int", default: 20 },
+      { name: "timeout", type: "str", default: "20" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "venue",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve a conference name or CCF A alias and search official proceedings sources with exact venue and year validation.",
+    capabilities: ["http.fetch", "scholar.venue"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "venue", type: "str", required: true, positional: true },
+      { name: "sources", type: "str" },
+      { name: "query", type: "str" },
+      { name: "year", type: "str" },
+      { name: "limit", type: "int", default: 50 },
+      { name: "timeout", type: "str", default: "20" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "get",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve one scholarly work from a DOI, arXiv id, PMID, OpenReview id, source-local id, or exact title.",
+    capabilities: ["http.fetch", "scholar.get"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "ref", type: "str", required: true, positional: true },
+      { name: "source", type: "str" },
+      { name: "sources", type: "str" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "pdf",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Resolve only scholarly records that expose a source-backed PDF URL.",
+    capabilities: ["http.fetch", "scholar.pdf"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "ref", type: "str", required: true, positional: true },
+      { name: "source", type: "str" },
+      { name: "sources", type: "str" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "citations",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description: "List works that cite one resolved scholarly paper.",
+    capabilities: ["http.fetch", "scholar.citations"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "ref", type: "str", required: true, positional: true },
+      { name: "source", type: "str" },
+      { name: "sources", type: "str" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "references",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description: "List references cited by one resolved scholarly paper.",
+    capabilities: ["http.fetch", "scholar.references"],
+    minimum_capability: "http.fetch",
+    args: [
+      { name: "ref", type: "str", required: true, positional: true },
+      { name: "source", type: "str" },
+      { name: "sources", type: "str" },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "doctor",
+    category: "scholarly",
+    type: "service",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Inspect registered scholarly source capabilities and optionally run bounded live probes.",
+    capabilities: ["scholar.search"],
+    args: [
+      { name: "sources", type: "str" },
+      { name: "live", type: "bool" },
+      { name: "query", type: "str" },
+      { name: "limit", type: "int", default: 1 },
+      { name: "detailed", type: "bool" },
+    ],
+  },
+  {
+    site: "scholar",
     command: "availability",
     category: "scholarly",
     type: "web-api",
@@ -311,6 +441,85 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
         type: "bool",
         description: "Include source errors, download command, and timestamp",
       },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "trace",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "Trace one paper across publisher metadata, official conference programs and awards, OpenReview review threads and rebuttals, PDFs, code, and datasets by DOI, title, or source identifier.",
+    capabilities: [
+      "http.fetch",
+      "scholar.get",
+      "scholar.search",
+      "scholar.context",
+      "scholar.awards",
+      "scholar.review",
+      "scholar.pdf",
+      "scholar.code",
+      "scholar.datasets",
+    ],
+    minimum_capability: "http.fetch",
+    operation_effect: "read",
+    operation_family: "get",
+    args: [
+      {
+        name: "ref",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "DOI, exact title, arXiv id, PMID, or OpenReview id",
+      },
+      { name: "source", type: "str", description: "Force one metadata source" },
+      { name: "sources", type: "str", description: "Metadata source list" },
+      {
+        name: "context-sources",
+        type: "str",
+        description: "Official program and award source list",
+      },
+      { name: "venue", type: "str", description: "Conference override" },
+      { name: "year", type: "str", description: "Conference year override" },
+      { name: "limit", type: "int", default: 20 },
+      { name: "detailed", type: "bool", description: "Include raw context" },
+    ],
+  },
+  {
+    site: "scholar",
+    command: "awards",
+    category: "scholarly",
+    type: "web-api",
+    target_surface: "web",
+    source_path: "src/commands/scholar.ts",
+    description:
+      "List source-backed official conference award records, paper identifiers, DOI links, authors, and conference-program evidence.",
+    capabilities: ["http.fetch", "scholar.awards", "scholar.context"],
+    minimum_capability: "http.fetch",
+    operation_effect: "read",
+    operation_family: "list",
+    args: [
+      {
+        name: "venue",
+        type: "str",
+        required: true,
+        positional: true,
+        description: "Conference acronym or name",
+      },
+      { name: "source", type: "str", description: "Force one award source" },
+      { name: "sources", type: "str", description: "Award source list" },
+      { name: "year", type: "str", description: "Conference year" },
+      { name: "query", type: "str", description: "Filter award records" },
+      {
+        name: "award",
+        type: "str",
+        default: "all",
+        choices: ["all", "best-paper", "honorable-mention"],
+      },
+      { name: "limit", type: "int", default: 100 },
+      { name: "detailed", type: "bool", description: "Include raw context" },
     ],
   },
   {
@@ -1116,9 +1325,36 @@ export function coreDiscoveryCategory(site: string): string | undefined {
 function withCoreSourcePath(
   command: CoreDiscoveryCommand,
 ): CoreDiscoveryCommand {
+  const scholarEffect: OperationEffect | undefined =
+    command.site !== "scholar"
+      ? undefined
+      : ["read", "download"].includes(command.command)
+        ? "download_file"
+        : "read";
+  const scholarFamily: OperationFamily | undefined =
+    command.site !== "scholar"
+      ? undefined
+      : command.command === "search" ||
+          command.command === "code" ||
+          command.command === "datasets"
+        ? "search"
+        : [
+              "venue",
+              "citations",
+              "references",
+              "sources",
+              "awards",
+              "reviews",
+            ].includes(command.command)
+          ? "list"
+          : command.command === "download"
+            ? "download"
+            : "get";
   return {
     ...command,
     source_path: command.source_path ?? CORE_COMMAND_SOURCE_PATHS[command.site],
+    operation_effect: command.operation_effect ?? scholarEffect,
+    operation_family: command.operation_family ?? scholarFamily,
   };
 }
 

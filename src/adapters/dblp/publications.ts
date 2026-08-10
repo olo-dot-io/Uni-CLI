@@ -16,6 +16,7 @@
 import { cli, Strategy } from "../../registry.js";
 
 const DBLP_ORIGIN = "https://dblp.org";
+const DBLP_TIMEOUT_MS = 15_000;
 const RECORD_KEY_RE = /^[a-z]+(?:\/[A-Za-z0-9_.-]+)+$/;
 const PID_RE = /^[0-9a-z]+(?:\/[0-9a-z-]+)+$/i;
 
@@ -48,13 +49,49 @@ interface DblpSearchBody {
   };
 }
 
+interface DblpActionableError extends Error {
+  code: string;
+  suggestion: string;
+  retryable: boolean;
+  alternatives: string[];
+}
+
+function dblpError(
+  code: string,
+  message: string,
+  suggestion: string,
+  alternatives: string[] = [],
+): DblpActionableError {
+  return Object.assign(new Error(message), {
+    code,
+    suggestion,
+    retryable: false,
+    alternatives,
+  });
+}
+
+export function dblpEmptyResult(message: string): DblpActionableError {
+  return dblpError(
+    "empty_result",
+    message,
+    "Broaden the query, verify the DBLP key, PID, or venue, or select another scholarly source.",
+    ["unicli scholar search <query> --sources openalex,crossref"],
+  );
+}
+
 function stringField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
 export function requireDblpQuery(value: unknown, label = "query"): string {
   const query = String(value ?? "").trim();
-  if (!query) throw new Error(`dblp ${label} cannot be empty.`);
+  if (!query) {
+    throw dblpError(
+      "invalid_input",
+      `dblp ${label} cannot be empty.`,
+      `Provide a non-empty dblp ${label}.`,
+    );
+  }
   return query;
 }
 
@@ -66,23 +103,43 @@ export function requireDblpLimit(
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > max) {
-    throw new Error(`limit must be an integer in [1, ${max}].`);
+    throw dblpError(
+      "invalid_input",
+      `limit must be an integer in [1, ${max}].`,
+      `Choose a limit from 1 through ${max}.`,
+    );
   }
   return n;
 }
 
 export function requireRecordKey(value: unknown): string {
   const key = String(value ?? "").trim();
-  if (!key) throw new Error("dblp paper key is required.");
+  if (!key) {
+    throw dblpError(
+      "invalid_input",
+      "dblp paper key is required.",
+      "Provide a canonical key such as conf/nips/VaswaniSPUJGKP17.",
+    );
+  }
   if (!RECORD_KEY_RE.test(key)) {
-    throw new Error(`dblp paper key "${String(value)}" is not valid.`);
+    throw dblpError(
+      "invalid_input",
+      `dblp paper key "${String(value)}" is not valid.`,
+      "Provide a canonical key such as conf/nips/VaswaniSPUJGKP17.",
+    );
   }
   return key;
 }
 
 export function requirePid(value: unknown): string {
   const pid = String(value ?? "").trim();
-  if (!PID_RE.test(pid)) throw new Error(`dblp pid "${pid}" is not valid.`);
+  if (!PID_RE.test(pid)) {
+    throw dblpError(
+      "invalid_input",
+      `dblp pid "${pid}" is not valid.`,
+      "Provide a canonical DBLP PID such as 56/953.",
+    );
+  }
   return pid;
 }
 
@@ -122,6 +179,21 @@ function compactType(value: unknown): string {
   return type ? type.toLowerCase().split(/\s+/)[0] : "";
 }
 
+export function inferDblpConferenceYear(
+  titleValue: unknown,
+  venueValue: unknown,
+): string {
+  const title = decodeXmlEntities(titleValue);
+  const acronym = decodeXmlEntities(venueValue).split(",")[0]?.trim();
+  if (!acronym || acronym.length < 2) return "";
+  const escaped = acronym.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (
+    title.match(
+      new RegExp(`\\b${escaped}\\s+((?:19|20)\\d{2})\\b`, "i"),
+    )?.[1] ?? ""
+  );
+}
+
 export function normalizeDblpAuthors(authorsField: unknown): string[] {
   const raw =
     authorsField && typeof authorsField === "object"
@@ -157,6 +229,8 @@ export function mapPublicationHit(
   const info = hit.info ?? {};
   const key = stringField(info.key);
   const url = stringField(info.ee) || stringField(info.url);
+  const publicationYear = stringField(info.year);
+  const conferenceYear = inferDblpConferenceYear(info.title, info.venue);
   return {
     id: key,
     rank,
@@ -165,7 +239,9 @@ export function mapPublicationHit(
     title: stripTrailingDot(decodeXmlEntities(info.title)).trim(),
     authors: normalizeDblpAuthors(info.authors).join(", "),
     venue: decodeXmlEntities(info.venue),
-    year: stringField(info.year),
+    year: publicationYear,
+    publication_year: publicationYear,
+    conference_year: conferenceYear || undefined,
     type: compactType(info.type),
     doi: stringField(info.doi),
     source_url: url || (key ? `${DBLP_ORIGIN}/rec/${key}.html` : ""),
@@ -293,22 +369,86 @@ function extractPidFromAuthorHit(hit: DblpHit): string {
   return match ? match[1] : "";
 }
 
-async function fetchDblp(
+export async function fetchDblp(
   path: string,
   label: string,
   accept: string,
 ): Promise<Response> {
-  const response = await fetch(`${DBLP_ORIGIN}${path}`, {
-    headers: {
-      "User-Agent": "unicli-dblp/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-      Accept: accept,
-    },
-  });
-  if (response.status === 404) throw new Error(`${label} returned no result.`);
-  if (response.status === 429) throw new Error(`${label} returned HTTP 429.`);
-  if (!response.ok)
-    throw new Error(`${label} returned HTTP ${response.status}.`);
-  return response;
+  const failure = (
+    code: string,
+    message: string,
+    suggestion: string,
+    retryable: boolean,
+  ): Error =>
+    Object.assign(new Error(message), {
+      code,
+      suggestion,
+      retryable,
+      alternatives: [
+        "unicli scholar search <query> --sources openalex,crossref",
+      ],
+    });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(`${DBLP_ORIGIN}${path}`, {
+        headers: {
+          "User-Agent":
+            "unicli-dblp/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+          Accept: accept,
+        },
+        signal: AbortSignal.timeout(DBLP_TIMEOUT_MS),
+      });
+      if (response.status >= 500 && attempt === 0) {
+        await response.body?.cancel();
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        continue;
+      }
+      if (response.status === 404) {
+        throw failure(
+          "empty_result",
+          `${label} returned no result.`,
+          "Verify the DBLP key, PID, venue, or query.",
+          false,
+        );
+      }
+      if (response.status === 429) {
+        throw failure(
+          "rate_limited",
+          `${label} returned HTTP 429.`,
+          "Retry after the DBLP rate-limit window or select another source.",
+          true,
+        );
+      }
+      if (!response.ok) {
+        throw failure(
+          "upstream_error",
+          `${label} returned HTTP ${response.status}.`,
+          "Retry after DBLP is reachable and healthy.",
+          response.status >= 500,
+        );
+      }
+      return response;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === "TimeoutError" || error.name === "AbortError")
+      ) {
+        throw failure(
+          "timeout",
+          `${label} timed out after ${DBLP_TIMEOUT_MS} ms.`,
+          "Retry later or select another scholarly source.",
+          true,
+        );
+      }
+      throw error;
+    }
+  }
+  throw failure(
+    "upstream_error",
+    `${label} exhausted its DBLP retry.`,
+    "Retry after DBLP is reachable and healthy.",
+    true,
+  );
 }
 
 async function fetchDblpJson(
@@ -362,8 +502,9 @@ cli({
     const rows = hitList(body, "dblp search")
       .slice(0, limit)
       .map((hit, index) => mapPublicationHit(hit, index + 1));
-    if (rows.length === 0)
-      throw new Error(`No dblp publications matched "${query}".`);
+    if (rows.length === 0) {
+      throw dblpEmptyResult(`No dblp publications matched "${query}".`);
+    }
     return rows;
   },
 });
@@ -404,7 +545,7 @@ cli({
     );
     const row = mapRecordXml(xml);
     if (!row.key && !row.title) {
-      throw new Error(`dblp returned an empty record for key "${key}".`);
+      throw dblpEmptyResult(`dblp returned an empty record for key "${key}".`);
     }
     return [row];
   },
@@ -438,8 +579,9 @@ cli({
     const rows = hitList(body, "dblp venue")
       .slice(0, limit)
       .map((hit, index) => mapVenueHit(hit, index + 1));
-    if (rows.length === 0)
-      throw new Error(`No dblp venues matched "${query}".`);
+    if (rows.length === 0) {
+      throw dblpEmptyResult(`No dblp venues matched "${query}".`);
+    }
     return rows;
   },
 });
@@ -488,16 +630,21 @@ cli({
         "dblp author search",
       );
       const hits = hitList(body, "dblp author search");
-      if (hits.length === 0)
-        throw new Error(`No dblp author matched "${author}".`);
+      if (hits.length === 0) {
+        throw dblpEmptyResult(`No dblp author matched "${author}".`);
+      }
       pid = extractPidFromAuthorHit(hits[0]);
-      if (!pid)
-        throw new Error(`dblp author search returned no PID for "${author}".`);
+      if (!pid) {
+        throw dblpEmptyResult(
+          `dblp author search returned no PID for "${author}".`,
+        );
+      }
     }
     const xml = await fetchDblpXml(`/pid/${pid}.xml`, `dblp pid ${pid}`);
     const records = splitAuthorRecords(xml);
-    if (records.length === 0)
-      throw new Error(`dblp PID ${pid} has no publications.`);
+    if (records.length === 0) {
+      throw dblpEmptyResult(`dblp PID ${pid} has no publications.`);
+    }
     return records.slice(0, limit).map((record, index) => {
       const row = mapRecordXml(`<root>${record}</root>`);
       return {

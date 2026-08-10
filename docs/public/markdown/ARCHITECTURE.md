@@ -6,7 +6,7 @@
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.0.3. Its main abstraction is an operation: a named action with arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.0.4. Its main abstraction is an operation: a named action with arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 

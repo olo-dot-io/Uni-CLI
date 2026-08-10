@@ -17,8 +17,9 @@ import { cli, Strategy } from "../../registry.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
 
 const OPENALEX_BASE = "https://api.openalex.org";
+const OPENALEX_TIMEOUT_MS = 15_000;
 const WORK_ID_RE = /^W\d{4,}$/;
-const DOI_RE = /^10\.\S+$/;
+const DOI_RE = /^10\.\S+\/\S+$/;
 const SEARCH_SELECT = [
   "id",
   "doi",
@@ -84,6 +85,35 @@ interface OpenAlexWork {
   abstract_inverted_index?: Record<string, number[]>;
 }
 
+interface OpenAlexAdapterError extends Error {
+  code: "invalid_input" | "empty_result";
+  suggestion: string;
+}
+
+function openAlexError(
+  code: OpenAlexAdapterError["code"],
+  message: string,
+  suggestion: string,
+): OpenAlexAdapterError {
+  return Object.assign(new Error(message), { code, suggestion });
+}
+
+function openAlexInvalidInput(message: string): OpenAlexAdapterError {
+  return openAlexError(
+    "invalid_input",
+    message,
+    "Provide a non-empty query, a limit from 1 to 200, or an OpenAlex Work id or DOI.",
+  );
+}
+
+function openAlexEmptyResult(message: string): OpenAlexAdapterError {
+  return openAlexError(
+    "empty_result",
+    message,
+    "Verify the work identifier or broaden the search query.",
+  );
+}
+
 function stringField(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -94,7 +124,7 @@ function numberField(value: unknown): number | null {
 
 export function requireOpenAlexString(value: unknown, label: string): string {
   const text = String(value ?? "").trim();
-  if (!text) throw new Error(`openalex ${label} cannot be empty.`);
+  if (!text) throw openAlexInvalidInput(`openalex ${label} cannot be empty.`);
   return text;
 }
 
@@ -102,7 +132,7 @@ export function requireOpenAlexLimit(value: unknown, fallback = 20): number {
   if (value === undefined || value === null || value === "") return fallback;
   const n = Number(value);
   if (!Number.isInteger(n) || n < 1 || n > 200) {
-    throw new Error(
+    throw openAlexInvalidInput(
       `openalex limit must be an integer in [1, 200]. Got: ${String(value)}`,
     );
   }
@@ -124,14 +154,14 @@ export function bareDoi(value: unknown): string {
 
 export function requireOpenAlexWorkRef(value: unknown): string {
   const raw = String(value ?? "").trim();
-  if (!raw) throw new Error("openalex work id is required.");
+  if (!raw) throw openAlexInvalidInput("openalex work id is required.");
   const openAlexUrl = raw.match(
-    /^https?:\/\/(?:api\.)?openalex\.org\/(?:works\/)?([A-Za-z]\d+)/i,
+    /^https?:\/\/(?:api\.)?openalex\.org\/(?:works\/)?([A-Za-z]\d+)\/?(?:[?#].*)?$/i,
   );
   if (openAlexUrl) {
     const id = openAlexUrl[1].toUpperCase();
     if (!id.startsWith("W"))
-      throw new Error(`openalex id must be a Work id, got ${id}.`);
+      throw openAlexInvalidInput(`openalex id must be a Work id, got ${id}.`);
     return id;
   }
   const upper = raw.toUpperCase();
@@ -143,7 +173,7 @@ export function requireOpenAlexWorkRef(value: unknown): string {
   const doiUrl = raw.match(/^https?:\/\/(?:dx\.)?doi\.org\/(.+)$/i);
   if (doiUrl && DOI_RE.test(doiUrl[1])) return `doi:${doiUrl[1]}`;
   if (DOI_RE.test(raw)) return `doi:${raw}`;
-  throw new Error(`openalex work id "${raw}" is not recognised.`);
+  throw openAlexInvalidInput(`openalex work id "${raw}" is not recognised.`);
 }
 
 export function reconstructOpenAlexAbstract(index: unknown): string {
@@ -247,7 +277,7 @@ export function mapOpenAlexWorkRow(
   work: OpenAlexWork,
 ): Record<string, unknown> {
   const id = bareOpenAlexId(work.id);
-  if (!id) throw new Error("OpenAlex returned no work record.");
+  if (!id) throw openAlexEmptyResult("OpenAlex returned no work record.");
   return {
     id,
     title: stringField(work.title).trim(),
@@ -288,7 +318,7 @@ async function readOpenAlexWorkPdf(
   const pdfUrl = stringField(row.pdf_url);
   if (!pdfUrl) {
     const id = stringField(row.id) || stringField(row.openalex_id) || "record";
-    throw new Error(`OpenAlex work ${id} has no source PDF URL.`);
+    throw openAlexEmptyResult(`OpenAlex work ${id} has no source PDF URL.`);
   }
   return readScholarPdf(
     {
@@ -309,17 +339,51 @@ async function readOpenAlexWorkPdf(
 }
 
 async function fetchOpenAlex(url: string, label: string): Promise<unknown> {
-  const response = await fetch(appendMailto(url), {
-    headers: {
-      "User-Agent": "unicli (https://github.com/olo-dot-io/Uni-CLI)",
-      Accept: "application/json",
-    },
-  });
-  if (response.status === 404) throw new Error(`${label} returned no result.`);
-  if (response.status === 429) throw new Error(`${label} returned HTTP 429.`);
-  if (!response.ok)
-    throw new Error(`${label} returned HTTP ${response.status}.`);
-  return response.json();
+  try {
+    const response = await fetch(appendMailto(url), {
+      headers: {
+        "User-Agent": "unicli (https://github.com/olo-dot-io/Uni-CLI)",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(OPENALEX_TIMEOUT_MS),
+    });
+    if (response.status === 404) {
+      throw openAlexEmptyResult(`${label} returned no result.`);
+    }
+    if (response.status === 429) {
+      throw Object.assign(new Error(`${label} returned HTTP 429.`), {
+        code: "rate_limited",
+        retryable: true,
+        suggestion: "Retry after the OpenAlex rate-limit window.",
+      });
+    }
+    if (!response.ok) {
+      throw Object.assign(
+        new Error(`${label} returned HTTP ${response.status}.`),
+        {
+          code: "upstream_error",
+          retryable: response.status >= 500,
+          suggestion: "Retry after the OpenAlex API is healthy.",
+        },
+      );
+    }
+    return response.json();
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw Object.assign(
+        new Error(`${label} timed out after ${OPENALEX_TIMEOUT_MS} ms.`),
+        {
+          code: "timeout",
+          retryable: true,
+          suggestion: "Retry later or select another scholarly source.",
+        },
+      );
+    }
+    throw error;
+  }
 }
 
 cli({
@@ -372,7 +436,7 @@ cli({
       limit,
     );
     if (rows.length === 0)
-      throw new Error(`No OpenAlex works matched "${query}".`);
+      throw openAlexEmptyResult(`No OpenAlex works matched "${query}".`);
     return rows;
   },
 });
@@ -468,6 +532,8 @@ cli({
     "text_chars",
     "text_truncated",
   ],
+  operation_family: "download",
+  operation_effect: "download_file",
   capabilities: [
     "http.fetch",
     "http.download",

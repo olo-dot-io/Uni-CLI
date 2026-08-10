@@ -624,6 +624,8 @@ cli({
     "text_chars",
     "text_truncated",
   ],
+  operation_family: "download",
+  operation_effect: "download_file",
   capabilities: [
     "http.fetch",
     "http.download",

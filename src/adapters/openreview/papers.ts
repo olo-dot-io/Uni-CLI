@@ -70,6 +70,61 @@ interface GroupsEnvelope {
   groups?: OpenReviewNote[];
 }
 
+interface OpenReviewAdapterError extends Error {
+  code: "invalid_input" | "empty_result" | "upstream_error";
+  suggestion: string;
+  retryable?: boolean;
+}
+
+function openReviewError(
+  code: OpenReviewAdapterError["code"],
+  message: string,
+  suggestion: string,
+  retryable = false,
+): OpenReviewAdapterError {
+  return Object.assign(new Error(message), {
+    code,
+    suggestion,
+    ...(retryable ? { retryable } : {}),
+  });
+}
+
+function openReviewInvalidInput(message: string): OpenReviewAdapterError {
+  return openReviewError(
+    "invalid_input",
+    message,
+    "Use the declared argument format and bounds for this OpenReview command.",
+  );
+}
+
+function openReviewEmptyResult(message: string): OpenReviewAdapterError {
+  return openReviewError(
+    "empty_result",
+    message,
+    "Verify the forum, profile, or venue identifier, or broaden the search query.",
+  );
+}
+
+export function requireOpenReviewSearchMatches<T>(
+  rows: T[],
+  query: string,
+  label = "papers",
+): T[] {
+  if (rows.length === 0) {
+    throw openReviewEmptyResult(`No OpenReview ${label} found for "${query}".`);
+  }
+  return rows;
+}
+
+function openReviewUpstreamError(message: string): OpenReviewAdapterError {
+  return openReviewError(
+    "upstream_error",
+    message,
+    "Retry after OpenReview is reachable and returns a complete response.",
+    true,
+  );
+}
+
 const openReviewApi = new OpenReviewHttpClient({ apiVersion: 2 });
 
 function stringField(value: unknown): string {
@@ -96,7 +151,9 @@ export function requireOpenReviewLimit(
       ? fallback
       : coerceOpenReviewInt(value);
   if (!Number.isInteger(n) || n < 1 || n > max) {
-    throw new Error(`openreview limit must be an integer in [1, ${max}].`);
+    throw openReviewInvalidInput(
+      `openreview limit must be an integer in [1, ${max}].`,
+    );
   }
   return n;
 }
@@ -107,7 +164,9 @@ export function requireOpenReviewOffset(value: unknown, fallback = 0): number {
       ? fallback
       : coerceOpenReviewInt(value);
   if (!Number.isInteger(n) || n < 0) {
-    throw new Error("openreview offset must be a non-negative integer.");
+    throw openReviewInvalidInput(
+      "openreview offset must be a non-negative integer.",
+    );
   }
   return n;
 }
@@ -116,9 +175,9 @@ export function requireForumId(value: unknown, label = "id"): string {
   const raw = String(value ?? "").trim();
   const id =
     raw.match(/^https?:\/\/openreview\.net\/forum\?id=([^&#]+)/i)?.[1] ?? raw;
-  if (!id) throw new Error(`openreview ${label} is required.`);
+  if (!id) throw openReviewInvalidInput(`openreview ${label} is required.`);
   if (!FORUM_ID_RE.test(id)) {
-    throw new Error(
+    throw openReviewInvalidInput(
       `openreview ${label} "${String(value)}" is not a valid forum id.`,
     );
   }
@@ -132,10 +191,14 @@ export function requireOpenReviewPageRange(
   const first = coerceOpenReviewInt(firstPage ?? 1);
   const last = coerceOpenReviewInt(lastPage ?? 20);
   if (!Number.isInteger(first) || first < 1) {
-    throw new Error("openreview first-page must be an integer >= 1.");
+    throw openReviewInvalidInput(
+      "openreview first-page must be an integer >= 1.",
+    );
   }
   if (!Number.isInteger(last) || last < first) {
-    throw new Error("openreview last-page must be an integer >= first-page.");
+    throw openReviewInvalidInput(
+      "openreview last-page must be an integer >= first-page.",
+    );
   }
   return { firstPage: first, lastPage: last };
 }
@@ -148,7 +211,7 @@ export function requireOpenReviewMaxChars(
     value === undefined || value === null || value === "" ? fallback : value;
   const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isInteger(n) || n < 1_000 || n > 1_000_000) {
-    throw new Error(
+    throw openReviewInvalidInput(
       `openreview max-chars must be an integer in [1000, 1000000]. Got: ${String(value)}`,
     );
   }
@@ -165,9 +228,11 @@ export function openReviewPdfFilename(id: string, title: unknown): string {
 
 export function requireProfileId(value: unknown): string {
   const id = String(value ?? "").trim();
-  if (!id) throw new Error("openreview profile is required.");
+  if (!id) throw openReviewInvalidInput("openreview profile is required.");
   if (!PROFILE_ID_RE.test(id)) {
-    throw new Error(`openreview profile "${String(value)}" is not valid.`);
+    throw openReviewInvalidInput(
+      `openreview profile "${String(value)}" is not valid.`,
+    );
   }
   return id;
 }
@@ -271,7 +336,11 @@ export function classifyReviewNote(
   if (tail.includes("rebuttal")) return "REBUTTAL";
   if (tail.includes("meta")) return "META_REVIEW";
   if (tail.includes("review")) return "REVIEW";
-  if (tail.includes("comment")) return "COMMENT";
+  if (tail.includes("comment")) {
+    return authorFromSignatures(note.signatures) === "Authors"
+      ? "AUTHOR_RESPONSE"
+      : "COMMENT";
+  }
   return tail ? tail.toUpperCase() : "NOTE";
 }
 
@@ -361,8 +430,10 @@ export function mapReviewThreadRows(
 async function fetchOpenReview(
   path: string,
   label: string,
+  signal?: AbortSignal,
 ): Promise<NotesEnvelope> {
-  const json = (await openReviewApi.json<NotesEnvelope>(path, label)) ?? {};
+  const json =
+    (await openReviewApi.json<NotesEnvelope>(path, label, signal)) ?? {};
   const errors = Array.isArray(json.errors) ? json.errors : [];
   const error = stringField(json.error);
   if (errors.length > 0 || error) {
@@ -375,7 +446,9 @@ async function fetchOpenReview(
             : JSON.stringify(entry).slice(0, 200),
         )
         .join("; ");
-    throw new Error(`OpenReview API error for ${label}: ${detail}.`);
+    throw openReviewUpstreamError(
+      `OpenReview API error for ${label}: ${detail}.`,
+    );
   }
   return json;
 }
@@ -394,6 +467,7 @@ function openReviewTabId(value: string): string {
 
 export async function resolveOpenReviewVenueQuery(
   value: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, string>> {
   const raw = value.trim();
   let groupId = "";
@@ -414,10 +488,13 @@ export async function resolveOpenReviewVenueQuery(
   const groupEnvelope = await openReviewApi.json<GroupsEnvelope>(
     `/groups?id=${encodeURIComponent(groupId)}`,
     `openreview venue group ${groupId}`,
+    signal,
   );
   const group = groupEnvelope?.groups?.[0];
   if (!group)
-    throw new Error(`No OpenReview venue group found for "${groupId}".`);
+    throw openReviewEmptyResult(
+      `No OpenReview venue group found for "${groupId}".`,
+    );
   const submissionId = stringField(readContent(group.content, "submission_id"));
   const decisionHeadingMap = readContent(group.content, "decision_heading_map");
   if (
@@ -443,15 +520,17 @@ export async function resolveOpenReviewVenueQuery(
 
 async function fetchOpenReviewPaperRow(
   id: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
   const notes = notesFromEnvelope(
     await fetchOpenReview(
       `/notes?id=${encodeURIComponent(id)}`,
       `openreview paper ${id}`,
+      signal,
     ),
   );
   if (notes.length === 0)
-    throw new Error(`No OpenReview paper found with id "${id}".`);
+    throw openReviewEmptyResult(`No OpenReview paper found with id "${id}".`);
   return mapOpenReviewNoteRow(notes[0]);
 }
 
@@ -467,6 +546,7 @@ function hasPaperContent(note: OpenReviewNote): boolean {
 async function paperRowsFromSearchNotes(
   notes: OpenReviewNote[],
   limit: number,
+  signal?: AbortSignal,
 ): Promise<Array<Record<string, unknown>>> {
   const rows: Array<Record<string, unknown>> = [];
   const seen = new Set<string>();
@@ -480,7 +560,7 @@ async function paperRowsFromSearchNotes(
     try {
       const row = hasPaperContent(note)
         ? mapOpenReviewNoteRow(note)
-        : await fetchOpenReviewPaperRow(idText);
+        : await fetchOpenReviewPaperRow(idText, signal);
       if (stringField(row.title) || stringField(row.pdf_url)) rows.push(row);
     } catch (error) {
       if (!firstHydrationError) {
@@ -498,11 +578,14 @@ async function paperRowsFromSearchNotes(
 async function downloadOpenReviewPdf(
   row: Record<string, unknown>,
   output: unknown,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
   const id = requireForumId(row.id);
   const pdfUrl = stringField(row.pdf_url);
   if (!pdfUrl) {
-    throw new Error(`OpenReview paper "${id}" does not expose a PDF URL.`);
+    throw openReviewEmptyResult(
+      `OpenReview paper "${id}" does not expose a PDF URL.`,
+    );
   }
   const outputDir = resolve(String(output ?? "./openreview-downloads"));
   const path = join(outputDir, openReviewPdfFilename(id, row.title));
@@ -510,9 +593,12 @@ async function downloadOpenReviewPdf(
     `/attachment?id=${encodeURIComponent(id)}&name=pdf`,
     path,
     `openreview PDF ${id}`,
+    signal,
   );
   if (!download)
-    throw new Error(`OpenReview PDF download returned 404 for ${id}.`);
+    throw openReviewEmptyResult(
+      `OpenReview PDF download returned 404 for ${id}.`,
+    );
   return {
     ...row,
     path: download.path,
@@ -555,9 +641,10 @@ cli({
     arguments: { query: "query", limit: "limit" },
   },
   capabilities: ["http.fetch", "scholar.search", "scholar.review"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const query = String(kwargs.query ?? "").trim();
-    if (!query) throw new Error("openreview search query cannot be empty.");
+    if (!query)
+      throw openReviewInvalidInput("openreview search query cannot be empty.");
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 50);
     const searchLimit = Math.min(limit * 5, 50);
     const params = new URLSearchParams({
@@ -569,14 +656,15 @@ cli({
       await fetchOpenReview(
         `/notes/search?${params.toString()}`,
         "openreview search",
+        context.signal,
       ),
     );
-    if (notes.length === 0)
-      throw new Error(`No OpenReview papers found for "${query}".`);
-    const paperRows = await paperRowsFromSearchNotes(notes, limit);
-    if (paperRows.length === 0) {
-      throw new Error(`No OpenReview paper notes found for "${query}".`);
-    }
+    requireOpenReviewSearchMatches(notes, query);
+    const paperRows = requireOpenReviewSearchMatches(
+      await paperRowsFromSearchNotes(notes, limit, context.signal),
+      query,
+      "paper notes",
+    );
     return paperRows.map((row, index) => {
       return {
         rank: index + 1,
@@ -625,9 +713,9 @@ cli({
     "source_url",
   ],
   capabilities: ["http.fetch", "scholar.get", "scholar.pdf", "scholar.review"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const id = requireForumId(kwargs.id);
-    const row = await fetchOpenReviewPaperRow(id);
+    const row = await fetchOpenReviewPaperRow(id, context.signal);
     return [
       {
         id: row.id,
@@ -679,11 +767,12 @@ cli({
   columns: ["id", "title", "pdf_url", "path", "_download"],
   capabilities: ["http.fetch", "http.download", "scholar.pdf"],
   minimum_capability: "http.download",
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const id = requireForumId(kwargs.id);
     const downloaded = await downloadOpenReviewPdf(
-      await fetchOpenReviewPaperRow(id),
+      await fetchOpenReviewPaperRow(id, context.signal),
       kwargs.output,
+      context.signal,
     );
     return [
       {
@@ -751,6 +840,8 @@ cli({
     "text_chars",
     "text_truncated",
   ],
+  operation_family: "download",
+  operation_effect: "download_file",
   capabilities: [
     "http.fetch",
     "http.download",
@@ -759,7 +850,7 @@ cli({
     "scholar.fulltext",
   ],
   minimum_capability: "subprocess.exec",
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const id = requireForumId(kwargs.id);
     const { firstPage, lastPage } = requireOpenReviewPageRange(
       kwargs["first-page"] ?? kwargs.firstPage,
@@ -769,11 +860,15 @@ cli({
       kwargs["max-chars"] ?? kwargs.maxChars,
     );
     const downloaded = await downloadOpenReviewPdf(
-      await fetchOpenReviewPaperRow(id),
+      await fetchOpenReviewPaperRow(id, context.signal),
       kwargs.output,
+      context.signal,
     );
     const path = stringField(downloaded.path);
-    if (!path) throw new Error(`OpenReview PDF download produced no path.`);
+    if (!path)
+      throw openReviewUpstreamError(
+        "OpenReview PDF download produced no path.",
+      );
     const { stdout } = await execFileAsync(
       "pdftotext",
       [
@@ -787,11 +882,15 @@ cli({
         path,
         "-",
       ],
-      { timeout: 60000, maxBuffer: 10 * 1024 * 1024 },
+      {
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024,
+        signal: context.signal,
+      },
     );
     const text = stdout.trim();
     if (!text) {
-      throw new Error(
+      throw openReviewEmptyResult(
         `pdftotext returned no text for OpenReview paper ${id} pages ${firstPage}-${lastPage}.`,
       );
     }
@@ -840,7 +939,7 @@ cli({
     "source_url",
   ],
   capabilities: ["http.fetch", "scholar.author", "scholar.search"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const profile = requireProfileId(kwargs.profile);
     const limit = requireOpenReviewLimit(kwargs.limit, 50, 1000);
     const params = new URLSearchParams({
@@ -852,10 +951,13 @@ cli({
       await fetchOpenReview(
         `/notes?${params.toString()}`,
         `openreview author ${profile}`,
+        context.signal,
       ),
     );
     if (notes.length === 0)
-      throw new Error(`No OpenReview submissions found for "${profile}".`);
+      throw openReviewEmptyResult(
+        `No OpenReview submissions found for "${profile}".`,
+      );
     return notes.slice(0, limit).map((note, index) => {
       const row = mapOpenReviewNoteRow(note);
       return {
@@ -912,13 +1014,14 @@ cli({
     "source_url",
   ],
   capabilities: ["http.fetch", "scholar.venue", "scholar.search"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const venue = String(kwargs.venue ?? "").trim();
-    if (!venue) throw new Error("openreview venue cannot be empty.");
+    if (!venue)
+      throw openReviewInvalidInput("openreview venue cannot be empty.");
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 200);
     const offset = requireOpenReviewOffset(kwargs.offset);
     const params = new URLSearchParams({
-      ...(await resolveOpenReviewVenueQuery(venue)),
+      ...(await resolveOpenReviewVenueQuery(venue, context.signal)),
       limit: String(limit),
       offset: String(offset),
     });
@@ -926,10 +1029,13 @@ cli({
       await fetchOpenReview(
         `/notes?${params.toString()}`,
         `openreview venue ${venue}`,
+        context.signal,
       ),
     );
     if (notes.length === 0)
-      throw new Error(`No OpenReview papers found at venue "${venue}".`);
+      throw openReviewEmptyResult(
+        `No OpenReview papers found at venue "${venue}".`,
+      );
     return notes.slice(0, limit).map((note, index) => {
       const row = mapOpenReviewNoteRow(note);
       return {
@@ -992,13 +1098,13 @@ cli({
     "text_truncated",
   ],
   capabilities: ["http.fetch", "scholar.review"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const forum = requireForumId(kwargs.forum, "forum");
     const maxLength = coerceOpenReviewInt(
       kwargs["max-length"] ?? kwargs.maxLength ?? 4000,
     );
     if (!Number.isInteger(maxLength) || maxLength < 200) {
-      throw new Error(
+      throw openReviewInvalidInput(
         "openreview reviews max-length must be an integer >= 200.",
       );
     }
@@ -1006,14 +1112,19 @@ cli({
       await fetchOpenReview(
         `/notes?id=${encodeURIComponent(forum)}`,
         `openreview paper ${forum}`,
+        context.signal,
       ),
     );
     const root = rootNotes[0];
-    if (!root) throw new Error(`No OpenReview forum found with id "${forum}".`);
+    if (!root)
+      throw openReviewEmptyResult(
+        `No OpenReview forum found with id "${forum}".`,
+      );
     const replies = notesFromEnvelope(
       await fetchOpenReview(
         `/notes?forum=${encodeURIComponent(forum)}&details=replies&limit=1000`,
         `openreview reviews ${forum}`,
+        context.signal,
       ),
     );
     return mapReviewThreadRows(root, replies, forum, maxLength);

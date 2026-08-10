@@ -14,7 +14,7 @@ operations before running `unicli search`.
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
+This catalog is generated from the adapter manifest: 337 sites, 1884 commands.
 
 | Site | Surface | Commands | Auth | Example commands |
 | --- | --- | ---: | --- | --- |
@@ -246,7 +246,9 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | zsxq | web-api | 5 | yes | unicli zsxq dynamics<br>unicli zsxq groups<br>unicli zsxq search |
 | 1point3acres | web-api | 9 | yes | unicli 1point3acres hot<br>unicli 1point3acres latest<br>unicli 1point3acres digest |
 | 51job | web-api | 4 | yes | unicli 51job search<br>unicli 51job hot<br>unicli 51job detail |
+| aaai | web-api | 3 | no | unicli aaai papers<br>unicli aaai search<br>unicli aaai paper |
 | acl-anthology | web-api | 3 | no | unicli acl-anthology search<br>unicli acl-anthology paper<br>unicli acl-anthology read |
+| acm | web-api | 3 | no | unicli acm search<br>unicli acm venue<br>unicli acm paper |
 | ai | web-api | 6 | no | unicli ai search<br>unicli ai pulse<br>unicli ai read |
 | aibase | web-api | 1 | no | unicli aibase news |
 | anilist | web-api | 5 | no | unicli anilist anime<br>unicli anilist manga<br>unicli anilist characters |
@@ -255,6 +257,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | baidu-scholar | web-api | 1 | no | unicli baidu-scholar search |
 | bangumi | web-api | 5 | no | unicli bangumi anime<br>unicli bangumi book<br>unicli bangumi game |
 | biorxiv | web-api | 5 | no | unicli biorxiv recent<br>unicli biorxiv search<br>unicli biorxiv paper |
+| ccf | web-api | 2 | no | unicli ccf conferences<br>unicli ccf conference |
 | chatgpt | web-api | 18 | yes | unicli chatgpt ask<br>unicli chatgpt send<br>unicli chatgpt read |
 | chatgpt-app | web-api | 8 | no | unicli chatgpt-app ask<br>unicli chatgpt-app send<br>unicli chatgpt-app read |
 | chatwise | web-api | 17 | no | unicli chatwise ask<br>unicli chatwise send<br>unicli chatwise read |
@@ -265,10 +268,11 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | codex | web-api | 19 | no | unicli codex ask<br>unicli codex send<br>unicli codex read |
 | coingecko | web-api | 7 | no | unicli coingecko coin<br>unicli coingecko top<br>unicli coingecko trending |
 | crates | web-api | 2 | no | unicli crates search<br>unicli crates crate |
-| crossref | web-api | 2 | no | unicli crossref search<br>unicli crossref work |
+| crossref | web-api | 3 | no | unicli crossref search<br>unicli crossref work<br>unicli crossref venue |
 | ctrip | web-api | 4 | yes | unicli ctrip search<br>unicli ctrip hotel-suggest<br>unicli ctrip hotel-search |
 | cursor | web-api | 19 | no | unicli cursor ask<br>unicli cursor send<br>unicli cursor read |
 | cvf | web-api | 3 | no | unicli cvf search<br>unicli cvf paper<br>unicli cvf read |
+| datacite | web-api | 3 | no | unicli datacite search<br>unicli datacite doi<br>unicli datacite related |
 | dblp | web-api | 4 | no | unicli dblp search<br>unicli dblp paper<br>unicli dblp venue |
 | defillama | web-api | 2 | no | unicli defillama protocols<br>unicli defillama protocol |
 | discord-app | web-api | 15 | no | unicli discord-app servers<br>unicli discord-app channels<br>unicli discord-app read |
@@ -299,11 +303,15 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | fips | web-api | 2 | no | unicli fips get<br>unicli fips search |
 | flathub | web-api | 2 | no | unicli flathub search<br>unicli flathub app |
 | freepatentsonline-web | web-api | 2 | no | unicli freepatentsonline-web get<br>unicli freepatentsonline-web search |
+| github-scholar | web-api | 1 | no | unicli github-scholar search |
 | google-patents-web | web-api | 2 | no | unicli google-patents-web get<br>unicli google-patents-web search |
 | google-scholar | web-api | 3 | no | unicli google-scholar cite<br>unicli google-scholar profile<br>unicli google-scholar search |
 | goproxy | web-api | 2 | no | unicli goproxy module<br>unicli goproxy versions |
 | gov-law | web-api | 2 | no | unicli gov-law search<br>unicli gov-law recent |
 | gov-policy | web-api | 2 | no | unicli gov-policy search<br>unicli gov-policy recent |
+| iclr | web-api | 1 | no | unicli iclr awards |
+| ieee | web-api | 3 | no | unicli ieee search<br>unicli ieee venue<br>unicli ieee paper |
+| ieee-xplore | web-api | 3 | no | unicli ieee-xplore search<br>unicli ieee-xplore article<br>unicli ieee-xplore venue |
 | indeed | web-api | 2 | yes | unicli indeed search<br>unicli indeed job |
 | inpi-br | web-api | 2 | no | unicli inpi-br get<br>unicli inpi-br search |
 | jikan | web-api | 4 | no | unicli jikan anime<br>unicli jikan manga<br>unicli jikan characters |
@@ -323,6 +331,7 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | openfda | web-api | 2 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | yes | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
 | osv | web-api | 2 | no | unicli osv query<br>unicli osv vulnerability |
+| pacmpl | web-api | 3 | no | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
 | powerchina | web-api | 1 | yes | unicli powerchina search |
 | pubmed | web-api | 7 | no | unicli pubmed search<br>unicli pubmed article<br>unicli pubmed paper |
@@ -333,12 +342,14 @@ This catalog is generated from the adapter manifest: 326 sites, 1853 commands.
 | rfc | web-api | 1 | no | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
+| sigchi | web-api | 3 | no | unicli sigchi conferences<br>unicli sigchi papers<br>unicli sigchi awards |
 | tdx | web-api | 1 | yes | unicli tdx hot-rank |
 | ths | web-api | 1 | yes | unicli ths hot-rank |
 | tvmaze | web-api | 2 | no | unicli tvmaze search<br>unicli tvmaze show |
 | uisdc | web-api | 1 | no | unicli uisdc news |
 | uiverse | web-api | 2 | no | unicli uiverse code<br>unicli uiverse preview |
 | unpaywall | web-api | 2 | no | unicli unpaywall oa<br>unicli unpaywall read |
+| usenix | web-api | 5 | no | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | no | unicli wanfang search |
 | wikidata | web-api | 2 | no | unicli wikidata search<br>unicli wikidata entity |
