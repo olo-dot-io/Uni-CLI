@@ -9,7 +9,7 @@ Uni-CLI gives AI agents one command model for searching and operating websites, 
 - Runtime scope: fixed core and host-discovered commands are additional
 - Adapters: 1261 (1003 YAML + 258 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10230
+- Tests: 10237
 
 ## Agent Contract
 

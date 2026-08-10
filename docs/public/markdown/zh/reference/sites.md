@@ -124,7 +124,7 @@
 | lens | web-api | 2 | 是 | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | 否 | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | 否 | unicli libreoffice convert<br>unicli libreoffice print |
-| linear | web-api | 10 | 否 | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
+| linear | web-api | 10 | 是 | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
 | linkedin | web-api | 4 | 是 | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
 | lobsters | web-api | 7 | 否 | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
 | macos | desktop | 60 | 否 | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |

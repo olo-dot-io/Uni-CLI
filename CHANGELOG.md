@@ -2,6 +2,11 @@
 
 ## [1.0.4] — 2026-08-10 — Artemis · Glover
 
+> Published from annotated tag `v1.0.4` at commit `8289f86c` through GitHub
+> Actions run `31373576820`. npm Trusted Publishers issued the SLSA provenance
+> attestation, and the GitHub Release carries both Windows process-owner
+> executables.
+
 ### Added
 
 - Add the official seventh-edition CCF A conference directory with all 58

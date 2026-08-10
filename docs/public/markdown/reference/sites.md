@@ -127,7 +127,7 @@ This catalog is generated from the adapter manifest: 337 sites, 1884 commands.
 | lens | web-api | 2 | yes | unicli lens get<br>unicli lens search |
 | lesswrong | web-api | 15 | no | unicli lesswrong comments<br>unicli lesswrong curated<br>unicli lesswrong frontpage |
 | libreoffice | desktop | 2 | no | unicli libreoffice convert<br>unicli libreoffice print |
-| linear | web-api | 10 | no | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
+| linear | web-api | 10 | yes | unicli linear issue-create<br>unicli linear issue-list<br>unicli linear issue-update |
 | linkedin | web-api | 4 | yes | unicli linkedin jobs<br>unicli linkedin profile<br>unicli linkedin search |
 | lobsters | web-api | 7 | no | unicli lobsters active<br>unicli lobsters hot<br>unicli lobsters newest |
 | macos | desktop | 60 | no | unicli macos active-app<br>unicli macos apps-list<br>unicli macos apps |

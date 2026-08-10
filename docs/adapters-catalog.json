@@ -1,6 +1,6 @@
 {
   "source": "unicli@1.0.4",
-  "generated": "2026-08-10T07:16:39.346Z",
+  "generated": "2026-08-10T09:26:08.452Z",
   "total_sites": 337,
   "total_commands": 1884,
   "adapters": [
@@ -327,7 +327,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["rank", "title", "date", "summary", "id"],
+          "columns": ["rank", "title", "date", "author", "reads", "id", "url"],
           "args": [
             {
               "name": "limit",
@@ -358,8 +358,8 @@
         },
         {
           "name": "news",
-          "description": "36Kr tech news (RSS)",
-          "when_to_use": "36Kr tech news (RSS)",
+          "description": "Latest 36Kr newsflashes",
+          "when_to_use": "Latest 36Kr newsflashes",
           "command": "unicli 36kr news",
           "auth": false,
           "strategy": "public",
@@ -15422,7 +15422,7 @@
       "site": "linear",
       "type": "web-api",
       "domain": "api.linear.app",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "commands": [
         {
@@ -15430,7 +15430,7 @@
           "description": "Create a new Linear issue",
           "when_to_use": "Create a new Linear issue",
           "command": "unicli linear issue-create",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
           "columns": ["identifier", "title", "url"],
@@ -15463,7 +15463,7 @@
           "description": "List Linear issues (optional project/state filter)",
           "when_to_use": "List Linear issues (optional project/state filter)",
           "command": "unicli linear issue-list",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
           "columns": ["id", "state", "project", "assignee", "title"],
@@ -15496,7 +15496,7 @@
           "description": "Update a Linear issue's workflow state",
           "when_to_use": "Update a Linear issue's workflow state",
           "command": "unicli linear issue-update",
-          "auth": false,
+          "auth": true,
           "strategy": "public",
           "browser": false,
           "columns": ["identifier", "title", "url"],
@@ -17479,7 +17479,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "subtitle", "claps", "responses", "readTime"],
+          "columns": ["title", "published_at", "summary", "url"],
           "args": [
             {
               "name": "topic",
@@ -17549,7 +17549,7 @@
           "auth": false,
           "strategy": "public",
           "browser": false,
-          "columns": ["title", "subtitle", "claps", "responses"],
+          "columns": ["title", "published_at", "summary", "url"],
           "args": [
             {
               "name": "username",

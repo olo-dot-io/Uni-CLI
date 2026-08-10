@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-10T07:16:39.346Z",
+  "generated": "2026-08-10T09:26:08.452Z",
   "total_sites": 337,
   "total_commands": 1884,
   "sites": [
@@ -88,7 +88,7 @@
         },
         {
           "name": "news",
-          "description": "36Kr tech news (RSS)",
+          "description": "Latest 36Kr newsflashes",
           "command": "unicli 36kr news"
         },
         {
@@ -3985,7 +3985,7 @@
       "site": "linear",
       "type": "web-api",
       "domain": "api.linear.app",
-      "auth": false,
+      "auth": true,
       "strategy": "public",
       "command_count": 10,
       "commands": [
