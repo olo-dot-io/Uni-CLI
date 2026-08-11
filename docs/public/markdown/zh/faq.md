@@ -27,7 +27,7 @@ unicli hackernews top --limit 5 -f json
 
 ## 目录中有什么？
 
-v1.1.1 的静态 adapter 目录包含 <span><!-- STATS:site_count -->337<!-- /STATS --></span> 个站点。
+v1.2.0 的静态 adapter 目录包含 <span><!-- STATS:site_count -->337<!-- /STATS --></span> 个站点。
 
 同一目录包含 <span><!-- STATS:command_count -->1890<!-- /STATS --></span> 条注册命令。Core command 与主机发现的工具会在运行时加入。可以浏览[操作目录](/zh/reference/sites)，也可以运行 `unicli list`。
 

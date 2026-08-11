@@ -1,9 +1,44 @@
 {
   "schema_version": "1",
   "package": "@zenalexa/unicli",
-  "current": "1.1.1",
+  "current": "1.2.0",
   "generated_from": "CHANGELOG.md",
   "releases": [
+    {
+      "version": "1.2.0",
+      "date": "2026-08-11",
+      "codename": "Artemis · Hansen",
+      "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.0",
+      "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli/v/1.2.0",
+      "sections": [
+        {
+          "title": "Added",
+          "entries": [
+            "Add a local adapter evolution lifecycle through `unicli runs distill`, `unicli evolve adapter`, `verify`, `inspect`, and `rollback`. Agents receive a staged candidate, a redacted evidence packet, and durable attempt history.",
+            "Add isolated baseline and candidate execution with disjoint validation and held-out cases. Verification records predicted fixes, regressions, independent effect evidence, duration deltas, and the exact patch used for promotion.",
+            "Add Agent Plugins 1.0 discovery for portable Skills and configuration-only MCP packages. `unicli plugin inspect` exposes the runtime projection without starting an external server."
+          ]
+        },
+        {
+          "title": "Changed",
+          "entries": [
+            "Require every evolution candidate to preserve its operation contract and declare a falsifiable hypothesis, expected fixes, at-risk cases, permissions, model affinity, and task-domain scope.",
+            "Promote candidates only after strict validation improvement, complete predicted fixes, a populated held-out split, and zero measured regressions. Equal results keep the baseline.",
+            "Organize the English and Chinese documentation around repair and evolution, with the callable lifecycle exposed in architecture, CLI, plugin, benchmark, and Agent-facing pages."
+          ]
+        },
+        {
+          "title": "Fixed",
+          "entries": [
+            "Recheck packaged sources and user overlays immediately before promotion, serialize competing writers, resume prepared promotions after crashes, and preserve exact rollback artifacts.",
+            "Keep malformed traces, secret-bearing evidence, mutation claims, stale candidates, and failed predictions outside the promotion path while retaining structured recovery errors.",
+            "Repair the mobile documentation menu by limiting the desktop navigation container rule to the top-level navbar layout."
+          ]
+        }
+      ],
+      "markdown": "### Added\n\n- Add a local adapter evolution lifecycle through `unicli runs distill`,\n  `unicli evolve adapter`, `verify`, `inspect`, and `rollback`. Agents receive a\n  staged candidate, a redacted evidence packet, and durable attempt history.\n- Add isolated baseline and candidate execution with disjoint validation and\n  held-out cases. Verification records predicted fixes, regressions, independent\n  effect evidence, duration deltas, and the exact patch used for promotion.\n- Add Agent Plugins 1.0 discovery for portable Skills and configuration-only MCP\n  packages. `unicli plugin inspect` exposes the runtime projection without\n  starting an external server.\n\n### Changed\n\n- Require every evolution candidate to preserve its operation contract and\n  declare a falsifiable hypothesis, expected fixes, at-risk cases, permissions,\n  model affinity, and task-domain scope.\n- Promote candidates only after strict validation improvement, complete predicted\n  fixes, a populated held-out split, and zero measured regressions. Equal results\n  keep the baseline.\n- Organize the English and Chinese documentation around repair and evolution,\n  with the callable lifecycle exposed in architecture, CLI, plugin, benchmark,\n  and Agent-facing pages.\n\n### Fixed\n\n- Recheck packaged sources and user overlays immediately before promotion,\n  serialize competing writers, resume prepared promotions after crashes, and\n  preserve exact rollback artifacts.\n- Keep malformed traces, secret-bearing evidence, mutation claims, stale\n  candidates, and failed predictions outside the promotion path while retaining\n  structured recovery errors.\n- Repair the mobile documentation menu by limiting the desktop navigation\n  container rule to the top-level navbar layout.",
+      "compareUrl": "https://github.com/olo-dot-io/Uni-CLI/compare/v1.1.1...v1.2.0"
+    },
     {
       "version": "1.1.1",
       "date": "2026-08-10",

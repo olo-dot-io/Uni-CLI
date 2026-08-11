@@ -5,7 +5,7 @@ description: Uni-CLI 已完成的基础能力与下一阶段工程重点。
 
 # 路线图
 
-当前版本：v1.1.1 — Artemis · Koch。
+当前版本：v1.2.0 — Artemis · Hansen。
 
 静态目录包含 <!-- STATS:site_count -->337<!-- /STATS --> 个站点。
 

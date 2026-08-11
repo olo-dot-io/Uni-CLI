@@ -1,6 +1,6 @@
 # Uni-CLI Copy Rules
 
-> Current version: v1.1.1 — Artemis · Koch.
+> Current version: v1.2.0 — Artemis · Hansen.
 >
 > Current static adapter catalog: <!-- STATS:site_count -->337<!-- /STATS --> sites, <!-- STATS:command_count -->1890<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1008<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->259<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10364<!-- /STATS --> tests.
 

@@ -5,7 +5,7 @@ description: The components that turn an agent intent into a validated Uni-CLI o
 
 # Architecture
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.1.1. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.2.0. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 

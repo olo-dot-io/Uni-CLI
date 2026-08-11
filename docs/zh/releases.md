@@ -13,6 +13,7 @@ description: 按版本查看 Uni-CLI 的新增能力、行为变化、修复和�
 
 | 版本                | 日期       | 代号                          | 完整差异                                                                  |
 | ------------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------- |
+| [v1.2.0](#v120)     | 2026-08-11 | Artemis · Hansen              | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.1.1...v1.2.0)     |
 | [v1.1.1](#v111)     | 2026-08-10 | Artemis · Koch                | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.4...v1.1.1)     |
 | [v1.0.4](#v104)     | 2026-08-10 | Artemis · Glover              | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.3...v1.0.4)     |
 | [v1.0.3](#v103)     | 2026-08-08 | Artemis · Glover              | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.2...v1.0.3)     |
@@ -76,6 +77,47 @@ description: 按版本查看 Uni-CLI 的新增能力、行为变化、修复和�
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                           |
+
+<a id="v120"></a>
+
+## v1.2.0 · 2026-08-11 · Artemis · Hansen
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.2.0) · [与上一版本比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.1.1...v1.2.0)
+
+### Added
+
+- Add a local adapter evolution lifecycle through `unicli runs distill`,
+  `unicli evolve adapter`, `verify`, `inspect`, and `rollback`. Agents receive a
+  staged candidate, a redacted evidence packet, and durable attempt history.
+- Add isolated baseline and candidate execution with disjoint validation and
+  held-out cases. Verification records predicted fixes, regressions, independent
+  effect evidence, duration deltas, and the exact patch used for promotion.
+- Add Agent Plugins 1.0 discovery for portable Skills and configuration-only MCP
+  packages. `unicli plugin inspect` exposes the runtime projection without
+  starting an external server.
+
+### Changed
+
+- Require every evolution candidate to preserve its operation contract and
+  declare a falsifiable hypothesis, expected fixes, at-risk cases, permissions,
+  model affinity, and task-domain scope.
+- Promote candidates only after strict validation improvement, complete predicted
+  fixes, a populated held-out split, and zero measured regressions. Equal results
+  keep the baseline.
+- Organize the English and Chinese documentation around repair and evolution,
+  with the callable lifecycle exposed in architecture, CLI, plugin, benchmark,
+  and Agent-facing pages.
+
+### Fixed
+
+- Recheck packaged sources and user overlays immediately before promotion,
+  serialize competing writers, resume prepared promotions after crashes, and
+  preserve exact rollback artifacts.
+- Keep malformed traces, secret-bearing evidence, mutation claims, stale
+  candidates, and failed predictions outside the promotion path while retaining
+  structured recovery errors.
+- Repair the mobile documentation menu by limiting the desktop navigation
+  container rule to the top-level navbar layout.
 
 <a id="v111"></a>
 

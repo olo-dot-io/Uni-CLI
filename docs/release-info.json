@@ -1,24 +1,24 @@
 {
-  "version": "1.1.1",
-  "codename": "Artemis · Koch",
-  "date": "2026-08-10",
-  "status": "published",
+  "version": "1.2.0",
+  "codename": "Artemis · Hansen",
+  "date": "2026-08-11",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.1.1",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#111--2026-08-10--artemis--koch",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#120--2026-08-11--artemis--hansen",
   "highlights": {
     "root": [
-      "Persistent non-interactive Agent installations now schedule exact-version updates in a detached worker with durable progress, bounded retry, and explicit opt-out controls.",
-      "Search, describe, one-shot execution, fast paths, and MCP now share one intent plan with personalization, feasibility, named ranking evidence, and typo-aware site resolution.",
-      "GitHub discovery now covers repositories, issues, pull requests, code, commits, topics, users, and file reads through structured gh commands.",
-      "The documentation site now publishes an indexed cross-version history, exact comparison links, and machine-readable release data from the canonical changelog."
+      "Agents can distill failed runs, stage one scoped adapter change, verify it, promote it, inspect durable attempt history, and restore the prior overlay through one local lifecycle.",
+      "Paired baseline and candidate execution now requires strict validation improvement, every predicted fix, an independent held-out split, and zero measured regressions.",
+      "Agent Plugins 1.0 Skills and configuration-only MCP packages now project into the operation catalog, CLI, MCP, and ACP surfaces.",
+      "The documentation now organizes repair and evolution as one workflow, and the mobile navigation button keeps its intended layout and tap target."
     ],
     "zh": [
-      "持久化安装由非交互 Agent 使用时，Uni-CLI 会通过后台 worker 安装准确版本，并提供持久化进度、限定重试和明确的关闭选项。",
-      "Search、describe、one-shot、fast path 和 MCP 现在共用一份 intent plan，其中包含个性化、可行性、命名排序依据和容错站点解析。",
-      "GitHub discovery 现在通过结构化 gh 命令覆盖仓库、Issue、Pull Request、代码、Commit、Topic、用户和文件读取。",
-      "文档站现在从统一 CHANGELOG 生成跨版本索引、准确比较链接和机器可读版本记录。"
+      "Agent 现在可以在一条本地流程中提炼失败 run、暂存一次 scoped adapter 修改、验证并晋级候选、检查持久化尝试记录，以及恢复原有 overlay。",
+      "baseline 与 candidate 的成对执行现在要求 validation 严格提升、所有预测修复成立、held-out split 独立且完整，并且没有测得回退。",
+      "Agent Plugins 1.0 Skills 和仅含配置的 MCP package 现在可以投影到 operation catalog、CLI、MCP 和 ACP。",
+      "文档现已把 repair 与 evolution 组织成同一条工作流，手机端导航按钮也恢复了预期布局和点击区域。"
     ]
   }
 }

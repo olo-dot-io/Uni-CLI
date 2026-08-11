@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.2.0] — 2026-08-11 — Artemis · Hansen
+
+### Added
+
+- Add a local adapter evolution lifecycle through `unicli runs distill`,
+  `unicli evolve adapter`, `verify`, `inspect`, and `rollback`. Agents receive a
+  staged candidate, a redacted evidence packet, and durable attempt history.
+- Add isolated baseline and candidate execution with disjoint validation and
+  held-out cases. Verification records predicted fixes, regressions, independent
+  effect evidence, duration deltas, and the exact patch used for promotion.
+- Add Agent Plugins 1.0 discovery for portable Skills and configuration-only MCP
+  packages. `unicli plugin inspect` exposes the runtime projection without
+  starting an external server.
+
+### Changed
+
+- Require every evolution candidate to preserve its operation contract and
+  declare a falsifiable hypothesis, expected fixes, at-risk cases, permissions,
+  model affinity, and task-domain scope.
+- Promote candidates only after strict validation improvement, complete predicted
+  fixes, a populated held-out split, and zero measured regressions. Equal results
+  keep the baseline.
+- Organize the English and Chinese documentation around repair and evolution,
+  with the callable lifecycle exposed in architecture, CLI, plugin, benchmark,
+  and Agent-facing pages.
+
+### Fixed
+
+- Recheck packaged sources and user overlays immediately before promotion,
+  serialize competing writers, resume prepared promotions after crashes, and
+  preserve exact rollback artifacts.
+- Keep malformed traces, secret-bearing evidence, mutation claims, stale
+  candidates, and failed predictions outside the promotion path while retaining
+  structured recovery errors.
+- Repair the mobile documentation menu by limiting the desktop navigation
+  container rule to the top-level navbar layout.
+
 ## [1.1.1] — 2026-08-10 — Artemis · Koch
 
 > `1.1.0` was the internal Changesets candidate. `1.1.1` is the first public

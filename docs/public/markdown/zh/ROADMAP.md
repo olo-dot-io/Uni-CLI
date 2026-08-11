@@ -7,7 +7,7 @@
 - 栏目: 项目
 - 上级: 项目 (/zh/ARCHITECTURE)
 
-当前版本：v1.1.1 — Artemis · Koch。
+当前版本：v1.2.0 — Artemis · Hansen。
 
 静态目录包含 <!-- STATS:site_count -->337<!-- /STATS --> 个站点。
 

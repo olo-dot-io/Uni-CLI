@@ -58,7 +58,7 @@ unicli hackernews top --limit 5 -f json
 - Static adapter sites: 337
 - Registered adapter operations: 1890
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10357
+- Tests: 10364
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Latest: v1.1.1 · Artemis · Koch.
+Local release: v1.2.0 · Artemis · Hansen.
 
 ## Agent Index
 
@@ -2842,7 +2842,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.1.1. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.2.0. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
@@ -3169,7 +3169,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.1.1 — Artemis · Koch.
+Current release: v1.2.0 — Artemis · Hansen.
 
 The static catalog contains <!-- STATS:site_count -->337<!-- /STATS --> sites.
 
@@ -3262,7 +3262,7 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.1.1 ships <span><!-- STATS:site_count -->337<!-- /STATS --></span> sites in the static adapter catalog.
+v1.2.0 ships <span><!-- STATS:site_count -->337<!-- /STATS --></span> sites in the static adapter catalog.
 
 The same catalog contains <span><!-- STATS:command_count -->1890<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 

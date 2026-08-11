@@ -291,7 +291,7 @@ Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adap
 
 Browse every published version on the [generated release history](docs/releases.md). The same data is available to Agents through `docs/public/release-history.json`.
 
-<p align="center"><sub>v1.1.1 — Artemis · Koch</sub></p>
+<p align="center"><sub>v1.2.0 — Artemis · Hansen</sub></p>
 
 ## License
 
