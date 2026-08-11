@@ -73,6 +73,21 @@ unicli repair <site> <command>
 
 User adapters under `~/.unicli/adapters/` can replace packaged adapters during local development.
 
+## When a failure repeats
+
+An evolution session turns selected failed runs into a private evidence packet and one isolated YAML candidate. Uni-CLI executes the baseline and candidate through the public CLI, keeps validation and held-out cases separate, and records every accepted or rejected attempt.
+
+```bash
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --candidate <candidate.yaml> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
+```
+
+Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change while Uni-CLI owns execution evidence and the promotion decision.
+
 ## CLI, MCP, and ACP
 
 The CLI is the complete command surface and works with process-based agents, pipes, files, and CI. MCP projects Uni-CLI into clients that use tool servers. ACP provides an agent-client server. All three start from the same operation catalog.
@@ -82,4 +97,5 @@ The CLI is the complete command surface and works with process-based agents, pip
 - [Quickstart](/guide/getting-started)
 - [Find an operation](/guide/)
 - [Authentication](/guide/authentication)
+- [Repair and evolve](/guide/self-repair)
 - [Architecture](/ARCHITECTURE)

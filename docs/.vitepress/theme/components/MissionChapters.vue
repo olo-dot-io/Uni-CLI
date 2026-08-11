@@ -82,7 +82,7 @@ const copy = computed(() =>
           ["安装运行", "/zh/guide/getting-started"],
           ["浏览 operation", "/zh/reference/sites"],
           ["接入 Agent", "/zh/guide/integrations"],
-          ["修复 adapter", "/zh/guide/self-repair"],
+          ["修复与进化", "/zh/guide/self-repair"],
         ],
       }
     : {
@@ -107,7 +107,7 @@ const copy = computed(() =>
           ["Install & run", "/guide/getting-started"],
           ["Browse operations", "/reference/sites"],
           ["Connect agents", "/guide/integrations"],
-          ["Repair adapters", "/guide/self-repair"],
+          ["Repair and evolve", "/guide/self-repair"],
         ],
       },
 );

@@ -100,7 +100,7 @@ Static catalog
 - <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10351<!-- /STATS --> tests
+- <!-- STATS:test_count -->10363<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 

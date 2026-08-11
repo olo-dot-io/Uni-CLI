@@ -1,6 +1,6 @@
 <!-- Generated from docs/guide/self-repair.md. Do not edit this copy directly. -->
 
-# Self-Repair
+# Repair And Evolve
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
@@ -116,4 +116,4 @@ Omit `--candidate` to create a draft and edit the returned `candidate.path` befo
 
 Each verification appends an attempt directory containing the exact candidate, patch, and report. Content hashes make later artifact changes fail closed. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases. Competing promotion and rollback processes serialize on the session. An interrupted transition resumes from its prepared promotion record.
 
-Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.
+Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. Every mutating eval case must also declare an `effectStatus` judge that requires `confirmed`, so process success alone cannot promote a candidate. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.

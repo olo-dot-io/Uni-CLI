@@ -58,7 +58,7 @@ unicli hackernews top --limit 5 -f json
 - Static adapter sites: 337
 - Registered adapter operations: 1890
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10351
+- Tests: 10357
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -542,6 +542,21 @@ unicli repair <site> <command>
 
 User adapters under `~/.unicli/adapters/` can replace packaged adapters during local development.
 
+## When a failure repeats
+
+An evolution session turns selected failed runs into a private evidence packet and one isolated YAML candidate. Uni-CLI executes the baseline and candidate through the public CLI, keeps validation and held-out cases separate, and records every accepted or rejected attempt.
+
+```bash
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --candidate <candidate.yaml> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
+```
+
+Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change while Uni-CLI owns execution evidence and the promotion decision.
+
 ## CLI, MCP, and ACP
 
 The CLI is the complete command surface and works with process-based agents, pipes, files, and CI. MCP projects Uni-CLI into clients that use tool servers. ACP provides an agent-client server. All three start from the same operation catalog.
@@ -551,6 +566,7 @@ The CLI is the complete command surface and works with process-based agents, pip
 - [Quickstart](/guide/getting-started)
 - [Find an operation](/guide/)
 - [Authentication](/guide/authentication)
+- [Repair and evolve](/guide/self-repair)
 - [Architecture](/ARCHITECTURE)
 
 ---
@@ -948,14 +964,14 @@ For commands covered by the local permission policy, Uni-CLI will return the exa
 
 ---
 
-# Page: Self-Repair
+# Page: Repair And Evolve
 
 Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
 Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
 
 <!-- Generated from docs/guide/self-repair.md. Do not edit this copy directly. -->
 
-# Self-Repair
+# Repair And Evolve
 
 - Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/self-repair
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
@@ -1071,7 +1087,7 @@ Omit `--candidate` to create a draft and edit the returned `candidate.path` befo
 
 Each verification appends an attempt directory containing the exact candidate, patch, and report. Content hashes make later artifact changes fail closed. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases. Competing promotion and rollback processes serialize on the session. An interrupted transition resumes from its prepared promotion record.
 
-Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.
+Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. Every mutating eval case must also declare an `effectStatus` judge that requires `confirmed`, so process success alone cannot promote a candidate. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.
 
 ---
 

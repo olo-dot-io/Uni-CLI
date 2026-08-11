@@ -73,6 +73,21 @@ unicli repair <site> <command>
 
 `~/.unicli/adapters/` 中的用户 adapter 可在本地开发时覆盖 packaged adapter。
 
+## 同类失败重复发生时
+
+Evolution session 会把选定的失败 run 整理成私有 evidence packet 和一个隔离的 YAML candidate。Uni-CLI 通过公开 CLI 分别执行 baseline 与 candidate，保持 validation case 和 held-out case 分离，并记录每次接受或拒绝的 attempt。
+
+```bash
+unicli evolve adapter <site> <command> \
+  --run <proposal-run> \
+  --candidate <candidate.yaml> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
+```
+
+Promotion 要求 validation 严格提升且 held-out 没有回退。安装后的 override 保留精确 rollback artifact。Agent 提出修改，Uni-CLI 负责执行证据和 promotion 决策。
+
 ## CLI、MCP 与 ACP
 
 CLI 提供完整命令面，适合进程型 Agent、管道、文件和 CI。MCP 把 Uni-CLI 接入 tool server 客户端。ACP 提供 agent-client server。三种入口使用同一操作目录。
@@ -82,4 +97,5 @@ CLI 提供完整命令面，适合进程型 Agent、管道、文件和 CI。MCP 
 - [快速开始](/zh/guide/getting-started)
 - [查找操作](/zh/guide/)
 - [登录与认证](/zh/guide/authentication)
+- [修复与进化](/zh/guide/self-repair)
 - [架构](/zh/ARCHITECTURE)
