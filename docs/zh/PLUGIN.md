@@ -53,7 +53,7 @@ unicli plugin inspect ./unicli-plugin-astronomy -f json
 unicli plugin inspect astronomy -f json
 ```
 
-可选的根目录 `mcp.json` 会逐项验证。有效 config 会生成只读的 `agent-plugin.<plugin-name>.__mcp_servers` 描述 operation，并保持 `configuration-only`。Portable loader 不会启动或连接这些 server。MCP config 无效时，其他有效 Skill 仍可加载。
+可选的根目录 `mcp.json` 会作为 client config 接受检查。Uni-CLI 报告支持的 server descriptor type，不会将其投影为 operation，也不会启动或连接这些 server。安装 package 的 client 负责 MCP execution 与 permission behavior。MCP config 无效时，其他有效 Skill 仍可加载。
 
 ## Uni-CLI runtime manifest
 

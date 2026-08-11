@@ -6,25 +6,19 @@
  * conflict-safe rollback.
  */
 
-import { readFile } from "node:fs/promises";
 import type { Command } from "commander";
 
 import { resolveCommand } from "../registry.js";
 import {
   createAdapterEvolutionSession,
   createEvolutionStore,
-  createUnifiedAdapterDiff,
-  evolutionSessionPaths,
-  EvolutionCandidateError,
-  EvolutionEvaluationError,
-  EvolutionPromotionError,
-  EvolutionStoreError,
+  EvolutionError,
   listEvolutionSessions,
   promoteEvolutionSession,
   readEvolutionSession,
   rollbackEvolutionSession,
   verifyEvolutionSession,
-  writePrivateText,
+  type EvolutionPrediction,
   type EvolutionSession,
 } from "../engine/evolution/index.js";
 import { createRunStore } from "../engine/session/store.js";
@@ -37,7 +31,13 @@ interface EvolveCommonOptions {
   root?: string;
 }
 
-interface EvolveAdapterOptions extends EvolveCommonOptions {
+interface PredictionOptions {
+  hypothesis?: string;
+  expect?: string[];
+  risk?: string[];
+}
+
+interface EvolveAdapterOptions extends EvolveCommonOptions, PredictionOptions {
   run: string[];
   validationRun?: string[];
   heldOutRun?: string[];
@@ -51,14 +51,16 @@ interface EvolveAdapterOptions extends EvolveCommonOptions {
   timeout?: string;
   sessionId?: string;
   allowMutationEval?: boolean;
+  promote?: boolean;
 }
 
-interface EvolveVerifyOptions extends EvolveCommonOptions {
+interface EvolveVerifyOptions extends EvolveCommonOptions, PredictionOptions {
   validation?: string[];
   heldOut?: string[];
   cli?: string;
   timeout?: string;
   allowMutationEval?: boolean;
+  promote?: boolean;
 }
 
 function outputFormat(program: Command): OutputFormat {
@@ -112,7 +114,9 @@ export function registerEvolveCommand(program: Command): void {
 
   evolve
     .command("adapter <site> <command>")
-    .description("Create an isolated evolution session for one YAML adapter")
+    .description(
+      "Stage an adapter candidate, verify it when supplied, and optionally promote it",
+    )
     .requiredOption(
       "--run <run_ids...>",
       "Recorded runs used as proposal evidence",
@@ -135,7 +139,14 @@ export function registerEvolveCommand(program: Command): void {
     )
     .option("--model <names...>", "Models for which the candidate is intended")
     .option("--domain <name>", "Task-domain scope")
-    .option("--candidate <path>", "Stage an existing YAML candidate")
+    .option(
+      "--candidate <path>",
+      "Stage and immediately verify this YAML candidate",
+    )
+    .option("--hypothesis <text>", "Falsifiable explanation for the candidate")
+    .option("--expect <case_ids...>", "Validation cases predicted to improve")
+    .option("--risk <case_ids...>", "Cases most likely to regress")
+    .option("--promote", "Promote the candidate only when the gate accepts it")
     .option("--run-root <path>", "Override recorded run root")
     .option("--root <path>", "Override evolution session root")
     .option("--cli <command>", "CLI command used for paired evaluation")
@@ -149,19 +160,23 @@ export function registerEvolveCommand(program: Command): void {
       async (site: string, commandName: string, opts: EvolveAdapterOptions) => {
         const startedAt = Date.now();
         try {
+          if (opts.promote && !opts.candidate) {
+            throw new EvolutionError(
+              "candidate_invalid",
+              "--promote requires --candidate",
+            );
+          }
           const resolved = resolveCommand(site, commandName);
           if (!resolved) {
-            throw new EvolutionCandidateError(
+            throw new EvolutionError(
               "source_not_found",
               `adapter command is not registered: ${site}.${commandName}`,
             );
           }
-          const timeoutMs = parseTimeout(opts.timeout);
-          const permissionProfile = program.opts().permissionProfile as
-            | string
-            | undefined;
+          const store = createEvolutionStore({ rootDir: opts.root });
+          const prediction = parsePrediction(opts);
           const session = await createAdapterEvolutionSession({
-            evolutionStore: createEvolutionStore({ rootDir: opts.root }),
+            evolutionStore: store,
             runStore: createRunStore({ rootDir: opts.runRoot }),
             site,
             command: commandName,
@@ -173,31 +188,54 @@ export function registerEvolveCommand(program: Command): void {
             heldOutEvalTargets: opts.heldOut,
             modelAffinity: opts.model,
             domain: opts.domain,
-            permissionProfile,
+            permissionProfile: program.opts().permissionProfile as
+              | string
+              | undefined,
             candidatePath: opts.candidate,
             sessionId: opts.sessionId,
             cliCommand: opts.cli,
-            timeoutMs,
+            timeoutMs: parseTimeout(opts.timeout),
             allowMutationEval: opts.allowMutationEval,
+            prediction,
           });
-          emit(
+          if (!opts.candidate) {
+            emit(
+              program,
+              "evolve.adapter",
+              startedAt,
+              projectSession(session),
+              (context) => {
+                context.next_actions = [
+                  {
+                    command: `unicli evolve verify ${session.session_id} --hypothesis <text> --expect <case_ids...>`,
+                    description:
+                      "Verify the isolated candidate after editing it",
+                  },
+                ];
+              },
+            );
+            return;
+          }
+
+          const verified = await verifyEvolutionSession({
+            store,
+            sessionId: session.session_id,
+            adapterCommand: resolved.command,
+          });
+          const promoted =
+            opts.promote && verified.report.decision.eligible
+              ? await promoteEvolutionSession({
+                  store,
+                  sessionId: session.session_id,
+                })
+              : undefined;
+          emitEvolutionResult(
             program,
             "evolve.adapter",
             startedAt,
-            projectSession(session),
-            (context) => {
-              context.next_actions = [
-                {
-                  command: `unicli evolve verify ${session.session_id}`,
-                  description:
-                    "Run isolated baseline and candidate evaluation after editing the candidate",
-                },
-                {
-                  command: `unicli evolve inspect ${session.session_id}`,
-                  description: "Inspect the component scope and artifact paths",
-                },
-              ];
-            },
+            promoted?.session ?? verified.session,
+            verified.report,
+            promoted?.promotion,
           );
         } catch (error) {
           emitError(program, "evolve.adapter", startedAt, error);
@@ -207,9 +245,13 @@ export function registerEvolveCommand(program: Command): void {
 
   evolve
     .command("verify <session_id>")
-    .description("Compare a staged candidate with its baseline")
+    .description("Verify an edited staged candidate and optionally promote it")
     .option("--validation <eval_targets...>", "Add validation eval targets")
     .option("--held-out <eval_targets...>", "Add held-out eval targets")
+    .option("--hypothesis <text>", "Falsifiable explanation for the candidate")
+    .option("--expect <case_ids...>", "Validation cases predicted to improve")
+    .option("--risk <case_ids...>", "Cases most likely to regress")
+    .option("--promote", "Promote the candidate only when the gate accepts it")
     .option("--root <path>", "Override evolution session root")
     .option("--cli <command>", "CLI command used for paired evaluation")
     .option("--timeout <ms>", "Per-case evaluation timeout")
@@ -227,12 +269,12 @@ export function registerEvolveCommand(program: Command): void {
           session.component.command,
         );
         if (!resolved) {
-          throw new EvolutionEvaluationError(
+          throw new EvolutionError(
             "invalid_case",
             `adapter command is not registered: ${session.component.site}.${session.component.command}`,
           );
         }
-        const result = await verifyEvolutionSession({
+        const verified = await verifyEvolutionSession({
           store,
           sessionId,
           adapterCommand: resolved.command,
@@ -241,76 +283,22 @@ export function registerEvolveCommand(program: Command): void {
           cliCommand: opts.cli,
           ...(opts.timeout ? { timeoutMs: parseTimeout(opts.timeout) } : {}),
           allowMutationEval: opts.allowMutationEval,
+          prediction: parsePrediction(opts),
         });
-        emit(
+        const promoted =
+          opts.promote && verified.report.decision.eligible
+            ? await promoteEvolutionSession({ store, sessionId })
+            : undefined;
+        emitEvolutionResult(
           program,
           "evolve.verify",
           startedAt,
-          { session: projectSession(result.session), report: result.report },
-          (context) => {
-            context.next_actions = result.report.decision.eligible
-              ? [
-                  {
-                    command: `unicli evolve promote ${sessionId}`,
-                    description:
-                      "Install the verified candidate as a user adapter overlay",
-                  },
-                  {
-                    command: `unicli evolve diff ${sessionId}`,
-                    description: "Review the exact verified adapter patch",
-                  },
-                ]
-              : [
-                  {
-                    command: `unicli evolve diff ${sessionId}`,
-                    description: "Review the rejected candidate patch",
-                  },
-                  {
-                    command: `unicli evolve verify ${sessionId}`,
-                    description:
-                      "Re-run the gate after editing the staged candidate",
-                  },
-                ];
-          },
+          promoted?.session ?? verified.session,
+          verified.report,
+          promoted?.promotion,
         );
-        if (!result.report.decision.eligible) {
-          process.exitCode = ExitCode.GENERIC_ERROR;
-        }
       } catch (error) {
         emitError(program, "evolve.verify", startedAt, error);
-      }
-    });
-
-  evolve
-    .command("promote <session_id>")
-    .description("Install a verified candidate as the user adapter overlay")
-    .option("--root <path>", "Override evolution session root")
-    .action(async (sessionId: string, opts: EvolveCommonOptions) => {
-      const startedAt = Date.now();
-      try {
-        const result = await promoteEvolutionSession({
-          store: createEvolutionStore({ rootDir: opts.root }),
-          sessionId,
-        });
-        emit(
-          program,
-          "evolve.promote",
-          startedAt,
-          {
-            session: projectSession(result.session),
-            promotion: result.promotion,
-          },
-          (context) => {
-            context.next_actions = [
-              {
-                command: `unicli evolve rollback ${sessionId}`,
-                description: "Restore the exact pre-promotion adapter state",
-              },
-            ];
-          },
-        );
-      } catch (error) {
-        emitError(program, "evolve.promote", startedAt, error);
       }
     });
 
@@ -336,79 +324,85 @@ export function registerEvolveCommand(program: Command): void {
     });
 
   evolve
-    .command("inspect <session_id>")
-    .description("Inspect one evolution session and its artifact paths")
+    .command("inspect [session_id]")
+    .description("Inspect one evolution session or list resumable sessions")
     .option("--root <path>", "Override evolution session root")
-    .action(async (sessionId: string, opts: EvolveCommonOptions) => {
-      const startedAt = Date.now();
-      try {
-        const session = await readEvolutionSession(
-          createEvolutionStore({ rootDir: opts.root }),
-          sessionId,
-        );
-        emit(program, "evolve.inspect", startedAt, projectSession(session));
-      } catch (error) {
-        emitError(program, "evolve.inspect", startedAt, error);
-      }
-    });
+    .action(
+      async (sessionId: string | undefined, opts: EvolveCommonOptions) => {
+        const startedAt = Date.now();
+        try {
+          const store = createEvolutionStore({ rootDir: opts.root });
+          if (sessionId) {
+            emit(
+              program,
+              "evolve.inspect",
+              startedAt,
+              projectSession(await readEvolutionSession(store, sessionId)),
+            );
+            return;
+          }
+          const sessions = await listEvolutionSessions(store);
+          emit(program, "evolve.inspect", startedAt, {
+            root: store.root_dir,
+            sessions: sessions.map((session) => ({
+              session_id: session.session_id,
+              state: session.state,
+              component_id: session.component.id,
+              created_at: session.created_at,
+              updated_at: session.updated_at,
+              eligible: session.verification?.eligible ?? null,
+            })),
+          });
+        } catch (error) {
+          emitError(program, "evolve.inspect", startedAt, error);
+        }
+      },
+    );
+}
 
-  evolve
-    .command("diff <session_id>")
-    .description("Return the current baseline-to-candidate adapter patch")
-    .option("--root <path>", "Override evolution session root")
-    .action(async (sessionId: string, opts: EvolveCommonOptions) => {
-      const startedAt = Date.now();
-      try {
-        const store = createEvolutionStore({ rootDir: opts.root });
-        const session = await readEvolutionSession(store, sessionId);
-        const paths = evolutionSessionPaths(
-          store,
-          session.session_id,
-          session.component.site,
-          session.component.command,
-        );
-        const diff = createUnifiedAdapterDiff({
-          baseline: await readFile(paths.baseline_file, "utf-8"),
-          candidate: await readFile(paths.candidate_file, "utf-8"),
-          baselineLabel: `baseline/${session.component.site}/${session.component.command}.yaml`,
-          candidateLabel: `candidate/${session.component.site}/${session.component.command}.yaml`,
-        });
-        await writePrivateText(paths.patch, diff.patch);
-        emit(program, "evolve.diff", startedAt, {
-          session_id: sessionId,
-          patch_path: paths.patch,
-          changed_lines: { added: diff.added, removed: diff.removed },
-          patch: diff.patch,
-        });
-      } catch (error) {
-        emitError(program, "evolve.diff", startedAt, error);
-      }
-    });
-
-  evolve
-    .command("list")
-    .description("List local evolution sessions")
-    .option("--root <path>", "Override evolution session root")
-    .action(async (opts: EvolveCommonOptions) => {
-      const startedAt = Date.now();
-      try {
-        const store = createEvolutionStore({ rootDir: opts.root });
-        const sessions = await listEvolutionSessions(store);
-        emit(program, "evolve.list", startedAt, {
-          root: store.root_dir,
-          sessions: sessions.map((session) => ({
-            session_id: session.session_id,
-            state: session.state,
-            component_id: session.component.id,
-            created_at: session.created_at,
-            updated_at: session.updated_at,
-            eligible: session.verification?.eligible ?? null,
-          })),
-        });
-      } catch (error) {
-        emitError(program, "evolve.list", startedAt, error);
-      }
-    });
+function emitEvolutionResult(
+  program: Command,
+  command: string,
+  startedAt: number,
+  session: EvolutionSession,
+  report: Awaited<ReturnType<typeof verifyEvolutionSession>>["report"],
+  promotion?: Awaited<ReturnType<typeof promoteEvolutionSession>>["promotion"],
+): void {
+  emit(
+    program,
+    command,
+    startedAt,
+    {
+      session: projectSession(session),
+      report,
+      promotion: promotion ?? null,
+    },
+    (context) => {
+      context.next_actions = promotion
+        ? [
+            {
+              command: `unicli evolve rollback ${session.session_id}`,
+              description: "Restore the exact pre-promotion adapter state",
+            },
+          ]
+        : report.decision.eligible
+          ? [
+              {
+                command: `unicli evolve verify ${session.session_id} --promote`,
+                description:
+                  "Re-run the gate and promote the unchanged candidate",
+              },
+            ]
+          : [
+              {
+                command: `unicli evolve inspect ${session.session_id}`,
+                description:
+                  "Inspect the rejected candidate and evidence paths",
+              },
+            ];
+    },
+  );
+  if (!report.decision.eligible) process.exitCode = ExitCode.GENERIC_ERROR;
 }
 
 function projectSession(session: EvolutionSession): Record<string, unknown> {
@@ -430,15 +424,27 @@ function projectSession(session: EvolutionSession): Record<string, unknown> {
       held_out_eval_targets: session.datasets.held_out_eval_targets,
     },
     runtime: session.runtime,
+    prediction: session.prediction ?? null,
     verification: session.verification ?? null,
     promotion: session.promotion ?? null,
+  };
+}
+
+function parsePrediction(
+  options: PredictionOptions,
+): EvolutionPrediction | undefined {
+  if (!options.hypothesis && !options.expect && !options.risk) return undefined;
+  return {
+    hypothesis: options.hypothesis ?? "",
+    expected_fixes: options.expect ?? [],
+    at_risk: options.risk ?? [],
   };
 }
 
 function parseTimeout(value: string | undefined): number {
   const timeout = Number(value ?? "30000");
   if (!Number.isInteger(timeout) || timeout < 1_000 || timeout > 300_000) {
-    throw new EvolutionEvaluationError(
+    throw new EvolutionError(
       "invalid_case",
       "--timeout must be an integer from 1000 to 300000 milliseconds",
     );
@@ -454,58 +460,46 @@ function evolutionCliError(error: unknown): {
   exitCode: number;
 } {
   const message = error instanceof Error ? error.message : String(error);
-  if (error instanceof EvolutionStoreError) {
-    return {
-      code: error.code === "session_not_found" ? "not_found" : "invalid_input",
-      message,
-      suggestion: "Run `unicli evolve list` and inspect the selected session.",
-      ...(error.path ? { path: error.path } : {}),
-      exitCode: ExitCode.USAGE_ERROR,
-    };
-  }
-  if (error instanceof EvolutionCandidateError) {
-    return {
-      code: "invalid_input",
-      message,
-      suggestion:
-        error.code === "adapter_not_editable"
-          ? "Start with a YAML adapter or create a YAML user overlay for this command."
-          : "Inspect the candidate and its schema-v2 adapter metadata, then retry.",
-      ...(error.path ? { path: error.path } : {}),
-      exitCode: ExitCode.CONFIG_ERROR,
-    };
-  }
-  if (error instanceof EvolutionEvaluationError) {
+  if (error instanceof EvolutionError) {
+    const conflict =
+      error.code === "candidate_changed" ||
+      error.code === "destination_changed";
+    const configuration =
+      conflict ||
+      error.code === "mutation_eval_blocked" ||
+      [
+        "adapter_not_editable",
+        "candidate_invalid",
+        "source_not_found",
+        "not_eligible",
+        "not_promoted",
+      ].includes(error.code);
     return {
       code:
-        error.code === "mutation_eval_blocked"
-          ? "permission_denied"
-          : "invalid_input",
+        error.code === "session_not_found" || error.code === "run_not_found"
+          ? "not_found"
+          : error.code === "mutation_eval_blocked"
+            ? "permission_denied"
+            : conflict
+              ? "conflict"
+              : "invalid_input",
       message,
       suggestion:
-        error.code === "mutation_eval_blocked"
-          ? "Use read-only eval cases or pass --allow-mutation-eval in a controlled target environment."
-          : "Inspect the session evidence and eval targets, then retry verification.",
-      exitCode:
-        error.code === "mutation_eval_blocked"
-          ? ExitCode.CONFIG_ERROR
-          : ExitCode.USAGE_ERROR,
-    };
-  }
-  if (error instanceof EvolutionPromotionError) {
-    return {
-      code:
-        error.code === "candidate_changed" ||
-        error.code === "destination_changed"
-          ? "conflict"
-          : "invalid_input",
-      message,
-      suggestion:
-        error.code === "candidate_changed"
-          ? `Run \`unicli evolve verify ${extractSessionId(message) ?? "<session_id>"}\` again before promotion.`
-          : "Inspect the session and current user adapter before retrying.",
+        error.code === "session_not_found"
+          ? "Run `unicli evolve inspect` and select a session."
+          : error.code === "run_not_found"
+            ? "Run `unicli runs list` and select recorded proposal runs."
+            : error.code === "adapter_not_editable"
+              ? "Start with a YAML adapter or create a YAML user overlay for this command."
+              : error.code === "mutation_eval_blocked"
+                ? "Use read-only eval cases or pass --allow-mutation-eval in a controlled target environment."
+                : error.code === "candidate_changed"
+                  ? `Run \`unicli evolve verify ${extractSessionId(message) ?? "<session_id>"}\` again before promotion.`
+                  : conflict
+                    ? "Inspect the session and current user adapter before retrying."
+                    : "Inspect the candidate, prediction, session evidence, and eval targets, then retry.",
       ...(error.path ? { path: error.path } : {}),
-      exitCode: ExitCode.CONFIG_ERROR,
+      exitCode: configuration ? ExitCode.CONFIG_ERROR : ExitCode.USAGE_ERROR,
     };
   }
   return {

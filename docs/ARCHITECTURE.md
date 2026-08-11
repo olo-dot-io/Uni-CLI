@@ -129,10 +129,10 @@ Adapter failures can expose `adapter_path` and `step`. The agent updates that ow
 The evolution kernel turns selected run traces into a controlled adapter update. It owns five boundaries.
 
 1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
-2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays.
+2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases.
 3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
-4. `evolve verify` executes both overlays through the public CLI and records pass rate, duration, changed cases, and effect verdicts.
-5. `evolve promote` requires a changed candidate, strict validation improvement, and no held-out regression. Promotion writes a user override and preserves an exact rollback artifact.
+4. Baseline and candidate cases execute through the public CLI in alternating order. The report records pass rate, duration, changed cases, prediction misses, and unexpected regressions.
+5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. The same transaction preserves an exact rollback artifact.
 
 The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
 

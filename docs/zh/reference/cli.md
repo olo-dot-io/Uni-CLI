@@ -97,17 +97,17 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 
 ## Run evidence 与 evolution
 
-| 命令                                     | 用途                                                   |
-| ---------------------------------------- | ------------------------------------------------------ |
-| `unicli runs list`                       | 列出本地 recorded run                                  |
-| `unicli runs distill <run_ids...>`       | 生成经过脱敏的 evidence packet                         |
-| `unicli evolve adapter <site> <command>` | 暂存隔离的 YAML adapter candidate                      |
-| `unicli evolve verify <session_id>`      | 在 validation 与 held-out 上比较 baseline 和 candidate |
-| `unicli evolve diff <session_id>`        | 检查当前 candidate patch                               |
-| `unicli evolve promote <session_id>`     | 安装通过 gate 的 candidate                             |
-| `unicli evolve rollback <session_id>`    | 恢复 promotion 前的精确 user overlay                   |
+| 命令                                                               | 用途                                 |
+| ------------------------------------------------------------------ | ------------------------------------ |
+| `unicli runs list`                                                 | 列出本地 recorded run                |
+| `unicli runs distill <run_ids...>`                                 | 生成经过脱敏的 evidence packet       |
+| `unicli evolve adapter <site> <command>`                           | 创建隔离的 YAML adapter draft        |
+| `unicli evolve adapter <site> <command> --candidate ... --promote` | 验证并按 gate 结果晋级 candidate     |
+| `unicli evolve verify <session_id> [--promote]`                    | 继续成对 validation，并可选择晋级    |
+| `unicli evolve inspect [session_id]`                               | 列出 session 或检查一个 session      |
+| `unicli evolve rollback <session_id>`                              | 恢复 promotion 前的精确 user overlay |
 
-Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。Candidate 必须在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline authorization scope。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
+Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。发生变化的 candidate 必须声明可证伪 hypothesis 和预期修复项。Candidate 还需要在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline authorization scope。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
 
 ## Plugin
 

@@ -27,7 +27,7 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 - <span><!-- STATS:command_count -->1890<!-- /STATS --></span> 条注册 adapter command
 - <span><!-- STATS:adapter_count_yaml -->1008<!-- /STATS --></span> 个 schema-v2 YAML adapter
 - <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action
-- <span><!-- STATS:test_count -->10334<!-- /STATS --></span> 个 test
+- <span><!-- STATS:test_count -->10336<!-- /STATS --></span> 个 test
 
 完整 p50、p95、运行环境和生成时间见[英文报告](/BENCHMARK)。
 

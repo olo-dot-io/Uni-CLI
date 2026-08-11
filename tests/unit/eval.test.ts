@@ -39,6 +39,14 @@ describe("applyJudge — nonEmpty", () => {
       false,
     );
   });
+
+  it("fails when an envelope carries an empty data result", () => {
+    const parsed = { ok: true, data: [], next_actions: ["metadata"] };
+    expect(
+      applyJudge(parsed, JSON.stringify(parsed), 0, { type: "nonEmpty" })
+        .passed,
+    ).toBe(false);
+  });
 });
 
 describe("applyJudge — effectStatus", () => {
@@ -80,6 +88,16 @@ describe("applyJudge — contains (raw + field)", () => {
     };
     expect(applyJudge(parsed, JSON.stringify(parsed), 0, j).passed).toBe(true);
   });
+
+  it("does not match envelope metadata when no field is declared", () => {
+    const parsed = { data: [{ title: "post" }], next_actions: ["secret"] };
+    expect(
+      applyJudge(parsed, JSON.stringify(parsed), 0, {
+        type: "contains",
+        value: "secret",
+      }).passed,
+    ).toBe(false);
+  });
 });
 
 describe("applyJudge — arrayMinLength", () => {
@@ -102,6 +120,16 @@ describe("applyJudge — arrayMinLength", () => {
     const parsed = { data: { items: [1, 2, 3, 4] } };
     const j: Judge = { type: "arrayMinLength", path: "data.items", min: 3 };
     expect(applyJudge(parsed, JSON.stringify(parsed), 0, j).passed).toBe(true);
+  });
+
+  it("treats envelope data as the default result", () => {
+    const parsed = { ok: true, data: [1, 2], error: null };
+    expect(
+      applyJudge(parsed, JSON.stringify(parsed), 0, {
+        type: "arrayMinLength",
+        min: 2,
+      }).passed,
+    ).toBe(true);
   });
 
   it("fails gracefully when path is not an array", () => {

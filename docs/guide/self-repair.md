@@ -85,27 +85,31 @@ After the source is updated and the target verifier succeeds, a maintainer can r
 
 ## Evolve a repeated repair
 
-Use an evolution session when one successful replay is too weak to justify a persistent override. Record separate proposal, validation, and held-out runs.
+Use an evolution session when one successful replay is too weak to justify a persistent override. Proposal evidence, validation cases, and held-out cases stay separate.
 
 ```bash
 unicli --record <site> <command> [args]
 unicli runs list -f json
 
-unicli evolve adapter <site> <command> \
+unicli -f json evolve adapter <site> <command> \
   --run <proposal-run> \
-  --validation-run <validation-run> \
-  --held-out-run <held-out-run> \
-  -f json
+  --candidate <candidate.yaml> \
+  --hypothesis "<expected mechanism>" \
+  --expect <validation-case-id> \
+  --risk <held-out-case-id> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
 ```
 
-The returned session names `candidate.path`. An Agent can edit that isolated YAML file or pass an existing candidate through `--candidate <path>`. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields.
+This direct path creates the session, distills the proposal runs, executes isolated baseline and candidate overlays, evaluates the prediction, applies the promotion gate, and installs the override in one invocation. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields.
 
 ```bash
-unicli evolve diff <session-id> -f json
-unicli evolve verify <session-id> -f json
-unicli evolve promote <session-id> -f json
+unicli -f json evolve inspect
+unicli -f json evolve verify <session-id> --promote
+unicli -f json evolve rollback <session-id>
 ```
 
-The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. `promote` writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
+Omit `--candidate` to create a draft and edit the returned `candidate.path` before `evolve verify`. The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. Promotion writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
 
 Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair endpoints, selectors, extraction, and pipeline behavior, but it cannot change the session's authorization or execution-scope fields.

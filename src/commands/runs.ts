@@ -28,7 +28,7 @@ import { resolveCommand } from "../registry.js";
 import {
   createEvolutionStore,
   distillRunEvidence,
-  EvidenceDistillError,
+  EvolutionError,
   writePrivateJson,
 } from "../engine/evolution/index.js";
 
@@ -425,7 +425,14 @@ export function registerRunsCommand(program: Command): void {
           ),
         );
       } catch (error) {
-        if (error instanceof EvidenceDistillError) {
+        if (
+          error instanceof EvolutionError &&
+          [
+            "run_not_found",
+            "run_target_mismatch",
+            "run_metadata_missing",
+          ].includes(error.code)
+        ) {
           printRunError(program, "runs.distill", startedAt, {
             code:
               error.code === "run_not_found" ? "not_found" : "invalid_input",

@@ -15,20 +15,7 @@ import type {
   EvolutionComponent,
   EvolutionScope,
 } from "./types.js";
-
-export class EvidenceDistillError extends Error {
-  constructor(
-    public readonly code:
-      | "run_not_found"
-      | "run_target_mismatch"
-      | "run_metadata_missing",
-    message: string,
-    public readonly run_id?: string,
-  ) {
-    super(message);
-    this.name = "EvidenceDistillError";
-  }
-}
+import { EvolutionError } from "./error.js";
 
 export async function distillRunEvidence(input: {
   store: RunStore;
@@ -44,7 +31,7 @@ export async function distillRunEvidence(input: {
   const expectedCommand = `${input.component.site}.${input.component.command}`;
   const runIds = unique(input.runIds);
   if (runIds.length === 0) {
-    throw new EvidenceDistillError(
+    throw new EvolutionError(
       "run_not_found",
       "at least one recorded run is required to create an evidence packet",
     );
@@ -53,25 +40,22 @@ export async function distillRunEvidence(input: {
   for (const runId of runIds) {
     const events = await readRunEvents(input.store, runId);
     if (events.length === 0) {
-      throw new EvidenceDistillError(
+      throw new EvolutionError(
         "run_not_found",
         `run trace not found or empty: ${runId}`,
-        runId,
       );
     }
     const metadata = events[0]?.metadata;
     if (!metadata) {
-      throw new EvidenceDistillError(
+      throw new EvolutionError(
         "run_metadata_missing",
         `run trace has no metadata: ${runId}`,
-        runId,
       );
     }
     if (metadata.command !== expectedCommand) {
-      throw new EvidenceDistillError(
+      throw new EvolutionError(
         "run_target_mismatch",
         `run ${runId} targets ${metadata.command}; expected ${expectedCommand}`,
-        runId,
       );
     }
     observations.push(observationFromEvents(input.store, runId, events));

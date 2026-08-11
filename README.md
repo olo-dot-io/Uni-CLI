@@ -100,7 +100,7 @@ Static catalog
 - <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10334<!-- /STATS --> tests
+- <!-- STATS:test_count -->10336<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -227,16 +227,21 @@ unicli repair <site> <command>
 
 `repair` does not edit source or Git state. It reruns the original command as a bounded subprocess and succeeds only when the target returns `ok: true` with exit code `0`. Local overrides under `~/.unicli/adapters/` survive npm updates.
 
-For repeated failures, `evolve adapter` keeps proposal evidence, validation, and held-out cases separate. The agent edits an isolated YAML candidate. Uni-CLI compares it with the stored baseline and installs a user override only after the promotion gate passes.
+For repeated failures, `evolve adapter` keeps proposal evidence, validation, and held-out cases separate. The agent supplies one isolated YAML candidate and a falsifiable prediction. Uni-CLI runs paired baseline and candidate evaluations, records prediction misses and regressions, and installs a user override only after the promotion gate passes.
 
 ```bash
 unicli evolve adapter <site> <command> \
   --run <proposal-run> \
-  --validation-run <validation-run> \
-  --held-out-run <held-out-run>
-unicli evolve verify <session-id>
-unicli evolve promote <session-id>
+  --candidate <candidate.yaml> \
+  --hypothesis "<expected mechanism>" \
+  --expect <validation-case-id> \
+  --risk <held-out-case-id> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
 ```
+
+Without `--candidate`, the command creates an editable draft. `evolve verify` resumes that draft, `evolve inspect` returns its evidence and decision, and `evolve rollback` restores the exact pre-promotion overlay.
 
 A minimal YAML adapter follows.
 
