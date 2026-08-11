@@ -27,7 +27,7 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 - <span><!-- STATS:command_count -->1890<!-- /STATS --></span> 条注册 adapter command
 - <span><!-- STATS:adapter_count_yaml -->1008<!-- /STATS --></span> 个 schema-v2 YAML adapter
 - <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action
-- <span><!-- STATS:test_count -->10336<!-- /STATS --></span> 个 test
+- <span><!-- STATS:test_count -->10351<!-- /STATS --></span> 个 test
 
 完整 p50、p95、运行环境和生成时间见[英文报告](/BENCHMARK)。
 
@@ -48,7 +48,7 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 
 | 产品                                                  | 源码版本                                                                                                        | 公开范围                           | 当前规模                                              |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------- |
-| Uni-CLI                                               | 2026-08-10 工作区                                                                                               | 网站、浏览器、桌面、系统和本地工具 | 337 个网站，1890 条命令                               |
+| Uni-CLI                                               | 2026-08-11 工作区                                                                                               | 网站、浏览器、桌面、系统和本地工具 | 337 个网站，1890 条命令                               |
 | [OpenCLI](https://github.com/jackwener/opencli)       | [a86d647](https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json) | 网站和浏览器 adapter runtime       | 176 个网站，1331 条命令                               |
 | [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [39634a6](https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json)    | 有状态 harness 和能力矩阵          | 79 个 harness，22 个公开入口，5 个矩阵，62 项矩阵能力 |
 
@@ -61,25 +61,28 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 
 ### 已发布发现任务
 
-Uni-CLI 有 11/11 个任务排在首位。11/11 个首位结果同时带有运行命令、参数查看命令和所需认证设置。个性化任务通过 5/5 个。
+Uni-CLI 有 14/14 个任务排在首位。14/14 个首位结果同时带有运行命令、参数查看命令和所需认证设置。个性化任务通过 5/5 个。
 
-| 任务                  | 预期命令                | 首位结果                | 可直接准备 |
-| --------------------- | ----------------------- | ----------------------- | ---------- |
-| news-top              | `hackernews top`        | `hackernews top`        | 是         |
-| developer-trending    | `github-trending daily` | `github-trending daily` | 是         |
-| developer-code-search | `gh search-code`        | `gh search-code`        | 是         |
-| media-playback        | `spotify play-track`    | `spotify play-track`    | 是         |
-| auth-setup            | `auth setup`            | `auth setup`            | 是         |
-| cli-upgrade           | `upgrade install`       | `upgrade install`       | 是         |
-| xiaohongshu-saved     | `xiaohongshu saved`     | `xiaohongshu saved`     | 是         |
-| instagram-saved       | `instagram saved`       | `instagram saved`       | 是         |
-| zhihu-recommendations | `zhihu recommend`       | `zhihu recommend`       | 是         |
-| twitter-notifications | `twitter notifications` | `twitter notifications` | 是         |
-| bilibili-history      | `bilibili history`      | `bilibili history`      | 是         |
+| 任务                    | 预期命令                | 首位结果                | 可直接准备 |
+| ----------------------- | ----------------------- | ----------------------- | ---------- |
+| news-top                | `hackernews top`        | `hackernews top`        | 是         |
+| developer-trending      | `github-trending daily` | `github-trending daily` | 是         |
+| developer-code-search   | `gh search-code`        | `gh search-code`        | 是         |
+| media-playback          | `spotify play-track`    | `spotify play-track`    | 是         |
+| auth-setup              | `auth setup`            | `auth setup`            | 是         |
+| cli-upgrade             | `upgrade install`       | `upgrade install`       | 是         |
+| harness-evolution       | `evolve adapter`        | `evolve adapter`        | 是         |
+| evolution-evidence      | `runs distill`          | `runs distill`          | 是         |
+| agent-plugin-inspection | `plugin inspect`        | `plugin inspect`        | 是         |
+| xiaohongshu-saved       | `xiaohongshu saved`     | `xiaohongshu saved`     | 是         |
+| instagram-saved         | `instagram saved`       | `instagram saved`       | 是         |
+| zhihu-recommendations   | `zhihu recommend`       | `zhihu recommend`       | 是         |
+| twitter-notifications   | `twitter notifications` | `twitter notifications` | 是         |
+| bilibili-history        | `bilibili history`      | `bilibili history`      | 是         |
 
 ### 维护检查
 
-- 根命令发现入口 5/5
+- 根命令发现入口 6/6
 - 生成目录同步 通过
 - OpenCLI 固定基准完整性 通过
 - 个人内容命令对等检查 通过

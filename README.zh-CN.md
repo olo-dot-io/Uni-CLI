@@ -100,7 +100,7 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 - <!-- STATS:command_count -->1890<!-- /STATS --> 条注册命令
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10336<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10351<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -241,7 +241,9 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-省略 `--candidate` 时，命令会创建可编辑 draft。每次 verification 都会把 candidate snapshot、patch 和 report 保存为独立 attempt。Candidate 未变化时，`evolve verify --promote` 会复用最新 eligible attempt。`evolve inspect` 返回完整 attempt history，`evolve rollback` 精确恢复晋级前的 overlay。
+省略 `--candidate` 时，命令会创建可编辑 draft。每次 verification 都会把 candidate snapshot、patch 和 report 保存为经过 hash 校验的独立 attempt。Candidate 未变化时，`evolve verify --promote` 会复用最新 eligible attempt。Promotion 与 rollback 可以在写入中断后继续，并会串行处理多个 Agent process 的竞争操作。`evolve inspect` 返回完整 attempt history 和损坏的 session，`evolve rollback` 精确恢复晋级前的 overlay。
+
+第一版 evolution scope 会固定 operation identity、输入输出 contract、pipeline action topology、request method 与 header，以及已有 subprocess invocation。同一 origin 内的 endpoint 与 extraction repair 仍可编辑。替换 network origin 时，创建 session 的命令必须显式传入 `--allow-origin <origin>`。
 
 下面是一份最小 YAML adapter。
 

@@ -123,13 +123,13 @@ Adapter failure 可以暴露 `adapter_path` 和 `step`。Agent 更新对应源�
 
 Evolution kernel 把选定的 run trace 转换为受控的 adapter 更新。它负责五个边界。
 
-1. `runs distill` 生成私有 evidence packet，不写入 replay 参数和 secret event field。
-2. `evolve adapter` 把 baseline 与 candidate 放入独立的 user-adapter overlay。发生变化的 candidate 必须声明 hypothesis、预期修复项和可选的风险 case。
+1. `runs distill` 生成私有 evidence packet，不写入 replay 参数和 secret event field。Provenance 会把本地 trace content 标记为 untrusted，raw trace 只保留本地 reference。
+2. `evolve adapter` 把 baseline 与 candidate 放入独立的 user-adapter overlay。发生变化的 candidate 必须声明 hypothesis、预期修复项和可选的风险 case。Scope 会固定 identity、输入输出 contract、pipeline action、request method 与 header，以及已有 subprocess invocation。新增 network origin 时，创建 session 的命令需要传入 `--allow-origin`。
 3. Proposal run、validation run 和 held-out run 保持互斥。Eval file 可以用 `train`、`validation` 或 `held-out` 标记 case。
-4. Baseline 与 candidate case 通过公开 CLI 交替执行。每个 attempt 都会保存对应的 candidate、patch 和 report。后续 candidate 成功后，rejected attempt 仍然可读。
-5. `evolve adapter --candidate ... --promote` 只会在 validation 严格提升且 held-out 没有回退时安装 candidate。同一事务会保存精确 rollback artifact。
+4. Baseline 与 candidate case 通过公开 CLI 交替执行。每个 attempt 都会保存带 content hash 的 candidate、patch 和 report。后续 candidate 成功后，rejected attempt 仍然可读。
+5. `evolve adapter --candidate ... --promote` 只会在 validation 严格提升且 held-out 没有回退时安装 candidate。Promotion 会先准备精确 rollback artifact，再安装 candidate。Promotion 与 rollback 都可以在写入中断后继续。
 
-上层 Agent 负责提出并编辑 candidate。Uni-CLI 负责执行证据和 promotion decision。Candidate hash 未变化时，promotion 会复用最新 eligible attempt，不会因为 review 再次运行 eval。Attempt commit、promotion 和 rollback 会在多个 Agent process 之间串行执行。1.2 版本把 editable evolution component 限定为单个 YAML adapter。可能改变外部状态的命令需要显式允许 eval。
+上层 Agent 负责提出并编辑 candidate。Uni-CLI 负责执行证据和 promotion decision。Candidate hash 未变化时，promotion 会复用最新 eligible attempt，不会因为 review 再次运行 eval。Attempt commit、promotion 和 rollback 会在多个 Agent process 之间串行执行。Session format v2 会校验 immutable artifact，并迁移开发阶段 v1 format 写入的 attempt history。`evolve inspect` 会保留 invalid session。1.2 版本把 editable evolution component 限定为单个 YAML adapter。可能改变外部状态的命令需要显式允许 eval。
 
 ## 协议入口
 

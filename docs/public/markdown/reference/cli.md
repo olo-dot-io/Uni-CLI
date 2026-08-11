@@ -109,7 +109,7 @@ Run `unicli help browser` for the complete action list.
 | `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
 | `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
-Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` while creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 
 ## Plugins
 

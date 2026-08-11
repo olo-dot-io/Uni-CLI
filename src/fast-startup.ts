@@ -27,11 +27,13 @@ Execution and recovery:
   <site> <command> [options]    Run a website, app, or local-tool command
   upgrade                      Check and install a newer Uni-CLI release
   repair [site] [command]      Verify a repair with the original command
+  evolve                       Turn failed runs into verified adapter updates
   doctor                       Diagnose adapters, browser runtime, and tools
 
 Control surfaces:
   browser                      Broker-owned browser lifecycle and actions
   auth                         Explicit authentication storage and checks
+  plugin                       Portable Agent Skills and runtime extensions
   compute                      Desktop accessibility and visual transports
   mcp                          Model Context Protocol gateway
   acp                          Agent Client Protocol server

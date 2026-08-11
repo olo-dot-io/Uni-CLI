@@ -23,6 +23,7 @@ export type EvolutionSessionState =
 export interface EvolutionScope {
   domain?: string;
   model_affinity: string[];
+  approved_network_origins: string[];
   permission_profile: string;
   target_surface?: TargetSurface | string;
   operation_effect?: OperationEffect;
@@ -77,6 +78,12 @@ export interface EvidencePacket {
   schema_version: "unicli.evidence-packet.v1";
   packet_id: string;
   created_at: string;
+  provenance: {
+    source: "local-run-store";
+    content_trust: "untrusted";
+    redaction: "applied";
+    raw_trace_policy: "local-reference-only";
+  };
   component: Pick<
     EvolutionComponent,
     "kind" | "id" | "site" | "command" | "source_path" | "source_tier"
@@ -107,14 +114,13 @@ export interface EvolutionVerificationAttempt {
   ordinal: number;
   verified_at: string;
   eligible: boolean;
-  candidate_sha256: string;
-  candidate_path: string;
-  patch_path: string;
-  report_path: string;
+  candidate: EvolutionArtifactRef;
+  patch: EvolutionArtifactRef;
+  report: EvolutionArtifactRef;
 }
 
 export interface EvolutionSession {
-  schema_version: "unicli.evolution-session.v1";
+  schema_version: "unicli.evolution-session.v2";
   session_id: string;
   state: EvolutionSessionState;
   created_at: string;
@@ -140,6 +146,7 @@ export interface EvolutionSession {
   attempts: EvolutionVerificationAttempt[];
   promotion?: {
     path: string;
+    sha256: string;
     promoted_at: string;
     destination: string;
   };

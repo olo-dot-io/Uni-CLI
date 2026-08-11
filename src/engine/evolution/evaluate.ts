@@ -96,6 +96,7 @@ export async function verifyEvolutionSession(input: {
     baselineAdapter,
     candidateAdapter,
     paths.candidate_file,
+    session.component.scope.approved_network_origins,
   );
 
   const allowMutationEval =
@@ -279,7 +280,7 @@ export async function verifyEvolutionSession(input: {
     };
     await writePrivateText(attempt.candidate, candidate);
     await writePrivateText(attempt.patch, diff.patch);
-    await writePrivateJson(attempt.report, report);
+    const reportSha256 = await writePrivateJson(attempt.report, report);
 
     const updated: EvolutionSession = {
       ...current,
@@ -308,12 +309,11 @@ export async function verifyEvolutionSession(input: {
         ...current.attempts,
         {
           ordinal,
-          report_path: attempt.report,
-          candidate_path: attempt.candidate,
-          patch_path: attempt.patch,
           verified_at: verifiedAt,
           eligible,
-          candidate_sha256: candidateSha256,
+          candidate: { path: attempt.candidate, sha256: candidateSha256 },
+          patch: { path: attempt.patch, sha256: sha256Text(diff.patch) },
+          report: { path: attempt.report, sha256: reportSha256 },
         },
       ],
     };
@@ -605,6 +605,8 @@ function autoDiscoveredEvalTargets(site: string): string[] {
       try {
         return loadEvalFile(entry.path).adapter === site;
       } catch {
+        // REASON: repository-wide auto-discovery must not let a malformed eval
+        // for another adapter block an explicitly scoped evolution session.
         return false;
       }
     })

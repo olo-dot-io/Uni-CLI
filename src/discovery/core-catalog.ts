@@ -75,12 +75,29 @@ const CORE_COMMAND_SOURCE_PATHS: Record<string, string> = {
   browser: "src/commands/browser/index.ts",
   compute: "src/commands/compute.ts",
   delivery: "src/commands/delivery.ts",
+  evolve: "src/commands/evolve.ts",
   mcp: "src/commands/mcp.ts",
   operate: "src/commands/operate.ts",
+  plugin: "src/commands/plugin.ts",
   runs: "src/commands/runs.ts",
   scholar: "src/commands/scholar.ts",
   upgrade: "src/commands/upgrade.ts",
 };
+
+function localAgentCommand(
+  command: Omit<
+    CoreDiscoveryCommand,
+    "category" | "type" | "target_surface" | "execution_operator"
+  >,
+): CoreDiscoveryCommand {
+  return {
+    category: "agent",
+    type: "service",
+    target_surface: "system",
+    execution_operator: "local-runtime",
+    ...command,
+  };
+}
 
 const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   {
@@ -1028,6 +1045,26 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
   },
   {
     site: "runs",
+    command: "distill",
+    category: "dev",
+    type: "service",
+    target_surface: "system",
+    execution_operator: "local-runtime",
+    operation_effect: "local_file",
+    operation_family: "create",
+    description:
+      "Distill recorded failures for one command into a private, source-linked evidence packet for adapter evolution.",
+    args: [
+      { name: "run_ids", type: "str[]", required: true, positional: true },
+      { name: "root", type: "str" },
+      { name: "output", type: "str" },
+      { name: "model", type: "str[]" },
+      { name: "domain", type: "str" },
+    ],
+    channels: { shell: "unicli runs distill <run_ids...>" },
+  },
+  {
+    site: "runs",
     command: "replay",
     category: "dev",
     type: "service",
@@ -1042,6 +1079,141 @@ const CORE_DISCOVERY_COMMANDS: readonly CoreDiscoveryCommand[] = [
     description:
       "Compare two recorded run traces for behavior drift, context drift, score gates, result envelope differences, repair verification, and reproducible agent audit checks.",
   },
+  localAgentCommand({
+    site: "evolve",
+    command: "adapter",
+    operation_effect: "local_file",
+    operation_family: "update",
+    description:
+      "Create a scoped YAML adapter candidate from failed run evidence, evaluate it against validation and held-out cases, and optionally promote it.",
+    args: [
+      { name: "site", type: "str", required: true, positional: true },
+      { name: "command", type: "str", required: true, positional: true },
+      { name: "run", type: "str[]", required: true },
+      { name: "validation-run", type: "str[]" },
+      { name: "held-out-run", type: "str[]" },
+      { name: "validation", type: "str[]" },
+      { name: "held-out", type: "str[]" },
+      { name: "allow-origin", type: "str[]" },
+      { name: "candidate", type: "str" },
+      { name: "hypothesis", type: "str" },
+      { name: "expect", type: "str[]" },
+      { name: "risk", type: "str[]" },
+      { name: "promote", type: "bool" },
+    ],
+    channels: {
+      shell: "unicli evolve adapter <site> <command> --run <run_ids...>",
+    },
+  }),
+  localAgentCommand({
+    site: "evolve",
+    command: "verify",
+    operation_effect: "local_file",
+    operation_family: "update",
+    description:
+      "Verify an edited adapter candidate with paired baseline execution, strict validation improvement, and held-out non-regression gates.",
+    args: [
+      { name: "session_id", type: "str", required: true, positional: true },
+      { name: "validation", type: "str[]" },
+      { name: "held-out", type: "str[]" },
+      { name: "hypothesis", type: "str" },
+      { name: "expect", type: "str[]" },
+      { name: "risk", type: "str[]" },
+      { name: "promote", type: "bool" },
+    ],
+    channels: { shell: "unicli evolve verify <session_id>" },
+  }),
+  localAgentCommand({
+    site: "evolve",
+    command: "inspect",
+    operation_effect: "read",
+    operation_family: "get",
+    description:
+      "Inspect one evolution session or list resumable sessions with scoped evidence, candidate, attempt, and promotion state.",
+    args: [
+      { name: "session_id", type: "str", positional: true },
+      { name: "root", type: "str" },
+    ],
+    channels: { shell: "unicli evolve inspect [session_id]" },
+  }),
+  localAgentCommand({
+    site: "evolve",
+    command: "rollback",
+    operation_effect: "local_file",
+    operation_family: "update",
+    description:
+      "Roll back a promoted adapter only when the installed overlay still matches the verified candidate.",
+    args: [
+      { name: "session_id", type: "str", required: true, positional: true },
+      { name: "root", type: "str" },
+    ],
+    channels: { shell: "unicli evolve rollback <session_id>" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "inspect",
+    operation_effect: "read",
+    operation_family: "get",
+    description:
+      "Inspect an Agent Plugins 1.0 package, its portable Skills and MCP configuration, and its Uni-CLI runtime projection.",
+    args: [{ name: "path", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli plugin inspect <path>" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "list",
+    operation_effect: "read",
+    operation_family: "list",
+    description:
+      "List installed Agent Plugins 1.0 packages, native Uni-CLI extensions, portable Skills, and legacy adapter plugins.",
+    channels: { shell: "unicli plugin list" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "install",
+    operation_effect: "local_file",
+    operation_family: "create",
+    description:
+      "Install a Uni-CLI plugin from a GitHub repository, URL, or local package path.",
+    args: [{ name: "source", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli plugin install <source>" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "uninstall",
+    operation_effect: "local_file",
+    operation_family: "delete",
+    description: "Remove an installed Uni-CLI plugin by name.",
+    args: [{ name: "name", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli plugin uninstall <name>" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "update",
+    operation_effect: "local_file",
+    operation_family: "update",
+    description: "Update one installed Uni-CLI plugin or every plugin.",
+    args: [{ name: "name", type: "str", positional: true }],
+    channels: { shell: "unicli plugin update [name]" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "create",
+    operation_effect: "local_file",
+    operation_family: "create",
+    description:
+      "Create an Agent Plugins 1.0 scaffold with a portable plugin.json and an optional Uni-CLI runtime extension manifest.",
+    args: [{ name: "name", type: "str", required: true, positional: true }],
+    channels: { shell: "unicli plugin create <name>" },
+  }),
+  localAgentCommand({
+    site: "plugin",
+    command: "steps",
+    operation_effect: "read",
+    operation_family: "list",
+    description: "List custom pipeline steps registered by installed plugins.",
+    channels: { shell: "unicli plugin steps" },
+  }),
   {
     site: "delivery",
     command: "assess",

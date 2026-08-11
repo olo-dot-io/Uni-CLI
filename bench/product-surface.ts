@@ -136,6 +136,21 @@ const TASKS: readonly SearchTask[] = [
     expected: "upgrade install",
   },
   {
+    id: "harness-evolution",
+    intent: "evolve adapter harness from failed runs",
+    expected: "evolve adapter",
+  },
+  {
+    id: "evolution-evidence",
+    intent: "distill failed run traces into evolution evidence",
+    expected: "runs distill",
+  },
+  {
+    id: "agent-plugin-inspection",
+    intent: "inspect portable plugin package",
+    expected: "plugin inspect",
+  },
+  {
     id: "xiaohongshu-saved",
     intent: "my saved Xiaohongshu notes",
     expected: "xiaohongshu saved",
@@ -480,6 +495,7 @@ async function main(): Promise<void> {
     "list [",
     "describe [",
     "upgrade ",
+    "evolve ",
   ];
   const rootDiscoveryPassed = rootEntries.filter((entry) =>
     help.stdout.includes(entry),

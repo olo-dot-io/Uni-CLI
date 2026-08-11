@@ -398,6 +398,7 @@ export function registerRunsCommand(program: Command): void {
           scope: {
             ...(domain ? { domain } : {}),
             model_affinity: [...new Set(opts.model ?? [])],
+            approved_network_origins: [],
             permission_profile: metadata.permission_profile,
             target_surface: metadata.target_surface,
             ...(resolved.command.operation_effect

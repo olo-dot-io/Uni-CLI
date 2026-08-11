@@ -104,7 +104,7 @@ unicli -f json evolve adapter <site> <command> \
   --promote
 ```
 
-This direct path creates the session, distills the proposal runs, executes isolated baseline and candidate overlays, evaluates the prediction, applies the promotion gate, and installs the override in one invocation. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields.
+This direct path creates the session, distills the proposal runs, executes isolated baseline and candidate overlays, evaluates the prediction, applies the promotion gate, and installs the override in one invocation. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields, and marks all distilled trace content as untrusted.
 
 ```bash
 unicli -f json evolve inspect
@@ -114,6 +114,6 @@ unicli -f json evolve rollback <session-id>
 
 Omit `--candidate` to create a draft and edit the returned `candidate.path` before `evolve verify`. The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. Promotion writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
 
-Each verification appends an attempt directory containing the exact candidate, patch, and report. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases.
+Each verification appends an attempt directory containing the exact candidate, patch, and report. Content hashes make later artifact changes fail closed. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases. Competing promotion and rollback processes serialize on the session. An interrupted transition resumes from its prepared promotion record.
 
-Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair endpoints, selectors, extraction, and pipeline behavior, but it cannot change the session's authorization or execution-scope fields.
+Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.

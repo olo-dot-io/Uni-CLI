@@ -100,7 +100,7 @@ Static catalog
 - <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10336<!-- /STATS --> tests
+- <!-- STATS:test_count -->10351<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -241,7 +241,9 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-Without `--candidate`, the command creates an editable draft. Every verification preserves its candidate snapshot, patch, and report as one attempt. `evolve verify --promote` reuses the latest eligible attempt when the candidate is unchanged. `evolve inspect` returns the complete attempt history, and `evolve rollback` restores the exact pre-promotion overlay.
+Without `--candidate`, the command creates an editable draft. Every verification preserves its candidate snapshot, patch, and report as one hash-checked attempt. `evolve verify --promote` reuses the latest eligible attempt when the candidate is unchanged. Promotion and rollback recover after an interrupted write and serialize competing Agent processes. `evolve inspect` returns the complete attempt history, reports corrupt sessions, and `evolve rollback` restores the exact pre-promotion overlay.
+
+The first evolution scope keeps the operation identity, input and output contracts, pipeline action topology, request methods and headers, and existing subprocess invocations fixed. Same-origin endpoint and extraction repairs remain editable. A replacement network origin requires an explicit `--allow-origin <origin>` declaration when the session is created.
 
 A minimal YAML adapter follows.
 

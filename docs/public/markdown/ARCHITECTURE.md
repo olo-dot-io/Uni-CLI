@@ -129,13 +129,13 @@ Adapter failures can expose `adapter_path` and `step`. The agent updates that ow
 
 The evolution kernel turns selected run traces into a controlled adapter update. It owns five boundaries.
 
-1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
-2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases.
+1. `runs distill` creates a private evidence packet without replay arguments or secret event fields. Its provenance marks local trace content as untrusted and keeps raw traces behind local references.
+2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases. The scope keeps identity, input and output contracts, pipeline actions, request methods and headers, and existing subprocess invocations fixed. New network origins require `--allow-origin` at session creation.
 3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
-4. Baseline and candidate cases execute through the public CLI in alternating order. Every attempt preserves its exact candidate, patch, and report. Rejected attempts remain available after a later candidate succeeds.
-5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. The same transaction preserves an exact rollback artifact.
+4. Baseline and candidate cases execute through the public CLI in alternating order. Every attempt preserves its exact candidate, patch, and report with content hashes. Rejected attempts remain available after a later candidate succeeds.
+5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. Promotion prepares the exact rollback artifact before installation. Promotion and rollback resume after an interrupted write.
 
-The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Promotion reuses the latest eligible attempt when its candidate hash is unchanged, so review does not trigger another evaluation. Attempt commits, promotion, and rollback are serialized across Agent processes. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
+The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Promotion reuses the latest eligible attempt when its candidate hash is unchanged, so review does not trigger another evaluation. Attempt commits, promotion, and rollback are serialized across Agent processes. Session format v2 verifies immutable artifacts and migrates the attempt history written by the development v1 format. Invalid sessions remain visible in `evolve inspect`. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
 
 ## Protocol projections
 

@@ -58,7 +58,7 @@ unicli hackernews top --limit 5 -f json
 - Static adapter sites: 337
 - Registered adapter operations: 1890
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10336
+- Tests: 10351
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -1059,7 +1059,7 @@ unicli -f json evolve adapter <site> <command> \
   --promote
 ```
 
-This direct path creates the session, distills the proposal runs, executes isolated baseline and candidate overlays, evaluates the prediction, applies the promotion gate, and installs the override in one invocation. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields.
+This direct path creates the session, distills the proposal runs, executes isolated baseline and candidate overlays, evaluates the prediction, applies the promotion gate, and installs the override in one invocation. Proposal evidence contains trace references and redacted failure summaries. It excludes replay arguments and secret event fields, and marks all distilled trace content as untrusted.
 
 ```bash
 unicli -f json evolve inspect
@@ -1069,9 +1069,9 @@ unicli -f json evolve rollback <session-id>
 
 Omit `--candidate` to create a draft and edit the returned `candidate.path` before `evolve verify`. The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. Promotion writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
 
-Each verification appends an attempt directory containing the exact candidate, patch, and report. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases.
+Each verification appends an attempt directory containing the exact candidate, patch, and report. Content hashes make later artifact changes fail closed. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases. Competing promotion and rollback processes serialize on the session. An interrupted transition resumes from its prepared promotion record.
 
-Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair endpoints, selectors, extraction, and pipeline behavior, but it cannot change the session's authorization or execution-scope fields.
+Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair same-origin endpoint paths, selectors, extraction expressions, and existing pipeline action configuration. It cannot change operation identity, input or output contracts, pipeline action topology, request methods or headers, or an existing subprocess invocation. Declare every replacement network origin with `--allow-origin <origin>` when creating the session.
 
 ---
 
@@ -2282,7 +2282,7 @@ Run `unicli help browser` for the complete action list.
 | `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
 | `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
-Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` while creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 
 ## Plugins
 
@@ -2949,13 +2949,13 @@ Adapter failures can expose `adapter_path` and `step`. The agent updates that ow
 
 The evolution kernel turns selected run traces into a controlled adapter update. It owns five boundaries.
 
-1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
-2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases.
+1. `runs distill` creates a private evidence packet without replay arguments or secret event fields. Its provenance marks local trace content as untrusted and keeps raw traces behind local references.
+2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases. The scope keeps identity, input and output contracts, pipeline actions, request methods and headers, and existing subprocess invocations fixed. New network origins require `--allow-origin` at session creation.
 3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
-4. Baseline and candidate cases execute through the public CLI in alternating order. Every attempt preserves its exact candidate, patch, and report. Rejected attempts remain available after a later candidate succeeds.
-5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. The same transaction preserves an exact rollback artifact.
+4. Baseline and candidate cases execute through the public CLI in alternating order. Every attempt preserves its exact candidate, patch, and report with content hashes. Rejected attempts remain available after a later candidate succeeds.
+5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. Promotion prepares the exact rollback artifact before installation. Promotion and rollback resume after an interrupted write.
 
-The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Promotion reuses the latest eligible attempt when its candidate hash is unchanged, so review does not trigger another evaluation. Attempt commits, promotion, and rollback are serialized across Agent processes. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
+The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Promotion reuses the latest eligible attempt when its candidate hash is unchanged, so review does not trigger another evaluation. Attempt commits, promotion, and rollback are serialized across Agent processes. Session format v2 verifies immutable artifacts and migrates the attempt history written by the development v1 format. Invalid sessions remain visible in `evolve inspect`. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
 
 ## Protocol projections
 
@@ -3080,7 +3080,7 @@ The comparison keeps each product inside its declared boundary. Catalog totals m
 
 | Product                                               | Source revision                                                                                                 | Declared surface                               | Current scale                                                           |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Uni-CLI                                               | working tree on 2026-08-10                                                                                      | web, browser, desktop, system, and local tools | 337 sites and 1890 commands                                             |
+| Uni-CLI                                               | working tree on 2026-08-11                                                                                      | web, browser, desktop, system, and local tools | 337 sites and 1890 commands                                             |
 | [OpenCLI](https://github.com/jackwener/opencli)       | [a86d647](https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json) | website and browser adapter runtime            | 176 sites and 1331 commands                                             |
 | [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [39634a6](https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json)    | stateful harnesses and capability matrices     | 79 harnesses, 22 public entries, 5 matrices, and 62 matrix capabilities |
 
@@ -3093,25 +3093,28 @@ The shared personal-content classifier omits generic identity commands such as `
 
 ### Shipped discovery tasks
 
-Uni-CLI completed 11/11 tasks at rank one. 11/11 top results included an invocation, inspection command, and required authentication setup. Personalized tasks completed 5/5.
+Uni-CLI completed 14/14 tasks at rank one. 14/14 top results included an invocation, inspection command, and required authentication setup. Personalized tasks completed 5/5.
 
-| Task                  | Expected                | Top result              | Actionable |
-| --------------------- | ----------------------- | ----------------------- | ---------- |
-| news-top              | `hackernews top`        | `hackernews top`        | yes        |
-| developer-trending    | `github-trending daily` | `github-trending daily` | yes        |
-| developer-code-search | `gh search-code`        | `gh search-code`        | yes        |
-| media-playback        | `spotify play-track`    | `spotify play-track`    | yes        |
-| auth-setup            | `auth setup`            | `auth setup`            | yes        |
-| cli-upgrade           | `upgrade install`       | `upgrade install`       | yes        |
-| xiaohongshu-saved     | `xiaohongshu saved`     | `xiaohongshu saved`     | yes        |
-| instagram-saved       | `instagram saved`       | `instagram saved`       | yes        |
-| zhihu-recommendations | `zhihu recommend`       | `zhihu recommend`       | yes        |
-| twitter-notifications | `twitter notifications` | `twitter notifications` | yes        |
-| bilibili-history      | `bilibili history`      | `bilibili history`      | yes        |
+| Task                    | Expected                | Top result              | Actionable |
+| ----------------------- | ----------------------- | ----------------------- | ---------- |
+| news-top                | `hackernews top`        | `hackernews top`        | yes        |
+| developer-trending      | `github-trending daily` | `github-trending daily` | yes        |
+| developer-code-search   | `gh search-code`        | `gh search-code`        | yes        |
+| media-playback          | `spotify play-track`    | `spotify play-track`    | yes        |
+| auth-setup              | `auth setup`            | `auth setup`            | yes        |
+| cli-upgrade             | `upgrade install`       | `upgrade install`       | yes        |
+| harness-evolution       | `evolve adapter`        | `evolve adapter`        | yes        |
+| evolution-evidence      | `runs distill`          | `runs distill`          | yes        |
+| agent-plugin-inspection | `plugin inspect`        | `plugin inspect`        | yes        |
+| xiaohongshu-saved       | `xiaohongshu saved`     | `xiaohongshu saved`     | yes        |
+| instagram-saved         | `instagram saved`       | `instagram saved`       | yes        |
+| zhihu-recommendations   | `zhihu recommend`       | `zhihu recommend`       | yes        |
+| twitter-notifications   | `twitter notifications` | `twitter notifications` | yes        |
+| bilibili-history        | `bilibili history`      | `bilibili history`      | yes        |
 
 ### Maintenance gates
 
-- Root discovery entry coverage 5/5
+- Root discovery entry coverage 6/6
 - Generated catalog synchronization pass
 - OpenCLI pinned baseline integrity pass
 - Personal content command parity pass

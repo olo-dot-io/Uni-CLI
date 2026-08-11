@@ -22,6 +22,43 @@ import {
 } from "../../src/types.js";
 
 describe("CommandContract", () => {
+  it("publishes the complete evolution loop through fixed-core discovery", () => {
+    expect(
+      ["adapter", "verify", "inspect", "rollback"].map(
+        (command) => getCoreDiscoveryCommand("evolve", command)?.source_path,
+      ),
+    ).toEqual(Array(4).fill("src/commands/evolve.ts"));
+    expect(getCoreDiscoveryCommand("runs", "distill")).toMatchObject({
+      operation_effect: "local_file",
+      source_path: "src/commands/runs.ts",
+    });
+    expect(getCoreDiscoveryCommand("evolve", "inspect")).toMatchObject({
+      operation_effect: "read",
+      channels: { shell: "unicli evolve inspect [session_id]" },
+    });
+  });
+
+  it("publishes the portable plugin lifecycle through fixed-core discovery", () => {
+    const commands = [
+      "inspect",
+      "list",
+      "install",
+      "uninstall",
+      "update",
+      "create",
+      "steps",
+    ];
+    expect(
+      commands.map(
+        (command) => getCoreDiscoveryCommand("plugin", command)?.source_path,
+      ),
+    ).toEqual(Array(commands.length).fill("src/commands/plugin.ts"));
+    expect(getCoreDiscoveryCommand("plugin", "inspect")).toMatchObject({
+      operation_effect: "read",
+      channels: { shell: "unicli plugin inspect <path>" },
+    });
+  });
+
   it("declares the effect of every scholarly core command", () => {
     const scholarly = listCoreDiscoveryCommands().filter(
       (command) => command.site === "scholar",

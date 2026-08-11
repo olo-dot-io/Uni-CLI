@@ -3,6 +3,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -88,7 +89,21 @@ describe("harness evolution kernel", () => {
     await writeFailedReplayRun(runRoot, "run-evolution-proposal");
     await writeFailedReplayRun(runRoot, "run-evolution-validation");
     await writeFailedReplayRun(runRoot, "run-evolution-held-out");
+    await writeFailedReplayRun(runRoot, "run-evolution-auth", "auth_required");
   });
+
+  function sessionInput(
+    evolutionStore: ReturnType<typeof createEvolutionStore>,
+  ): Parameters<typeof createAdapterEvolutionSession>[0] {
+    return {
+      evolutionStore,
+      runStore: createRunStore({ rootDir: runRoot }),
+      site: "evolution-fixture",
+      command: "probe",
+      adapterCommand,
+      proposalRunIds: ["run-evolution-proposal"],
+    };
+  }
 
   afterEach(() => {
     if (originalHome === undefined) delete process.env.HOME;
@@ -110,6 +125,7 @@ describe("harness evolution kernel", () => {
       },
       scope: {
         model_affinity: ["fixture-model"],
+        approved_network_origins: [],
         permission_profile: "open",
         target_surface: "web",
         operation_effect: "read",
@@ -124,6 +140,12 @@ describe("harness evolution kernel", () => {
       failure_classes: { adapter_behavior: 1 },
       error_codes: { selector_miss: 1 },
     });
+    expect(packet.provenance).toEqual({
+      source: "local-run-store",
+      content_trust: "untrusted",
+      redaction: "applied",
+      raw_trace_policy: "local-reference-only",
+    });
     expect(packet.sources[0].error?.message).toContain("token=<redacted>");
     expect(packet.sources[0].error?.message).toContain("api_key=<redacted>");
     expect(JSON.stringify(packet)).not.toContain("private replay value");
@@ -132,42 +154,217 @@ describe("harness evolution kernel", () => {
   it("rejects run ids reused across evolution data splits", async () => {
     await expect(
       createAdapterEvolutionSession({
-        evolutionStore: createEvolutionStore({
-          rootDir: join(root, "evolution-overlap"),
-        }),
-        runStore: createRunStore({ rootDir: runRoot }),
-        site: "evolution-fixture",
-        command: "probe",
-        adapterCommand,
-        proposalRunIds: ["run-evolution-proposal"],
+        ...sessionInput(
+          createEvolutionStore({ rootDir: join(root, "evolution-overlap") }),
+        ),
         validationRunIds: ["run-evolution-proposal"],
       }),
     ).rejects.toThrow(/must be disjoint/);
   });
 
-  it("rejects candidates that change the verified authorization scope", async () => {
-    const candidatePath = join(root, "scope-changing-candidate.yaml");
-    writeFileSync(
-      candidatePath,
-      BASE_ADAPTER.replace(
+  it("refuses to evolve adapters from non-repairable proposal failures", async () => {
+    await expect(
+      createAdapterEvolutionSession({
+        ...sessionInput(
+          createEvolutionStore({
+            rootDir: join(root, "evolution-auth-failure"),
+          }),
+        ),
+        proposalRunIds: ["run-evolution-auth"],
+      }),
+    ).rejects.toThrow(
+      /outside the adapter repair boundary.*authentication_context/,
+    );
+  });
+
+  it("creates exactly one session when Agents race on the same id", async () => {
+    const evolutionStore = createEvolutionStore({
+      rootDir: join(root, "evolution-create-race"),
+    });
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () =>
+        createAdapterEvolutionSession({
+          ...sessionInput(evolutionStore),
+          sessionId: "evo-create-race",
+        }),
+      ),
+    );
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      results.filter((result) => result.status === "rejected"),
+    ).toHaveLength(7);
+    await expect(
+      readEvolutionSession(evolutionStore, "evo-create-race"),
+    ).resolves.toMatchObject({ state: "draft", attempts: [] });
+  });
+
+  it.each([
+    {
+      name: "adapter identity",
+      candidate: BASE_ADAPTER.replace(
+        "description: Probe the evolution fixture",
+        "description: Route a different operation",
+      ),
+      field: "identity_contract",
+    },
+    {
+      name: "operation effect",
+      candidate: BASE_ADAPTER.replace(
         "operation_effect: read",
         "operation_effect: destructive",
       ),
+      field: "operation_effect",
+    },
+    {
+      name: "network origin",
+      candidate: BASE_ADAPTER.replace("example.com", "evil.example"),
+      field: "network_origins",
+    },
+    {
+      name: "network method",
+      candidate: BASE_ADAPTER.replace(
+        "url: https://example.com/status",
+        "url: https://example.com/status\n      method: POST",
+      ),
+      field: "network_methods",
+    },
+    {
+      name: "request headers",
+      candidate: BASE_ADAPTER.replace(
+        "url: https://example.com/status",
+        "url: https://example.com/status\n      headers:\n        Authorization: Bearer candidate",
+      ),
+      field: "request_headers",
+    },
+    {
+      name: "pipeline actions",
+      candidate: BASE_ADAPTER.replace(
+        "  - fetch:\n      url: https://example.com/status",
+        "  - exec:\n      command: uname",
+      ),
+      field: "pipeline_actions",
+    },
+    {
+      name: "input contract",
+      candidate: BASE_ADAPTER.replace(
+        "pipeline:",
+        "args:\n  query: { type: str }\npipeline:",
+      ),
+      field: "input_contract",
+    },
+    {
+      name: "output contract",
+      candidate: BASE_ADAPTER.replace(
+        "pipeline:",
+        "columns: [status]\npipeline:",
+      ),
+      field: "output_contract",
+    },
+  ])("rejects candidates that change the verified $name", async (entry) => {
+    const candidatePath = join(root, "scope-changing-candidate.yaml");
+    writeFileSync(candidatePath, entry.candidate);
+
+    await expect(
+      createAdapterEvolutionSession({
+        ...sessionInput(
+          createEvolutionStore({
+            rootDir: join(root, "evolution-scope-change"),
+          }),
+        ),
+        candidatePath,
+      }),
+    ).rejects.toThrow(
+      new RegExp(`changes evolution scope fields: .*${entry.field}`),
+    );
+  });
+
+  it("allows implementation repair inside the verified contract", async () => {
+    const candidatePath = join(root, "same-contract-candidate.yaml");
+    writeFileSync(
+      candidatePath,
+      BASE_ADAPTER.replace("example.com/status", "example.com/v2/status"),
+    );
+    await expect(
+      createAdapterEvolutionSession({
+        ...sessionInput(
+          createEvolutionStore({
+            rootDir: join(root, "evolution-same-contract"),
+          }),
+        ),
+        candidatePath,
+        prediction: {
+          hypothesis: "the upstream path moved within the verified origin",
+          expected_fixes: ["run-evolution-proposal"],
+          at_risk: [],
+        },
+      }),
+    ).resolves.toMatchObject({ state: "draft", attempts: [] });
+  });
+
+  it("rejects changing an existing subprocess invocation", async () => {
+    const execBaseline = BASE_ADAPTER.replace(
+      "type: web-api\nstrategy: public",
+      "type: bridge\nstrategy: public\nbinary: printf",
+    )
+      .replace(
+        "  - fetch:\n      url: https://example.com/status",
+        "  - exec:\n      command: printf\n      args: [baseline]",
+      )
+      .replace(
+        'capabilities: ["http.fetch"]\nminimum_capability: http.fetch\ntrust: public',
+        'capabilities: ["subprocess.exec"]\nminimum_capability: subprocess.exec\ntrust: user',
+      );
+    writeFileSync(sourcePath, execBaseline);
+    const candidatePath = join(root, "exec-changing-candidate.yaml");
+    writeFileSync(
+      candidatePath,
+      execBaseline.replace("args: [baseline]", "args: [candidate]"),
     );
 
     await expect(
       createAdapterEvolutionSession({
-        evolutionStore: createEvolutionStore({
-          rootDir: join(root, "evolution-scope-change"),
-        }),
-        runStore: createRunStore({ rootDir: runRoot }),
-        site: "evolution-fixture",
-        command: "probe",
-        adapterCommand,
+        ...sessionInput(
+          createEvolutionStore({
+            rootDir: join(root, "evolution-exec-change"),
+          }),
+        ),
+        adapterCommand: {
+          ...adapterCommand,
+          adapter_path: sourcePath,
+          capabilities: ["subprocess.exec"],
+          minimum_capability: "subprocess.exec",
+        },
         proposalRunIds: ["run-evolution-proposal"],
         candidatePath,
       }),
-    ).rejects.toThrow(/changes evolution scope fields: operation_effect/);
+    ).rejects.toThrow(/changes evolution scope fields: .*exec_contract/);
+  });
+
+  it("allows an explicitly scoped network-origin repair", async () => {
+    const candidatePath = join(root, "approved-origin-candidate.yaml");
+    writeFileSync(
+      candidatePath,
+      BASE_ADAPTER.replace("example.com", "api.example.com"),
+    );
+    const session = await createAdapterEvolutionSession({
+      ...sessionInput(
+        createEvolutionStore({
+          rootDir: join(root, "evolution-approved-origin"),
+        }),
+      ),
+      candidatePath,
+      approvedNetworkOrigins: ["api.example.com"],
+      prediction: {
+        hypothesis: "the adapter moved to an explicitly reviewed API origin",
+        expected_fixes: ["run-evolution-proposal"],
+        at_risk: [],
+      },
+    });
+    expect(session.component.scope.approved_network_origins).toEqual([
+      "https://api.example.com",
+    ]);
   });
 
   it("verifies, promotes, and rolls back one isolated adapter candidate", async () => {
@@ -209,12 +406,7 @@ describe("harness evolution kernel", () => {
       rootDir: join(root, "evolution"),
     });
     const session = await createAdapterEvolutionSession({
-      evolutionStore,
-      runStore: createRunStore({ rootDir: runRoot }),
-      site: "evolution-fixture",
-      command: "probe",
-      adapterCommand,
-      proposalRunIds: ["run-evolution-proposal"],
+      ...sessionInput(evolutionStore),
       validationRunIds: ["run-evolution-validation"],
       heldOutRunIds: ["run-evolution-held-out"],
       heldOutEvalTargets: [evalPath],
@@ -230,6 +422,17 @@ describe("harness evolution kernel", () => {
     });
     expect(session.state).toBe("draft");
     expect(readFileSync(sourcePath, "utf-8")).toBe(BASE_ADAPTER);
+    if (process.platform !== "win32") {
+      expect(statSync(session.evidence.path).mode & 0o777).toBe(0o600);
+      expect(statSync(dirname(session.evidence.path)).mode & 0o777).toBe(0o700);
+    }
+
+    const originalEvidence = readFileSync(session.evidence.path, "utf-8");
+    writeFileSync(session.evidence.path, `${originalEvidence}tampered\n`);
+    await expect(
+      readEvolutionSession(evolutionStore, session.session_id),
+    ).rejects.toThrow(/integrity check failed.*evidence/i);
+    writeFileSync(session.evidence.path, originalEvidence);
 
     const manifestPath = join(
       root,
@@ -290,42 +493,197 @@ describe("harness evolution kernel", () => {
       unexpected_regressions: [],
     });
     expect(verified.session.attempts).toHaveLength(2);
-    expect(verified.session.attempts[0].report_path).not.toBe(
-      verified.session.attempts[1].report_path,
+    expect(verified.session.attempts[1]).toMatchObject({
+      report: { sha256: expect.stringMatching(/^sha256:/) },
+      patch: { sha256: expect.stringMatching(/^sha256:/) },
+    });
+    expect(verified.session.attempts[0].report.path).not.toBe(
+      verified.session.attempts[1].report.path,
     );
     expect(
-      readFileSync(verified.session.attempts[0].candidate_path, "utf-8"),
+      readFileSync(verified.session.attempts[0].candidate.path, "utf-8"),
     ).toContain("candidate-failure");
     expect(
-      readFileSync(verified.session.attempts[1].candidate_path, "utf-8"),
+      readFileSync(verified.session.attempts[1].candidate.path, "utf-8"),
     ).toContain("candidate-success");
     expect(readFileSync(verified.report.patch_path, "utf-8")).toContain(
       "+# candidate-success",
     );
 
-    const promoted = await promoteEvolutionSession({
-      store: evolutionStore,
-      sessionId: session.session_id,
-      promotedAt: "2026-08-10T12:30:00.000Z",
-    });
+    const legacyManifest = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    ) as Record<string, unknown> & {
+      attempts: Array<{
+        ordinal: number;
+        verified_at: string;
+        eligible: boolean;
+        candidate: { path: string; sha256: string };
+        patch: { path: string };
+        report: { path: string };
+      }>;
+    };
+    legacyManifest.schema_version = "unicli.evolution-session.v1";
+    legacyManifest.attempts = legacyManifest.attempts.map((attempt) => ({
+      ordinal: attempt.ordinal,
+      verified_at: attempt.verified_at,
+      eligible: attempt.eligible,
+      candidate_path: attempt.candidate.path,
+      candidate_sha256: attempt.candidate.sha256,
+      patch_path: attempt.patch.path,
+      report_path: attempt.report.path,
+    })) as typeof legacyManifest.attempts;
+    writeFileSync(manifestPath, `${JSON.stringify(legacyManifest, null, 2)}\n`);
+    const migrated = await readEvolutionSession(
+      evolutionStore,
+      session.session_id,
+    );
+    expect(migrated.schema_version).toBe("unicli.evolution-session.v2");
+    expect(migrated.attempts).toHaveLength(2);
+    for (const attempt of migrated.attempts) {
+      expect(attempt).toMatchObject({
+        candidate: { sha256: expect.stringMatching(/^sha256:/) },
+        patch: { sha256: expect.stringMatching(/^sha256:/) },
+        report: { sha256: expect.stringMatching(/^sha256:/) },
+      });
+    }
+    expect(JSON.parse(readFileSync(manifestPath, "utf-8")).schema_version).toBe(
+      "unicli.evolution-session.v2",
+    );
+
+    const latestAttempt = verified.session.attempts[1];
+    const originalPatch = readFileSync(latestAttempt.patch.path, "utf-8");
+    writeFileSync(latestAttempt.patch.path, `${originalPatch}tampered\n`);
+    await expect(
+      promoteEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+      }),
+    ).rejects.toThrow(/integrity check failed.*patch/i);
+    writeFileSync(latestAttempt.patch.path, originalPatch);
+
+    const originalReport = readFileSync(latestAttempt.report.path, "utf-8");
+    const tamperedReport = JSON.parse(originalReport) as {
+      decision: { reasons: string[] };
+    };
+    tamperedReport.decision.reasons.push("tampered");
+    writeFileSync(
+      latestAttempt.report.path,
+      `${JSON.stringify(tamperedReport, null, 2)}\n`,
+    );
+    await expect(
+      promoteEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+      }),
+    ).rejects.toThrow(/integrity check failed.*report/i);
+    writeFileSync(latestAttempt.report.path, originalReport);
+
+    const promotionResults = await Promise.allSettled(
+      Array.from({ length: 2 }, () =>
+        promoteEvolutionSession({
+          store: evolutionStore,
+          sessionId: session.session_id,
+          promotedAt: "2026-08-10T12:30:00.000Z",
+        }),
+      ),
+    );
+    expect(
+      promotionResults.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      promotionResults.filter((result) => result.status === "rejected"),
+    ).toHaveLength(1);
+    const promoted = promotionResults.find(
+      (result) => result.status === "fulfilled",
+    )!.value;
     expect(promoted.session.state).toBe("promoted");
+    expect(promoted.session.promotion?.sha256).toMatch(/^sha256:/);
     expect(promoted.report.attempt).toBe(2);
     expect(readFileSync(sourcePath, "utf-8")).toContain("candidate-success");
 
-    const rolledBack = await rollbackEvolutionSession({
+    const promotionCrashManifest = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    ) as Record<string, unknown>;
+    promotionCrashManifest.state = "verified";
+    delete promotionCrashManifest.promotion;
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify(promotionCrashManifest, null, 2)}\n`,
+    );
+    const recoveredPromotion = await promoteEvolutionSession({
       store: evolutionStore,
       sessionId: session.session_id,
-      rolledBackAt: "2026-08-10T12:40:00.000Z",
     });
+    expect(recoveredPromotion.session).toMatchObject({
+      state: "promoted",
+      promotion: { sha256: promoted.session.promotion?.sha256 },
+    });
+
+    const promotionRecord = JSON.parse(
+      readFileSync(promoted.session.promotion!.path, "utf-8"),
+    ) as { rollback_path: string };
+    const originalRollback = readFileSync(
+      promotionRecord.rollback_path,
+      "utf-8",
+    );
+    writeFileSync(
+      promotionRecord.rollback_path,
+      `${originalRollback}tampered\n`,
+    );
+    await expect(
+      rollbackEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+      }),
+    ).rejects.toThrow(/integrity check failed.*rollback/i);
+    writeFileSync(promotionRecord.rollback_path, originalRollback);
+
+    const rollbackResults = await Promise.allSettled(
+      Array.from({ length: 2 }, () =>
+        rollbackEvolutionSession({
+          store: evolutionStore,
+          sessionId: session.session_id,
+          rolledBackAt: "2026-08-10T12:40:00.000Z",
+        }),
+      ),
+    );
+    expect(
+      rollbackResults.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      rollbackResults.filter((result) => result.status === "rejected"),
+    ).toHaveLength(1);
+    const rolledBack = rollbackResults.find(
+      (result) => result.status === "fulfilled",
+    )!.value;
     expect(rolledBack.session.state).toBe("rolled_back");
     expect(rolledBack.restored).toBe("previous_overlay");
     expect(readFileSync(sourcePath, "utf-8")).toBe(BASE_ADAPTER);
+
+    const rollbackCrashManifest = JSON.parse(
+      readFileSync(manifestPath, "utf-8"),
+    ) as Record<string, unknown>;
+    rollbackCrashManifest.state = "promoted";
+    writeFileSync(
+      manifestPath,
+      `${JSON.stringify(rollbackCrashManifest, null, 2)}\n`,
+    );
+    await expect(
+      rollbackEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+      }),
+    ).resolves.toMatchObject({
+      session: { state: "rolled_back" },
+      restored: "previous_overlay",
+    });
   });
 });
 
 async function writeFailedReplayRun(
   runRoot: string,
   runId: string,
+  errorCode = "selector_miss",
 ): Promise<void> {
   const store = createRunStore({ rootDir: runRoot });
   const metadata: RunTraceMetadata = {
@@ -342,7 +700,7 @@ async function writeFailedReplayRun(
   };
   const sequence = createRunEventSequence();
   const error = {
-    code: "selector_miss",
+    code: errorCode,
     message:
       "selector failed at https://example.com/?token=secret-value api_key: leaked-key",
     adapter_path: metadata.adapter_path,
