@@ -22,6 +22,7 @@ import {
   type EvolutionSession,
 } from "../engine/evolution/index.js";
 import { createRunStore } from "../engine/session/store.js";
+import { InvalidPermissionProfileError } from "../engine/operation-policy.js";
 import { detectFormat, format } from "../output/formatter.js";
 import { makeCtx, type AgentContext } from "../output/envelope.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
@@ -502,7 +503,25 @@ function evolutionCliError(error: unknown): {
   exitCode: number;
 } {
   const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof InvalidPermissionProfileError) {
+    return {
+      code: "invalid_input",
+      message,
+      suggestion: "Use --permission-profile open, confirm, or locked.",
+      exitCode: ExitCode.CONFIG_ERROR,
+    };
+  }
   if (error instanceof EvolutionError) {
+    if (error.code === "io_error") {
+      return {
+        code: "internal_error",
+        message,
+        suggestion:
+          "Inspect the evolution storage path and retry after restoring filesystem access.",
+        ...(error.path ? { path: error.path } : {}),
+        exitCode: ExitCode.GENERIC_ERROR,
+      };
+    }
     const conflict =
       error.code === "candidate_changed" ||
       error.code === "destination_changed";

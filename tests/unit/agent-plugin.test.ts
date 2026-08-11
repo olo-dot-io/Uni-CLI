@@ -12,6 +12,7 @@ import {
 } from "../../src/plugin/agent-plugin.js";
 import { resolveCommand } from "../../src/registry.js";
 import { loadPlugins } from "../../src/plugin/loader.js";
+import { loadSkills } from "../../src/protocol/skill.js";
 
 describe("Agent Plugins 1.0", () => {
   const roots: string[] = [];
@@ -122,6 +123,51 @@ describe("Agent Plugins 1.0", () => {
     ]);
   });
 
+  it("keeps rejected portable skills out of generic skill discovery", async () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-agent-plugin-home-"));
+    roots.push(home);
+    const root = join(home, ".unicli", "plugins", "strict-skills");
+    mkdirSync(join(root, "skills", "valid"), { recursive: true });
+    mkdirSync(join(root, "skills", "wrong-directory"), { recursive: true });
+    writeFileSync(
+      join(root, "plugin.json"),
+      JSON.stringify({ $schema: AGENT_PLUGIN_SCHEMA, name: "strict-skills" }),
+    );
+    writeFileSync(
+      join(root, "skills", "valid", "SKILL.md"),
+      ["---", "name: valid", "description: Valid portable skill", "---"].join(
+        "\n",
+      ),
+    );
+    writeFileSync(
+      join(root, "skills", "wrong-directory", "SKILL.md"),
+      [
+        "---",
+        "name: rejected",
+        "description: Name does not match the directory",
+        "---",
+      ].join("\n"),
+    );
+
+    const originalHome = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const result = await loadPlugins();
+      expect(result.loaded).toEqual(["strict-skills"]);
+      expect(result.errors).toEqual([
+        expect.stringContaining("skipped skill wrong-directory"),
+      ]);
+      const discovered = loadSkills({
+        repoDir: join(home, "missing-repo"),
+        homeDir: home,
+      }).filter((skill) => skill.source === "plugin");
+      expect(discovered.map((skill) => skill.name)).toEqual(["valid"]);
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME;
+      else process.env.HOME = originalHome;
+    }
+  });
+
   it("rejects a package that targets an unsupported manifest schema", () => {
     const root = mkdtempSync(join(tmpdir(), "unicli-agent-plugin-"));
     roots.push(root);
@@ -155,6 +201,65 @@ describe("Agent Plugins 1.0", () => {
       const result = await loadPlugins();
       expect(result.loaded).toEqual([]);
       expect(result.errors).toHaveLength(1);
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME;
+      else process.env.HOME = originalHome;
+    }
+  });
+
+  it("loads the native manifest declared by the portable extension", async () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-agent-plugin-home-"));
+    roots.push(home);
+    const root = join(home, ".unicli", "plugins", "declared-extension");
+    mkdirSync(join(root, "runtime"), { recursive: true });
+    mkdirSync(join(root, "adapters", "declared-extension"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(root, "plugin.json"),
+      JSON.stringify({
+        $schema: AGENT_PLUGIN_SCHEMA,
+        name: "declared-extension",
+        extensions: {
+          "dev.unicli": { manifest: "./runtime/unicli.json" },
+        },
+      }),
+    );
+    writeFileSync(
+      join(root, "runtime", "unicli.json"),
+      JSON.stringify({
+        name: "declared-extension",
+        version: "1.0.0",
+        adapters: "adapters/",
+      }),
+    );
+    writeFileSync(
+      join(root, "adapters", "declared-extension", "ping.yaml"),
+      [
+        "site: declared-extension",
+        "name: ping",
+        "description: Ping through a declared runtime extension",
+        "type: web-api",
+        "strategy: public",
+        "operation_effect: read",
+        "pipeline:",
+        "  - select: data",
+        "capabilities: []",
+        "minimum_capability: none",
+        "trust: public",
+        "confidentiality: public",
+        "quarantine: false",
+        "schema_version: v2",
+        "",
+      ].join("\n"),
+    );
+
+    const originalHome = process.env.HOME;
+    process.env.HOME = home;
+    try {
+      const result = await loadPlugins();
+      expect(result).toEqual({ loaded: ["declared-extension"], errors: [] });
+      expect(resolveCommand("declared-extension", "ping")).toBeDefined();
     } finally {
       if (originalHome === undefined) delete process.env.HOME;
       else process.env.HOME = originalHome;

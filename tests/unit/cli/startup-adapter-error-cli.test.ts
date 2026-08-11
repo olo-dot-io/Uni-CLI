@@ -48,4 +48,47 @@ describe("startup adapter error boundary", () => {
       },
     });
   });
+
+  it("awaits async command failures and preserves their structured envelope", () => {
+    const home = mkdtempSync(join(tmpdir(), "unicli-async-command-"));
+    homes.push(home);
+    const runRoot = join(home, "runs");
+    const traceDir = join(runRoot, "bad");
+    mkdirSync(traceDir, { recursive: true });
+    writeFileSync(join(traceDir, "trace.jsonl"), "{bad\n", "utf8");
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        mainPath,
+        "-f",
+        "json",
+        "runs",
+        "distill",
+        "bad",
+        "--root",
+        runRoot,
+      ],
+      {
+        cwd: repoRoot,
+        env: { ...process.env, HOME: home },
+        encoding: "utf8",
+      },
+    );
+
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe("");
+    expect(result.stderr).not.toContain("RunStoreError");
+    expect(JSON.parse(result.stderr)).toMatchObject({
+      ok: false,
+      command: "runs.distill",
+      error: {
+        code: "invalid_input",
+        message: "malformed run trace JSONL at line 1",
+        retryable: false,
+      },
+    });
+  });
 });

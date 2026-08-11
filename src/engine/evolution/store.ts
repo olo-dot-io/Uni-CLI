@@ -41,7 +41,7 @@ const sessionSchema = z
         domain: z.string().optional(),
         model_affinity: z.array(z.string()),
         approved_network_origins: z.array(z.string()),
-        permission_profile: z.string(),
+        permission_profile: z.enum(["open", "confirm", "locked"]),
         target_surface: z.string().optional(),
         operation_effect: z.string().optional(),
         execution_operator: z.string().optional(),

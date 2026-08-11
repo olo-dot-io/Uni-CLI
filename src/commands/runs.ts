@@ -24,6 +24,10 @@ import {
 import { compareRunEvents } from "../engine/session/compare.js";
 import { buildInvocation } from "../engine/invoke.js";
 import { executeWithRunRecording } from "../engine/session/run-loop.js";
+import {
+  InvalidPermissionProfileError,
+  resolvePermissionProfile,
+} from "../engine/operation-policy.js";
 import { resolveCommand } from "../registry.js";
 import {
   createEvolutionStore,
@@ -399,7 +403,9 @@ export function registerRunsCommand(program: Command): void {
             ...(domain ? { domain } : {}),
             model_affinity: [...new Set(opts.model ?? [])],
             approved_network_origins: [],
-            permission_profile: metadata.permission_profile,
+            permission_profile: resolvePermissionProfile(
+              metadata.permission_profile,
+            ),
             target_surface: metadata.target_surface,
             ...(resolved.command.operation_effect
               ? { operation_effect: resolved.command.operation_effect }
@@ -426,6 +432,26 @@ export function registerRunsCommand(program: Command): void {
           ),
         );
       } catch (error) {
+        if (error instanceof RunStoreError) {
+          printRunError(program, "runs.distill", startedAt, {
+            code: runStoreAgentErrorCode(error),
+            message: error.message,
+            suggestion:
+              "inspect the named trace or choose another run from `unicli runs list`",
+            retryable: false,
+          });
+          return;
+        }
+        if (error instanceof InvalidPermissionProfileError) {
+          printRunError(program, "runs.distill", startedAt, {
+            code: "invalid_input",
+            message: error.message,
+            suggestion:
+              "record a new run with permission profile open, confirm, or locked",
+            retryable: false,
+          });
+          return;
+        }
         if (
           error instanceof EvolutionError &&
           [

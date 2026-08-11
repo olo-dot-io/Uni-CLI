@@ -80,11 +80,14 @@ export async function promoteEvolutionSession(input: {
       );
     }
 
-    const destination = join(
-      userAdapterRoot(),
-      session.component.site,
-      `${session.component.command}.yaml`,
-    );
+    const destination =
+      session.component.source_tier === "user"
+        ? session.component.source_path
+        : join(
+            userAdapterRoot(),
+            session.component.site,
+            `${session.component.command}.yaml`,
+          );
     const prepared = await readPreparedPromotion(
       paths,
       session,

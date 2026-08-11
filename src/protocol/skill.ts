@@ -63,17 +63,19 @@ export interface LoadSkillsOptions {
   /** Override the HOME root. Tests use this to isolate the user scan. */
   homeDir?: string;
   /**
-   * Extra roots appended after the three standard ones — plugins may use
-   * this to contribute skills without touching the main directories.
+   * Extra roots appended after the three standard ones.
    */
   extraDirs?: string[];
 }
 
-const pluginSkillRoots = new Set<string>();
+const pluginSkills = new Map<string, Skill>();
 
-/** Register a validated Agent Plugin skills directory for later discovery. */
-export function registerPluginSkillRoot(dir: string): void {
-  pluginSkillRoots.add(resolve(dir));
+/** Register only Agent Plugin skills that passed portable package validation. */
+export function registerPluginSkills(skills: readonly Skill[]): void {
+  for (const skill of skills) {
+    if (skill.source !== "plugin") continue;
+    pluginSkills.set(resolve(skill.path), skill);
+  }
 }
 
 /** Default list of skill search roots, in precedence order (first wins). */
@@ -99,9 +101,6 @@ export function defaultSkillRoots(
   for (const extra of opts.extraDirs ?? []) {
     roots.push({ dir: extra, source: "repo" });
   }
-  for (const pluginDir of [...pluginSkillRoots].sort()) {
-    roots.push({ dir: pluginDir, source: "plugin" });
-  }
   return roots;
 }
 
@@ -118,6 +117,13 @@ export function loadSkills(opts: LoadSkillsOptions = {}): Skill[] {
       if (!seen.has(skill.name)) {
         seen.set(skill.name, skill);
       }
+    }
+  }
+  for (const [path, skill] of [...pluginSkills].sort(([left], [right]) =>
+    left.localeCompare(right),
+  )) {
+    if (existsSync(path) && !seen.has(skill.name)) {
+      seen.set(skill.name, skill);
     }
   }
   return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
