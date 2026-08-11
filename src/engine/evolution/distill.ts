@@ -7,6 +7,7 @@ import {
 } from "../session/store.js";
 import { summarizeRunEvents } from "../session/query.js";
 import type { RunEvent } from "../session/types.js";
+import { isAdapterRepairCandidate } from "../repair/failure-classifier.js";
 import type {
   EvidenceError,
   EvidenceFailureClass,
@@ -169,11 +170,12 @@ function extractError(events: RunEvent[]): EvidenceError | undefined {
 }
 
 function classifyFailure(error?: EvidenceError): EvidenceFailureClass {
+  if (error && isAdapterRepairCandidate(error.code)) {
+    return "adapter_behavior";
+  }
   switch (error?.code) {
-    case "selector_miss":
-    case "quarantined":
     case "invalid_input":
-      return "adapter_behavior";
+      return "caller_input";
     case "auth_required":
     case "not_authenticated":
     case "challenge_required":
@@ -222,6 +224,10 @@ function redact(value: string): string {
     )
     .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/-]+=*/gi, "$1 <redacted>")
     .replace(
+      /(["'])(token|api[_-]?key|secret|password|cookie|authorization)\1(\s*:\s*)(["'])[^"']*\4/gi,
+      "$1$2$1$3$4<redacted>$4",
+    )
+    .replace(
       /\b(token|api[_-]?key|secret|password|cookie|authorization)\s*[:=]\s*[^\s,;&]+/gi,
       "$1=<redacted>",
     );
@@ -230,6 +236,7 @@ function redact(value: string): string {
 function emptyFailureClasses(): Record<EvidenceFailureClass, number> {
   return {
     adapter_behavior: 0,
+    caller_input: 0,
     authentication_context: 0,
     permission_policy: 0,
     upstream_environment: 0,

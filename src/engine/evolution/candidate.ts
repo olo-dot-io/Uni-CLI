@@ -4,12 +4,14 @@ import { isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { formatPatch, structuredPatch } from "diff";
 
+import { findEvalFiles } from "../../commands/eval.js";
 import { normalizeYamlAdapterDocument } from "../../core/yaml-adapter.js";
 import { buildArgumentJsonSchema } from "../../core/argument-schema.js";
 import { getBuiltinDirs } from "../../discovery/loader.js";
 import type { AdapterCommand } from "../../types.js";
 import type { YamlAdapterNormalization } from "../../core/yaml-adapter.js";
 import type { RunStore } from "../session/store.js";
+import { resolvePermissionProfile } from "../operation-policy.js";
 import {
   createEvolutionSessionId,
   evolutionSessionPaths,
@@ -108,7 +110,7 @@ export async function createAdapterEvolutionSession(input: {
     approved_network_origins: normalizeApprovedOrigins(
       input.approvedNetworkOrigins ?? [],
     ),
-    permission_profile: input.permissionProfile ?? "open",
+    permission_profile: resolvePermissionProfile(input.permissionProfile),
     ...(input.adapterCommand.target_surface
       ? { target_surface: input.adapterCommand.target_surface }
       : {}),
@@ -168,11 +170,15 @@ export async function createAdapterEvolutionSession(input: {
       proposal_run_ids: proposalRunIds,
       validation_run_ids: validationRunIds,
       held_out_run_ids: heldOutRunIds,
-      validation_eval_targets: unique(input.validationEvalTargets ?? []),
-      held_out_eval_targets: unique(input.heldOutEvalTargets ?? []),
+      validation_eval_targets: normalizeEvolutionEvalTargets(
+        input.validationEvalTargets ?? [],
+      ),
+      held_out_eval_targets: normalizeEvolutionEvalTargets(
+        input.heldOutEvalTargets ?? [],
+      ),
     },
     runtime: {
-      run_root: input.runStore.rootDir,
+      run_root: resolve(input.runStore.rootDir),
       cli_command: input.cliCommand ?? process.env.UNICLI_BIN ?? "unicli",
       timeout_ms: input.timeoutMs ?? 30_000,
       allow_mutation_eval: input.allowMutationEval === true,
@@ -182,6 +188,24 @@ export async function createAdapterEvolutionSession(input: {
   };
   await writeEvolutionSession(input.evolutionStore, session);
   return session;
+}
+
+export function normalizeEvolutionEvalTargets(values: string[]): string[] {
+  return unique(
+    unique(values).flatMap((value) => {
+      const matches = findEvalFiles([value]);
+      if (matches.length > 0) return matches;
+      return [
+        isAbsolute(value) ||
+        value.startsWith(".") ||
+        value.includes("\\") ||
+        /\.ya?ml$/i.test(value) ||
+        existsSync(resolve(value))
+          ? resolve(value)
+          : value,
+      ];
+    }),
+  );
 }
 
 export function normalizeEvolutionPrediction(
@@ -601,10 +625,7 @@ function assertRepairableProposalEvidence(
 ): void {
   const invalid = evidence.sources.filter(
     (source) =>
-      source.status !== "failed" ||
-      !["adapter_behavior", "upstream_environment"].includes(
-        source.failure_class,
-      ),
+      source.status !== "failed" || source.failure_class !== "adapter_behavior",
   );
   if (invalid.length === 0) return;
   throw new EvolutionError(

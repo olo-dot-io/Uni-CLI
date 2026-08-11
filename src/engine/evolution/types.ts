@@ -12,6 +12,7 @@ import type {
   TargetSurface,
 } from "../../types.js";
 import type { Judge } from "../../commands/eval.js";
+import type { PermissionProfile } from "../operation-policy.js";
 
 export type EvolutionSessionState =
   | "draft"
@@ -24,7 +25,7 @@ export interface EvolutionScope {
   domain?: string;
   model_affinity: string[];
   approved_network_origins: string[];
-  permission_profile: string;
+  permission_profile: PermissionProfile;
   target_surface?: TargetSurface | string;
   operation_effect?: OperationEffect;
   execution_operator?: ExecutionOperator;
@@ -52,6 +53,7 @@ export interface EvidenceError {
 
 export type EvidenceFailureClass =
   | "adapter_behavior"
+  | "caller_input"
   | "authentication_context"
   | "permission_policy"
   | "upstream_environment"

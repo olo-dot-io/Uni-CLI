@@ -52,7 +52,7 @@ async function main(): Promise<void> {
       const { createCli, handleCommanderError } = await import("./cli.js");
       const program = await createCli();
       try {
-        program.parse(process.argv);
+        await program.parseAsync(process.argv);
       } catch (error) {
         if (!handleCommanderError(program, error)) throw error;
       }

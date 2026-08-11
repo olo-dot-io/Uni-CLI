@@ -21,6 +21,7 @@ import { createRunStore, readRunEvents } from "../session/store.js";
 import {
   assertEvolutionScopeUnchanged,
   createUnifiedAdapterDiff,
+  normalizeEvolutionEvalTargets,
   normalizeEvolutionPrediction,
   parseAdapterYaml,
 } from "./candidate.js";
@@ -108,6 +109,12 @@ export async function verifyEvolutionSession(input: {
   );
 
   const runStore = createRunStore({ rootDir: session.runtime.run_root });
+  const addedValidationTargets = normalizeEvolutionEvalTargets(
+    input.validationEvalTargets ?? [],
+  );
+  const addedHeldOutTargets = normalizeEvolutionEvalTargets(
+    input.heldOutEvalTargets ?? [],
+  );
   const validationCases = [
     ...(await runCases(
       runStore,
@@ -120,7 +127,7 @@ export async function verifyEvolutionSession(input: {
     ...evalCases(
       unique([
         ...session.datasets.validation_eval_targets,
-        ...(input.validationEvalTargets ?? []),
+        ...addedValidationTargets,
       ]),
       session.component.site,
       "validation",
@@ -128,7 +135,7 @@ export async function verifyEvolutionSession(input: {
   ];
   const explicitHeldOutTargets = unique([
     ...session.datasets.held_out_eval_targets,
-    ...(input.heldOutEvalTargets ?? []),
+    ...addedHeldOutTargets,
   ]);
   const heldOutTargets =
     explicitHeldOutTargets.length > 0
@@ -161,6 +168,7 @@ export async function verifyEvolutionSession(input: {
     UNICLI_PERMISSION_PROFILE: session.component.scope.permission_profile,
     UNICLI_SKIP_UPDATE_CHECK: "1",
     UNICLI_DISABLE_AUTO_UPDATE: "1",
+    ...(allowMutationEval ? { UNICLI_APPROVE: "1" } : {}),
   };
   const candidateEnv: NodeJS.ProcessEnv = {
     ...baselineEnv,
@@ -291,11 +299,11 @@ export async function verifyEvolutionSession(input: {
         ...current.datasets,
         validation_eval_targets: unique([
           ...current.datasets.validation_eval_targets,
-          ...(input.validationEvalTargets ?? []),
+          ...addedValidationTargets,
         ]),
         held_out_eval_targets: unique([
           ...current.datasets.held_out_eval_targets,
-          ...(input.heldOutEvalTargets ?? []),
+          ...addedHeldOutTargets,
         ]),
       },
       runtime: {
@@ -631,6 +639,19 @@ function assertCaseEffects(
       resolved.command.operation_effect,
       allowMutationEval,
     );
+    if (
+      requiresConfirmedEffect(resolved.command.operation_effect) &&
+      !evolutionCase.judges.some(
+        (judge) =>
+          judge.type === "effectStatus" && judge.equals === "confirmed",
+      )
+    ) {
+      throw new EvolutionError(
+        "invalid_case",
+        `eval case ${evolutionCase.id} mutates state without an effectStatus=confirmed verifier`,
+        evolutionCase.source_ref,
+      );
+    }
   }
 }
 

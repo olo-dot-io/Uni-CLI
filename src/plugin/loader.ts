@@ -16,17 +16,19 @@ import {
   readFileSync,
   existsSync,
   mkdirSync,
+  realpathSync,
   writeFileSync,
 } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   assertAgentPluginName,
   inspectAgentPlugin,
   registerAgentPluginSkills,
+  UNICLI_AGENT_PLUGIN_NAMESPACE,
   type AgentPluginInspection,
 } from "./agent-plugin.js";
-import { registerPluginSkillRoot } from "../protocol/skill.js";
+import { registerPluginSkills } from "../protocol/skill.js";
 import { primeKernelCache } from "../discovery/loader.js";
 import { userDataRoot } from "../engine/user-home.js";
 
@@ -60,11 +62,12 @@ export async function loadPlugins(): Promise<{
 
   const dirs = readdirSync(pluginsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory() || d.isSymbolicLink())
-    .map((d) => d.name);
+    .map((d) => d.name)
+    .sort();
 
   for (const dir of dirs) {
     const pluginDir = join(pluginsDir, dir);
-    const manifestPath = join(pluginDir, "unicli-plugin.json");
+    let manifestPath = join(pluginDir, "unicli-plugin.json");
     const portableManifestPath = join(pluginDir, "plugin.json");
 
     let loadedName: string | undefined;
@@ -72,10 +75,33 @@ export async function loadPlugins(): Promise<{
       try {
         const inspection = inspectAgentPlugin(pluginDir);
         registerAgentPluginSkills(inspection);
-        if (inspection.skills.length > 0) {
-          registerPluginSkillRoot(join(inspection.root, "skills"));
-        }
+        registerPluginSkills(inspection.skills);
         loadedName = inspection.manifest.name;
+        const extension =
+          inspection.manifest.extensions?.[UNICLI_AGENT_PLUGIN_NAMESPACE];
+        if (extension) {
+          const declaredManifest = extension.manifest;
+          if (
+            typeof declaredManifest !== "string" ||
+            declaredManifest.trim().length === 0
+          ) {
+            errors.push(
+              `${dir}: ${UNICLI_AGENT_PLUGIN_NAMESPACE}.manifest must be a relative file path`,
+            );
+            continue;
+          }
+          try {
+            manifestPath = containedPluginFile(
+              inspection.root,
+              declaredManifest,
+            );
+          } catch (error) {
+            errors.push(
+              `${dir}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            continue;
+          }
+        }
         for (const issue of inspection.issues) {
           errors.push(`${dir}: ${issue.component}: ${issue.message}`);
         }
@@ -138,6 +164,19 @@ export async function loadPlugins(): Promise<{
   primeKernelCache();
 
   return { loaded: [...new Set(loaded)], errors };
+}
+
+function containedPluginFile(root: string, declaredPath: string): string {
+  const candidate = resolve(root, declaredPath);
+  if (!existsSync(candidate)) {
+    throw new Error(`runtime manifest does not exist: ${declaredPath}`);
+  }
+  const resolved = realpathSync(candidate);
+  const rel = relative(root, resolved);
+  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    throw new Error("runtime manifest path escapes plugin directory");
+  }
+  return resolved;
 }
 
 /** List installed packages that conform to Agent Plugins 1.0. */

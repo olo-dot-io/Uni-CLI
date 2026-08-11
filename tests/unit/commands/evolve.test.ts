@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Command } from "commander";
 
 import { registerEvolveCommand } from "../../../src/commands/evolve.js";
-import { ExitCode } from "../../../src/types.js";
+import { registerAdapter } from "../../../src/registry.js";
+import { AdapterType, ExitCode } from "../../../src/types.js";
 
 function createProgram(): Command {
   const program = new Command();
@@ -141,5 +142,97 @@ describe("unicli evolve command", () => {
     });
     expect(capture.stdout()).toBe("");
     expect(process.exitCode).toBe(ExitCode.USAGE_ERROR);
+  });
+
+  it("reports evolution storage failures as internal errors", async () => {
+    const fileRoot = join(root, "not-a-directory");
+    writeFileSync(fileRoot, "fixture\n");
+    const capture = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        ["-f", "json", "evolve", "inspect", "--root", fileRoot],
+        { from: "user" },
+      );
+    } finally {
+      capture.restore();
+    }
+
+    const envelope = JSON.parse(capture.stderr().trim()) as {
+      error: { code: string; message: string };
+    };
+    expect(envelope.error).toMatchObject({
+      code: "internal_error",
+      message: expect.stringContaining("failed to list evolution artifact"),
+    });
+    expect(process.exitCode).toBe(ExitCode.GENERIC_ERROR);
+  });
+
+  it("reports an invalid evolution permission profile as input", async () => {
+    const adapterPath = join(root, "probe.yaml");
+    writeFileSync(
+      adapterPath,
+      [
+        "site: evolve-command-fixture",
+        "name: probe",
+        "description: Probe invalid permission handling",
+        "type: web-api",
+        "strategy: public",
+        "operation_effect: read",
+        "pipeline:",
+        "  - fetch:",
+        "      url: https://example.com/status",
+        "capabilities: [http.fetch]",
+        "minimum_capability: http.fetch",
+        "trust: public",
+        "confidentiality: public",
+        "quarantine: false",
+        "schema_version: v2",
+        "",
+      ].join("\n"),
+    );
+    registerAdapter({
+      name: "evolve-command-fixture",
+      type: AdapterType.WEB_API,
+      commands: {
+        probe: {
+          name: "probe",
+          adapter_path: adapterPath,
+          source_tier: "user",
+          operation_effect: "read",
+          pipeline: [{ fetch: { url: "https://example.com/status" } }],
+        },
+      },
+    });
+    const capture = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        [
+          "-f",
+          "json",
+          "--permission-profile",
+          "nonsense",
+          "evolve",
+          "adapter",
+          "evolve-command-fixture",
+          "probe",
+          "--run",
+          "missing",
+          "--root",
+          root,
+        ],
+        { from: "user" },
+      );
+    } finally {
+      capture.restore();
+    }
+
+    const envelope = JSON.parse(capture.stderr().trim()) as {
+      error: { code: string; message: string };
+    };
+    expect(envelope.error).toMatchObject({
+      code: "invalid_input",
+      message: expect.stringContaining("invalid permission profile"),
+    });
+    expect(process.exitCode).toBe(ExitCode.CONFIG_ERROR);
   });
 });

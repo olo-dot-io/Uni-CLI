@@ -56,6 +56,7 @@ schema_version: v2
 describe("harness evolution kernel", () => {
   let root: string;
   let originalHome: string | undefined;
+  let originalPermissionProfile: string | undefined;
   let sourcePath: string;
   let runRoot: string;
   let adapterCommand: AdapterCommand;
@@ -63,13 +64,15 @@ describe("harness evolution kernel", () => {
   beforeEach(async () => {
     root = mkdtempSync(join(tmpdir(), "unicli-evolution-"));
     originalHome = process.env.HOME;
+    originalPermissionProfile = process.env.UNICLI_PERMISSION_PROFILE;
+    delete process.env.UNICLI_PERMISSION_PROFILE;
     process.env.HOME = join(root, "home");
     sourcePath = join(
       process.env.HOME,
       ".unicli",
       "adapters",
       "evolution-fixture",
-      "probe.yaml",
+      "probe.yml",
     );
     mkdirSync(dirname(sourcePath), { recursive: true });
     writeFileSync(sourcePath, BASE_ADAPTER);
@@ -108,7 +111,48 @@ describe("harness evolution kernel", () => {
   afterEach(() => {
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
+    if (originalPermissionProfile === undefined) {
+      delete process.env.UNICLI_PERMISSION_PROFILE;
+    } else {
+      process.env.UNICLI_PERMISSION_PROFILE = originalPermissionProfile;
+    }
     rmSync(root, { recursive: true, force: true });
+  });
+
+  it("inherits the active permission profile for paired evaluation", async () => {
+    process.env.UNICLI_PERMISSION_PROFILE = "locked";
+    const session = await createAdapterEvolutionSession(
+      sessionInput(
+        createEvolutionStore({
+          rootDir: join(root, "evolution-locked-profile"),
+        }),
+      ),
+    );
+
+    expect(session.component.scope.permission_profile).toBe("locked");
+  });
+
+  it("persists path-like eval targets and the run store as absolute paths", async () => {
+    const session = await createAdapterEvolutionSession({
+      ...sessionInput(
+        createEvolutionStore({
+          rootDir: join(root, "evolution-durable-paths"),
+        }),
+      ),
+      validationEvalTargets: ["relative-evals/check.yaml"],
+      heldOutEvalTargets: ["fixture-logical-name", "smoke/github"],
+    });
+
+    expect(session.runtime.run_root).toBe(runRoot);
+    expect(session.datasets.validation_eval_targets).toEqual([
+      join(process.cwd(), "relative-evals", "check.yaml"),
+    ]);
+    expect(session.datasets.held_out_eval_targets[0]).toBe(
+      "fixture-logical-name",
+    );
+    expect(session.datasets.held_out_eval_targets[1]).toMatch(
+      /evals\/smoke\/github\.yaml$/,
+    );
   });
 
   it("distills run failures without carrying secret replay arguments", async () => {
@@ -148,7 +192,13 @@ describe("harness evolution kernel", () => {
     });
     expect(packet.sources[0].error?.message).toContain("token=<redacted>");
     expect(packet.sources[0].error?.message).toContain("api_key=<redacted>");
+    expect(packet.sources[0].error?.message).toContain(
+      '"api_key":"<redacted>"',
+    );
+    expect(packet.sources[0].error?.message).toContain('"token":"<redacted>"');
     expect(JSON.stringify(packet)).not.toContain("private replay value");
+    expect(JSON.stringify(packet)).not.toContain("json-api-secret");
+    expect(JSON.stringify(packet)).not.toContain("json-token-secret");
   });
 
   it("rejects run ids reused across evolution data splits", async () => {
@@ -175,6 +225,46 @@ describe("harness evolution kernel", () => {
     ).rejects.toThrow(
       /outside the adapter repair boundary.*authentication_context/,
     );
+  });
+
+  it.each([
+    ["invalid_input", "caller_input"],
+    ["network_error", "upstream_environment"],
+  ])(
+    "keeps %s failures outside the adapter mutation boundary",
+    async (errorCode, failureClass) => {
+      const runId = `run-evolution-${errorCode}`;
+      await writeFailedReplayRun(runRoot, runId, errorCode);
+
+      await expect(
+        createAdapterEvolutionSession({
+          ...sessionInput(
+            createEvolutionStore({
+              rootDir: join(root, `evolution-${errorCode}`),
+            }),
+          ),
+          proposalRunIds: [runId],
+        }),
+      ).rejects.toThrow(
+        new RegExp(`outside the adapter repair boundary.*${failureClass}`),
+      );
+    },
+  );
+
+  it("uses the shared repair classifier for adapter-drift evidence", async () => {
+    const runId = "run-evolution-not-found";
+    await writeFailedReplayRun(runRoot, runId, "not_found");
+
+    await expect(
+      createAdapterEvolutionSession({
+        ...sessionInput(
+          createEvolutionStore({
+            rootDir: join(root, "evolution-not-found"),
+          }),
+        ),
+        proposalRunIds: [runId],
+      }),
+    ).resolves.toMatchObject({ state: "draft" });
   });
 
   it("creates exactly one session when Agents race on the same id", async () => {
@@ -365,6 +455,61 @@ describe("harness evolution kernel", () => {
     expect(session.component.scope.approved_network_origins).toEqual([
       "https://api.example.com",
     ]);
+  });
+
+  it("requires an independent confirmed-effect verifier for mutation evals", async () => {
+    const mutatingCommand: AdapterCommand = {
+      ...adapterCommand,
+      operation_effect: "create",
+    };
+    registerAdapter({
+      name: "evolution-fixture",
+      type: AdapterType.WEB_API,
+      commands: {
+        probe: {
+          ...mutatingCommand,
+          adapter_path: undefined,
+          source_tier: "runtime",
+        },
+      },
+    });
+    const evalPath = join(root, "mutation-without-verifier.yaml");
+    writeFileSync(
+      evalPath,
+      [
+        "name: mutation-without-verifier",
+        "adapter: evolution-fixture",
+        "cases:",
+        "  - id: mutate",
+        "    command: probe",
+        "    judges:",
+        "      - { type: exitCode, equals: 0 }",
+        "",
+      ].join("\n"),
+    );
+    const evolutionStore = createEvolutionStore({
+      rootDir: join(root, "evolution-mutation-verifier"),
+    });
+    const session = await createAdapterEvolutionSession({
+      ...sessionInput(evolutionStore),
+      adapterCommand: mutatingCommand,
+      validationEvalTargets: [evalPath],
+      allowMutationEval: true,
+    });
+    writeFileSync(session.candidate.path, `${BASE_ADAPTER}# candidate\n`);
+
+    await expect(
+      verifyEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+        adapterCommand: mutatingCommand,
+        prediction: {
+          hypothesis: "the candidate repairs the mutation",
+          expected_fixes: ["mutate"],
+          at_risk: [],
+        },
+      }),
+    ).rejects.toThrow(/without an effectStatus=confirmed verifier/);
   });
 
   it("verifies, promotes, and rolls back one isolated adapter candidate", async () => {
@@ -702,7 +847,7 @@ async function writeFailedReplayRun(
   const error = {
     code: errorCode,
     message:
-      "selector failed at https://example.com/?token=secret-value api_key: leaked-key",
+      'selector failed at https://example.com/?token=secret-value api_key: leaked-key payload={"api_key":"json-api-secret","token":"json-token-secret"}',
     adapter_path: metadata.adapter_path,
     step: 0,
     retryable: false,
