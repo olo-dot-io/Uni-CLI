@@ -11,6 +11,8 @@ describe("root startup help", () => {
     expect(help).toContain("do <goal...>");
     expect(help).toContain("list [--site <site>]");
     expect(help).toContain("--personalized");
+    expect(help).toContain("evolve");
+    expect(help).toContain("plugin");
     expect(help).toContain("unicli help <command>");
     expect(help).not.toContain("Commands for bilibili");
     expect(help.split("\n").length).toBeLessThan(40);

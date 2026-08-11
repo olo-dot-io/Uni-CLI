@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import { formatPatch, structuredPatch } from "diff";
 
 import { normalizeYamlAdapterDocument } from "../../core/yaml-adapter.js";
+import { buildArgumentJsonSchema } from "../../core/argument-schema.js";
 import { getBuiltinDirs } from "../../discovery/loader.js";
 import type { AdapterCommand } from "../../types.js";
 import type { YamlAdapterNormalization } from "../../core/yaml-adapter.js";
@@ -42,6 +43,7 @@ export async function createAdapterEvolutionSession(input: {
   validationEvalTargets?: string[];
   heldOutEvalTargets?: string[];
   modelAffinity?: string[];
+  approvedNetworkOrigins?: string[];
   domain?: string;
   permissionProfile?: string;
   candidatePath?: string;
@@ -80,6 +82,7 @@ export async function createAdapterEvolutionSession(input: {
     baselineAdapter,
     candidateAdapter,
     input.candidatePath ?? sourcePath,
+    input.approvedNetworkOrigins,
   );
   const prediction = normalizeEvolutionPrediction(input.prediction);
   if (candidateContent !== sourceContent && !prediction) {
@@ -102,6 +105,9 @@ export async function createAdapterEvolutionSession(input: {
   const scope: EvolutionScope = {
     ...(domain ? { domain } : {}),
     model_affinity: unique(input.modelAffinity ?? []),
+    approved_network_origins: normalizeApprovedOrigins(
+      input.approvedNetworkOrigins ?? [],
+    ),
     permission_profile: input.permissionProfile ?? "open",
     ...(input.adapterCommand.target_surface
       ? { target_surface: input.adapterCommand.target_surface }
@@ -131,14 +137,15 @@ export async function createAdapterEvolutionSession(input: {
     scope,
     createdAt,
   });
+  assertRepairableProposalEvidence(evidence);
 
   await initializeEvolutionSession(paths);
   await writePrivateText(paths.baseline_file, sourceContent);
   await writePrivateText(paths.candidate_file, candidateContent);
-  await writePrivateJson(paths.evidence, evidence);
+  const evidenceSha256 = await writePrivateJson(paths.evidence, evidence);
 
   const session: EvolutionSession = {
-    schema_version: "unicli.evolution-session.v1",
+    schema_version: "unicli.evolution-session.v2",
     session_id: sessionId,
     state: "draft",
     created_at: createdAt,
@@ -147,7 +154,7 @@ export async function createAdapterEvolutionSession(input: {
     evidence: {
       packet_id: evidence.packet_id,
       path: paths.evidence,
-      sha256: sha256Text(`${JSON.stringify(evidence, null, 2)}\n`),
+      sha256: evidenceSha256,
     },
     baseline: {
       path: paths.baseline_file,
@@ -255,14 +262,26 @@ export function assertEvolutionScopeUnchanged(
   baseline: Extract<YamlAdapterNormalization, { ok: true }>,
   candidate: Extract<YamlAdapterNormalization, { ok: true }>,
   path: string,
+  approvedNetworkOrigins: string[] = [],
 ): void {
   const baselineScope = evolutionScopeSignature(baseline);
   const candidateScope = evolutionScopeSignature(candidate);
-  const changed = Object.keys(baselineScope).filter(
-    (field) =>
-      JSON.stringify(baselineScope[field]) !==
-      JSON.stringify(candidateScope[field]),
+  const approvedOrigins = new Set(
+    normalizeApprovedOrigins(approvedNetworkOrigins),
   );
+  const changed = Object.keys(baselineScope).filter((field) => {
+    if (field === "network_origins") {
+      const baselineOrigins = new Set(baselineScope[field] as string[]);
+      return (candidateScope[field] as string[]).some(
+        (origin) =>
+          !baselineOrigins.has(origin) && !approvedOrigins.has(origin),
+      );
+    }
+    return (
+      JSON.stringify(baselineScope[field]) !==
+      JSON.stringify(candidateScope[field])
+    );
+  });
   if (changed.length > 0) {
     throw new EvolutionError(
       "candidate_invalid",
@@ -277,6 +296,12 @@ function evolutionScopeSignature(
 ): Record<string, unknown> {
   const { document, validated } = normalized;
   return {
+    identity_contract: {
+      site: document.site ?? null,
+      name: document.name ?? null,
+      description: document.description ?? null,
+      domain: document.domain ?? null,
+    },
     type: document.type ?? null,
     strategy: document.strategy ?? null,
     browser: document.browser ?? null,
@@ -297,7 +322,173 @@ function evolutionScopeSignature(
     minimum_capability: validated.minimum_capability,
     trust: validated.trust,
     confidentiality: validated.confidentiality,
+    network_origins: networkOrigins(document),
+    network_methods: {
+      document: document.method?.toUpperCase() ?? null,
+      pipeline: pipelineActionConfigs(document.pipeline, [
+        "fetch",
+        "fetch_text",
+      ]).map(({ action, config }) => ({
+        action,
+        method:
+          isRecord(config) && typeof config.method === "string"
+            ? config.method.toUpperCase()
+            : "GET",
+      })),
+    },
+    request_headers: canonicalJsonValue({
+      document: document.headers ?? null,
+      pipeline: nestedFieldValues(document.pipeline, "headers"),
+    }),
+    pipeline_actions: pipelineActionShape(document.pipeline),
+    exec_contract: canonicalJsonValue(
+      pipelineActionConfigs(document.pipeline, ["exec"]).map(
+        ({ config }) => config,
+      ),
+    ),
+    input_contract: {
+      schema: canonicalJsonValue(
+        buildArgumentJsonSchema(
+          [...(normalized.command.adapterArgs ?? [])].sort((left, right) =>
+            left.name.localeCompare(right.name),
+          ),
+        ),
+      ),
+      positional: (normalized.command.adapterArgs ?? [])
+        .filter((argument) => argument.positional)
+        .map((argument) => argument.name),
+    },
+    output_contract: {
+      output: canonicalJsonValue(normalized.command.output ?? null),
+      columns: normalized.command.columns ?? [],
+      default_format: normalized.command.defaultFormat ?? null,
+      stream: normalized.command.stream ?? false,
+      paginated: normalized.command.paginated ?? false,
+    },
   };
+}
+
+function networkOrigins(
+  document: Extract<YamlAdapterNormalization, { ok: true }>["document"],
+): string[] {
+  const origins = new Set<string>();
+  const add = (value: unknown, domain = false): void => {
+    if (typeof value !== "string" || value.trim().length === 0) return;
+    const raw = value.trim();
+    if (!domain && !/^https?:\/\//iu.test(raw)) return;
+    try {
+      origins.add(
+        new URL(domain && !raw.includes("://") ? `https://${raw}` : raw).origin,
+      );
+    } catch {
+      // REASON: templated URLs are not valid WHATWG URLs before argument
+      // resolution; retain their static authority for scope comparison.
+      const authority = /^https?:\/\/[^/]+/iu.exec(raw)?.[0];
+      if (authority) origins.add(authority.toLowerCase());
+    }
+  };
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.values(value).forEach(visit);
+      return;
+    }
+    add(value);
+  };
+  add(document.domain, true);
+  add(document.base);
+  add(document.url);
+  add(document.navigate);
+  visit(document.pipeline);
+  return [...origins].sort();
+}
+
+function canonicalJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJsonValue);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => [key, canonicalJsonValue(entry)]),
+  );
+}
+
+const PIPELINE_SIBLING_KEYS = new Set([
+  "then",
+  "else",
+  "merge",
+  "retry",
+  "backoff",
+]);
+
+function pipelineActionShape(value: unknown): unknown[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((step) => {
+    if (!isRecord(step)) return null;
+    const action = Object.keys(step).find(
+      (key) => !PIPELINE_SIBLING_KEYS.has(key),
+    );
+    if (!action) return null;
+    const config = step[action];
+    return {
+      action,
+      ...(action === "if"
+        ? {
+            then_actions: pipelineActionShape(step.then),
+            else_actions: pipelineActionShape(step.else),
+          }
+        : {}),
+      ...(action === "each" && isRecord(config)
+        ? { do: pipelineActionShape(config.do) }
+        : {}),
+      ...(action === "parallel"
+        ? { branches: pipelineActionShape(config) }
+        : {}),
+    };
+  });
+}
+
+function pipelineActionConfigs(
+  value: unknown,
+  actions: string[],
+): Array<{ action: string; config: unknown }> {
+  const matches: Array<{ action: string; config: unknown }> = [];
+  visitNested(value, (entry) => {
+    for (const action of actions) {
+      if (Object.hasOwn(entry, action)) {
+        matches.push({ action, config: entry[action] });
+      }
+    }
+  });
+  return matches;
+}
+
+function nestedFieldValues(value: unknown, field: string): unknown[] {
+  const values: unknown[] = [];
+  visitNested(value, (entry) => {
+    if (Object.hasOwn(entry, field)) values.push(entry[field]);
+  });
+  return values;
+}
+
+function visitNested(
+  value: unknown,
+  visitor: (entry: Record<string, unknown>) => void,
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((entry) => visitNested(entry, visitor));
+    return;
+  }
+  if (!isRecord(value)) return;
+  visitor(value);
+  Object.values(value).forEach((entry) => visitNested(entry, visitor));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function sorted(values: string[] | undefined): string[] {
@@ -376,6 +567,52 @@ async function readAdapterText(
 
 function unique(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function normalizeApprovedOrigins(values: string[]): string[] {
+  return [
+    ...new Set(
+      unique(values).map((value) => {
+        try {
+          const url = new URL(
+            value.includes("://") ? value : `https://${value}`,
+          );
+          if (
+            !/^https?:$/u.test(url.protocol) ||
+            url.username ||
+            url.password
+          ) {
+            throw new Error("unsupported origin");
+          }
+          return url.origin;
+        } catch {
+          throw new EvolutionError(
+            "candidate_invalid",
+            `invalid approved network origin: ${value}`,
+          );
+        }
+      }),
+    ),
+  ].sort();
+}
+
+function assertRepairableProposalEvidence(
+  evidence: Awaited<ReturnType<typeof distillRunEvidence>>,
+): void {
+  const invalid = evidence.sources.filter(
+    (source) =>
+      source.status !== "failed" ||
+      !["adapter_behavior", "upstream_environment"].includes(
+        source.failure_class,
+      ),
+  );
+  if (invalid.length === 0) return;
+  throw new EvolutionError(
+    "candidate_invalid",
+    `proposal evidence contains failures outside the adapter repair boundary; rejected runs: ${invalid
+      .map((source) => `${source.run_id} (${source.failure_class})`)
+      .join(", ")}`,
+  );
 }
 
 function assertDisjointRunSplits(

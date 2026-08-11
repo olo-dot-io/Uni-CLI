@@ -83,7 +83,7 @@ The comparison keeps each product inside its declared boundary. Catalog totals m
 
 | Product                                               | Source revision                                                                                                 | Declared surface                               | Current scale                                                           |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Uni-CLI                                               | working tree on 2026-08-10                                                                                      | web, browser, desktop, system, and local tools | 337 sites and 1890 commands                                             |
+| Uni-CLI                                               | working tree on 2026-08-11                                                                                      | web, browser, desktop, system, and local tools | 337 sites and 1890 commands                                             |
 | [OpenCLI](https://github.com/jackwener/opencli)       | [a86d647](https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json) | website and browser adapter runtime            | 176 sites and 1331 commands                                             |
 | [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [39634a6](https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json)    | stateful harnesses and capability matrices     | 79 harnesses, 22 public entries, 5 matrices, and 62 matrix capabilities |
 
@@ -96,25 +96,28 @@ The shared personal-content classifier omits generic identity commands such as `
 
 ### Shipped discovery tasks
 
-Uni-CLI completed 11/11 tasks at rank one. 11/11 top results included an invocation, inspection command, and required authentication setup. Personalized tasks completed 5/5.
+Uni-CLI completed 14/14 tasks at rank one. 14/14 top results included an invocation, inspection command, and required authentication setup. Personalized tasks completed 5/5.
 
-| Task                  | Expected                | Top result              | Actionable |
-| --------------------- | ----------------------- | ----------------------- | ---------- |
-| news-top              | `hackernews top`        | `hackernews top`        | yes        |
-| developer-trending    | `github-trending daily` | `github-trending daily` | yes        |
-| developer-code-search | `gh search-code`        | `gh search-code`        | yes        |
-| media-playback        | `spotify play-track`    | `spotify play-track`    | yes        |
-| auth-setup            | `auth setup`            | `auth setup`            | yes        |
-| cli-upgrade           | `upgrade install`       | `upgrade install`       | yes        |
-| xiaohongshu-saved     | `xiaohongshu saved`     | `xiaohongshu saved`     | yes        |
-| instagram-saved       | `instagram saved`       | `instagram saved`       | yes        |
-| zhihu-recommendations | `zhihu recommend`       | `zhihu recommend`       | yes        |
-| twitter-notifications | `twitter notifications` | `twitter notifications` | yes        |
-| bilibili-history      | `bilibili history`      | `bilibili history`      | yes        |
+| Task                    | Expected                | Top result              | Actionable |
+| ----------------------- | ----------------------- | ----------------------- | ---------- |
+| news-top                | `hackernews top`        | `hackernews top`        | yes        |
+| developer-trending      | `github-trending daily` | `github-trending daily` | yes        |
+| developer-code-search   | `gh search-code`        | `gh search-code`        | yes        |
+| media-playback          | `spotify play-track`    | `spotify play-track`    | yes        |
+| auth-setup              | `auth setup`            | `auth setup`            | yes        |
+| cli-upgrade             | `upgrade install`       | `upgrade install`       | yes        |
+| harness-evolution       | `evolve adapter`        | `evolve adapter`        | yes        |
+| evolution-evidence      | `runs distill`          | `runs distill`          | yes        |
+| agent-plugin-inspection | `plugin inspect`        | `plugin inspect`        | yes        |
+| xiaohongshu-saved       | `xiaohongshu saved`     | `xiaohongshu saved`     | yes        |
+| instagram-saved         | `instagram saved`       | `instagram saved`       | yes        |
+| zhihu-recommendations   | `zhihu recommend`       | `zhihu recommend`       | yes        |
+| twitter-notifications   | `twitter notifications` | `twitter notifications` | yes        |
+| bilibili-history        | `bilibili history`      | `bilibili history`      | yes        |
 
 ### Maintenance gates
 
-- Root discovery entry coverage 5/5
+- Root discovery entry coverage 6/6
 - Generated catalog synchronization pass
 - OpenCLI pinned baseline integrity pass
 - Personal content command parity pass

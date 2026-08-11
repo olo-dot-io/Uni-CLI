@@ -107,7 +107,7 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli evolve inspect [session_id]`                               | 列出 session 或检查一个 session               |
 | `unicli evolve rollback <session_id>`                              | 恢复 promotion 前的精确 user overlay          |
 
-Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。发生变化的 candidate 必须声明可证伪 hypothesis 和预期修复项。Candidate 还需要在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline authorization scope。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
+Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。发生变化的 candidate 必须声明可证伪 hypothesis 和预期修复项。Candidate 还需要在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline operation contract。每个经过 review 的替换 network origin 都需要在创建 session 时通过 `--allow-origin <origin>` 声明。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
 
 ## Plugin
 

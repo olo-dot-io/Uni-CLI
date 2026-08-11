@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-10T15:34:30.335Z",
+  "generated_at": "2026-08-11T06:05:48.659Z",
   "passed": true,
   "sources": {
     "captured_at": "2026-08-10",
@@ -52,14 +52,15 @@
       "families": { "activity": 16, "library": 38, "feed": 19, "network": 7 }
     },
     "root_discovery": {
-      "passed": 5,
-      "total": 5,
+      "passed": 6,
+      "total": 6,
       "entries": [
         "search <intent",
         "do <goal",
         "list [",
         "describe [",
-        "upgrade "
+        "upgrade ",
+        "evolve "
       ]
     }
   },
@@ -91,9 +92,9 @@
     ]
   },
   "tasks": {
-    "total": 11,
-    "passed": 11,
-    "actionable": 11,
+    "total": 14,
+    "passed": 14,
+    "actionable": 14,
     "personalized_total": 5,
     "personalized_passed": 5,
     "top1_accuracy": "100.0%"
@@ -180,6 +181,48 @@
       "family_ok": true,
       "usage": "unicli upgrade [--yes|--no|--skip-version|--auto-update|--no-auto-update] [--package-manager <npm|pnpm|bun>]",
       "inspect": "unicli describe upgrade install",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "harness-evolution",
+      "intent": "evolve adapter harness from failed runs",
+      "expected": "evolve adapter",
+      "top1": "evolve adapter",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli evolve adapter <site> <command> --run <run_ids...>",
+      "inspect": "unicli describe evolve adapter",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "evolution-evidence",
+      "intent": "distill failed run traces into evolution evidence",
+      "expected": "runs distill",
+      "top1": "runs distill",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli runs distill <run_ids...>",
+      "inspect": "unicli describe runs distill",
+      "auth": "none",
+      "auth_setup": null
+    },
+    {
+      "id": "agent-plugin-inspection",
+      "intent": "inspect portable plugin package",
+      "expected": "plugin inspect",
+      "top1": "plugin inspect",
+      "top1_ok": true,
+      "actionable": true,
+      "family": null,
+      "family_ok": true,
+      "usage": "unicli plugin inspect <path>",
+      "inspect": "unicli describe plugin inspect",
       "auth": "none",
       "auth_setup": null
     },

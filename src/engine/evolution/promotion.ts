@@ -47,7 +47,7 @@ export async function promoteEvolutionSession(input: {
       session.component.command,
     );
     const report = await readPrivateJson<EvolutionVerificationReport>(
-      attempt.report_path,
+      attempt.report.path,
     );
     if (
       report.schema_version !== "unicli.evolution-verification.v1" ||
@@ -55,21 +55,21 @@ export async function promoteEvolutionSession(input: {
       report.component_id !== session.component.id ||
       report.baseline_sha256 !== session.baseline.sha256 ||
       report.attempt !== attempt.ordinal ||
-      report.candidate_path !== attempt.candidate_path ||
-      report.patch_path !== attempt.patch_path ||
+      report.candidate_path !== attempt.candidate.path ||
+      report.patch_path !== attempt.patch.path ||
       !report.decision?.eligible
     ) {
       throw new EvolutionError(
         "not_eligible",
         "the stored verification report did not pass the promotion gate",
-        attempt.report_path,
+        attempt.report.path,
       );
     }
     const candidate = await readFile(paths.candidate_file, "utf-8");
-    const verifiedCandidate = await readFile(attempt.candidate_path, "utf-8");
+    const verifiedCandidate = await readFile(attempt.candidate.path, "utf-8");
     const candidateSha256 = sha256Text(candidate);
     if (
-      candidateSha256 !== attempt.candidate_sha256 ||
+      candidateSha256 !== attempt.candidate.sha256 ||
       candidateSha256 !== report.candidate_sha256 ||
       candidateSha256 !== sha256Text(verifiedCandidate)
     ) {
@@ -85,36 +85,51 @@ export async function promoteEvolutionSession(input: {
       session.component.site,
       `${session.component.command}.yaml`,
     );
-    const previous = existsSync(destination)
-      ? await readFile(destination, "utf-8")
-      : undefined;
-    assertDestinationUnchanged(session, destination, previous);
-    if (previous !== undefined)
-      await writePrivateText(paths.rollback, previous);
-    await writePrivateText(destination, candidate);
-
-    const promotedAt = input.promotedAt ?? new Date().toISOString();
-    const promotion: EvolutionPromotionRecord = {
-      schema_version: "unicli.evolution-promotion.v1",
-      session_id: session.session_id,
-      component_id: session.component.id,
-      promoted_at: promotedAt,
+    const prepared = await readPreparedPromotion(
+      paths,
+      session,
+      attempt,
       destination,
-      candidate_sha256: candidateSha256,
-      verification_path: attempt.report_path,
-      previous_overlay:
-        previous === undefined
-          ? null
-          : { path: destination, sha256: sha256Text(previous) },
-      rollback_path: previous === undefined ? null : paths.rollback,
-    };
-    await writePrivateJson(paths.promotion, promotion);
+    );
+    let promotion: EvolutionPromotionRecord;
+    let promotionSha256: string;
+    if (prepared) {
+      promotion = prepared.record;
+      promotionSha256 = prepared.sha256;
+    } else {
+      const previous = existsSync(destination)
+        ? await readFile(destination, "utf-8")
+        : undefined;
+      assertDestinationUnchanged(session, destination, previous);
+      if (previous !== undefined) {
+        await writePrivateText(paths.rollback, previous);
+      }
+      promotion = {
+        schema_version: "unicli.evolution-promotion.v1",
+        session_id: session.session_id,
+        component_id: session.component.id,
+        promoted_at: input.promotedAt ?? new Date().toISOString(),
+        destination,
+        candidate_sha256: candidateSha256,
+        verification_path: attempt.report.path,
+        previous_overlay:
+          previous === undefined
+            ? null
+            : { path: destination, sha256: sha256Text(previous) },
+        rollback_path: previous === undefined ? null : paths.rollback,
+      };
+      promotionSha256 = await writePrivateJson(paths.promotion, promotion);
+    }
+    await installPreparedCandidate(session, promotion, candidate);
+
+    const promotedAt = promotion.promoted_at;
     const updated: EvolutionSession = {
       ...session,
       state: "promoted",
       updated_at: promotedAt,
       promotion: {
         path: paths.promotion,
+        sha256: promotionSha256,
         promoted_at: promotedAt,
         destination,
       },
@@ -156,7 +171,7 @@ export async function rollbackEvolutionSession(input: {
       promotion.session_id !== session.session_id ||
       promotion.component_id !== session.component.id ||
       promotion.destination !== session.promotion.destination ||
-      promotion.candidate_sha256 !== attempt?.candidate_sha256
+      promotion.candidate_sha256 !== attempt?.candidate.sha256
     ) {
       throw new EvolutionError(
         "destination_changed",
@@ -164,30 +179,47 @@ export async function rollbackEvolutionSession(input: {
         paths.promotion,
       );
     }
-    if (!existsSync(promotion.destination)) {
-      throw new EvolutionError(
-        "destination_changed",
-        "promoted adapter is missing; rollback stopped to preserve later user changes",
-        promotion.destination,
-      );
+    let restored: "previous_overlay" | "packaged_baseline";
+    let previous: string | undefined;
+    if (promotion.rollback_path) {
+      previous = await readFile(promotion.rollback_path, "utf-8");
+      if (
+        !promotion.previous_overlay ||
+        sha256Text(previous) !== promotion.previous_overlay.sha256
+      ) {
+        throw new EvolutionError(
+          "destination_changed",
+          "evolution integrity check failed for rollback artifact",
+          promotion.rollback_path,
+        );
+      }
+      restored = "previous_overlay";
+    } else {
+      restored = "packaged_baseline";
     }
-    const current = await readFile(promotion.destination, "utf-8");
-    if (sha256Text(current) !== promotion.candidate_sha256) {
+    const current = existsSync(promotion.destination)
+      ? await readFile(promotion.destination, "utf-8")
+      : undefined;
+    if (
+      current !== undefined &&
+      sha256Text(current) === promotion.candidate_sha256
+    ) {
+      if (previous !== undefined) {
+        await writePrivateText(promotion.destination, previous);
+      } else {
+        await rm(promotion.destination);
+      }
+    } else if (
+      previous !== undefined
+        ? current === undefined ||
+          sha256Text(current) !== promotion.previous_overlay?.sha256
+        : current !== undefined
+    ) {
       throw new EvolutionError(
         "destination_changed",
         "promoted adapter changed after promotion; rollback stopped to preserve later user changes",
         promotion.destination,
       );
-    }
-
-    let restored: "previous_overlay" | "packaged_baseline";
-    if (promotion.rollback_path) {
-      const previous = await readFile(promotion.rollback_path, "utf-8");
-      await writePrivateText(promotion.destination, previous);
-      restored = "previous_overlay";
-    } else {
-      await rm(promotion.destination);
-      restored = "packaged_baseline";
     }
     const rolledBackAt = input.rolledBackAt ?? new Date().toISOString();
     const updated: EvolutionSession = {
@@ -204,6 +236,78 @@ function latestAttempt(
   session: EvolutionSession,
 ): EvolutionVerificationAttempt | undefined {
   return session.attempts.at(-1);
+}
+
+async function readPreparedPromotion(
+  paths: ReturnType<typeof evolutionSessionPaths>,
+  session: EvolutionSession,
+  attempt: EvolutionVerificationAttempt,
+  destination: string,
+): Promise<{ record: EvolutionPromotionRecord; sha256: string } | undefined> {
+  if (!existsSync(paths.promotion)) return undefined;
+  const text = await readFile(paths.promotion, "utf-8");
+  const record = await readPrivateJson<EvolutionPromotionRecord>(
+    paths.promotion,
+  );
+  if (
+    record.schema_version !== "unicli.evolution-promotion.v1" ||
+    record.session_id !== session.session_id ||
+    record.component_id !== session.component.id ||
+    record.destination !== destination ||
+    record.candidate_sha256 !== attempt.candidate.sha256 ||
+    record.verification_path !== attempt.report.path
+  ) {
+    throw new EvolutionError(
+      "destination_changed",
+      "the prepared promotion record does not match the evolution session",
+      paths.promotion,
+    );
+  }
+  if (record.rollback_path) {
+    if (
+      record.rollback_path !== paths.rollback ||
+      record.previous_overlay?.path !== destination
+    ) {
+      throw new EvolutionError(
+        "destination_changed",
+        "the prepared promotion rollback record is invalid",
+        paths.promotion,
+      );
+    }
+    const rollback = await readFile(record.rollback_path, "utf-8");
+    if (sha256Text(rollback) !== record.previous_overlay.sha256) {
+      throw new EvolutionError(
+        "destination_changed",
+        "evolution integrity check failed for rollback artifact",
+        record.rollback_path,
+      );
+    }
+  } else if (record.previous_overlay !== null) {
+    throw new EvolutionError(
+      "destination_changed",
+      "the prepared promotion record has no rollback artifact",
+      paths.promotion,
+    );
+  }
+  return { record, sha256: sha256Text(text) };
+}
+
+async function installPreparedCandidate(
+  session: EvolutionSession,
+  promotion: EvolutionPromotionRecord,
+  candidate: string,
+): Promise<void> {
+  const current = existsSync(promotion.destination)
+    ? await readFile(promotion.destination, "utf-8")
+    : undefined;
+  if (
+    current !== undefined &&
+    sha256Text(current) === promotion.candidate_sha256
+  ) {
+    return;
+  }
+  assertDestinationUnchanged(session, promotion.destination, current);
+  await writePrivateText(promotion.destination, candidate);
 }
 
 function assertDestinationUnchanged(

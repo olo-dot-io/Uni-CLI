@@ -44,6 +44,7 @@ interface EvolveAdapterOptions extends EvolveCommonOptions, PredictionOptions {
   validation?: string[];
   heldOut?: string[];
   model?: string[];
+  allowOrigin?: string[];
   domain?: string;
   candidate?: string;
   runRoot?: string;
@@ -138,6 +139,10 @@ export function registerEvolveCommand(program: Command): void {
       "Held-out eval files or directories",
     )
     .option("--model <names...>", "Models for which the candidate is intended")
+    .option(
+      "--allow-origin <origins...>",
+      "Explicit network origins the candidate may add",
+    )
     .option("--domain <name>", "Task-domain scope")
     .option(
       "--candidate <path>",
@@ -187,6 +192,7 @@ export function registerEvolveCommand(program: Command): void {
             validationEvalTargets: opts.validation,
             heldOutEvalTargets: opts.heldOut,
             modelAffinity: opts.model,
+            approvedNetworkOrigins: opts.allowOrigin,
             domain: opts.domain,
             permissionProfile: program.opts().permissionProfile as
               | string
@@ -353,10 +359,10 @@ export function registerEvolveCommand(program: Command): void {
             );
             return;
           }
-          const sessions = await listEvolutionSessions(store);
+          const listing = await listEvolutionSessions(store);
           emit(program, "evolve.inspect", startedAt, {
             root: store.root_dir,
-            sessions: sessions.map((session) => {
+            sessions: listing.sessions.map((session) => {
               const latest = session.attempts.at(-1);
               return {
                 session_id: session.session_id,
@@ -368,6 +374,7 @@ export function registerEvolveCommand(program: Command): void {
                 eligible: latest?.eligible ?? null,
               };
             }),
+            invalid_sessions: listing.invalid_sessions,
           });
         } catch (error) {
           emitError(program, "evolve.inspect", startedAt, error);

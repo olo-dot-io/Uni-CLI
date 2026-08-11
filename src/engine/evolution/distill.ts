@@ -77,6 +77,12 @@ export async function distillRunEvidence(input: {
     schema_version: "unicli.evidence-packet.v1",
     packet_id: `evidence-${randomUUID()}`,
     created_at: input.createdAt ?? new Date().toISOString(),
+    provenance: {
+      source: "local-run-store",
+      content_trust: "untrusted",
+      redaction: "applied",
+      raw_trace_policy: "local-reference-only",
+    },
     component: { ...input.component },
     scope: {
       ...input.scope,

@@ -104,7 +104,7 @@ unicli -f json evolve adapter <site> <command> \
   --promote
 ```
 
-这条直接路径在一次调用中创建 session、提炼 proposal run、执行隔离的 baseline 与 candidate overlay、评估预测、应用 promotion gate，并安装 override。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field。
+这条直接路径在一次调用中创建 session、提炼 proposal run、执行隔离的 baseline 与 candidate overlay、评估预测、应用 promotion gate，并安装 override。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field，并把提炼后的 trace content 标记为 untrusted。
 
 ```bash
 unicli -f json evolve inspect
@@ -114,6 +114,6 @@ unicli -f json evolve rollback <session-id>
 
 省略 `--candidate` 可以创建 draft。编辑返回的 `candidate.path` 后，再运行 `evolve verify`。Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。Promotion 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
 
-每次 verification 都会追加一个 attempt directory，其中包含对应的 candidate、patch 和 report。Agent 编辑 draft 并再次验证后，原有 rejected attempt 仍然保持完整。Verified draft 未变化时，`evolve verify <session-id> --promote` 会安装已有 attempt，不会重复运行 eval case。
+每次 verification 都会追加一个 attempt directory，其中包含对应的 candidate、patch 和 report。Content hash 发生变化时，后续操作会停止。Agent 编辑 draft 并再次验证后，原有 rejected attempt 仍然保持完整。Verified draft 未变化时，`evolve verify <session-id> --promote` 会安装已有 attempt，不会重复运行 eval case。多个 promotion 或 rollback process 会按 session 串行执行。写入中断后的操作会从已准备的 promotion record 继续。
 
-Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复 endpoint、selector、extraction 和 pipeline behavior，不能改变 session 的 authorization 或 execution scope。
+Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复同一 origin 内的 endpoint path、selector、extraction expression 和已有 pipeline action config。Candidate 不能改变 operation identity、输入输出 contract、pipeline action topology、request method 与 header，或已有 subprocess invocation。替换 network origin 时，创建 session 的命令必须传入 `--allow-origin <origin>`。

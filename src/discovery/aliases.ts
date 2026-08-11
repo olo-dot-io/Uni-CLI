@@ -1551,6 +1551,8 @@ export const SITE_CATEGORIES: ReadonlyMap<string, string> = strictMap([
   ["mcp", "agent"],
   ["runs", "agent"],
   ["delivery", "agent"],
+  ["evolve", "agent"],
+  ["plugin", "agent"],
 
   // AI
   ["ollama", "ai"],

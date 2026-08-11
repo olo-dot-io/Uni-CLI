@@ -1,5 +1,5 @@
 import { chmod, mkdir, readFile, readdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, type Dirent } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { z } from "zod";
@@ -18,14 +18,13 @@ const attemptSchema = z.object({
   ordinal: z.number().int().positive(),
   verified_at: z.string(),
   eligible: z.boolean(),
-  candidate_sha256: z.string(),
-  candidate_path: z.string(),
-  patch_path: z.string(),
-  report_path: z.string(),
+  candidate: artifactRefSchema,
+  patch: artifactRefSchema,
+  report: artifactRefSchema,
 });
 const sessionSchema = z
   .object({
-    schema_version: z.literal("unicli.evolution-session.v1"),
+    schema_version: z.literal("unicli.evolution-session.v2"),
     session_id: z.string(),
     state: z.enum(["draft", "verified", "rejected", "promoted", "rolled_back"]),
     created_at: z.string(),
@@ -41,6 +40,7 @@ const sessionSchema = z
       scope: z.object({
         domain: z.string().optional(),
         model_affinity: z.array(z.string()),
+        approved_network_origins: z.array(z.string()),
         permission_profile: z.string(),
         target_surface: z.string().optional(),
         operation_effect: z.string().optional(),
@@ -74,6 +74,7 @@ const sessionSchema = z
     promotion: z
       .object({
         path: z.string(),
+        sha256: z.string(),
         promoted_at: z.string(),
         destination: z.string(),
       })
@@ -128,6 +129,16 @@ export interface EvolutionAttemptPaths {
   candidate: string;
   patch: string;
   report: string;
+}
+
+export interface EvolutionSessionListing {
+  sessions: EvolutionSession[];
+  invalid_sessions: Array<{
+    session_id: string;
+    code: string;
+    message: string;
+    path?: string;
+  }>;
 }
 
 export function createEvolutionStore(
@@ -257,8 +268,10 @@ export async function withEvolutionSessionLock<T>(
 export async function writePrivateJson(
   path: string,
   value: unknown,
-): Promise<void> {
-  await writePrivateText(path, `${JSON.stringify(value, null, 2)}\n`);
+): Promise<string> {
+  const text = `${JSON.stringify(value, null, 2)}\n`;
+  await writePrivateText(path, text);
+  return sha256Text(text);
 }
 
 export async function writePrivateText(
@@ -295,7 +308,8 @@ export async function readEvolutionSession(
       path,
     );
   }
-  const value = await readPrivateJson<unknown>(path);
+  const stored = await readPrivateJson<unknown>(path);
+  const value = await migrateEvolutionSession(path, stored);
   if (!isEvolutionSession(value) || value.session_id !== sessionId) {
     throw new EvolutionError(
       "invalid_session",
@@ -304,6 +318,7 @@ export async function readEvolutionSession(
     );
   }
   assertSessionArtifactPaths(store, value);
+  await assertSessionArtifactIntegrity(value);
   return value;
 }
 
@@ -317,22 +332,41 @@ export async function writeEvolutionSession(
 
 export async function listEvolutionSessions(
   store: EvolutionStore,
-): Promise<EvolutionSession[]> {
-  const entries = await readdir(store.root_dir, { withFileTypes: true }).catch(
-    () => [],
-  );
+): Promise<EvolutionSessionListing> {
+  let entries: Dirent<string>[];
+  try {
+    entries = await readdir(store.root_dir, { withFileTypes: true });
+  } catch (error) {
+    if (isErrno(error, "ENOENT")) {
+      return { sessions: [], invalid_sessions: [] };
+    }
+    throw asStoreIoError(error, store.root_dir, "list");
+  }
   const sessions: EvolutionSession[] = [];
+  const invalidSessions: EvolutionSessionListing["invalid_sessions"] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || !entry.name.startsWith("evo-")) continue;
     try {
       sessions.push(await readEvolutionSession(store, entry.name));
-    } catch {
-      continue;
+    } catch (error) {
+      invalidSessions.push({
+        session_id: entry.name,
+        code: error instanceof EvolutionError ? error.code : "io_error",
+        message: error instanceof Error ? error.message : String(error),
+        ...(error instanceof EvolutionError && error.path
+          ? { path: error.path }
+          : {}),
+      });
     }
   }
-  return sessions.sort((left, right) =>
-    right.updated_at.localeCompare(left.updated_at),
-  );
+  return {
+    sessions: sessions.sort((left, right) =>
+      right.updated_at.localeCompare(left.updated_at),
+    ),
+    invalid_sessions: invalidSessions.sort((left, right) =>
+      left.session_id.localeCompare(right.session_id),
+    ),
+  };
 }
 
 export function sha256Text(value: string): string {
@@ -350,6 +384,123 @@ function assertAdapterSegment(value: string, label: string): void {
 
 function isEvolutionSession(value: unknown): value is EvolutionSession {
   return sessionSchema.safeParse(value).success;
+}
+
+async function migrateEvolutionSession(
+  manifestPath: string,
+  value: unknown,
+): Promise<unknown> {
+  if (
+    !isRecord(value) ||
+    value.schema_version !== "unicli.evolution-session.v1" ||
+    !Array.isArray(value.attempts)
+  ) {
+    return value;
+  }
+  const attempts = await Promise.all(
+    value.attempts.map(async (entry, index) => {
+      if (!isRecord(entry)) return entry;
+      if (
+        isArtifactRef(entry.candidate) &&
+        isArtifactRef(entry.patch) &&
+        isArtifactRef(entry.report)
+      ) {
+        return entry;
+      }
+      const candidatePath = entry.candidate_path;
+      const patchPath = entry.patch_path;
+      const reportPath = entry.report_path;
+      if (
+        typeof candidatePath !== "string" ||
+        typeof entry.candidate_sha256 !== "string" ||
+        typeof patchPath !== "string" ||
+        typeof reportPath !== "string"
+      ) {
+        throw new EvolutionError(
+          "invalid_session",
+          `cannot migrate evolution attempt ${index + 1}`,
+          manifestPath,
+        );
+      }
+      return {
+        ordinal: entry.ordinal,
+        verified_at: entry.verified_at,
+        eligible: entry.eligible,
+        candidate: {
+          path: candidatePath,
+          sha256: entry.candidate_sha256,
+        },
+        patch: {
+          path: patchPath,
+          sha256: await migrationArtifactHash(patchPath, "patch"),
+        },
+        report: {
+          path: reportPath,
+          sha256: await migrationArtifactHash(reportPath, "report"),
+        },
+      };
+    }),
+  );
+  let promotion = value.promotion;
+  if (
+    isRecord(promotion) &&
+    typeof promotion.path === "string" &&
+    typeof promotion.sha256 !== "string"
+  ) {
+    promotion = {
+      ...promotion,
+      sha256: await migrationArtifactHash(promotion.path, "promotion record"),
+    };
+  }
+  const migrated = {
+    ...value,
+    schema_version: "unicli.evolution-session.v2",
+    component: isRecord(value.component)
+      ? {
+          ...value.component,
+          scope: isRecord(value.component.scope)
+            ? {
+                ...value.component.scope,
+                approved_network_origins: Array.isArray(
+                  value.component.scope.approved_network_origins,
+                )
+                  ? value.component.scope.approved_network_origins
+                  : [],
+              }
+            : value.component.scope,
+        }
+      : value.component,
+    attempts,
+    ...(promotion === undefined ? {} : { promotion }),
+  };
+  if (!sessionSchema.safeParse(migrated).success) return value;
+  await writePrivateJson(manifestPath, migrated);
+  return migrated;
+}
+
+async function migrationArtifactHash(
+  path: string,
+  label: string,
+): Promise<string> {
+  try {
+    return sha256Text(await readFile(path, "utf-8"));
+  } catch (error) {
+    throw asStoreIoError(error, path, `migrate ${label}`);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isArtifactRef(
+  value: unknown,
+): value is { path: string; sha256: string } {
+  return (
+    isRecord(value) &&
+    typeof value.path === "string" &&
+    typeof value.sha256 === "string"
+  );
 }
 
 function assertSessionArtifactPaths(
@@ -375,18 +526,18 @@ function assertSessionArtifactPaths(
       const expectedAttempt = evolutionAttemptPaths(expected, attempt.ordinal);
       return [
         [
-          `attempts[${attempt.ordinal - 1}].candidate_path`,
-          attempt.candidate_path,
+          `attempts[${attempt.ordinal - 1}].candidate.path`,
+          attempt.candidate.path,
           expectedAttempt.candidate,
         ],
         [
-          `attempts[${attempt.ordinal - 1}].patch_path`,
-          attempt.patch_path,
+          `attempts[${attempt.ordinal - 1}].patch.path`,
+          attempt.patch.path,
           expectedAttempt.patch,
         ],
         [
-          `attempts[${attempt.ordinal - 1}].report_path`,
-          attempt.report_path,
+          `attempts[${attempt.ordinal - 1}].report.path`,
+          attempt.report.path,
           expectedAttempt.report,
         ],
       ];
@@ -403,6 +554,46 @@ function assertSessionArtifactPaths(
       "invalid_session",
       `invalid evolution session artifact path ${mismatch[0]}: ${mismatch[1]}`,
       mismatch[1],
+    );
+  }
+}
+
+async function assertSessionArtifactIntegrity(
+  session: EvolutionSession,
+): Promise<void> {
+  await assertArtifactHash("evidence", session.evidence);
+  await assertArtifactHash("baseline", session.baseline);
+  for (const attempt of session.attempts) {
+    await assertArtifactHash(
+      `attempt ${attempt.ordinal} candidate`,
+      attempt.candidate,
+    );
+    await assertArtifactHash(`attempt ${attempt.ordinal} patch`, attempt.patch);
+    await assertArtifactHash(
+      `attempt ${attempt.ordinal} report`,
+      attempt.report,
+    );
+  }
+  if (session.promotion) {
+    await assertArtifactHash("promotion record", session.promotion);
+  }
+}
+
+async function assertArtifactHash(
+  label: string,
+  artifact: { path: string; sha256: string },
+): Promise<void> {
+  let actual: string;
+  try {
+    actual = sha256Text(await readFile(artifact.path, "utf-8"));
+  } catch (error) {
+    throw asStoreIoError(error, artifact.path, `read ${label}`);
+  }
+  if (actual !== artifact.sha256) {
+    throw new EvolutionError(
+      "invalid_session",
+      `evolution integrity check failed for ${label}`,
+      artifact.path,
     );
   }
 }

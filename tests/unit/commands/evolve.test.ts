@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -69,13 +69,52 @@ describe("unicli evolve command", () => {
     const envelope = JSON.parse(capture.stdout().trim()) as {
       ok: boolean;
       command: string;
-      data: { root: string; sessions: unknown[] };
+      data: {
+        root: string;
+        sessions: unknown[];
+        invalid_sessions: unknown[];
+      };
     };
     expect(envelope).toMatchObject({
       ok: true,
       command: "evolve.inspect",
-      data: { root, sessions: [] },
+      data: { root, sessions: [], invalid_sessions: [] },
     });
+    expect(capture.stderr()).toBe("");
+  });
+
+  it("surfaces corrupt sessions instead of silently dropping them", async () => {
+    const corruptRoot = join(root, "evo-corrupt");
+    mkdirSync(corruptRoot, { recursive: true });
+    writeFileSync(join(corruptRoot, "session.json"), "{}\n");
+    const capture = captureConsole();
+    try {
+      await createProgram().parseAsync(
+        ["-f", "json", "evolve", "inspect", "--root", root],
+        { from: "user" },
+      );
+    } finally {
+      capture.restore();
+    }
+
+    const envelope = JSON.parse(capture.stdout().trim()) as {
+      data: {
+        sessions: unknown[];
+        invalid_sessions: Array<{
+          session_id: string;
+          code: string;
+          message: string;
+        }>;
+      };
+    };
+    expect(envelope.data.sessions).toEqual([]);
+    expect(envelope.data.invalid_sessions).toEqual([
+      expect.objectContaining({
+        session_id: "evo-corrupt",
+        code: "invalid_session",
+        message: expect.stringContaining("invalid evolution session manifest"),
+      }),
+    ]);
     expect(capture.stderr()).toBe("");
   });
 
