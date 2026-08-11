@@ -237,6 +237,7 @@ type TokenizedDocument = Pick<
   | "normalizedDescription"
 >;
 const documentTokenCache = new Map<string, TokenizedDocument>();
+let siteResolverCache: { key: string; resolver: SiteResolver } | null = null;
 
 /**
  * Load the live registry search index. Called lazily on first search.
@@ -363,7 +364,7 @@ export function buildIndexFromDocuments(
   }
 
   const siteLookup = siteSet;
-  const siteResolver = new SiteResolver(siteSet);
+  const siteResolver = cachedSiteResolver(siteSet);
 
   const N = documents.length;
   const avgDl = N > 0 ? totalTermCount / N : 0;
@@ -404,6 +405,14 @@ export function buildIndexFromDocuments(
     siteLookup,
     siteResolver,
   };
+}
+
+function cachedSiteResolver(sites: ReadonlySet<string>): SiteResolver {
+  const key = [...sites].sort().join("\0");
+  if (siteResolverCache?.key === key) return siteResolverCache.resolver;
+  const resolver = new SiteResolver(sites);
+  siteResolverCache = { key, resolver };
+  return resolver;
 }
 
 function documentTokenCacheKey(doc: CommandSearchDocument): string {
