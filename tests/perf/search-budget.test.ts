@@ -12,6 +12,7 @@ import { compileIntentPlan } from "../../src/discovery/intent-plan.js";
 const WARM_QUERY_P95_MS = 5;
 const INDEX_BUILD_P95_MS = 25;
 const INTENT_PLAN_P95_MS = 1;
+const PERF_SAMPLE_COUNT = 40;
 
 const QUERIES = [
   "search",
@@ -40,7 +41,7 @@ describe("discovery search performance budget", () => {
     for (const query of QUERIES) search(query, 5);
 
     const samples: number[] = [];
-    for (let trial = 0; trial < 12; trial++) {
+    for (let trial = 0; trial < PERF_SAMPLE_COUNT; trial++) {
       const started = performance.now();
       for (let round = 0; round < 10; round++) {
         for (const query of QUERIES) search(query, 5);
@@ -54,7 +55,7 @@ describe("discovery search performance budget", () => {
   it("keeps immutable inverted-index construction inside its p95 budget", () => {
     const documents = runtimeSearchDocuments();
     const samples: number[] = [];
-    for (let trial = 0; trial < 12; trial++) {
+    for (let trial = 0; trial < PERF_SAMPLE_COUNT; trial++) {
       const started = performance.now();
       const index = buildIndexFromDocuments(documents);
       samples.push(performance.now() - started);
@@ -68,7 +69,7 @@ describe("discovery search performance budget", () => {
     for (const query of QUERIES) compileIntentPlan(query);
 
     const samples: number[] = [];
-    for (let trial = 0; trial < 12; trial++) {
+    for (let trial = 0; trial < PERF_SAMPLE_COUNT; trial++) {
       const started = performance.now();
       for (let round = 0; round < 20; round++) {
         for (const query of QUERIES) compileIntentPlan(query);
