@@ -103,6 +103,16 @@ export interface EvolutionPrediction {
   at_risk: string[];
 }
 
+export interface EvolutionVerificationAttempt {
+  ordinal: number;
+  verified_at: string;
+  eligible: boolean;
+  candidate_sha256: string;
+  candidate_path: string;
+  patch_path: string;
+  report_path: string;
+}
+
 export interface EvolutionSession {
   schema_version: "unicli.evolution-session.v1";
   session_id: string;
@@ -127,12 +137,7 @@ export interface EvolutionSession {
     allow_mutation_eval: boolean;
   };
   prediction?: EvolutionPrediction;
-  verification?: {
-    path: string;
-    verified_at: string;
-    eligible: boolean;
-    candidate_sha256: string;
-  };
+  attempts: EvolutionVerificationAttempt[];
   promotion?: {
     path: string;
     promoted_at: string;
@@ -191,6 +196,8 @@ export interface EvolutionVerificationReport {
   component_id: string;
   baseline_sha256: string;
   candidate_sha256: string;
+  attempt: number;
+  candidate_path: string;
   patch_path: string;
   changed_lines: {
     added: number;

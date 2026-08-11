@@ -127,10 +127,10 @@ Evolution kernel 把选定的 run trace 转换为受控的 adapter 更新。它�
 1. `runs distill` 生成私有 evidence packet，不写入 replay 参数和 secret event field。
 2. `evolve adapter` 把 baseline 与 candidate 放入独立的 user-adapter overlay。发生变化的 candidate 必须声明 hypothesis、预期修复项和可选的风险 case。
 3. Proposal run、validation run 和 held-out run 保持互斥。Eval file 可以用 `train`、`validation` 或 `held-out` 标记 case。
-4. Baseline 与 candidate case 通过公开 CLI 交替执行。Report 会记录 pass rate、duration、case 变化、预测遗漏和意外回退。
+4. Baseline 与 candidate case 通过公开 CLI 交替执行。每个 attempt 都会保存对应的 candidate、patch 和 report。后续 candidate 成功后，rejected attempt 仍然可读。
 5. `evolve adapter --candidate ... --promote` 只会在 validation 严格提升且 held-out 没有回退时安装 candidate。同一事务会保存精确 rollback artifact。
 
-上层 Agent 负责提出并编辑 candidate。Uni-CLI 负责执行证据和 promotion decision。1.2 版本把 editable evolution component 限定为单个 YAML adapter。可能改变外部状态的命令需要显式允许 eval。
+上层 Agent 负责提出并编辑 candidate。Uni-CLI 负责执行证据和 promotion decision。Candidate hash 未变化时，promotion 会复用最新 eligible attempt，不会因为 review 再次运行 eval。Attempt commit、promotion 和 rollback 会在多个 Agent process 之间串行执行。1.2 版本把 editable evolution component 限定为单个 YAML adapter。可能改变外部状态的命令需要显式允许 eval。
 
 ## 协议入口
 

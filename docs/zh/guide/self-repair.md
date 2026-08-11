@@ -112,4 +112,6 @@ unicli -f json evolve rollback <session-id>
 
 省略 `--candidate` 可以创建 draft。编辑返回的 `candidate.path` 后，再运行 `evolve verify`。Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。Promotion 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
 
+每次 verification 都会追加一个 attempt directory，其中包含对应的 candidate、patch 和 report。Agent 编辑 draft 并再次验证后，原有 rejected attempt 仍然保持完整。Verified draft 未变化时，`evolve verify <session-id> --promote` 会安装已有 attempt，不会重复运行 eval case。
+
 Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复 endpoint、selector、extraction 和 pipeline behavior，不能改变 session 的 authorization 或 execution scope。

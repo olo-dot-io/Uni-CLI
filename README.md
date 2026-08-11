@@ -241,7 +241,7 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-Without `--candidate`, the command creates an editable draft. `evolve verify` resumes that draft, `evolve inspect` returns its evidence and decision, and `evolve rollback` restores the exact pre-promotion overlay.
+Without `--candidate`, the command creates an editable draft. Every verification preserves its candidate snapshot, patch, and report as one attempt. `evolve verify --promote` reuses the latest eligible attempt when the candidate is unchanged. `evolve inspect` returns the complete attempt history, and `evolve rollback` restores the exact pre-promotion overlay.
 
 A minimal YAML adapter follows.
 

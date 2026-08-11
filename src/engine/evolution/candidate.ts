@@ -171,6 +171,7 @@ export async function createAdapterEvolutionSession(input: {
       allow_mutation_eval: input.allowMutationEval === true,
     },
     ...(prediction ? { prediction } : {}),
+    attempts: [],
   };
   await writeEvolutionSession(input.evolutionStore, session);
   return session;

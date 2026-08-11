@@ -264,6 +264,18 @@ export function registerEvolveCommand(program: Command): void {
       try {
         const store = createEvolutionStore({ rootDir: opts.root });
         const session = await readEvolutionSession(store, sessionId);
+        if (reusesVerifiedAttempt(session, opts)) {
+          const promoted = await promoteEvolutionSession({ store, sessionId });
+          emitEvolutionResult(
+            program,
+            "evolve.verify",
+            startedAt,
+            promoted.session,
+            promoted.report,
+            promoted.promotion,
+          );
+          return;
+        }
         const resolved = resolveCommand(
           session.component.site,
           session.component.command,
@@ -344,14 +356,18 @@ export function registerEvolveCommand(program: Command): void {
           const sessions = await listEvolutionSessions(store);
           emit(program, "evolve.inspect", startedAt, {
             root: store.root_dir,
-            sessions: sessions.map((session) => ({
-              session_id: session.session_id,
-              state: session.state,
-              component_id: session.component.id,
-              created_at: session.created_at,
-              updated_at: session.updated_at,
-              eligible: session.verification?.eligible ?? null,
-            })),
+            sessions: sessions.map((session) => {
+              const latest = session.attempts.at(-1);
+              return {
+                session_id: session.session_id,
+                state: session.state,
+                component_id: session.component.id,
+                created_at: session.created_at,
+                updated_at: session.updated_at,
+                attempts: session.attempts.length,
+                eligible: latest?.eligible ?? null,
+              };
+            }),
           });
         } catch (error) {
           emitError(program, "evolve.inspect", startedAt, error);
@@ -390,7 +406,7 @@ function emitEvolutionResult(
               {
                 command: `unicli evolve verify ${session.session_id} --promote`,
                 description:
-                  "Re-run the gate and promote the unchanged candidate",
+                  "Promote the unchanged candidate from its verified attempt",
               },
             ]
           : [
@@ -425,9 +441,28 @@ function projectSession(session: EvolutionSession): Record<string, unknown> {
     },
     runtime: session.runtime,
     prediction: session.prediction ?? null,
-    verification: session.verification ?? null,
+    attempts: session.attempts,
+    latest_attempt: session.attempts.at(-1) ?? null,
     promotion: session.promotion ?? null,
   };
+}
+
+function reusesVerifiedAttempt(
+  session: EvolutionSession,
+  options: EvolveVerifyOptions,
+): boolean {
+  return (
+    session.state === "verified" &&
+    options.promote === true &&
+    options.validation === undefined &&
+    options.heldOut === undefined &&
+    options.hypothesis === undefined &&
+    options.expect === undefined &&
+    options.risk === undefined &&
+    options.cli === undefined &&
+    options.timeout === undefined &&
+    options.allowMutationEval === undefined
+  );
 }
 
 function parsePrediction(

@@ -241,7 +241,7 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-省略 `--candidate` 时，命令会创建可编辑 draft。`evolve verify` 用于继续该 draft，`evolve inspect` 返回 evidence 与 decision，`evolve rollback` 精确恢复晋级前的 overlay。
+省略 `--candidate` 时，命令会创建可编辑 draft。每次 verification 都会把 candidate snapshot、patch 和 report 保存为独立 attempt。Candidate 未变化时，`evolve verify --promote` 会复用最新 eligible attempt。`evolve inspect` 返回完整 attempt history，`evolve rollback` 精确恢复晋级前的 overlay。
 
 下面是一份最小 YAML adapter。
 

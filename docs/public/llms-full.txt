@@ -1069,6 +1069,8 @@ unicli -f json evolve rollback <session-id>
 
 Omit `--candidate` to create a draft and edit the returned `candidate.path` before `evolve verify`. The gate keeps the baseline when the candidate is unchanged, validation does not strictly improve, any validation case regresses, held-out evaluation is empty, or a held-out case regresses. Promotion writes `~/.unicli/adapters/<site>/<command>.yaml`. `rollback` restores the pre-promotion overlay and stops if that file has changed since promotion.
 
+Each verification appends an attempt directory containing the exact candidate, patch, and report. A rejected attempt remains intact after the Agent edits the draft and verifies again. Running `evolve verify <session-id> --promote` on an unchanged verified draft installs the stored attempt without repeating its eval cases.
+
 Read-only operations can run through the gate by default. Use `--allow-mutation-eval` only when every validation target is an intended controlled environment. A candidate may repair endpoints, selectors, extraction, and pipeline behavior, but it cannot change the session's authorization or execution-scope fields.
 
 ---
@@ -2270,15 +2272,15 @@ Run `unicli help browser` for the complete action list.
 
 ## Run evidence and evolution
 
-| Command                                                            | Purpose                                               |
-| ------------------------------------------------------------------ | ----------------------------------------------------- |
-| `unicli runs list`                                                 | List local recorded runs                              |
-| `unicli runs distill <run_ids...>`                                 | Create a redacted evidence packet                     |
-| `unicli evolve adapter <site> <command>`                           | Create an isolated YAML adapter draft                 |
-| `unicli evolve adapter <site> <command> --candidate ... --promote` | Verify and conditionally promote a supplied candidate |
-| `unicli evolve verify <session_id> [--promote]`                    | Resume paired validation and optionally promote       |
-| `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                  |
-| `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay          |
+| Command                                                            | Purpose                                                |
+| ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `unicli runs list`                                                 | List local recorded runs                               |
+| `unicli runs distill <run_ids...>`                                 | Create a redacted evidence packet                      |
+| `unicli evolve adapter <site> <command>`                           | Create an isolated YAML adapter draft                  |
+| `unicli evolve adapter <site> <command> --candidate ... --promote` | Verify and conditionally promote a supplied candidate  |
+| `unicli evolve verify <session_id> [--promote]`                    | Append an attempt or promote an unchanged verified one |
+| `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
+| `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
 Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 
@@ -2950,10 +2952,10 @@ The evolution kernel turns selected run traces into a controlled adapter update.
 1. `runs distill` creates a private evidence packet without replay arguments or secret event fields.
 2. `evolve adapter` copies the baseline and candidate into separate user-adapter overlays. A changed candidate must declare a hypothesis, expected fixes, and optional at-risk cases.
 3. Proposal runs, validation runs, and held-out runs remain disjoint. Eval files may label cases with `train`, `validation`, or `held-out`.
-4. Baseline and candidate cases execute through the public CLI in alternating order. The report records pass rate, duration, changed cases, prediction misses, and unexpected regressions.
+4. Baseline and candidate cases execute through the public CLI in alternating order. Every attempt preserves its exact candidate, patch, and report. Rejected attempts remain available after a later candidate succeeds.
 5. `evolve adapter --candidate ... --promote` installs the candidate only after strict validation improvement and a held-out result without regressions. The same transaction preserves an exact rollback artifact.
 
-The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
+The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evidence and the promotion decision. Promotion reuses the latest eligible attempt when its candidate hash is unchanged, so review does not trigger another evaluation. Attempt commits, promotion, and rollback are serialized across Agent processes. Version 1.2 limits editable evolution components to one YAML adapter per session. Mutating commands require an explicit evaluation opt-in.
 
 ## Protocol projections
 
