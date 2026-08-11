@@ -53,7 +53,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.2.0 · Artemis · Hansen.
+Latest: v1.2.0 · Artemis · Hansen.
 
 ## Agent Index
 
