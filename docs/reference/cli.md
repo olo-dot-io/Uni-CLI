@@ -97,15 +97,15 @@ Run `unicli help browser` for the complete action list.
 
 ## Run evidence and evolution
 
-| Command                                                            | Purpose                                               |
-| ------------------------------------------------------------------ | ----------------------------------------------------- |
-| `unicli runs list`                                                 | List local recorded runs                              |
-| `unicli runs distill <run_ids...>`                                 | Create a redacted evidence packet                     |
-| `unicli evolve adapter <site> <command>`                           | Create an isolated YAML adapter draft                 |
-| `unicli evolve adapter <site> <command> --candidate ... --promote` | Verify and conditionally promote a supplied candidate |
-| `unicli evolve verify <session_id> [--promote]`                    | Resume paired validation and optionally promote       |
-| `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                  |
-| `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay          |
+| Command                                                            | Purpose                                                |
+| ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `unicli runs list`                                                 | List local recorded runs                               |
+| `unicli runs distill <run_ids...>`                                 | Create a redacted evidence packet                      |
+| `unicli evolve adapter <site> <command>`                           | Create an isolated YAML adapter draft                  |
+| `unicli evolve adapter <site> <command> --candidate ... --promote` | Verify and conditionally promote a supplied candidate  |
+| `unicli evolve verify <session_id> [--promote]`                    | Append an attempt or promote an unchanged verified one |
+| `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
+| `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
 Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline authorization scope. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 

@@ -2,11 +2,107 @@ import { chmod, mkdir, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
+import { z } from "zod";
 
 import { userDataRoot } from "../user-home.js";
 import { writeFileTransactionally } from "../transactional-file.js";
+import {
+  findRecoverableFileLockError,
+  withRecoverableFileStoreLockAsync,
+} from "../../runtime/recoverable-file-lock.js";
 import type { EvolutionSession } from "./types.js";
 import { EvolutionError } from "./error.js";
+
+const artifactRefSchema = z.object({ path: z.string(), sha256: z.string() });
+const attemptSchema = z.object({
+  ordinal: z.number().int().positive(),
+  verified_at: z.string(),
+  eligible: z.boolean(),
+  candidate_sha256: z.string(),
+  candidate_path: z.string(),
+  patch_path: z.string(),
+  report_path: z.string(),
+});
+const sessionSchema = z
+  .object({
+    schema_version: z.literal("unicli.evolution-session.v1"),
+    session_id: z.string(),
+    state: z.enum(["draft", "verified", "rejected", "promoted", "rolled_back"]),
+    created_at: z.string(),
+    updated_at: z.string(),
+    component: z.object({
+      kind: z.literal("adapter"),
+      id: z.string(),
+      site: z.string(),
+      command: z.string(),
+      source_path: z.string(),
+      source_tier: z.enum(["packaged", "user", "runtime"]),
+      editable_path: z.string(),
+      scope: z.object({
+        domain: z.string().optional(),
+        model_affinity: z.array(z.string()),
+        permission_profile: z.string(),
+        target_surface: z.string().optional(),
+        operation_effect: z.string().optional(),
+        execution_operator: z.string().optional(),
+      }),
+    }),
+    evidence: artifactRefSchema.extend({ packet_id: z.string() }),
+    baseline: artifactRefSchema,
+    candidate: artifactRefSchema,
+    datasets: z.object({
+      proposal_run_ids: z.array(z.string()),
+      validation_run_ids: z.array(z.string()),
+      held_out_run_ids: z.array(z.string()),
+      validation_eval_targets: z.array(z.string()),
+      held_out_eval_targets: z.array(z.string()),
+    }),
+    runtime: z.object({
+      run_root: z.string(),
+      cli_command: z.string(),
+      timeout_ms: z.number().int().positive(),
+      allow_mutation_eval: z.boolean(),
+    }),
+    prediction: z
+      .object({
+        hypothesis: z.string(),
+        expected_fixes: z.array(z.string()).min(1),
+        at_risk: z.array(z.string()),
+      })
+      .optional(),
+    attempts: z.array(attemptSchema),
+    promotion: z
+      .object({
+        path: z.string(),
+        promoted_at: z.string(),
+        destination: z.string(),
+      })
+      .optional(),
+  })
+  .superRefine((session, context) => {
+    if (
+      session.attempts.some((attempt, index) => attempt.ordinal !== index + 1)
+    ) {
+      context.addIssue({ code: "custom", message: "non-contiguous attempts" });
+    }
+    const latest = session.attempts.at(-1);
+    const validState =
+      (session.state === "draft" &&
+        session.attempts.length === 0 &&
+        session.promotion === undefined) ||
+      (session.state === "verified" &&
+        latest?.eligible === true &&
+        session.promotion === undefined) ||
+      (session.state === "rejected" &&
+        latest?.eligible === false &&
+        session.promotion === undefined) ||
+      ((session.state === "promoted" || session.state === "rolled_back") &&
+        latest?.eligible === true &&
+        session.promotion !== undefined);
+    if (!validState) {
+      context.addIssue({ code: "custom", message: "inconsistent state" });
+    }
+  });
 
 export interface EvolutionStore {
   root_dir: string;
@@ -20,12 +116,18 @@ export interface EvolutionSessionPaths {
   baseline_file: string;
   candidate_overlay: string;
   candidate_file: string;
-  patch: string;
-  verification: string;
+  attempts: string;
   promotion: string;
   rollback: string;
   baseline_runs: string;
   candidate_runs: string;
+}
+
+export interface EvolutionAttemptPaths {
+  root: string;
+  candidate: string;
+  patch: string;
+  report: string;
 }
 
 export function createEvolutionStore(
@@ -77,8 +179,7 @@ export function evolutionSessionPaths(
     baseline_file: join(baselineOverlay, site, `${command}.yaml`),
     candidate_overlay: candidateOverlay,
     candidate_file: join(candidateOverlay, site, `${command}.yaml`),
-    patch: join(root, "candidate.patch"),
-    verification: join(root, "verification.json"),
+    attempts: join(root, "attempts"),
     promotion: join(root, "promotion.json"),
     rollback: join(root, "rollback.yaml"),
     baseline_runs: join(root, "runs", "baseline"),
@@ -86,25 +187,70 @@ export function evolutionSessionPaths(
   };
 }
 
+export function evolutionAttemptPaths(
+  paths: EvolutionSessionPaths,
+  ordinal: number,
+): EvolutionAttemptPaths {
+  if (!Number.isInteger(ordinal) || ordinal < 1) {
+    throw new EvolutionError(
+      "invalid_session",
+      `invalid evolution attempt ordinal: ${ordinal}`,
+    );
+  }
+  const root = join(paths.attempts, String(ordinal).padStart(4, "0"));
+  return {
+    root,
+    candidate: join(root, "candidate.yaml"),
+    patch: join(root, "candidate.patch"),
+    report: join(root, "verification.json"),
+  };
+}
+
 export async function initializeEvolutionSession(
   paths: EvolutionSessionPaths,
 ): Promise<void> {
-  if (existsSync(paths.root)) {
-    throw new EvolutionError(
-      "invalid_session",
-      `evolution session already exists: ${paths.root}`,
-      paths.root,
-    );
+  try {
+    await mkdir(dirname(paths.root), { recursive: true, mode: 0o700 });
+    await mkdir(paths.root, { mode: 0o700 });
+  } catch (error) {
+    if (isErrno(error, "EEXIST")) {
+      throw new EvolutionError(
+        "invalid_session",
+        `evolution session already exists: ${paths.root}`,
+        paths.root,
+      );
+    }
+    throw asStoreIoError(error, paths.root, "create");
   }
   for (const dir of [
-    paths.root,
     dirname(paths.baseline_file),
     dirname(paths.candidate_file),
+    paths.attempts,
     paths.baseline_runs,
     paths.candidate_runs,
   ]) {
     await mkdir(dir, { recursive: true, mode: 0o700 });
     await ownerOnly(dir, 0o700);
+  }
+}
+
+export async function withEvolutionSessionLock<T>(
+  store: EvolutionStore,
+  sessionId: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  assertEvolutionSessionId(sessionId);
+  const root = join(store.root_dir, sessionId);
+  try {
+    return await withRecoverableFileStoreLockAsync(root, operation);
+  } catch (error) {
+    const lockError = findRecoverableFileLockError(error);
+    if (!lockError) throw error;
+    throw new EvolutionError(
+      "io_error",
+      `failed to lock evolution session: ${lockError.message}`,
+      lockError.path,
+    );
   }
 }
 
@@ -203,59 +349,7 @@ function assertAdapterSegment(value: string, label: string): void {
 }
 
 function isEvolutionSession(value: unknown): value is EvolutionSession {
-  if (!isRecord(value)) return false;
-  const record = value as Partial<EvolutionSession>;
-  const component = record.component;
-  const scope = component?.scope;
-  const datasets = record.datasets;
-  const runtime = record.runtime;
-  return (
-    record.schema_version === "unicli.evolution-session.v1" &&
-    typeof record.session_id === "string" &&
-    ["draft", "verified", "rejected", "promoted", "rolled_back"].includes(
-      String(record.state),
-    ) &&
-    typeof record.created_at === "string" &&
-    typeof record.updated_at === "string" &&
-    component?.kind === "adapter" &&
-    typeof component.id === "string" &&
-    typeof component.site === "string" &&
-    typeof component.command === "string" &&
-    typeof component.source_path === "string" &&
-    ["packaged", "user", "runtime"].includes(component.source_tier) &&
-    typeof component.editable_path === "string" &&
-    Boolean(scope) &&
-    Array.isArray(scope?.model_affinity) &&
-    scope.model_affinity.every((entry) => typeof entry === "string") &&
-    typeof scope.permission_profile === "string" &&
-    isArtifactRef(record.evidence) &&
-    typeof record.evidence.packet_id === "string" &&
-    isArtifactRef(record.baseline) &&
-    isArtifactRef(record.candidate) &&
-    Boolean(datasets) &&
-    isStringArray(datasets?.proposal_run_ids) &&
-    isStringArray(datasets?.validation_run_ids) &&
-    isStringArray(datasets?.held_out_run_ids) &&
-    isStringArray(datasets?.validation_eval_targets) &&
-    isStringArray(datasets?.held_out_eval_targets) &&
-    Boolean(runtime) &&
-    typeof runtime?.run_root === "string" &&
-    typeof runtime.cli_command === "string" &&
-    Number.isInteger(runtime.timeout_ms) &&
-    runtime.timeout_ms > 0 &&
-    typeof runtime.allow_mutation_eval === "boolean" &&
-    (record.prediction === undefined || isPrediction(record.prediction))
-  );
-}
-
-function isPrediction(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    typeof value.hypothesis === "string" &&
-    isStringArray(value.expected_fixes) &&
-    value.expected_fixes.length > 0 &&
-    isStringArray(value.at_risk)
-  );
+  return sessionSchema.safeParse(value).success;
 }
 
 function assertSessionArtifactPaths(
@@ -277,15 +371,26 @@ function assertSessionArtifactPaths(
     ["evidence.path", session.evidence.path, expected.evidence],
     ["baseline.path", session.baseline.path, expected.baseline_file],
     ["candidate.path", session.candidate.path, expected.candidate_file],
-    ...(session.verification
-      ? [
-          [
-            "verification.path",
-            session.verification.path,
-            expected.verification,
-          ],
-        ]
-      : []),
+    ...session.attempts.flatMap((attempt) => {
+      const expectedAttempt = evolutionAttemptPaths(expected, attempt.ordinal);
+      return [
+        [
+          `attempts[${attempt.ordinal - 1}].candidate_path`,
+          attempt.candidate_path,
+          expectedAttempt.candidate,
+        ],
+        [
+          `attempts[${attempt.ordinal - 1}].patch_path`,
+          attempt.patch_path,
+          expectedAttempt.patch,
+        ],
+        [
+          `attempts[${attempt.ordinal - 1}].report_path`,
+          attempt.report_path,
+          expectedAttempt.report,
+        ],
+      ];
+    }),
     ...(session.promotion
       ? [["promotion.path", session.promotion.path, expected.promotion]]
       : []),
@@ -302,23 +407,11 @@ function assertSessionArtifactPaths(
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isArtifactRef(
-  value: unknown,
-): value is { path: string; sha256: string } {
+function isErrno(error: unknown, code: string): boolean {
   return (
-    isRecord(value) &&
-    typeof value.path === "string" &&
-    typeof value.sha256 === "string"
-  );
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+    error instanceof Error &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === code
   );
 }
 

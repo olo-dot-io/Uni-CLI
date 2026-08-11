@@ -177,7 +177,7 @@ describe("harness evolution kernel", () => {
       commands: { probe: adapterCommand },
     });
     const candidatePath = join(root, "candidate.yaml");
-    writeFileSync(candidatePath, `${BASE_ADAPTER}# candidate-success\n`);
+    writeFileSync(candidatePath, `${BASE_ADAPTER}# candidate-failure\n`);
     const evalPath = join(root, "held-out.yaml");
     writeFileSync(
       evalPath,
@@ -249,6 +249,23 @@ describe("harness evolution kernel", () => {
     manifest.candidate.path = candidateArtifactPath;
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
+    const rejected = await verifyEvolutionSession({
+      store: evolutionStore,
+      sessionId: session.session_id,
+      adapterCommand,
+      verifiedAt: "2026-08-10T12:15:00.000Z",
+    });
+    expect(rejected.session.state).toBe("rejected");
+    expect(rejected.session.attempts).toHaveLength(1);
+    expect(rejected.report.decision.eligible).toBe(false);
+    expect(readFileSync(rejected.report.candidate_path, "utf-8")).toContain(
+      "candidate-failure",
+    );
+
+    writeFileSync(
+      session.candidate.path,
+      `${BASE_ADAPTER}# candidate-success\n`,
+    );
     const verified = await verifyEvolutionSession({
       store: evolutionStore,
       sessionId: session.session_id,
@@ -272,6 +289,16 @@ describe("harness evolution kernel", () => {
       at_risk_regressions: [],
       unexpected_regressions: [],
     });
+    expect(verified.session.attempts).toHaveLength(2);
+    expect(verified.session.attempts[0].report_path).not.toBe(
+      verified.session.attempts[1].report_path,
+    );
+    expect(
+      readFileSync(verified.session.attempts[0].candidate_path, "utf-8"),
+    ).toContain("candidate-failure");
+    expect(
+      readFileSync(verified.session.attempts[1].candidate_path, "utf-8"),
+    ).toContain("candidate-success");
     expect(readFileSync(verified.report.patch_path, "utf-8")).toContain(
       "+# candidate-success",
     );
@@ -282,6 +309,7 @@ describe("harness evolution kernel", () => {
       promotedAt: "2026-08-10T12:30:00.000Z",
     });
     expect(promoted.session.state).toBe("promoted");
+    expect(promoted.report.attempt).toBe(2);
     expect(readFileSync(sourcePath, "utf-8")).toContain("candidate-success");
 
     const rolledBack = await rollbackEvolutionSession({

@@ -26,9 +26,11 @@ import {
 } from "./candidate.js";
 import { EvolutionError } from "./error.js";
 import {
+  evolutionAttemptPaths,
   evolutionSessionPaths,
   readEvolutionSession,
   sha256Text,
+  withEvolutionSessionLock,
   writeEvolutionSession,
   writePrivateJson,
   writePrivateText,
@@ -189,7 +191,6 @@ export async function verifyEvolutionSession(input: {
     baselineLabel: `baseline/${session.component.site}/${session.component.command}.yaml`,
     candidateLabel: `candidate/${session.component.site}/${session.component.command}.yaml`,
   });
-  await writePrivateText(paths.patch, diff.patch);
 
   const candidateSha256 = sha256Text(candidate);
   const candidateChanged = candidateSha256 !== session.baseline.sha256;
@@ -232,62 +233,93 @@ export async function verifyEvolutionSession(input: {
     [...validation.improvements, ...heldOut.improvements],
     [...validation.regressions, ...heldOut.regressions],
   );
-  const report: EvolutionVerificationReport = {
-    schema_version: "unicli.evolution-verification.v1",
-    session_id: session.session_id,
-    verified_at: verifiedAt,
-    component_id: session.component.id,
-    baseline_sha256: session.baseline.sha256,
-    candidate_sha256: candidateSha256,
-    patch_path: paths.patch,
-    changed_lines: { added: diff.added, removed: diff.removed },
-    prediction: predictionResult,
-    validation,
-    held_out: heldOut,
-    decision: {
-      eligible,
-      candidate_changed: candidateChanged,
-      candidate_valid: true,
-      strict_validation_improvement: strictValidationImprovement,
-      held_out_present: heldOutPresent,
-      held_out_no_regression: heldOutNoRegression,
-      reasons,
-    },
-  };
-  await writePrivateJson(paths.verification, report);
-
-  const updated: EvolutionSession = {
-    ...session,
-    state: eligible ? "verified" : "rejected",
-    updated_at: verifiedAt,
-    candidate: { path: paths.candidate_file, sha256: candidateSha256 },
-    datasets: {
-      ...session.datasets,
-      validation_eval_targets: unique([
-        ...session.datasets.validation_eval_targets,
-        ...(input.validationEvalTargets ?? []),
-      ]),
-      held_out_eval_targets: unique([
-        ...session.datasets.held_out_eval_targets,
-        ...(input.heldOutEvalTargets ?? []),
-      ]),
-    },
-    runtime: {
-      ...session.runtime,
-      cli_command: cliCommand,
-      timeout_ms: timeoutMs,
-      allow_mutation_eval: allowMutationEval,
-    },
-    prediction,
-    verification: {
-      path: paths.verification,
+  return withEvolutionSessionLock(input.store, session.session_id, async () => {
+    const current = await readEvolutionSession(input.store, session.session_id);
+    if (current.state === "promoted" || current.state === "rolled_back") {
+      throw new EvolutionError(
+        "invalid_state",
+        `cannot record an attempt for a ${current.state} evolution session`,
+      );
+    }
+    if (
+      sha256Text(await readFile(paths.candidate_file, "utf-8")) !==
+      candidateSha256
+    ) {
+      throw new EvolutionError(
+        "candidate_changed",
+        "candidate changed during verification; verify the current candidate again",
+        paths.candidate_file,
+      );
+    }
+    const ordinal = current.attempts.length + 1;
+    const attempt = evolutionAttemptPaths(paths, ordinal);
+    const report: EvolutionVerificationReport = {
+      schema_version: "unicli.evolution-verification.v1",
+      session_id: session.session_id,
       verified_at: verifiedAt,
-      eligible,
+      component_id: session.component.id,
+      baseline_sha256: session.baseline.sha256,
       candidate_sha256: candidateSha256,
-    },
-  };
-  await writeEvolutionSession(input.store, updated);
-  return { session: updated, report };
+      attempt: ordinal,
+      candidate_path: attempt.candidate,
+      patch_path: attempt.patch,
+      changed_lines: { added: diff.added, removed: diff.removed },
+      prediction: predictionResult,
+      validation,
+      held_out: heldOut,
+      decision: {
+        eligible,
+        candidate_changed: candidateChanged,
+        candidate_valid: true,
+        strict_validation_improvement: strictValidationImprovement,
+        held_out_present: heldOutPresent,
+        held_out_no_regression: heldOutNoRegression,
+        reasons,
+      },
+    };
+    await writePrivateText(attempt.candidate, candidate);
+    await writePrivateText(attempt.patch, diff.patch);
+    await writePrivateJson(attempt.report, report);
+
+    const updated: EvolutionSession = {
+      ...current,
+      state: eligible ? "verified" : "rejected",
+      updated_at: verifiedAt,
+      candidate: { path: paths.candidate_file, sha256: candidateSha256 },
+      datasets: {
+        ...current.datasets,
+        validation_eval_targets: unique([
+          ...current.datasets.validation_eval_targets,
+          ...(input.validationEvalTargets ?? []),
+        ]),
+        held_out_eval_targets: unique([
+          ...current.datasets.held_out_eval_targets,
+          ...(input.heldOutEvalTargets ?? []),
+        ]),
+      },
+      runtime: {
+        ...current.runtime,
+        cli_command: cliCommand,
+        timeout_ms: timeoutMs,
+        allow_mutation_eval: allowMutationEval,
+      },
+      prediction,
+      attempts: [
+        ...current.attempts,
+        {
+          ordinal,
+          report_path: attempt.report,
+          candidate_path: attempt.candidate,
+          patch_path: attempt.patch,
+          verified_at: verifiedAt,
+          eligible,
+          candidate_sha256: candidateSha256,
+        },
+      ],
+    };
+    await writeEvolutionSession(input.store, updated);
+    return { session: updated, report };
+  });
 }
 
 function evaluatePrediction(
