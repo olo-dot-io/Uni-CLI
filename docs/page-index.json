@@ -75,7 +75,7 @@
     },
     {
       "title": "How Uni-CLI Works",
-      "description": "Follow an intent from local discovery to execution, structured output, and repair.",
+      "description": "Follow an intent from local discovery to execution, structured output, repair, and verified evolution.",
       "locale": "root",
       "routePath": "/how-it-works",
       "markdownPath": "/markdown/how-it-works.md",
@@ -166,7 +166,7 @@
       ]
     },
     {
-      "title": "Self-Repair",
+      "title": "Repair And Evolve",
       "description": "Read an adapter failure, update the named source, and verify the original operation.",
       "locale": "root",
       "routePath": "/guide/self-repair",
@@ -555,7 +555,7 @@
     },
     {
       "title": "工作原理",
-      "description": "从意图搜索开始，了解执行、结构化结果和修复的完整流程。",
+      "description": "从意图搜索开始，了解执行、结构化结果、修复和验证式进化的完整流程。",
       "locale": "zh",
       "routePath": "/zh/how-it-works",
       "markdownPath": "/markdown/zh/how-it-works.md",
@@ -646,7 +646,7 @@
       ]
     },
     {
-      "title": "自修复",
+      "title": "修复与进化",
       "description": "读取 adapter failure，更新对应源文件，并验证原操作。",
       "locale": "zh",
       "routePath": "/zh/guide/self-repair",

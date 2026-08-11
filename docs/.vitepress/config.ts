@@ -232,7 +232,7 @@ const homeFaqs: { q: string; a: string }[] = [
   },
   {
     q: "What happens when a site changes?",
-    a: "Adapter failures can name the source file and failed step. After the adapter is updated, unicli repair reruns the original operation to verify the change.",
+    a: "Adapter failures can name the source file and failed step. unicli repair verifies one bounded edit. Repeated failures can enter an evolution session with paired baseline evaluation, held-out checks, promotion, and exact rollback.",
   },
   {
     q: "Can I add a site?",

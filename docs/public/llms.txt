@@ -9,7 +9,7 @@ Uni-CLI gives AI agents one command model for searching and operating websites, 
 - Runtime scope: fixed core and host-discovered commands are additional
 - Adapters: 1267 (1008 YAML + 259 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10351
+- Tests: 10357
 
 ## Agent Contract
 
@@ -28,7 +28,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 - [Quickstart](https://olo-dot-io.github.io/Uni-CLI/guide/getting-started) — Install Uni-CLI, find an operation, and run your first command in a few minutes. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/getting-started.md
 - [Keep Uni-CLI Current](https://olo-dot-io.github.io/Uni-CLI/guide/upgrading) — Automatic Agent updates, interactive approval, release checks, and exact package-manager recovery. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/upgrading.md
 - [Connect An Agent](https://olo-dot-io.github.io/Uni-CLI/guide/integrations) — Use Uni-CLI from shell-based agents, MCP clients, and ACP clients. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/integrations.md
-- [How Uni-CLI Works](https://olo-dot-io.github.io/Uni-CLI/how-it-works) — Follow an intent from local discovery to execution, structured output, and repair. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
+- [How Uni-CLI Works](https://olo-dot-io.github.io/Uni-CLI/how-it-works) — Follow an intent from local discovery to execution, structured output, repair, and verified evolution. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/how-it-works.md
 
 ## Use Uni-CLI
 
@@ -36,7 +36,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 - [Authentication](https://olo-dot-io.github.io/Uni-CLI/guide/authentication) — Set up site credentials, import a browser session, and diagnose login state. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/authentication.md
 - [Browser And Desktop](https://olo-dot-io.github.io/Uni-CLI/guide/browser-desktop) — Choose a browser session, inspect page state, and control desktop applications through Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/browser-desktop.md
 - [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — Short, copyable Uni-CLI workflows for web data, research papers, authenticated sites, and browser sessions. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md
-- [Self-Repair](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — Read an adapter failure, update the named source, and verify the original operation. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
+- [Repair And Evolve](https://olo-dot-io.github.io/Uni-CLI/guide/self-repair) — Read an adapter failure, update the named source, and verify the original operation. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/self-repair.md
 - [Trace Scholarly Work](https://olo-dot-io.github.io/Uni-CLI/guide/scholarly-discovery) — Find papers, reviews, rebuttals, awards, PDFs, code, and datasets through one source-backed workflow. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/scholarly-discovery.md
 - [Archive OpenReview](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) — Create a resumable local archive of a public OpenReview venue. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive.md
 

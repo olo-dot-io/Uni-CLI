@@ -63,9 +63,9 @@ const scenes = computed(() =>
         },
         {
           index: "04",
-          label: "REPAIR",
-          title: "界面变化，路径继续。",
-          detail: "读取、修改、再次运行。",
+          label: "REPAIR + EVOLVE",
+          title: "失败留下证据，修改通过验证。",
+          detail: "一次修复，或一轮有门槛的进化。",
           image: "/orbital-repair.webp",
         },
       ]
@@ -93,9 +93,9 @@ const scenes = computed(() =>
         },
         {
           index: "04",
-          label: "REPAIR",
-          title: "Interfaces move. Routes endure.",
-          detail: "Read, edit, run again.",
+          label: "REPAIR + EVOLVE",
+          title: "Failures leave evidence. Changes earn promotion.",
+          detail: "Repair once, or evolve through a measured gate.",
           image: "/orbital-repair.webp",
         },
       ],

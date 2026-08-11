@@ -1,6 +1,6 @@
 <!-- 由 docs/zh/guide/self-repair.md 生成。不要直接编辑此副本。 -->
 
-# 自修复
+# 修复与进化
 
 - 规范页: https://olo-dot-io.github.io/Uni-CLI/zh/guide/self-repair
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/zh/guide/self-repair.md
@@ -116,4 +116,4 @@ unicli -f json evolve rollback <session-id>
 
 每次 verification 都会追加一个 attempt directory，其中包含对应的 candidate、patch 和 report。Content hash 发生变化时，后续操作会停止。Agent 编辑 draft 并再次验证后，原有 rejected attempt 仍然保持完整。Verified draft 未变化时，`evolve verify <session-id> --promote` 会安装已有 attempt，不会重复运行 eval case。多个 promotion 或 rollback process 会按 session 串行执行。写入中断后的操作会从已准备的 promotion record 继续。
 
-Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复同一 origin 内的 endpoint path、selector、extraction expression 和已有 pipeline action config。Candidate 不能改变 operation identity、输入输出 contract、pipeline action topology、request method 与 header，或已有 subprocess invocation。替换 network origin 时，创建 session 的命令必须传入 `--allow-origin <origin>`。
+Read-only operation 默认可以进入 gate。全部 validation target 都位于预期的受控环境时，才能使用 `--allow-mutation-eval`。每个 mutating eval case 还必须声明要求 `confirmed` 的 `effectStatus` judge，单纯的进程成功无法推动 Candidate 晋级。Candidate 可以修复同一 origin 内的 endpoint path、selector、extraction expression 和已有 pipeline action config。Candidate 不能改变 operation identity、输入输出 contract、pipeline action topology、request method 与 header，或已有 subprocess invocation。替换 network origin 时，创建 session 的命令必须传入 `--allow-origin <origin>`。
