@@ -103,7 +103,7 @@ export async function promoteEvolutionSession(input: {
       const previous = existsSync(destination)
         ? await readFile(destination, "utf-8")
         : undefined;
-      assertDestinationUnchanged(session, destination, previous);
+      await assertDestinationUnchanged(session, destination, previous);
       if (previous !== undefined) {
         await writePrivateText(paths.rollback, previous);
       }
@@ -303,17 +303,27 @@ async function installPreparedCandidate(
   const current = existsSync(promotion.destination)
     ? await readFile(promotion.destination, "utf-8")
     : undefined;
+  await assertComponentSourceUnchanged(session);
   if (
     current !== undefined &&
     sha256Text(current) === promotion.candidate_sha256
   ) {
     return;
   }
-  assertDestinationUnchanged(session, promotion.destination, current);
+  assertOverlayDestinationUnchanged(session, promotion.destination, current);
   await writePrivateText(promotion.destination, candidate);
 }
 
-function assertDestinationUnchanged(
+async function assertDestinationUnchanged(
+  session: EvolutionSession,
+  destination: string,
+  current: string | undefined,
+): Promise<void> {
+  await assertComponentSourceUnchanged(session);
+  assertOverlayDestinationUnchanged(session, destination, current);
+}
+
+function assertOverlayDestinationUnchanged(
   session: EvolutionSession,
   destination: string,
   current: string | undefined,
@@ -336,6 +346,29 @@ function assertDestinationUnchanged(
       "destination_changed",
       "a user adapter overlay appeared after the evolution session was created; create a new session from that overlay",
       destination,
+    );
+  }
+}
+
+async function assertComponentSourceUnchanged(
+  session: EvolutionSession,
+): Promise<void> {
+  if (session.component.source_tier === "user") return;
+  let source: string;
+  try {
+    source = await readFile(session.component.source_path, "utf-8");
+  } catch {
+    throw new EvolutionError(
+      "destination_changed",
+      "adapter source became unavailable after the evolution session was created; create a new session from the current source",
+      session.component.source_path,
+    );
+  }
+  if (sha256Text(source) !== session.baseline.sha256) {
+    throw new EvolutionError(
+      "destination_changed",
+      "adapter source changed after the evolution session was created; create a new session from the current baseline",
+      session.component.source_path,
     );
   }
 }

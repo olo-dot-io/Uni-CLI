@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -512,6 +513,72 @@ describe("harness evolution kernel", () => {
     ).rejects.toThrow(/without an effectStatus=confirmed verifier/);
   });
 
+  it("rejects promotion when a packaged baseline changed after verification", async () => {
+    const packagedSourcePath = join(root, "packaged", "probe.yaml");
+    mkdirSync(dirname(packagedSourcePath), { recursive: true });
+    writeFileSync(packagedSourcePath, BASE_ADAPTER);
+    const packagedCommand: AdapterCommand = {
+      ...adapterCommand,
+      adapter_path: packagedSourcePath,
+      source_tier: "packaged",
+    };
+    registerAdapter({
+      name: "evolution-fixture",
+      type: AdapterType.WEB_API,
+      commands: {
+        probe: {
+          ...adapterCommand,
+          adapter_path: undefined,
+          source_tier: "runtime",
+        },
+      },
+    });
+    const candidatePath = join(root, "packaged-candidate.yaml");
+    writeFileSync(candidatePath, `${BASE_ADAPTER}# candidate-success\n`);
+    const evolutionStore = createEvolutionStore({
+      rootDir: join(root, "evolution-packaged-baseline"),
+    });
+    const session = await createAdapterEvolutionSession({
+      ...sessionInput(evolutionStore),
+      adapterCommand: packagedCommand,
+      validationRunIds: ["run-evolution-validation"],
+      heldOutRunIds: ["run-evolution-held-out"],
+      candidatePath,
+      prediction: {
+        hypothesis: "the candidate repairs both recorded selector failures",
+        expected_fixes: ["run-evolution-validation", "run-evolution-held-out"],
+        at_risk: [],
+      },
+      cliCommand: `${process.execPath} ${writeFakeEvolutionCli(root)}`,
+      sessionId: "evo-packaged-baseline",
+    });
+    const verified = await verifyEvolutionSession({
+      store: evolutionStore,
+      sessionId: session.session_id,
+      adapterCommand: packagedCommand,
+    });
+    expect(verified.report.decision.eligible).toBe(true);
+
+    writeFileSync(packagedSourcePath, `${BASE_ADAPTER}# package-update\n`);
+    await expect(
+      promoteEvolutionSession({
+        store: evolutionStore,
+        sessionId: session.session_id,
+      }),
+    ).rejects.toThrow(/adapter source changed after the evolution session/);
+    expect(
+      existsSync(
+        join(
+          process.env.HOME!,
+          ".unicli",
+          "adapters",
+          "evolution-fixture",
+          "probe.yaml",
+        ),
+      ),
+    ).toBe(false);
+  });
+
   it("verifies, promotes, and rolls back one isolated adapter candidate", async () => {
     registerAdapter({
       name: "evolution-fixture",
@@ -534,19 +601,7 @@ describe("harness evolution kernel", () => {
         "",
       ].join("\n"),
     );
-    const cliPath = join(root, "fake-unicli.cjs");
-    writeFileSync(
-      cliPath,
-      [
-        'const fs = require("node:fs");',
-        'const path = require("node:path");',
-        'const file = path.join(process.env.UNICLI_USER_ADAPTER_DIR, "evolution-fixture", "probe.yaml");',
-        'const ok = fs.readFileSync(file, "utf8").includes("candidate-success");',
-        'process.stdout.write(JSON.stringify({ok, schema_version:"2", command:"evolution-fixture.probe", meta:{duration_ms:1, effect_verdict:{status:"not_applicable", evidence:"declared_read", reason:"read"}}, data:[], error:ok?null:{code:"selector_miss",message:"baseline failed"}}));',
-        "process.exitCode = ok ? 0 : 1;",
-        "",
-      ].join("\n"),
-    );
+    const cliPath = writeFakeEvolutionCli(root);
     const evolutionStore = createEvolutionStore({
       rootDir: join(root, "evolution"),
     });
@@ -614,15 +669,43 @@ describe("harness evolution kernel", () => {
       session.candidate.path,
       `${BASE_ADAPTER}# candidate-success\n`,
     );
+    const falsified = await verifyEvolutionSession({
+      store: evolutionStore,
+      sessionId: session.session_id,
+      adapterCommand,
+      prediction: {
+        hypothesis: "the candidate repairs every declared failure",
+        expected_fixes: ["run-evolution-validation", "missing-expected-fix"],
+        at_risk: ["run-evolution-held-out"],
+      },
+      verifiedAt: "2026-08-10T12:18:00.000Z",
+    });
+    expect(falsified.session.state).toBe("rejected");
+    expect(falsified.report.decision).toMatchObject({
+      eligible: false,
+      prediction_satisfied: false,
+      strict_validation_improvement: true,
+      held_out_no_regression: true,
+    });
+    expect(falsified.report.prediction.expected_missed).toEqual([
+      "missing-expected-fix",
+    ]);
+
     const verified = await verifyEvolutionSession({
       store: evolutionStore,
       sessionId: session.session_id,
       adapterCommand,
+      prediction: {
+        hypothesis: "the candidate repairs the recorded selector failure",
+        expected_fixes: ["run-evolution-validation", "independent-probe"],
+        at_risk: ["run-evolution-held-out"],
+      },
       verifiedAt: "2026-08-10T12:20:00.000Z",
     });
     expect(verified.report.decision).toMatchObject({
       eligible: true,
       candidate_changed: true,
+      prediction_satisfied: true,
       strict_validation_improvement: true,
       held_out_present: true,
       held_out_no_regression: true,
@@ -637,19 +720,19 @@ describe("harness evolution kernel", () => {
       at_risk_regressions: [],
       unexpected_regressions: [],
     });
-    expect(verified.session.attempts).toHaveLength(2);
-    expect(verified.session.attempts[1]).toMatchObject({
+    expect(verified.session.attempts).toHaveLength(3);
+    expect(verified.session.attempts[2]).toMatchObject({
       report: { sha256: expect.stringMatching(/^sha256:/) },
       patch: { sha256: expect.stringMatching(/^sha256:/) },
     });
     expect(verified.session.attempts[0].report.path).not.toBe(
-      verified.session.attempts[1].report.path,
+      verified.session.attempts[2].report.path,
     );
     expect(
       readFileSync(verified.session.attempts[0].candidate.path, "utf-8"),
     ).toContain("candidate-failure");
     expect(
-      readFileSync(verified.session.attempts[1].candidate.path, "utf-8"),
+      readFileSync(verified.session.attempts[2].candidate.path, "utf-8"),
     ).toContain("candidate-success");
     expect(readFileSync(verified.report.patch_path, "utf-8")).toContain(
       "+# candidate-success",
@@ -683,7 +766,7 @@ describe("harness evolution kernel", () => {
       session.session_id,
     );
     expect(migrated.schema_version).toBe("unicli.evolution-session.v2");
-    expect(migrated.attempts).toHaveLength(2);
+    expect(migrated.attempts).toHaveLength(3);
     for (const attempt of migrated.attempts) {
       expect(attempt).toMatchObject({
         candidate: { sha256: expect.stringMatching(/^sha256:/) },
@@ -695,7 +778,7 @@ describe("harness evolution kernel", () => {
       "unicli.evolution-session.v2",
     );
 
-    const latestAttempt = verified.session.attempts[1];
+    const latestAttempt = verified.session.attempts[2];
     const originalPatch = readFileSync(latestAttempt.patch.path, "utf-8");
     writeFileSync(latestAttempt.patch.path, `${originalPatch}tampered\n`);
     await expect(
@@ -743,7 +826,7 @@ describe("harness evolution kernel", () => {
     )!.value;
     expect(promoted.session.state).toBe("promoted");
     expect(promoted.session.promotion?.sha256).toMatch(/^sha256:/);
-    expect(promoted.report.attempt).toBe(2);
+    expect(promoted.report.attempt).toBe(3);
     expect(readFileSync(sourcePath, "utf-8")).toContain("candidate-success");
 
     const promotionCrashManifest = JSON.parse(
@@ -913,4 +996,21 @@ async function writeFailedReplayRun(
     createToolCallFailedEvent(metadata, sequence, result),
   );
   await appendRunEvent(store, createRunFailedEvent(metadata, sequence, result));
+}
+
+function writeFakeEvolutionCli(root: string): string {
+  const cliPath = join(root, "fake-unicli.cjs");
+  writeFileSync(
+    cliPath,
+    [
+      'const fs = require("node:fs");',
+      'const path = require("node:path");',
+      'const file = path.join(process.env.UNICLI_USER_ADAPTER_DIR, "evolution-fixture", "probe.yaml");',
+      'const ok = fs.readFileSync(file, "utf8").includes("candidate-success");',
+      'process.stdout.write(JSON.stringify({ok, schema_version:"2", command:"evolution-fixture.probe", meta:{duration_ms:1, effect_verdict:{status:"not_applicable", evidence:"declared_read", reason:"read"}}, data:[], error:ok?null:{code:"selector_miss",message:"baseline failed"}}));',
+      "process.exitCode = ok ? 0 : 1;",
+      "",
+    ].join("\n"),
+  );
+  return cliPath;
 }
