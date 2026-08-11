@@ -220,6 +220,12 @@ export async function verifyEvolutionSession(input: {
     heldOutPresent &&
     heldOut.candidate.passed >= heldOut.baseline.passed &&
     heldOut.regressions.length === 0;
+  const predictionResult = evaluatePrediction(
+    prediction,
+    [...validation.improvements, ...heldOut.improvements],
+    [...validation.regressions, ...heldOut.regressions],
+  );
+  const predictionSatisfied = predictionResult.expected_missed.length === 0;
   const reasons: string[] = [];
   if (!candidateChanged) reasons.push("candidate is identical to baseline");
   if (validation.candidate.total === 0) {
@@ -232,16 +238,19 @@ export async function verifyEvolutionSession(input: {
   if (!heldOutPresent) reasons.push("held-out evaluation has no cases");
   else if (!heldOutNoRegression)
     reasons.push("candidate regressed on held-out cases");
+  if (!predictionSatisfied) {
+    reasons.push(
+      `candidate missed predicted fixes: ${predictionResult.expected_missed.join(", ")}`,
+    );
+  }
   const eligible =
-    candidateChanged && strictValidationImprovement && heldOutNoRegression;
+    candidateChanged &&
+    strictValidationImprovement &&
+    heldOutNoRegression &&
+    predictionSatisfied;
   if (eligible) reasons.push("candidate passed the promotion gate");
 
   const verifiedAt = input.verifiedAt ?? new Date().toISOString();
-  const predictionResult = evaluatePrediction(
-    prediction,
-    [...validation.improvements, ...heldOut.improvements],
-    [...validation.regressions, ...heldOut.regressions],
-  );
   return withEvolutionSessionLock(input.store, session.session_id, async () => {
     const current = await readEvolutionSession(input.store, session.session_id);
     if (current.state === "promoted" || current.state === "rolled_back") {
@@ -280,6 +289,7 @@ export async function verifyEvolutionSession(input: {
         eligible,
         candidate_changed: candidateChanged,
         candidate_valid: true,
+        prediction_satisfied: predictionSatisfied,
         strict_validation_improvement: strictValidationImprovement,
         held_out_present: heldOutPresent,
         held_out_no_regression: heldOutNoRegression,

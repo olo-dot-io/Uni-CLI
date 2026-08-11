@@ -224,6 +224,7 @@ export interface EvolutionVerificationReport {
     eligible: boolean;
     candidate_changed: boolean;
     candidate_valid: boolean;
+    prediction_satisfied: boolean;
     strict_validation_improvement: boolean;
     held_out_present: boolean;
     held_out_no_regression: boolean;
