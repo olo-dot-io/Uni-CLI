@@ -37,6 +37,7 @@ const BUDGET_MS = {
   liveSnapshotP95: 80,
   clickBurst1000: 30_000,
 } as const;
+const MICROBENCH_SAMPLE_COUNT = 60;
 
 class BudgetTransport implements TransportAdapter {
   readonly kind: TransportKind = "desktop-ax";
@@ -113,7 +114,7 @@ describe("compute performance budget", () => {
     const bus = createTransportBus();
     bus.register(new CoordinateBudgetTransport());
     const observations = await Promise.all(
-      Array.from({ length: 30 }, async () =>
+      Array.from({ length: MICROBENCH_SAMPLE_COUNT }, async () =>
         issueVisualObservation({
           provider: "cua-driver",
           targetScope: "desktop",
@@ -128,7 +129,7 @@ describe("compute performance budget", () => {
       ),
     );
     let observationIndex = 0;
-    const samples = await measureAsync(30, async () => {
+    const samples = await measureAsync(MICROBENCH_SAMPLE_COUNT, async () => {
       const observation = observations[observationIndex++];
       if (!observation) throw new Error("missing visual observation fixture");
       const result = await dispatchComputeRoute(
@@ -154,7 +155,7 @@ describe("compute performance budget", () => {
     const bus = createTransportBus();
     bus.register(new CoordinateBudgetTransport());
     const observations = await Promise.all(
-      Array.from({ length: 20 }, async () =>
+      Array.from({ length: MICROBENCH_SAMPLE_COUNT }, async () =>
         issueVisualObservation({
           provider: "cua-driver",
           targetScope: "desktop",
@@ -169,7 +170,7 @@ describe("compute performance budget", () => {
       ),
     );
     let observationIndex = 0;
-    const samples = await measureAsync(20, async () => {
+    const samples = await measureAsync(MICROBENCH_SAMPLE_COUNT, async () => {
       const observation = observations[observationIndex++];
       if (!observation) throw new Error("missing visual observation fixture");
       const execution = await executeComputeAction(
@@ -201,7 +202,7 @@ describe("compute performance budget", () => {
 
   it("keeps 400-node snapshot encoding under the p95 budget", async () => {
     const fixture = loadFixture("vscode-editor");
-    const samples = await measureAsync(30, async () => {
+    const samples = await measureAsync(MICROBENCH_SAMPLE_COUNT, async () => {
       const result = encodeSnapshot(fixture, {
         transport: "desktop-uia",
         alloc: new RefAllocator(),
@@ -276,7 +277,7 @@ async function measureDispatch(
   const bus = createTransportBus();
   bus.register(new BudgetTransport());
   seedBudgetRefs(bus, 1);
-  return measureAsync(30, async () => {
+  return measureAsync(MICROBENCH_SAMPLE_COUNT, async () => {
     const result = await dispatchComputeRoute(bus, { kind, params }, "darwin");
     expect(result.ok).toBe(true);
   });
