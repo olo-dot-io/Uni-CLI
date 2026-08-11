@@ -46,7 +46,15 @@ import {
   statSync,
   mkdirSync,
 } from "node:fs";
-import { join, resolve, dirname, basename, extname, relative } from "node:path";
+import {
+  join,
+  resolve,
+  dirname,
+  basename,
+  extname,
+  relative,
+  sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import yaml from "js-yaml";
@@ -161,7 +169,10 @@ export function discoverEvalFiles(): Array<{ path: string; relative: string }> {
     for (const file of walkEvalDir(root)) {
       result.push({
         path: file,
-        relative: relative(root, file).replace(/\.(yaml|yml)$/, ""),
+        relative: relative(root, file)
+          .split(sep)
+          .join("/")
+          .replace(/\.(yaml|yml)$/, ""),
       });
     }
   }
@@ -180,7 +191,7 @@ export function findEvalFiles(targets: string[]): string[] {
         entry.relative === normalized ||
         entry.relative.startsWith(`${normalized}/`) ||
         entry.path === absolute ||
-        entry.path.startsWith(`${absolute}/`)
+        entry.path.startsWith(`${absolute}${sep}`)
       ) {
         files.add(entry.path);
       }

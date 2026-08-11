@@ -150,8 +150,8 @@ describe("harness evolution kernel", () => {
     expect(session.datasets.held_out_eval_targets[0]).toBe(
       "fixture-logical-name",
     );
-    expect(session.datasets.held_out_eval_targets[1]).toMatch(
-      /evals\/smoke\/github\.yaml$/,
+    expect(session.datasets.held_out_eval_targets[1]).toBe(
+      join(process.cwd(), "evals", "smoke", "github.yaml"),
     );
   });
 
