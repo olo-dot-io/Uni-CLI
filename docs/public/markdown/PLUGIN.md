@@ -55,7 +55,7 @@ unicli plugin inspect ./unicli-plugin-astronomy -f json
 unicli plugin inspect astronomy -f json
 ```
 
-An optional root `mcp.json` is validated entry by entry. Valid configuration adds the read-only `agent-plugin.<plugin-name>.__mcp_servers` descriptor operation and remains `configuration-only`; the portable loader does not start or connect to those servers. Invalid MCP configuration does not disable independently valid Skills.
+An optional root `mcp.json` is inspected as client configuration. Uni-CLI reports supported server descriptor types but does not project them as operations, start them, or connect to them. The client that installs the package owns MCP execution and permission behavior. Invalid MCP configuration does not disable independently valid Skills.
 
 ## Uni-CLI runtime manifest
 

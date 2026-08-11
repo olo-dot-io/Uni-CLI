@@ -2,4 +2,4 @@
 "@zenalexa/unicli": minor
 ---
 
-Add the adapter harness-evolution kernel with redacted evidence packets, isolated baseline and candidate execution, disjoint validation and held-out gates, conflict-safe promotion and rollback, plus Agent Plugins 1.0 skill discovery and package inspection.
+Add a callable adapter harness-evolution loop with redacted evidence packets, falsifiable change predictions, isolated paired execution, disjoint validation and held-out gates, one-shot conflict-safe promotion, and exact rollback. Add Agent Plugins 1.0 Skill discovery and configuration-only MCP package inspection.

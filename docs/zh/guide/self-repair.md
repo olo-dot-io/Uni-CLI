@@ -85,27 +85,31 @@ unicli repair --quarantined
 
 ## 把重复 repair 接入 evolution
 
-一次成功 replay 不足以支持持久 override 时，可以创建 evolution session。Proposal、validation 和 held-out run 需要分别录制。
+一次成功 replay 不足以支持持久 override 时，可以创建 evolution session。Proposal evidence、validation case 和 held-out case 需要保持分离。
 
 ```bash
 unicli --record <site> <command> [args]
 unicli runs list -f json
 
-unicli evolve adapter <site> <command> \
+unicli -f json evolve adapter <site> <command> \
   --run <proposal-run> \
-  --validation-run <validation-run> \
-  --held-out-run <held-out-run> \
-  -f json
+  --candidate <candidate.yaml> \
+  --hypothesis "<expected mechanism>" \
+  --expect <validation-case-id> \
+  --risk <held-out-case-id> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
 ```
 
-返回的 session 包含 `candidate.path`。Agent 可以编辑这个隔离 YAML 文件，也可以通过 `--candidate <path>` 传入已有 candidate。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field。
+这条直接路径在一次调用中创建 session、提炼 proposal run、执行隔离的 baseline 与 candidate overlay、评估预测、应用 promotion gate，并安装 override。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field。
 
 ```bash
-unicli evolve diff <session-id> -f json
-unicli evolve verify <session-id> -f json
-unicli evolve promote <session-id> -f json
+unicli -f json evolve inspect
+unicli -f json evolve verify <session-id> --promote
+unicli -f json evolve rollback <session-id>
 ```
 
-Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。`promote` 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
+省略 `--candidate` 可以创建 draft。编辑返回的 `candidate.path` 后，再运行 `evolve verify`。Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。Promotion 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
 
 Read-only operation 默认可以进入 gate。只有全部 validation target 都位于预期的受控环境时，才使用 `--allow-mutation-eval`。Candidate 可以修复 endpoint、selector、extraction 和 pipeline behavior，不能改变 session 的 authorization 或 execution scope。

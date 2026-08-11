@@ -168,6 +168,37 @@ export function discoverEvalFiles(): Array<{ path: string; relative: string }> {
   return result;
 }
 
+/** Resolve bundled names, files, or directories into unique eval files. */
+export function findEvalFiles(targets: string[]): string[] {
+  const discovered = discoverEvalFiles();
+  const files = new Set<string>();
+  for (const target of targets) {
+    const normalized = target.replace(/\.(yaml|yml)$/, "").replace(/\/$/, "");
+    const absolute = resolve(target);
+    for (const entry of discovered) {
+      if (
+        entry.relative === normalized ||
+        entry.relative.startsWith(`${normalized}/`) ||
+        entry.path === absolute ||
+        entry.path.startsWith(`${absolute}/`)
+      ) {
+        files.add(entry.path);
+      }
+    }
+    if (!existsSync(absolute)) continue;
+    const stat = statSync(absolute);
+    if (stat.isDirectory()) {
+      walkEvalDir(absolute).forEach((file) => files.add(file));
+    } else if (
+      stat.isFile() &&
+      [".yaml", ".yml"].includes(extname(absolute).toLowerCase())
+    ) {
+      files.add(absolute);
+    }
+  }
+  return [...files].sort();
+}
+
 /** Load + parse one eval file. Throws on YAML errors so callers can report. */
 export function loadEvalFile(file: string): EvalFile {
   const raw = readFileSync(file, "utf-8");
@@ -401,11 +432,13 @@ export function applyJudge(
         reason: `exit ${exitCode} vs expected ${judge.equals}`,
       };
 
-    case "nonEmpty":
+    case "nonEmpty": {
+      const target = defaultResult(parsedOutput, rawOutput);
       return {
-        passed: rawOutput.trim().length > 0,
-        reason: rawOutput.trim().length > 0 ? undefined : "output empty",
+        passed: hasContent(target),
+        reason: hasContent(target) ? undefined : "output empty",
       };
+    }
 
     case "effectStatus": {
       const status = pickPath(parsedOutput, "meta.effect_verdict.status");
@@ -431,7 +464,7 @@ export function applyJudge(
     case "contains": {
       const target = judge.field
         ? pickPath(parsedOutput, judge.field)
-        : rawOutput;
+        : defaultResult(parsedOutput, rawOutput);
       const haystack =
         typeof target === "string" ? target : JSON.stringify(target);
       return {
@@ -443,7 +476,7 @@ export function applyJudge(
     case "arrayMinLength": {
       const target = judge.path
         ? pickPath(parsedOutput, judge.path)
-        : parsedOutput;
+        : defaultResult(parsedOutput, parsedOutput);
       if (!Array.isArray(target)) {
         return {
           passed: false,
@@ -459,6 +492,19 @@ export function applyJudge(
       };
     }
   }
+}
+
+function defaultResult(parsedOutput: unknown, fallback: unknown): unknown {
+  return isRecord(parsedOutput) && Object.hasOwn(parsedOutput, "data")
+    ? parsedOutput.data
+    : fallback;
+}
+
+function hasContent(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (isRecord(value)) return Object.keys(value).length > 0;
+  return value !== null && value !== undefined;
 }
 
 // ── Runner ──────────────────────────────────────────────────────────────────
@@ -619,38 +665,12 @@ function resolveTargets(
   all: Array<{ path: string; relative: string }>,
   allFlag: boolean,
 ): string[] | null {
-  const filesToRun: string[] = [];
-
   if (!target) {
     if (!allFlag) return null;
-    filesToRun.push(...all.map((f) => f.path));
-    return filesToRun;
+    return all.map((file) => file.path);
   }
-
-  if (allFlag) {
-    const resolvedTarget = resolve(target);
-    const isExistingAbs = target.startsWith("/") || target.startsWith("~/");
-    for (const f of all) {
-      const relativeMatch =
-        f.relative === target ||
-        f.relative.startsWith(`${target.replace(/\/$/, "")}/`);
-      const absoluteMatch =
-        isExistingAbs &&
-        (f.path === resolvedTarget ||
-          f.path.startsWith(`${resolvedTarget.replace(/\/$/, "")}/`));
-      if (relativeMatch || absoluteMatch) filesToRun.push(f.path);
-    }
-    return filesToRun;
-  }
-
-  const candidate = all.find(
-    (f) =>
-      f.relative === target ||
-      f.relative === target.replace(/\.(yaml|yml)$/, ""),
-  );
-  if (candidate) filesToRun.push(candidate.path);
-  else if (existsSync(resolve(target))) filesToRun.push(resolve(target));
-  return filesToRun;
+  const files = findEvalFiles([target]);
+  return allFlag ? files : files.slice(0, 1);
 }
 
 function executeEvalRuns(

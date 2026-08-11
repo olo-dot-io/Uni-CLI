@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import yaml from "js-yaml";
+import { formatPatch, structuredPatch } from "diff";
 
 import { normalizeYamlAdapterDocument } from "../../core/yaml-adapter.js";
 import { getBuiltinDirs } from "../../discovery/loader.js";
@@ -19,27 +20,15 @@ import {
   type EvolutionStore,
 } from "./store.js";
 import { distillRunEvidence } from "./distill.js";
+import { EvolutionError } from "./error.js";
 import type {
   EvolutionComponent,
+  EvolutionPrediction,
   EvolutionScope,
   EvolutionSession,
 } from "./types.js";
 
 const MAX_ADAPTER_BYTES = 256 * 1024;
-
-export class EvolutionCandidateError extends Error {
-  constructor(
-    public readonly code:
-      | "adapter_not_editable"
-      | "candidate_invalid"
-      | "source_not_found",
-    message: string,
-    public readonly path?: string,
-  ) {
-    super(message);
-    this.name = "EvolutionCandidateError";
-  }
-}
 
 export async function createAdapterEvolutionSession(input: {
   evolutionStore: EvolutionStore;
@@ -60,6 +49,7 @@ export async function createAdapterEvolutionSession(input: {
   cliCommand?: string;
   timeoutMs?: number;
   allowMutationEval?: boolean;
+  prediction?: EvolutionPrediction;
   createdAt?: string;
 }): Promise<EvolutionSession> {
   const proposalRunIds = unique(input.proposalRunIds);
@@ -91,6 +81,14 @@ export async function createAdapterEvolutionSession(input: {
     candidateAdapter,
     input.candidatePath ?? sourcePath,
   );
+  const prediction = normalizeEvolutionPrediction(input.prediction);
+  if (candidateContent !== sourceContent && !prediction) {
+    throw new EvolutionError(
+      "candidate_invalid",
+      "a changed candidate requires a falsifiable hypothesis and expected fixes",
+      input.candidatePath,
+    );
+  }
 
   const createdAt = input.createdAt ?? new Date().toISOString();
   const sessionId = input.sessionId ?? createEvolutionSessionId();
@@ -172,17 +170,37 @@ export async function createAdapterEvolutionSession(input: {
       timeout_ms: input.timeoutMs ?? 30_000,
       allow_mutation_eval: input.allowMutationEval === true,
     },
+    ...(prediction ? { prediction } : {}),
   };
   await writeEvolutionSession(input.evolutionStore, session);
   return session;
 }
 
-export function validateAdapterYaml(
-  content: string,
-  command: string,
-  path: string,
-): void {
-  parseAdapterYaml(content, command, path);
+export function normalizeEvolutionPrediction(
+  value?: EvolutionPrediction,
+): EvolutionPrediction | undefined {
+  if (!value) return undefined;
+  const hypothesis = value.hypothesis.trim();
+  const expectedFixes = unique(value.expected_fixes);
+  const atRisk = unique(value.at_risk);
+  if (!hypothesis || expectedFixes.length === 0) {
+    throw new EvolutionError(
+      "candidate_invalid",
+      "a prediction requires a hypothesis and at least one expected fix",
+    );
+  }
+  const overlap = expectedFixes.find((entry) => atRisk.includes(entry));
+  if (overlap) {
+    throw new EvolutionError(
+      "candidate_invalid",
+      `prediction target appears in expected fixes and at-risk cases: ${overlap}`,
+    );
+  }
+  return {
+    hypothesis,
+    expected_fixes: expectedFixes,
+    at_risk: atRisk,
+  };
 }
 
 export function parseAdapterYaml(
@@ -191,7 +209,7 @@ export function parseAdapterYaml(
   path: string,
 ): Extract<YamlAdapterNormalization, { ok: true }> {
   if (Buffer.byteLength(content, "utf-8") > MAX_ADAPTER_BYTES) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "candidate_invalid",
       `adapter candidate exceeds ${MAX_ADAPTER_BYTES} bytes`,
       path,
@@ -204,7 +222,7 @@ export function parseAdapterYaml(
       filename: path,
     });
   } catch (error) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "candidate_invalid",
       `failed to parse adapter candidate: ${error instanceof Error ? error.message : String(error)}`,
       path,
@@ -217,7 +235,7 @@ export function parseAdapterYaml(
     "user",
   );
   if (!normalized.ok) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "candidate_invalid",
       `invalid adapter candidate: ${normalized.error}`,
       path,
@@ -245,7 +263,7 @@ export function assertEvolutionScopeUnchanged(
       JSON.stringify(candidateScope[field]),
   );
   if (changed.length > 0) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "candidate_invalid",
       `adapter candidate changes evolution scope fields: ${changed.join(", ")}`,
       path,
@@ -291,28 +309,17 @@ export function createUnifiedAdapterDiff(input: {
   baselineLabel: string;
   candidateLabel: string;
 }): { patch: string; added: number; removed: number } {
-  const baseline = splitLines(input.baseline);
-  const candidate = splitLines(input.candidate);
-  const operations = diffOperations(baseline, candidate);
-  const added = operations.filter((operation) => operation.kind === "+").length;
-  const removed = operations.filter(
-    (operation) => operation.kind === "-",
-  ).length;
-  const header = `--- ${input.baselineLabel}\n+++ ${input.candidateLabel}\n`;
-  if (added === 0 && removed === 0) {
-    return { patch: header, added, removed };
-  }
-  const hunk = `@@ -1,${baseline.length} +1,${candidate.length} @@\n`;
+  const patch = structuredPatch(
+    input.baselineLabel,
+    input.candidateLabel,
+    input.baseline,
+    input.candidate,
+  );
+  const lines = patch.hunks.flatMap((hunk) => hunk.lines);
   return {
-    patch:
-      header +
-      hunk +
-      operations
-        .map((operation) => `${operation.kind}${operation.line}`)
-        .join("\n") +
-      "\n",
-    added,
-    removed,
+    patch: formatPatch(patch),
+    added: lines.filter((line) => line.startsWith("+")).length,
+    removed: lines.filter((line) => line.startsWith("-")).length,
   };
 }
 
@@ -335,14 +342,14 @@ function resolveAdapterFile(
   );
   const found = candidates.find((path) => existsSync(path));
   if (!found) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "source_not_found",
       `adapter source file not found for ${site}.${command}`,
       declaredPath,
     );
   }
   if (!found.endsWith(".yaml") && !found.endsWith(".yml")) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       "adapter_not_editable",
       `1.2.0 evolution sessions require a YAML adapter: ${found}`,
       found,
@@ -358,73 +365,12 @@ async function readAdapterText(
   try {
     return await readFile(path, "utf-8");
   } catch (error) {
-    throw new EvolutionCandidateError(
+    throw new EvolutionError(
       code,
       `failed to read adapter file: ${error instanceof Error ? error.message : String(error)}`,
       path,
     );
   }
-}
-
-interface DiffOperation {
-  kind: " " | "+" | "-";
-  line: string;
-}
-
-function splitLines(value: string): string[] {
-  const lines = value.split("\n");
-  if (lines.at(-1) === "") lines.pop();
-  return lines;
-}
-
-function diffOperations(left: string[], right: string[]): DiffOperation[] {
-  if (left.length > 2_000 || right.length > 2_000) {
-    return [
-      ...left.map((line) => ({ kind: "-" as const, line })),
-      ...right.map((line) => ({ kind: "+" as const, line })),
-    ];
-  }
-  const width = right.length + 1;
-  const matrix = Array.from(
-    { length: left.length + 1 },
-    () => new Uint32Array(width),
-  );
-  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-      matrix[leftIndex][rightIndex] =
-        left[leftIndex - 1] === right[rightIndex - 1]
-          ? matrix[leftIndex - 1][rightIndex - 1] + 1
-          : Math.max(
-              matrix[leftIndex - 1][rightIndex],
-              matrix[leftIndex][rightIndex - 1],
-            );
-    }
-  }
-  const operations: DiffOperation[] = [];
-  let leftIndex = left.length;
-  let rightIndex = right.length;
-  while (leftIndex > 0 || rightIndex > 0) {
-    if (
-      leftIndex > 0 &&
-      rightIndex > 0 &&
-      left[leftIndex - 1] === right[rightIndex - 1]
-    ) {
-      operations.push({ kind: " ", line: left[leftIndex - 1] });
-      leftIndex -= 1;
-      rightIndex -= 1;
-    } else if (
-      rightIndex > 0 &&
-      (leftIndex === 0 ||
-        matrix[leftIndex][rightIndex - 1] >= matrix[leftIndex - 1][rightIndex])
-    ) {
-      operations.push({ kind: "+", line: right[rightIndex - 1] });
-      rightIndex -= 1;
-    } else {
-      operations.push({ kind: "-", line: left[leftIndex - 1] });
-      leftIndex -= 1;
-    }
-  }
-  return operations.reverse();
 }
 
 function unique(values: string[]): string[] {
@@ -445,7 +391,7 @@ function assertDisjointRunSplits(
     for (const runId of runIds) {
       const previous = owners.get(runId);
       if (previous) {
-        throw new EvolutionCandidateError(
+        throw new EvolutionError(
           "candidate_invalid",
           `run ${runId} appears in both ${previous} and ${split}; evolution data splits must be disjoint`,
         );

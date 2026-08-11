@@ -97,6 +97,12 @@ export interface EvolutionArtifactRef {
   sha256: string;
 }
 
+export interface EvolutionPrediction {
+  hypothesis: string;
+  expected_fixes: string[];
+  at_risk: string[];
+}
+
 export interface EvolutionSession {
   schema_version: "unicli.evolution-session.v1";
   session_id: string;
@@ -120,6 +126,7 @@ export interface EvolutionSession {
     timeout_ms: number;
     allow_mutation_eval: boolean;
   };
+  prediction?: EvolutionPrediction;
   verification?: {
     path: string;
     verified_at: string;
@@ -188,6 +195,12 @@ export interface EvolutionVerificationReport {
   changed_lines: {
     added: number;
     removed: number;
+  };
+  prediction: EvolutionPrediction & {
+    expected_fixed: string[];
+    expected_missed: string[];
+    at_risk_regressions: string[];
+    unexpected_regressions: string[];
   };
   validation: EvolutionSplitComparison;
   held_out: EvolutionSplitComparison;

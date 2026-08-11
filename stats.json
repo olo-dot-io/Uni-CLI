@@ -4,12 +4,12 @@
   "adapter_count_total": 1267,
   "site_count": 337,
   "command_count": 1890,
-  "test_count": 10334,
+  "test_count": 10336,
   "pipeline_step_count": 113,
   "pipeline_registered_step_count": 58,
   "pipeline_transport_step_count": 55,
   "transport_count": 3,
   "app_transport_count": 8,
   "category_count": 19,
-  "built_at": "2026-08-10"
+  "built_at": "2026-08-11"
 }

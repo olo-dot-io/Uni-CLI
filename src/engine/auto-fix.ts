@@ -5,10 +5,6 @@
  * actual data structure to find array fields that might be the correct path.
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { userAdapterRoot } from "./user-home.js";
-
 /**
  * Analyze data structure and suggest alternative select paths.
  * Finds all array-valued paths in the object tree (max depth 5).
@@ -35,51 +31,5 @@ function findArrayPaths(
     } else if (value && typeof value === "object" && !Array.isArray(value)) {
       findArrayPaths(value as Record<string, unknown>, path, paths, depth + 1);
     }
-  }
-}
-
-/**
- * Apply a select path fix to a user adapter YAML file.
- * Writes to ~/.unicli/adapters/<site>/<cmd>.yaml (user override dir).
- */
-export function applySelectFix(
-  site: string,
-  command: string,
-  _stepIndex: number,
-  oldPath: string,
-  newPath: string,
-  adapterPath?: string,
-): string | null {
-  try {
-    // Validate site/command names
-    if (!/^[a-zA-Z0-9._-]+$/.test(site)) return null;
-    if (!/^[a-zA-Z0-9._-]+$/.test(command)) return null;
-
-    let content: string | undefined;
-    if (adapterPath) {
-      try {
-        content = readFileSync(adapterPath, "utf-8");
-      } catch {
-        // Can't read source adapter
-      }
-    }
-
-    // Write fix to user adapter dir
-    const userDir = join(userAdapterRoot(), site);
-    mkdirSync(userDir, { recursive: true });
-    const userPath = join(userDir, `${command}.yaml`);
-
-    if (content) {
-      // Simple string replacement of the select path
-      const fixed = content.replace(
-        new RegExp(`(select:\\s*)(['"]?)${oldPath.replace(/\./g, "\\.")}\\2`),
-        `$1$2${newPath}$2`,
-      );
-      writeFileSync(userPath, fixed, "utf-8");
-    }
-
-    return userPath;
-  } catch {
-    return null;
   }
 }

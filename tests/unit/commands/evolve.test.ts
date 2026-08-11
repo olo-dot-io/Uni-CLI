@@ -55,11 +55,11 @@ describe("unicli evolve command", () => {
     process.exitCode = originalExitCode;
   });
 
-  it("lists an empty local evolution store through a v2 envelope", async () => {
+  it("lists an empty local evolution store through inspect", async () => {
     const capture = captureConsole();
     try {
       await createProgram().parseAsync(
-        ["-f", "json", "evolve", "list", "--root", root],
+        ["-f", "json", "evolve", "inspect", "--root", root],
         { from: "user" },
       );
     } finally {
@@ -73,7 +73,7 @@ describe("unicli evolve command", () => {
     };
     expect(envelope).toMatchObject({
       ok: true,
-      command: "evolve.list",
+      command: "evolve.inspect",
       data: { root, sessions: [] },
     });
     expect(capture.stderr()).toBe("");

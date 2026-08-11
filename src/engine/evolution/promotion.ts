@@ -3,6 +3,7 @@ import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { userAdapterRoot } from "../user-home.js";
+import { EvolutionError } from "./error.js";
 import {
   evolutionSessionPaths,
   readEvolutionSession,
@@ -19,21 +20,6 @@ import type {
   EvolutionVerificationReport,
 } from "./types.js";
 
-export class EvolutionPromotionError extends Error {
-  constructor(
-    public readonly code:
-      | "candidate_changed"
-      | "destination_changed"
-      | "not_eligible"
-      | "not_promoted",
-    message: string,
-    public readonly path?: string,
-  ) {
-    super(message);
-    this.name = "EvolutionPromotionError";
-  }
-}
-
 export async function promoteEvolutionSession(input: {
   store: EvolutionStore;
   sessionId: string;
@@ -48,7 +34,7 @@ export async function promoteEvolutionSession(input: {
     !session.verification?.eligible ||
     !session.verification.path
   ) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "not_eligible",
       `evolution session is not eligible for promotion: ${session.state}`,
     );
@@ -69,7 +55,7 @@ export async function promoteEvolutionSession(input: {
     report.baseline_sha256 !== session.baseline.sha256 ||
     !report.decision?.eligible
   ) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "not_eligible",
       "the stored verification report did not pass the promotion gate",
       paths.verification,
@@ -81,7 +67,7 @@ export async function promoteEvolutionSession(input: {
     candidateSha256 !== session.verification.candidate_sha256 ||
     candidateSha256 !== report.candidate_sha256
   ) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "candidate_changed",
       "candidate changed after verification; run `unicli evolve verify` again",
       paths.candidate_file,
@@ -141,7 +127,7 @@ export async function rollbackEvolutionSession(input: {
 }> {
   const session = await readEvolutionSession(input.store, input.sessionId);
   if (session.state !== "promoted" || !session.promotion?.path) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "not_promoted",
       `evolution session is not promoted: ${session.state}`,
     );
@@ -162,14 +148,14 @@ export async function rollbackEvolutionSession(input: {
     promotion.destination !== session.promotion.destination ||
     promotion.candidate_sha256 !== session.verification?.candidate_sha256
   ) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "destination_changed",
       "the stored promotion record does not match the evolution session",
       paths.promotion,
     );
   }
   if (!existsSync(promotion.destination)) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "destination_changed",
       "promoted adapter is missing; rollback stopped to preserve later user changes",
       promotion.destination,
@@ -177,7 +163,7 @@ export async function rollbackEvolutionSession(input: {
   }
   const current = await readFile(promotion.destination, "utf-8");
   if (sha256Text(current) !== promotion.candidate_sha256) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "destination_changed",
       "promoted adapter changed after promotion; rollback stopped to preserve later user changes",
       promotion.destination,
@@ -213,7 +199,7 @@ function assertDestinationUnchanged(
       current === undefined ||
       sha256Text(current) !== session.baseline.sha256
     ) {
-      throw new EvolutionPromotionError(
+      throw new EvolutionError(
         "destination_changed",
         "user adapter changed after the evolution session was created; create a new session from the current baseline",
         destination,
@@ -222,7 +208,7 @@ function assertDestinationUnchanged(
     return;
   }
   if (current !== undefined) {
-    throw new EvolutionPromotionError(
+    throw new EvolutionError(
       "destination_changed",
       "a user adapter overlay appeared after the evolution session was created; create a new session from that overlay",
       destination,

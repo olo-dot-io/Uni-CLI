@@ -1,10 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -82,27 +76,24 @@ describe("Agent Plugins 1.0", () => {
     const inspection = inspectAgentPlugin(root);
     expect(inspection.skills.map((skill) => skill.name)).toEqual(["summarize"]);
     expect(inspection.mcp.valid).toBe(true);
-    expect(Object.keys(inspection.mcp.servers)).toEqual(["local", "remote"]);
+    expect(Object.keys(inspection.mcp.servers)).toEqual([
+      "local",
+      "remote",
+      "insecure",
+    ]);
     expect(inspection.projected_operations).toEqual([
       "agent-plugin.fixture.tools.summarize",
-      "agent-plugin.fixture.tools.__mcp_servers",
     ]);
     expect(inspection.skills[0].allowedTools).toEqual(["Read", "Bash(jq:*)"]);
     expect(inspection.skills[0].pipeline).toBeUndefined();
     expect(inspection.issues.map((issue) => issue.component)).toEqual([
       "manifest",
-      "mcp",
     ]);
 
     registerAgentPluginSkills(inspection);
     const operation = resolveCommand("agent-plugin.fixture.tools", "summarize");
     expect(operation?.command.pipeline).toBeUndefined();
     expect(operation?.command.operation_effect).toBe("read");
-    const mcpOperation = resolveCommand(
-      "agent-plugin.fixture.tools",
-      "__mcp_servers",
-    );
-    expect(mcpOperation?.command.operation_effect).toBe("read");
   });
 
   it("skips non-conforming skills without disabling valid components", () => {
@@ -130,37 +121,6 @@ describe("Agent Plugins 1.0", () => {
       expect.objectContaining({ severity: "warning", component: "skills" }),
     ]);
   });
-
-  it.skipIf(process.platform === "win32")(
-    "rejects plugin-relative MCP paths through an escaping symlink",
-    () => {
-      const root = mkdtempSync(join(tmpdir(), "unicli-agent-plugin-"));
-      const outside = mkdtempSync(
-        join(tmpdir(), "unicli-agent-plugin-outside-"),
-      );
-      roots.push(root, outside);
-      symlinkSync(outside, join(root, "bin"), "dir");
-      writeFileSync(
-        join(root, "plugin.json"),
-        JSON.stringify({ $schema: AGENT_PLUGIN_SCHEMA, name: "bounded-mcp" }),
-      );
-      writeFileSync(
-        join(root, "mcp.json"),
-        JSON.stringify({
-          $schema: AGENT_PLUGIN_MCP_SCHEMA,
-          mcpServers: {
-            escaped: { type: "stdio", command: "./bin/not-created" },
-          },
-        }),
-      );
-
-      const inspection = inspectAgentPlugin(root);
-      expect(inspection.mcp.servers).toEqual({});
-      expect(inspection.issues).toContainEqual(
-        expect.objectContaining({ component: "mcp", severity: "warning" }),
-      );
-    },
-  );
 
   it("rejects a package that targets an unsupported manifest schema", () => {
     const root = mkdtempSync(join(tmpdir(), "unicli-agent-plugin-"));

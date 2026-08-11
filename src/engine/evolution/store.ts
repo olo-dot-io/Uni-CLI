@@ -1,17 +1,12 @@
-import {
-  chmod,
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  writeFile,
-} from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 
 import { userDataRoot } from "../user-home.js";
+import { writeFileTransactionally } from "../transactional-file.js";
 import type { EvolutionSession } from "./types.js";
+import { EvolutionError } from "./error.js";
 
 export interface EvolutionStore {
   root_dir: string;
@@ -31,21 +26,6 @@ export interface EvolutionSessionPaths {
   rollback: string;
   baseline_runs: string;
   candidate_runs: string;
-}
-
-export class EvolutionStoreError extends Error {
-  constructor(
-    public readonly code:
-      | "invalid_session_id"
-      | "session_not_found"
-      | "invalid_session"
-      | "io_error",
-    message: string,
-    public readonly path?: string,
-  ) {
-    super(message);
-    this.name = "EvolutionStoreError";
-  }
 }
 
 export function createEvolutionStore(
@@ -70,7 +50,7 @@ export function createEvolutionSessionId(): string {
 
 export function assertEvolutionSessionId(sessionId: string): void {
   if (!/^evo-[A-Za-z0-9._-]+$/.test(sessionId)) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "invalid_session_id",
       `invalid evolution session id: ${sessionId}`,
     );
@@ -110,7 +90,7 @@ export async function initializeEvolutionSession(
   paths: EvolutionSessionPaths,
 ): Promise<void> {
   if (existsSync(paths.root)) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "invalid_session",
       `evolution session already exists: ${paths.root}`,
       paths.root,
@@ -141,10 +121,7 @@ export async function writePrivateText(
 ): Promise<void> {
   try {
     await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-    const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
-    await writeFile(temporary, value, { encoding: "utf-8", mode: 0o600 });
-    await ownerOnly(temporary, 0o600);
-    await rename(temporary, path);
+    await writeFileTransactionally(path, Buffer.from(value), { mode: 0o600 });
     await ownerOnly(path, 0o600);
   } catch (error) {
     throw asStoreIoError(error, path, "write");
@@ -166,7 +143,7 @@ export async function readEvolutionSession(
   assertEvolutionSessionId(sessionId);
   const path = join(store.root_dir, sessionId, "session.json");
   if (!existsSync(path)) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "session_not_found",
       `evolution session not found: ${sessionId}`,
       path,
@@ -174,7 +151,7 @@ export async function readEvolutionSession(
   }
   const value = await readPrivateJson<unknown>(path);
   if (!isEvolutionSession(value) || value.session_id !== sessionId) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "invalid_session",
       `invalid evolution session manifest: ${path}`,
       path,
@@ -216,17 +193,9 @@ export function sha256Text(value: string): string {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
-export async function sha256File(path: string): Promise<string> {
-  try {
-    return sha256Text(await readFile(path, "utf-8"));
-  } catch (error) {
-    throw asStoreIoError(error, path, "read");
-  }
-}
-
 function assertAdapterSegment(value: string, label: string): void {
   if (!/^[A-Za-z0-9._-]+$/.test(value)) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "invalid_session",
       `invalid adapter ${label}: ${value}`,
     );
@@ -274,7 +243,18 @@ function isEvolutionSession(value: unknown): value is EvolutionSession {
     typeof runtime.cli_command === "string" &&
     Number.isInteger(runtime.timeout_ms) &&
     runtime.timeout_ms > 0 &&
-    typeof runtime.allow_mutation_eval === "boolean"
+    typeof runtime.allow_mutation_eval === "boolean" &&
+    (record.prediction === undefined || isPrediction(record.prediction))
+  );
+}
+
+function isPrediction(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.hypothesis === "string" &&
+    isStringArray(value.expected_fixes) &&
+    value.expected_fixes.length > 0 &&
+    isStringArray(value.at_risk)
   );
 }
 
@@ -314,7 +294,7 @@ function assertSessionArtifactPaths(
     ([, path, expectedPath]) => path !== expectedPath,
   );
   if (mismatch) {
-    throw new EvolutionStoreError(
+    throw new EvolutionError(
       "invalid_session",
       `invalid evolution session artifact path ${mismatch[0]}: ${mismatch[1]}`,
       mismatch[1],
@@ -350,10 +330,10 @@ function asStoreIoError(
   error: unknown,
   path: string,
   operation: string,
-): EvolutionStoreError {
-  if (error instanceof EvolutionStoreError) return error;
+): EvolutionError {
+  if (error instanceof EvolutionError) return error;
   const message = error instanceof Error ? error.message : String(error);
-  return new EvolutionStoreError(
+  return new EvolutionError(
     "io_error",
     `failed to ${operation} evolution artifact: ${message}`,
     path,

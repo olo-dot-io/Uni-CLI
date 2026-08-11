@@ -100,7 +100,7 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 - <!-- STATS:command_count -->1890<!-- /STATS --> 条注册命令
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10334<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10336<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -227,16 +227,21 @@ unicli repair <site> <command>
 
 `repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
 
-对于重复出现的 failure，`evolve adapter` 会分开保存 proposal evidence、validation 和 held-out case。Agent 只编辑隔离的 YAML candidate。Uni-CLI 完成 baseline 对照并通过 promotion gate 后，才会安装 user override。
+对于重复出现的 failure，`evolve adapter` 会分开保存 proposal evidence、validation 和 held-out case。Agent 提交一份隔离的 YAML candidate 和可证伪预测。Uni-CLI 对 baseline 与 candidate 进行成对评估，记录预测遗漏与回退，并且只在 promotion gate 通过后安装 user override。
 
 ```bash
 unicli evolve adapter <site> <command> \
   --run <proposal-run> \
-  --validation-run <validation-run> \
-  --held-out-run <held-out-run>
-unicli evolve verify <session-id>
-unicli evolve promote <session-id>
+  --candidate <candidate.yaml> \
+  --hypothesis "<expected mechanism>" \
+  --expect <validation-case-id> \
+  --risk <held-out-case-id> \
+  --validation <validation-eval.yaml> \
+  --held-out <held-out-eval.yaml> \
+  --promote
 ```
+
+省略 `--candidate` 时，命令会创建可编辑 draft。`evolve verify` 用于继续该 draft，`evolve inspect` 返回 evidence 与 decision，`evolve rollback` 精确恢复晋级前的 overlay。
 
 下面是一份最小 YAML adapter。
 

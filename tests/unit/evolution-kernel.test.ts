@@ -219,6 +219,11 @@ describe("harness evolution kernel", () => {
       heldOutRunIds: ["run-evolution-held-out"],
       heldOutEvalTargets: [evalPath],
       candidatePath,
+      prediction: {
+        hypothesis: "the candidate repairs the recorded selector failure",
+        expected_fixes: ["run-evolution-validation", "independent-probe"],
+        at_risk: ["run-evolution-held-out"],
+      },
       sessionId: "evo-fixture",
       cliCommand: `${process.execPath} ${cliPath}`,
       createdAt: "2026-08-10T12:10:00.000Z",
@@ -261,6 +266,12 @@ describe("harness evolution kernel", () => {
     expect(verified.report.validation.candidate.passed).toBe(1);
     expect(verified.report.held_out.baseline.passed).toBe(0);
     expect(verified.report.held_out.candidate.passed).toBe(2);
+    expect(verified.report.prediction).toMatchObject({
+      expected_fixed: ["run-evolution-validation", "independent-probe"],
+      expected_missed: [],
+      at_risk_regressions: [],
+      unexpected_regressions: [],
+    });
     expect(readFileSync(verified.report.patch_path, "utf-8")).toContain(
       "+# candidate-success",
     );

@@ -1,9 +1,8 @@
 import { readFile } from "node:fs/promises";
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
 
 import {
   discoverEvalFiles,
+  findEvalFiles,
   loadEvalFile,
   runCase,
 } from "../../commands/eval.js";
@@ -22,8 +21,10 @@ import { createRunStore, readRunEvents } from "../session/store.js";
 import {
   assertEvolutionScopeUnchanged,
   createUnifiedAdapterDiff,
+  normalizeEvolutionPrediction,
   parseAdapterYaml,
 } from "./candidate.js";
+import { EvolutionError } from "./error.js";
 import {
   evolutionSessionPaths,
   readEvolutionSession,
@@ -36,27 +37,12 @@ import {
 import type {
   EvolutionCase,
   EvolutionCaseOutcome,
+  EvolutionPrediction,
   EvolutionScore,
   EvolutionSession,
   EvolutionSplitComparison,
   EvolutionVerificationReport,
 } from "./types.js";
-
-export class EvolutionEvaluationError extends Error {
-  constructor(
-    public readonly code:
-      | "invalid_state"
-      | "mutation_eval_blocked"
-      | "replay_unavailable"
-      | "eval_not_found"
-      | "eval_adapter_mismatch"
-      | "invalid_case",
-    message: string,
-  ) {
-    super(message);
-    this.name = "EvolutionEvaluationError";
-  }
-}
 
 export async function verifyEvolutionSession(input: {
   store: EvolutionStore;
@@ -67,6 +53,7 @@ export async function verifyEvolutionSession(input: {
   cliCommand?: string;
   timeoutMs?: number;
   allowMutationEval?: boolean;
+  prediction?: EvolutionPrediction;
   verifiedAt?: string;
 }): Promise<{
   session: EvolutionSession;
@@ -74,7 +61,7 @@ export async function verifyEvolutionSession(input: {
 }> {
   const session = await readEvolutionSession(input.store, input.sessionId);
   if (session.state === "promoted" || session.state === "rolled_back") {
-    throw new EvolutionEvaluationError(
+    throw new EvolutionError(
       "invalid_state",
       `cannot verify a ${session.state} evolution session`,
     );
@@ -88,7 +75,7 @@ export async function verifyEvolutionSession(input: {
   const baseline = await readFile(paths.baseline_file, "utf-8");
   const candidate = await readFile(paths.candidate_file, "utf-8");
   if (sha256Text(baseline) !== session.baseline.sha256) {
-    throw new EvolutionEvaluationError(
+    throw new EvolutionError(
       "invalid_state",
       "the isolated baseline changed after session creation; create a new evolution session",
     );
@@ -206,6 +193,15 @@ export async function verifyEvolutionSession(input: {
 
   const candidateSha256 = sha256Text(candidate);
   const candidateChanged = candidateSha256 !== session.baseline.sha256;
+  const prediction = normalizeEvolutionPrediction(
+    input.prediction ?? session.prediction,
+  );
+  if (!prediction) {
+    throw new EvolutionError(
+      "invalid_case",
+      "candidate verification requires a falsifiable hypothesis and expected fixes",
+    );
+  }
   const strictValidationImprovement =
     validation.candidate.passed > validation.baseline.passed &&
     validation.regressions.length === 0;
@@ -231,6 +227,11 @@ export async function verifyEvolutionSession(input: {
   if (eligible) reasons.push("candidate passed the promotion gate");
 
   const verifiedAt = input.verifiedAt ?? new Date().toISOString();
+  const predictionResult = evaluatePrediction(
+    prediction,
+    [...validation.improvements, ...heldOut.improvements],
+    [...validation.regressions, ...heldOut.regressions],
+  );
   const report: EvolutionVerificationReport = {
     schema_version: "unicli.evolution-verification.v1",
     session_id: session.session_id,
@@ -240,6 +241,7 @@ export async function verifyEvolutionSession(input: {
     candidate_sha256: candidateSha256,
     patch_path: paths.patch,
     changed_lines: { added: diff.added, removed: diff.removed },
+    prediction: predictionResult,
     validation,
     held_out: heldOut,
     decision: {
@@ -276,6 +278,7 @@ export async function verifyEvolutionSession(input: {
       timeout_ms: timeoutMs,
       allow_mutation_eval: allowMutationEval,
     },
+    prediction,
     verification: {
       path: paths.verification,
       verified_at: verifiedAt,
@@ -285,6 +288,36 @@ export async function verifyEvolutionSession(input: {
   };
   await writeEvolutionSession(input.store, updated);
   return { session: updated, report };
+}
+
+function evaluatePrediction(
+  prediction: EvolutionPrediction,
+  improvements: string[],
+  regressions: string[],
+): EvolutionVerificationReport["prediction"] {
+  const expectedFixed = prediction.expected_fixes.filter((reference) =>
+    improvements.some((id) => matchesCaseReference(id, reference)),
+  );
+  return {
+    ...prediction,
+    expected_fixed: expectedFixed,
+    expected_missed: prediction.expected_fixes.filter(
+      (reference) => !expectedFixed.includes(reference),
+    ),
+    at_risk_regressions: prediction.at_risk.filter((reference) =>
+      regressions.some((id) => matchesCaseReference(id, reference)),
+    ),
+    unexpected_regressions: regressions.filter(
+      (id) =>
+        !prediction.at_risk.some((reference) =>
+          matchesCaseReference(id, reference),
+        ),
+    ),
+  };
+}
+
+function matchesCaseReference(id: string, reference: string): boolean {
+  return id === reference || id.endsWith(`:${reference}`);
 }
 
 function compareSplit(
@@ -406,7 +439,7 @@ async function runCases(
     const events = await readRunEvents(store, runId);
     const replay = extractRunReplayInvocation(events, runId);
     if (!replay || replay.site !== site || replay.cmd !== command) {
-      throw new EvolutionEvaluationError(
+      throw new EvolutionError(
         "replay_unavailable",
         `run ${runId} has no replay payload for ${site}.${command}`,
       );
@@ -462,12 +495,23 @@ function evalCases(
   site: string,
   split: "validation" | "held-out",
 ): EvolutionCase[] {
-  const files = resolveEvalTargets(targets);
+  const files = unique(
+    targets.flatMap((target) => {
+      const matches = findEvalFiles([target]);
+      if (matches.length === 0) {
+        throw new EvolutionError(
+          "eval_not_found",
+          `eval target not found: ${target}`,
+        );
+      }
+      return matches;
+    }),
+  );
   const cases: EvolutionCase[] = [];
   for (const filePath of files) {
     const file = loadEvalFile(filePath);
     if (file.adapter !== site) {
-      throw new EvolutionEvaluationError(
+      throw new EvolutionError(
         "eval_adapter_mismatch",
         `eval ${filePath} targets ${file.adapter}; expected ${site}`,
       );
@@ -491,73 +535,6 @@ function evalCases(
   return cases;
 }
 
-function resolveEvalTargets(targets: string[]): string[] {
-  const discovered = discoverEvalFiles();
-  const resolved: string[] = [];
-  for (const target of unique(targets)) {
-    const absolute = resolve(target);
-    const matches = discovered.filter(
-      (entry) =>
-        entry.relative === target.replace(/\.(yaml|yml)$/, "") ||
-        entry.relative.startsWith(`${target.replace(/\/$/, "")}/`) ||
-        entry.path === absolute ||
-        entry.path.startsWith(`${absolute}/`),
-    );
-    if (matches.length > 0) {
-      resolved.push(...matches.map((entry) => entry.path));
-      continue;
-    }
-    if (existsSync(absolute)) {
-      const stat = statSync(absolute);
-      if (stat.isDirectory()) {
-        const files = walkYamlFiles(absolute);
-        if (files.length === 0) {
-          throw new EvolutionEvaluationError(
-            "eval_not_found",
-            `eval directory contains no YAML files: ${target}`,
-          );
-        }
-        resolved.push(...files);
-      } else if (
-        stat.isFile() &&
-        [".yaml", ".yml"].includes(extname(absolute).toLowerCase())
-      ) {
-        resolved.push(absolute);
-      } else {
-        throw new EvolutionEvaluationError(
-          "eval_not_found",
-          `eval target is not a YAML file or directory: ${target}`,
-        );
-      }
-      continue;
-    }
-    throw new EvolutionEvaluationError(
-      "eval_not_found",
-      `eval target not found: ${target}`,
-    );
-  }
-  return unique(resolved);
-}
-
-function walkYamlFiles(root: string): string[] {
-  const files: string[] = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const directory = stack.pop()!;
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name);
-      if (entry.isDirectory()) stack.push(path);
-      else if (
-        entry.isFile() &&
-        [".yaml", ".yml"].includes(extname(entry.name).toLowerCase())
-      ) {
-        files.push(path);
-      }
-    }
-  }
-  return files.sort();
-}
-
 function assertIndependentSplits(
   validation: EvolutionCase[],
   heldOut: EvolutionCase[],
@@ -567,7 +544,7 @@ function assertIndependentSplits(
     validationKeys.has(casePartitionKey(entry)),
   );
   if (overlap) {
-    throw new EvolutionEvaluationError(
+    throw new EvolutionError(
       "invalid_case",
       `case ${overlap.source_ref} is present in validation and held-out evaluation; use disjoint cases or explicit split labels`,
     );
@@ -610,7 +587,7 @@ function assertCaseEffects(
   for (const evolutionCase of cases) {
     const resolved = resolveCommand(site, evolutionCase.command);
     if (!resolved) {
-      throw new EvolutionEvaluationError(
+      throw new EvolutionError(
         "invalid_case",
         `eval command is not registered: ${site}.${evolutionCase.command}`,
       );
@@ -631,7 +608,7 @@ function assertEffectCanBeEvaluated(
   if (allowMutationEval || effect === "read") {
     return;
   }
-  throw new EvolutionEvaluationError(
+  throw new EvolutionError(
     "mutation_eval_blocked",
     `${component} declares ${effect ?? "an unknown effect"}; pass --allow-mutation-eval only in a controlled target environment`,
   );
@@ -653,7 +630,7 @@ function evalScalar(
   ) {
     return value;
   }
-  throw new EvolutionEvaluationError(
+  throw new EvolutionError(
     "invalid_case",
     `run ${runId} argument ${argument?.name ?? "value"} cannot be represented by the declarative eval runner`,
   );
