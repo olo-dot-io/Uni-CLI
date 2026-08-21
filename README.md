@@ -96,11 +96,11 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 
 Static catalog
 
-- <!-- STATS:site_count -->337<!-- /STATS --> sites
-- <!-- STATS:command_count -->1890<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
+- <!-- STATS:site_count -->338<!-- /STATS --> sites
+- <!-- STATS:command_count -->1891<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10364<!-- /STATS --> tests
+- <!-- STATS:test_count -->10392<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -125,7 +125,7 @@ Fixed core and host-discovered commands join at runtime.
 | desktop | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
 | games | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
 | utility | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
-| other | 71 | 122 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| other | 72 | 123 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
 | travel | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
 
 <!-- END README_SITE_GRID -->
@@ -291,7 +291,7 @@ Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adap
 
 Browse every published version on the [generated release history](docs/releases.md). The same data is available to Agents through `docs/public/release-history.json`.
 
-<p align="center"><sub>v1.2.0 — Artemis · Hansen</sub></p>
+<p align="center"><sub>v1.2.1 — Artemis · Wiseman</sub></p>
 
 ## License
 

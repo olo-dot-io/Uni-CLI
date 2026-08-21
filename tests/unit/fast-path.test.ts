@@ -56,6 +56,36 @@ describe("CLI fast path", () => {
     expect(env.data.every((row) => row.site.includes("twitter"))).toBe(true);
   });
 
+  it("evaluates configured-only manifest commands from the current environment", () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    try {
+      delete process.env.SERPBASE_API_KEY;
+      const hidden = makeIo();
+      expect(
+        tryRunFastPath(
+          ["node", "unicli", "-f", "json", "list", "--site", "serpbase"],
+          hidden.io,
+        ),
+      ).toBe(true);
+      expect(JSON.parse(hidden.stdout.join("")).data).toEqual([]);
+
+      process.env.SERPBASE_API_KEY = "configured";
+      const visible = makeIo();
+      expect(
+        tryRunFastPath(
+          ["node", "unicli", "-f", "json", "list", "--site", "serpbase"],
+          visible.io,
+        ),
+      ).toBe(true);
+      expect(JSON.parse(visible.stdout.join("")).data).toEqual([
+        expect.objectContaining({ site: "serpbase", command: "search" }),
+      ]);
+    } finally {
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
   it("uses one merged user-over-packaged catalog for list, search, and describe", () => {
     const home = mkdtempSync(join(tmpdir(), "unicli-user-catalog-"));
     const originalHome = process.env.HOME;

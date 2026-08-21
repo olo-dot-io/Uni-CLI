@@ -4,10 +4,10 @@ This file is generated from the same VitePress site map as the public docs.
 
 ## Snapshot
 
-- Static adapter sites: 337
-- Registered adapter commands: 1890
+- Static adapter sites: 338
+- Registered adapter commands: 1891
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1267
+- Adapters: 1268
 - Built-in actions: 113 (58 registered + 55 transport-native)
 
 ---
@@ -55,10 +55,10 @@ unicli hackernews top --limit 5 -f json
 
 ## Coverage
 
-- Static adapter sites: 337
-- Registered adapter operations: 1890
+- Static adapter sites: 338
+- Registered adapter operations: 1891
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10364
+- Tests: 10392
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Latest: v1.2.0 · Artemis · Hansen.
+Local release: v1.2.1 · Artemis · Wiseman.
 
 ## Agent Index
 
@@ -1607,22 +1607,22 @@ schema_version: v2
 
 ## Identity and connection
 
-| Field               | Value                                                       |
-| ------------------- | ----------------------------------------------------------- |
-| `site`              | Command namespace, such as `hackernews`                     |
-| `name`              | Command name inside the site                                |
-| `description`       | One-line user intent used by search                         |
-| `domain`            | Primary remote domain, when applicable                      |
-| `type`              | `web-api`, `browser`, `desktop`, `bridge`, or `service`     |
-| `strategy`          | `public`, `cookie`, `header`, `intercept`, or `ui`          |
-| `browser`           | Marks commands that require a browser runtime               |
-| `browserSession`    | `auto`, `user`, or `cdp`                                    |
-| `auth_cookies`      | Cookie names used by a site adapter                         |
-| `binary` / `detect` | External CLI name and detection command for bridge adapters |
+| Field               | Value                                                             |
+| ------------------- | ----------------------------------------------------------------- |
+| `site`              | Command namespace, such as `hackernews`                           |
+| `name`              | Command name inside the site                                      |
+| `description`       | One-line user intent used by search                               |
+| `domain`            | Primary remote domain, when applicable                            |
+| `type`              | `web-api`, `browser`, `desktop`, `bridge`, or `service`           |
+| `strategy`          | `public`, `cookie`, `header`, `environment`, `intercept`, or `ui` |
+| `browser`           | Marks commands that require a browser runtime                     |
+| `browserSession`    | `auto`, `user`, or `cdp`                                          |
+| `auth_cookies`      | Cookie names used by a site adapter                               |
+| `binary` / `detect` | External CLI name and detection command for bridge adapters       |
 
 ## Operation metadata
 
-These fields make search and policy decisions clearer:
+These fields make search and policy decisions clearer.
 
 | Field                | Values                                                                                                                                                                                         |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1632,6 +1632,38 @@ These fields make search and policy decisions clearer:
 | `operation_effect`   | `read`, `download_file`, `send_message`, `publish_content`, `account_state`, `remote_transform`, `remote_resource`, `service_state`, `local_app`, `local_file`, `destructive`, `unknown_write` |
 | `idempotency`        | `guaranteed`, `conditional`, `none`, `unknown`                                                                                                                                                 |
 | `auth_requirement`   | `required`, `optional`, `none`                                                                                                                                                                 |
+
+## Configuration availability
+
+Commands backed by process credentials declare them separately from provider authentication. `strategy: environment` means the pipeline reads credentials from environment templates and never opens the browser cookie store.
+
+```yaml
+strategy: environment
+auth_requirement: required
+availability:
+  environment: [SEARCH_API_KEY]
+  discovery: configured
+  setup_url: https://search.example.com/keys
+```
+
+Every variable in `availability.environment` is required. `discovery: configured` removes the command from list, search, completion, and expanded MCP surfaces until configuration is present. An explicit describe remains available and reports `missing_environment`. Direct invocation stops before network access when configuration is incomplete.
+
+## Retrieval providers
+
+Read-only discovery commands can join `unicli retrieval search` through portable retrieval metadata.
+
+```yaml
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  selection: explicit
+  arguments:
+    query: query
+    limit: limit
+```
+
+`selection: automatic` is the default. Automatic selectors and `all` use only configured, unauthenticated automatic sources. `selection: explicit` reserves paid or quota-bearing providers for an exact source ref or site selection.
 
 ## Arguments
 
@@ -1692,7 +1724,7 @@ defaultFormat: md
 
 ## Required schema-v2 metadata
 
-Committed YAML adapters carry six fields:
+Committed YAML adapters carry six fields.
 
 | Field                | Purpose                                       |
 | -------------------- | --------------------------------------------- |
@@ -1703,7 +1735,7 @@ Committed YAML adapters carry six fields:
 | `confidentiality`    | `public`, `internal`, or `private` data class |
 | `quarantine`         | Marks an adapter that is waiting for repair   |
 
-Add current metadata to an existing adapter with:
+Add current metadata to an existing adapter with this command.
 
 ```bash
 unicli migrate schema-v2 path/to/adapter.yaml --write
@@ -2348,7 +2380,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 337 sites, 1890 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1891 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -2493,7 +2525,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | obs | service | 8 | 0 | no | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | 0 | no | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
 | ollama | service | 4 | 0 | no | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
-| ollama-cloud | web-api | 2 | 0 | no | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
+| ollama-cloud | web-api | 2 | 0 | yes | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
 | ones | web-api | 11 | 1 | yes | unicli ones me<br>unicli ones enrich-tasks<br>unicli ones login |
 | opencode | bridge | 1 | 0 | no | unicli opencode version |
 | opencsg | web-api | 2 | 0 | no | unicli opencsg datasets<br>unicli opencsg models |
@@ -2523,6 +2555,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | reuters | web-api | 5 | 0 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rubygems | web-api | 3 | 0 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 0 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
+| serpbase | web-api | 1 | 0 | yes | unicli serpbase search |
 | shotcut | desktop | 3 | 0 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 0 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 0 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |
@@ -2842,7 +2875,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.2.0. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.2.1. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
@@ -3169,11 +3202,11 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.2.0 — Artemis · Hansen.
+Current release: v1.2.1 — Artemis · Wiseman.
 
-The static catalog contains <!-- STATS:site_count -->337<!-- /STATS --> sites.
+The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1890<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1891<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
@@ -3262,9 +3295,9 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.2.0 ships <span><!-- STATS:site_count -->337<!-- /STATS --></span> sites in the static adapter catalog.
+v1.2.1 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
 
-The same catalog contains <span><!-- STATS:command_count -->1890<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
+The same catalog contains <span><!-- STATS:command_count -->1891<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
 ## How do I know which arguments a command accepts?
 

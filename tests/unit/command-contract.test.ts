@@ -262,6 +262,54 @@ describe("CommandContract", () => {
     expect(contract.governance.dimensions.network.access).toBe("write");
   });
 
+  it("preserves configured-only provider availability in live and manifest contracts", () => {
+    const availability = {
+      environment: ["SEARCH_API_KEY"],
+      discovery: "configured" as const,
+      setup_url: "https://search.example.com/keys",
+    };
+    const adapter: AdapterManifest = {
+      name: "configured-search",
+      type: AdapterType.WEB_API,
+      strategy: Strategy.ENVIRONMENT,
+      commands: {
+        search: {
+          name: "search",
+          availability,
+          auth_requirement: "required",
+        },
+      },
+    };
+    const live = buildCommandContract({
+      adapter,
+      commandName: "search",
+      command: adapter.commands.search,
+    });
+    const manifest = buildManifestCommandContract({
+      site: "configured-search",
+      commandName: "search",
+      adapterType: "web-api",
+      command: {
+        strategy: "environment",
+        availability,
+        auth_requirement: "required",
+      },
+    });
+
+    for (const contract of [live, manifest]) {
+      expect(contract.auth).toEqual({
+        strategy: "environment",
+        required: true,
+      });
+      expect(contract.availability).toEqual({
+        required_environment: ["SEARCH_API_KEY"],
+        discovery: "configured",
+        setup_url: "https://search.example.com/keys",
+        runtime_state: "not_evaluated",
+      });
+    }
+  });
+
   it("reports missing source path as a contract lint error", () => {
     const adapter: AdapterManifest = {
       name: "bad-contract",

@@ -108,6 +108,23 @@ afterEach(() => {
 });
 
 describe("deterministic tool ordering", () => {
+  it("advertises configured-only provider tools only after setup", () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    try {
+      delete process.env.SERPBASE_API_KEY;
+      expect(buildExpandedTools().map((tool) => tool.name)).not.toContain(
+        "unicli_serpbase_search",
+      );
+      process.env.SERPBASE_API_KEY = "configured";
+      expect(buildExpandedTools().map((tool) => tool.name)).toContain(
+        "unicli_serpbase_search",
+      );
+    } finally {
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
   // MCP 2026-07-28 requires tools/list to be deterministically ordered so
   // clients can prompt-cache it. Adapter tools must be sorted by
   // (site, command) regardless of registry load order.

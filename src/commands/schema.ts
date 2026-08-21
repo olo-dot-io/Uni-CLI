@@ -27,6 +27,7 @@ import {
 } from "../mcp/schema.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 
 // ── Schema output shape ──────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ export function registerSchemaCommand(program: Command): void {
           const schemas: CommandSchema[] = [];
           for (const adapter of getAllAdapters()) {
             for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+              if (!isCommandDiscoverable(cmd)) continue;
               schemas.push(buildCommandSchema(adapter.name, cmdName, cmd));
             }
           }
@@ -150,10 +152,18 @@ export function registerSchemaCommand(program: Command): void {
           // Try to suggest similar commands
           const adapters = getAllAdapters();
           const matching = adapters
-            .filter((a) => a.name.includes(site))
+            .filter(
+              (adapter) =>
+                adapter.name.includes(site) &&
+                Object.values(adapter.commands).some((candidate) =>
+                  isCommandDiscoverable(candidate),
+                ),
+            )
             .map((a) => ({
               site: a.name,
-              commands: Object.keys(a.commands),
+              commands: Object.entries(a.commands)
+                .filter(([, candidate]) => isCommandDiscoverable(candidate))
+                .map(([name]) => name),
             }));
 
           ctx.error = {

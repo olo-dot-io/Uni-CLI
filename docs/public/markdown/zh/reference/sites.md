@@ -19,7 +19,7 @@ unicli search "<意图>" --personalized
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：337 个站点，1890 条命令。
+这个目录来自适配器 manifest：338 个站点，1891 条命令。
 
 用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。
 
@@ -164,7 +164,7 @@ unicli search "<意图>" --personalized
 | obs | service | 8 | 0 | 否 | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | 0 | 否 | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
 | ollama | service | 4 | 0 | 否 | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
-| ollama-cloud | web-api | 2 | 0 | 否 | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
+| ollama-cloud | web-api | 2 | 0 | 是 | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
 | ones | web-api | 11 | 1 | 是 | unicli ones me<br>unicli ones enrich-tasks<br>unicli ones login |
 | opencode | bridge | 1 | 0 | 否 | unicli opencode version |
 | opencsg | web-api | 2 | 0 | 否 | unicli opencsg datasets<br>unicli opencsg models |
@@ -194,6 +194,7 @@ unicli search "<意图>" --personalized
 | reuters | web-api | 5 | 0 | 否 | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rubygems | web-api | 3 | 0 | 否 | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 0 | 否 | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
+| serpbase | web-api | 1 | 0 | 是 | unicli serpbase search |
 | shotcut | desktop | 3 | 0 | 否 | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 0 | 否 | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 0 | 否 | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

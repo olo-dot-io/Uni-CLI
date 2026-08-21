@@ -26,6 +26,10 @@ export type IntentFrame =
   | {
       kind: "travel.lodging";
       preferredSites: readonly string[];
+    }
+  | {
+      kind: "web.research";
+      preferredSites: readonly string[];
     };
 
 export interface IntentKernelInput {
@@ -43,6 +47,8 @@ const AUDIO_PLAYBACK_STRONG_BOOST = 72;
 const AUDIO_CATEGORY_BOOST = 46;
 const AUDIO_SITE_HINT_BOOST = 20;
 const TRAVEL_LODGING_COMMAND_BOOST = 30;
+const WEB_RESEARCH_COMMAND_BOOST = 84;
+const CONFIGURED_WEB_RESEARCH_COMMAND_BOOST = 48;
 
 const AUDIO_SITES = ["spotify", "netease-music"] as const;
 const AUDIO_QUERY_SITE_HINTS = new Set<string>([
@@ -86,6 +92,29 @@ const NON_AUDIO_PLAY_HINT =
   /\b(video|movie|game|chess|youtube|bilibili|douyin|tiktok|twitch)\b|视频|电影|游戏|棋/u;
 
 const TRAVEL_SITES = ["ctrip"] as const;
+const WEB_RESEARCH_SITES = ["retrieval", "serpbase", "ollama-cloud"] as const;
+const WEB_RESEARCH_SITE_HINTS = new Set([
+  "web",
+  "retrieval",
+  "brave",
+  "duckduckgo",
+  "google",
+  "yahoo",
+]);
+const EXPLICIT_WEB_RESEARCH_TRIGGER =
+  /\b(?:web|internet|online|open\s+web|public\s+web)\s+(?:search|research|lookup|query)\b|\b(?:search|research|lookup|query)\b.{0,24}\b(?:web|internet|online|open\s+web|public\s+web)\b|(?:网页|全网|互联网|开放网络).{0,10}(?:搜索|检索|查询|查找|调研)/u;
+const CURRENT_CHANGE_QUESTION_TRIGGER =
+  /\b(?:what|which|how)\b.{0,64}\b(?:changed|changes|new|different|released|updated)\b/u;
+const CURRENT_CHANGE_CONTEXT_TRIGGER =
+  /\b(?:latest|last|recent|current|newest|release|version|update|changelog)\b/u;
+const LOCAL_CHANGE_CONTEXT_TRIGGER =
+  /\b(?:git\s+status|working\s+(?:tree|copy)|local\s+(?:file|files|repository|repo|workspace)|uncommitted|staged)\b|(?:工作区|本地文件|本地仓库|未提交|已暂存)/u;
+const DISCUSSION_SYNTHESIS_TRIGGER =
+  /\b(?:summarize|summary|overview|synthesize)\b.{0,96}\b(?:people|community|users|developers)\b.{0,64}\b(?:say|saying|think|discuss|discussing|reaction|reactions|opinion|opinions)\b/u;
+const CJK_CURRENT_CHANGE_TRIGGER =
+  /(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新).{0,48}(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动)|(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动).{0,48}(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新)/u;
+const CJK_DISCUSSION_SYNTHESIS_TRIGGER =
+  /(?:总结|汇总|概括).{0,64}(?:大家|人们|社区|用户|开发者).{0,48}(?:怎么说|说什么|看法|讨论|评价|反应)/u;
 const TRAVEL_LODGING_TERMS = new Set([
   "hotel",
   "hotels",
@@ -181,6 +210,13 @@ export function resolveIntentFrame(
     };
   }
 
+  if (isOpenWebResearchIntent(normalizedQuery, siteHints)) {
+    return {
+      kind: "web.research",
+      preferredSites: WEB_RESEARCH_SITES,
+    };
+  }
+
   return undefined;
 }
 
@@ -195,6 +231,8 @@ export function evaluateIntentFrame(
       return evaluateAudioPlayback(frame, doc);
     case "travel.lodging":
       return evaluateTravelLodging(frame, doc);
+    case "web.research":
+      return evaluateWebResearch(frame, doc);
   }
 }
 
@@ -391,6 +429,45 @@ function evaluateTravelLodging(
   }
   if (doc.command === "hotel-suggest") {
     return { blocked: false, boost: TRAVEL_LODGING_COMMAND_BOOST * 0.72 };
+  }
+  return { blocked: false, boost: 0 };
+}
+
+function isOpenWebResearchIntent(
+  normalizedQuery: string,
+  siteHints: ReadonlySet<string>,
+): boolean {
+  const explicitNonWebSite = [...siteHints].some(
+    (site) => !WEB_RESEARCH_SITE_HINTS.has(site),
+  );
+  if (explicitNonWebSite) return false;
+  if (LOCAL_CHANGE_CONTEXT_TRIGGER.test(normalizedQuery)) return false;
+
+  return (
+    EXPLICIT_WEB_RESEARCH_TRIGGER.test(normalizedQuery) ||
+    (CURRENT_CHANGE_QUESTION_TRIGGER.test(normalizedQuery) &&
+      CURRENT_CHANGE_CONTEXT_TRIGGER.test(normalizedQuery)) ||
+    DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery) ||
+    CJK_CURRENT_CHANGE_TRIGGER.test(normalizedQuery) ||
+    CJK_DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery)
+  );
+}
+
+function evaluateWebResearch(
+  frame: Extract<IntentFrame, { kind: "web.research" }>,
+  doc: SearchDocument,
+): IntentKernelDecision {
+  if (!frame.preferredSites.includes(doc.site)) {
+    return { blocked: false, boost: 0 };
+  }
+  if (doc.command === "search") {
+    return {
+      blocked: false,
+      boost:
+        doc.site === "retrieval"
+          ? WEB_RESEARCH_COMMAND_BOOST
+          : CONFIGURED_WEB_RESEARCH_COMMAND_BOOST,
+    };
   }
   return { blocked: false, boost: 0 };
 }

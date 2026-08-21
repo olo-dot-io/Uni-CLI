@@ -5,11 +5,11 @@ description: Shipped foundations and the next engineering priorities for Uni-CLI
 
 # Roadmap
 
-Current release: v1.2.0 — Artemis · Hansen.
+Current release: v1.2.1 — Artemis · Wiseman.
 
-The static catalog contains <!-- STATS:site_count -->337<!-- /STATS --> sites.
+The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1890<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1891<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 

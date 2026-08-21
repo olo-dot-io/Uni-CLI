@@ -89,6 +89,7 @@ for (const adapter of liveAdapters) {
         defaultFormat: command.defaultFormat,
         capabilities: command.capabilities,
         auth_requirement: command.auth_requirement,
+        availability: command.availability,
         executables: command.executables,
         minimum_capability: command.minimum_capability,
         pipeline_steps: command.pipeline?.length ?? 0,

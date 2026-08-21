@@ -96,11 +96,11 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 
 静态目录
 
-- <!-- STATS:site_count -->337<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1890<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
+- <!-- STATS:site_count -->338<!-- /STATS --> 个站点
+- <!-- STATS:command_count -->1891<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10364<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10392<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -125,7 +125,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 | 桌面 | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
 | 游戏 | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
 | 工具 | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
-| 其他 | 71 | 122 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| 其他 | 72 | 123 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
 | 旅行 | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
 
 <!-- END README_SITE_GRID -->
@@ -291,7 +291,7 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 全部已发布版本见[生成的版本记录](docs/zh/releases.md)。Agent 可以通过 `docs/public/release-history.json` 读取同一份结构化数据。
 
-<p align="center"><sub>v1.2.0 — Artemis · Hansen</sub></p>
+<p align="center"><sub>v1.2.1 — Artemis · Wiseman</sub></p>
 
 ## License
 

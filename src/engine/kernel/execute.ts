@@ -50,6 +50,7 @@ import {
   runWithCookieInvocationOverride,
   type CookieInvocationOverride,
 } from "../cookies.js";
+import { assertCommandAvailable } from "../../core/command-availability.js";
 
 export { KernelLookupError };
 
@@ -197,6 +198,8 @@ async function executeResolved(
 
   const hardened = hardenKernelInput(inv, ctx, startedAt, warnings);
   if (hardened) return hardened.result;
+
+  assertCommandAvailable(`${inv.adapter.name}.${inv.cmdName}`, inv.command);
 
   const authorization = await authorizeKernelInvocation(
     inv,

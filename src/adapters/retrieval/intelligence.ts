@@ -116,7 +116,7 @@ cli({
       type: "str",
       default: "search-index",
       description:
-        "Comma-separated exact refs, sites, kinds, or source classes; use all explicitly for every registered source",
+        "Comma-separated exact refs, sites, kinds, or source classes; all selects automatic sources, while paid or configured providers require an exact ref or site",
     },
     {
       name: "kind",
@@ -158,6 +158,7 @@ cli({
     "title",
     "result_kind",
     "source_class",
+    "selection",
     "source_adapter",
     "updated_at",
     "url",
@@ -259,11 +260,12 @@ cli({
   capabilities: ["evidence.discover"],
   minimum_capability: "evidence.discover",
   func: async () =>
-    listRetrievalSources().map((source) => ({
+    listRetrievalSources({ discoverableOnly: true }).map((source) => ({
       source: source.ref,
       description: source.command.description ?? "",
       result_kind: source.metadata.result_kind,
       source_class: source.metadata.source_class,
+      selection: source.metadata.selection ?? "automatic",
       argument_roles: Object.entries(source.metadata.arguments ?? {})
         .map(([role, argument]) => `${role}=${argument}`)
         .join(", "),

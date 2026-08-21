@@ -50,6 +50,7 @@ import {
   resolveOperationFamily,
 } from "../core/operation-family.js";
 import { BoundedTopK } from "../core/bounded-top-k.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 import {
   intentEntityCommandBoost,
   resolveTaskIntentFrame,
@@ -58,7 +59,11 @@ import {
   personalizationIntentFamilies,
   type PersonalizationFamily,
 } from "./personalization.js";
-import type { AdapterArg, OperationFamily } from "../types.js";
+import type {
+  AdapterArg,
+  CommandAvailability,
+  OperationFamily,
+} from "../types.js";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -104,6 +109,7 @@ export interface CommandSearchDocument {
   auth_setup?: string;
   personalization?: PersonalizationFamily;
   usage?: string;
+  availability?: CommandAvailability;
 }
 
 /** One document in the search corpus: a single adapter command. */
@@ -119,6 +125,7 @@ interface Document {
   authSetup?: string;
   personalization?: PersonalizationFamily;
   usage?: string;
+  availability?: CommandAvailability;
   /** Total term count for BM25 length normalization */
   termCount: number;
   /** Per-document term counts used to construct postings and vector norms. */
@@ -157,6 +164,7 @@ export interface SearchIndex {
     authSetup?: string;
     personalization?: PersonalizationFamily;
     usage?: string;
+    availability?: CommandAvailability;
     termCount: number;
     /** Query-independent BM25 denominator component. */
     bm25LengthNorm: number;
@@ -257,7 +265,7 @@ export function runtimeSearchDocuments(): CommandSearchDocument[] {
   const seen = new Set<string>();
   const documents: CommandSearchDocument[] = [];
 
-  for (const command of listCommands()) {
+  for (const command of listCommands({ includeUnavailable: true })) {
     const id = `${command.site}/${command.command}`;
     seen.add(id);
     documents.push({
@@ -271,6 +279,7 @@ export function runtimeSearchDocuments(): CommandSearchDocument[] {
         ? { personalization: command.personalization }
         : {}),
       usage: buildRequiredUsage(command.site, command.command, command.args),
+      ...(command.availability ? { availability: command.availability } : {}),
     });
   }
 
@@ -346,6 +355,7 @@ export function buildIndexFromDocuments(
       ...(doc.auth_setup ? { authSetup: doc.auth_setup } : {}),
       ...(doc.personalization ? { personalization: doc.personalization } : {}),
       ...(doc.usage ? { usage: doc.usage } : {}),
+      ...(doc.availability ? { availability: doc.availability } : {}),
       ...tokenized,
     };
     documents.push(document);
@@ -393,6 +403,7 @@ export function buildIndexFromDocuments(
       ...(d.authSetup ? { authSetup: d.authSetup } : {}),
       ...(d.personalization ? { personalization: d.personalization } : {}),
       ...(d.usage ? { usage: d.usage } : {}),
+      ...(d.availability ? { availability: d.availability } : {}),
       termCount: d.termCount,
       bm25LengthNorm:
         K1 * (1 - B + B * (avgDl === 0 ? 0 : d.termCount / avgDl)),
@@ -702,6 +713,9 @@ function searchIndex(
   ])) {
     addSiteCandidates(index, siteHint, candidateSet);
   }
+  for (const preferredSite of intentFrame?.preferredSites ?? []) {
+    addSiteCandidates(index, preferredSite, candidateSet);
+  }
   if (queryTerms.length === 0 && categoryFilter) {
     addCategoryCandidates(index, categoryFilter, candidateSet);
   }
@@ -735,6 +749,7 @@ function searchIndex(
 
   for (const idx of candidateSet) {
     const doc = index.documents[idx];
+    if (!isCommandDiscoverable({ availability: doc.availability })) continue;
     const docCategory = documentCategory(doc);
     if (categoryFilter && docCategory !== categoryFilter) continue;
     if (options.personalized && !doc.personalization) continue;

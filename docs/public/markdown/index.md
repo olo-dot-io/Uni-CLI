@@ -36,10 +36,10 @@ unicli hackernews top --limit 5 -f json
 
 ## Coverage
 
-- Static adapter sites: 337
-- Registered adapter operations: 1890
+- Static adapter sites: 338
+- Registered adapter operations: 1891
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10364
+- Tests: 10392
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -53,7 +53,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Latest: v1.2.0 · Artemis · Hansen.
+Local release: v1.2.1 · Artemis · Wiseman.
 
 ## Agent Index
 

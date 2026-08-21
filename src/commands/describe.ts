@@ -24,6 +24,10 @@ import {
   resolveCommand,
 } from "../registry.js";
 import { metadataAuthRequirement } from "../core/auth-contract.js";
+import {
+  evaluateCommandAvailability,
+  isCommandDiscoverable,
+} from "../core/command-availability.js";
 import { classifyPersonalization } from "../discovery/personalization.js";
 import {
   evaluateOperationPolicy,
@@ -370,11 +374,13 @@ export function describeCommand(
     args,
     effect: cmd.operation_effect,
   });
+  const availability = evaluateCommandAvailability(cmd.availability);
   return {
     command: `unicli ${site} ${cmdName}`,
     description: cmd.description ?? "",
     quarantined: cmd.quarantine === true,
     ...metadata,
+    configuration: availability,
     operation_policy: operationPolicy,
     args_schema: argsToJsonSchema(args),
     example_stdin: buildExample(args),
@@ -458,7 +464,11 @@ export function describe(
   cmdName: string | undefined,
 ): DescribeResult {
   if (!site) {
-    const adapters = getAllAdapters();
+    const adapters = getAllAdapters().filter((adapter) =>
+      Object.values(adapter.commands).some((command) =>
+        isCommandDiscoverable(command),
+      ),
+    );
     const adapterNames = new Set(adapters.map((adapter) => adapter.name));
     const sites: Array<{
       name: string;
@@ -469,7 +479,10 @@ export function describe(
       description: string;
     }> = [
       ...adapters.map((a) => {
-        const personalizedCommands = Object.entries(a.commands).filter(
+        const visibleCommands = Object.entries(a.commands).filter(
+          ([, command]) => isCommandDiscoverable(command),
+        );
+        const personalizedCommands = visibleCommands.filter(
           ([name, command]) => {
             const strategy = commandStrategy(a, command);
             return Boolean(
@@ -491,7 +504,7 @@ export function describe(
           display_name: a.displayName ?? a.name,
           type: a.type,
           strategy: a.strategy ?? "public",
-          commands_count: Object.keys(a.commands).length,
+          commands_count: visibleCommands.length,
           personalized_commands_count: personalizedCommands,
           description: a.description ?? "",
         };
@@ -534,40 +547,42 @@ export function describe(
   }
 
   if (!cmdName) {
-    const commands = Object.entries(adapter.commands).map(([name, cmd]) => {
-      const strategy = commandStrategy(adapter, cmd);
-      const auth = metadataAuthRequirement(
-        strategy,
-        cmd.capabilities,
-        cmd.auth_requirement,
-      );
-      const authSetup = commandAuthSetupCommand(adapter, cmd);
-      const personalization = classifyPersonalization({
-        command: name,
-        description: cmd.description,
-        category: adapter.category,
-        auth,
+    const commands = Object.entries(adapter.commands)
+      .filter(([, command]) => isCommandDiscoverable(command))
+      .map(([name, cmd]) => {
+        const strategy = commandStrategy(adapter, cmd);
+        const auth = metadataAuthRequirement(
+          strategy,
+          cmd.capabilities,
+          cmd.auth_requirement,
+        );
+        const authSetup = commandAuthSetupCommand(adapter, cmd);
+        const personalization = classifyPersonalization({
+          command: name,
+          description: cmd.description,
+          category: adapter.category,
+          auth,
+        });
+        return {
+          name,
+          command: `unicli ${site} ${name}`,
+          inspect: `unicli describe ${site} ${name}`,
+          description: cmd.description ?? "",
+          quarantined: cmd.quarantine === true,
+          strategy: strategy ?? "public",
+          auth: auth === "required",
+          ...(auth === "optional" ? { auth_optional: true } : {}),
+          ...(authSetup ? { auth_setup: authSetup } : {}),
+          ...(personalization ? { personalization } : {}),
+          browser: commandUsesBrowser(adapter, cmd),
+          args: (cmd.adapterArgs ?? []).map((a) => ({
+            name: a.name,
+            type: a.type ?? "str",
+            required: a.required === true,
+            positional: a.positional === true,
+          })),
+        };
       });
-      return {
-        name,
-        command: `unicli ${site} ${name}`,
-        inspect: `unicli describe ${site} ${name}`,
-        description: cmd.description ?? "",
-        quarantined: cmd.quarantine === true,
-        strategy: strategy ?? "public",
-        auth: auth === "required",
-        ...(auth === "optional" ? { auth_optional: true } : {}),
-        ...(authSetup ? { auth_setup: authSetup } : {}),
-        ...(personalization ? { personalization } : {}),
-        browser: commandUsesBrowser(adapter, cmd),
-        args: (cmd.adapterArgs ?? []).map((a) => ({
-          name: a.name,
-          type: a.type ?? "str",
-          required: a.required === true,
-          positional: a.positional === true,
-        })),
-      };
-    });
     const personalizationFamilies = [
       ...new Set(
         commands

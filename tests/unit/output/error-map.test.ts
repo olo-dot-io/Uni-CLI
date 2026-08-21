@@ -91,6 +91,12 @@ describe("errorTypeToCode — PipelineError branches", () => {
     expect(errorTypeToCode(err)).toBe("not_found");
   });
 
+  it("maps statusCode 402 to a non-retryable quota failure", () => {
+    const err = makePipelineError({ statusCode: 402 });
+    expect(errorTypeToCode(err)).toBe("quota_exhausted");
+    expect(mapErrorToExitCode(err)).toBe(ExitCode.CONFIG_ERROR);
+  });
+
   it("maps statusCode 429 to rate_limited", () => {
     const err = makePipelineError({ statusCode: 429 });
     expect(errorTypeToCode(err)).toBe("rate_limited");

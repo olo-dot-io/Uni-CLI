@@ -1,5 +1,36 @@
 # Changelog
 
+## [1.2.1] — 2026-08-21 — Artemis · Wiseman
+
+### Added
+
+- Add `serpbase search` as an optional structured provider for general web
+  research. It follows the current `POST /google/search` contract and maps
+  organic results to stable rank, title, link, and snippet fields.
+- Add one command availability contract for environment-backed providers. The
+  contract declares required variables, discovery policy, setup guidance, and
+  the current configuration state.
+
+### Changed
+
+- Route open-web research intent to `retrieval search` and keep paid providers
+  under explicit source selection. Default and `all` retrieval use public
+  automatic sources without spending SerpBase credits.
+- Apply configuration-aware discovery to CLI help, list, search, describe,
+  completion, schema, generated Agent commands, retrieval, and MCP. Ollama Cloud
+  now uses the same environment-backed contract.
+
+### Fixed
+
+- Stop unconfigured providers from leaking into discovery while preserving an
+  explicit full description for setup. Direct calls fail with `auth_required`
+  before authorization or network activity.
+- Preserve numeric and boolean values in nested JSON templates, classify HTTP
+  402 as `quota_exhausted`, and return provider-specific recovery guidance for
+  authentication, quota, and permission failures.
+- Prefer general retrieval for current open-web questions and remove the stale
+  Google News fallback from empty catalog searches.
+
 ## [1.2.0] — 2026-08-11 — Artemis · Hansen
 
 ### Added

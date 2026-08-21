@@ -22,6 +22,7 @@ import type {
   AdapterArg,
   AdapterCommand,
   BrowserSessionPreference,
+  CommandAvailability,
   ExecutionOperator,
   OperationEffect,
   PipelineStep,
@@ -47,6 +48,7 @@ export type ManifestCommand = {
   defaultFormat?: string;
   capabilities?: string[];
   auth_requirement?: "required" | "optional" | "none";
+  availability?: CommandAvailability;
   executables?: string[];
   minimum_capability?: string;
   pipeline_steps?: number;
@@ -237,6 +239,7 @@ function userManifestCommand(
     defaultFormat: command.defaultFormat,
     capabilities: command.capabilities,
     auth_requirement: command.auth_requirement,
+    availability: command.availability,
     executables: command.executables,
     minimum_capability: command.minimum_capability,
     pipeline_steps: command.pipeline?.length ?? 0,

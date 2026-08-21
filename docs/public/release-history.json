@@ -1,9 +1,42 @@
 {
   "schema_version": "1",
   "package": "@zenalexa/unicli",
-  "current": "1.2.0",
+  "current": "1.2.1",
   "generated_from": "CHANGELOG.md",
   "releases": [
+    {
+      "version": "1.2.1",
+      "date": "2026-08-21",
+      "codename": "Artemis · Wiseman",
+      "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.1",
+      "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli/v/1.2.1",
+      "sections": [
+        {
+          "title": "Added",
+          "entries": [
+            "Add `serpbase search` as an optional structured provider for general web research. It follows the current `POST /google/search` contract and maps organic results to stable rank, title, link, and snippet fields.",
+            "Add one command availability contract for environment-backed providers. The contract declares required variables, discovery policy, setup guidance, and the current configuration state."
+          ]
+        },
+        {
+          "title": "Changed",
+          "entries": [
+            "Route open-web research intent to `retrieval search` and keep paid providers under explicit source selection. Default and `all` retrieval use public automatic sources without spending SerpBase credits.",
+            "Apply configuration-aware discovery to CLI help, list, search, describe, completion, schema, generated Agent commands, retrieval, and MCP. Ollama Cloud now uses the same environment-backed contract."
+          ]
+        },
+        {
+          "title": "Fixed",
+          "entries": [
+            "Stop unconfigured providers from leaking into discovery while preserving an explicit full description for setup. Direct calls fail with `auth_required` before authorization or network activity.",
+            "Preserve numeric and boolean values in nested JSON templates, classify HTTP 402 as `quota_exhausted`, and return provider-specific recovery guidance for authentication, quota, and permission failures.",
+            "Prefer general retrieval for current open-web questions and remove the stale Google News fallback from empty catalog searches."
+          ]
+        }
+      ],
+      "markdown": "### Added\n\n- Add `serpbase search` as an optional structured provider for general web\n  research. It follows the current `POST /google/search` contract and maps\n  organic results to stable rank, title, link, and snippet fields.\n- Add one command availability contract for environment-backed providers. The\n  contract declares required variables, discovery policy, setup guidance, and\n  the current configuration state.\n\n### Changed\n\n- Route open-web research intent to `retrieval search` and keep paid providers\n  under explicit source selection. Default and `all` retrieval use public\n  automatic sources without spending SerpBase credits.\n- Apply configuration-aware discovery to CLI help, list, search, describe,\n  completion, schema, generated Agent commands, retrieval, and MCP. Ollama Cloud\n  now uses the same environment-backed contract.\n\n### Fixed\n\n- Stop unconfigured providers from leaking into discovery while preserving an\n  explicit full description for setup. Direct calls fail with `auth_required`\n  before authorization or network activity.\n- Preserve numeric and boolean values in nested JSON templates, classify HTTP\n  402 as `quota_exhausted`, and return provider-specific recovery guidance for\n  authentication, quota, and permission failures.\n- Prefer general retrieval for current open-web questions and remove the stale\n  Google News fallback from empty catalog searches.",
+      "compareUrl": "https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.0...v1.2.1"
+    },
     {
       "version": "1.2.0",
       "date": "2026-08-11",

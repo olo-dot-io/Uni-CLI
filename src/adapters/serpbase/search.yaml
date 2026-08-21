@@ -1,0 +1,83 @@
+site: serpbase
+name: search
+description: Search Google web results through the SerpBase structured API
+operation_effect: read
+execution_operator: structured-api
+operation_family: search
+idempotency: guaranteed
+target_surface: web
+type: web-api
+domain: api.serpbase.dev
+strategy: environment
+auth_requirement: required
+lint_listing_detail: skip
+availability:
+  environment: [SERPBASE_API_KEY]
+  discovery: configured
+  setup_url: https://serpbase.dev/dashboard/api-keys
+
+args:
+  query:
+    type: str
+    required: true
+    positional: true
+    minLength: 1
+    description: Google web search query
+  lang:
+    type: str
+    default: en
+    pattern: "^[a-z]{2}$"
+    description: Two-letter result language
+  country:
+    type: str
+    default: us
+    pattern: "^[a-z]{2}$"
+    description: Two-letter result country
+  page:
+    type: int
+    default: 1
+    minimum: 1
+    description: Google result page
+  limit:
+    type: int
+    default: 10
+    minimum: 1
+    maximum: 20
+    description: Maximum organic results to return
+
+pipeline:
+  - fetch:
+      url: https://api.serpbase.dev/google/search
+      method: POST
+      headers:
+        Accept: application/json
+        X-API-Key: "${{ env.SERPBASE_API_KEY }}"
+      body:
+        q: "${{ args.query }}"
+        hl: "${{ args.lang }}"
+        gl: "${{ args.country }}"
+        page: "${{ args.page }}"
+  - select: organic
+  - map:
+      rank: "${{ item.rank || item.position || index + 1 }}"
+      title: "${{ item.title || '' }}"
+      link: "${{ item.link || '' }}"
+      snippet: "${{ item.snippet || '' }}"
+  - limit: "${{ args.limit }}"
+
+columns: [rank, title, snippet, link]
+
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  selection: explicit
+  arguments:
+    query: query
+    limit: limit
+capabilities: [http.fetch]
+minimum_capability: http.fetch
+trust: public
+confidentiality: public
+quarantine: false
+schema_version: v2

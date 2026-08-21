@@ -223,6 +223,32 @@ describe("buildIndexFromDocuments", () => {
     expect(index.documents).toHaveLength(0);
   });
 
+  it("evaluates configured-only visibility at query time", () => {
+    const previous = process.env.SEARCH_VISIBILITY_TEST_KEY;
+    const documents = [
+      {
+        site: "paid-search",
+        command: "search",
+        description: "Search the premium public web index",
+        availability: {
+          environment: ["SEARCH_VISIBILITY_TEST_KEY"],
+          discovery: "configured" as const,
+        },
+      },
+    ];
+    try {
+      delete process.env.SEARCH_VISIBILITY_TEST_KEY;
+      expect(searchDocuments(documents, "premium public web")).toEqual([]);
+      process.env.SEARCH_VISIBILITY_TEST_KEY = "ready";
+      expect(searchDocuments(documents, "premium public web")[0]).toMatchObject(
+        { site: "paid-search", command: "search" },
+      );
+    } finally {
+      if (previous === undefined) delete process.env.SEARCH_VISIBILITY_TEST_KEY;
+      else process.env.SEARCH_VISIBILITY_TEST_KEY = previous;
+    }
+  });
+
   it("invalidates prepared tokens when document content changes", () => {
     const document = {
       site: "cache-probe",
@@ -402,6 +428,65 @@ describe("search", () => {
       site: "ctrip",
       command: "hotel-search",
       category: "travel",
+    });
+  });
+
+  it.each([
+    "what actually changed in the last Next.js release",
+    "summarize what people are saying about X",
+    "最新 Next.js 版本实际改了什么",
+  ])(
+    "routes open-web research questions to generic retrieval for %s",
+    (query) => {
+      const results = search(query, 5);
+
+      expect(results[0]).toMatchObject({
+        site: "retrieval",
+        command: "search",
+        category: "other",
+      });
+    },
+  );
+
+  it("keeps an explicitly named platform ahead of generic web research", () => {
+    const results = search(
+      "what changed in the latest Next.js release on GitHub",
+      5,
+    );
+
+    expect(results[0]).toMatchObject({
+      site: "gh",
+      command: "release",
+    });
+  });
+
+  it("offers a configured API provider behind the generic retrieval route", () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    try {
+      process.env.SERPBASE_API_KEY = "configured";
+      const results = search(
+        "what actually changed in the last Next.js release",
+        5,
+      );
+      expect(results[0]).toMatchObject({
+        site: "retrieval",
+        command: "search",
+      });
+      expect(results).toContainEqual(
+        expect.objectContaining({ site: "serpbase", command: "search" }),
+      );
+    } finally {
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
+  it("does not route local working-tree questions to web retrieval", () => {
+    const results = search("what changed in my current git working tree", 5);
+
+    expect(results[0]).not.toMatchObject({
+      site: "retrieval",
+      command: "search",
     });
   });
 

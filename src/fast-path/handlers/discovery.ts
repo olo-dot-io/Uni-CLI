@@ -51,6 +51,10 @@ import {
 } from "../../core/auth-contract.js";
 import { classifyPersonalization } from "../../discovery/personalization.js";
 import {
+  evaluateCommandAvailability,
+  isCommandDiscoverable,
+} from "../../core/command-availability.js";
+import {
   buildMacosDynamicCommands,
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
@@ -175,43 +179,46 @@ export function handleList(parsed: ParsedArgv, io: Io): boolean {
   const manifest = readManifest();
   const rows = Object.entries(manifest.sites)
     .flatMap(([site, info]) =>
-      info.commands.map((command) => {
-        const category = info.category ?? "other";
-        const strategy = command.strategy ?? "public";
-        const tags: string[] = [];
-        if (
-          metadataRequiresAuth(
+      info.commands
+        .map((command) => {
+          if (!isCommandDiscoverable(command)) return undefined;
+          const category = info.category ?? "other";
+          const strategy = command.strategy ?? "public";
+          const tags: string[] = [];
+          if (
+            metadataRequiresAuth(
+              strategy,
+              command.capabilities,
+              command.auth_requirement,
+            )
+          ) {
+            tags.push("[auth]");
+          } else if (metadataHasOptionalAuth(command.auth_requirement)) {
+            tags.push("[auth optional]");
+          }
+          if (command.quarantined === true) tags.push("[quarantined]");
+          const authRequirement = metadataAuthRequirement(
             strategy,
             command.capabilities,
             command.auth_requirement,
-          )
-        ) {
-          tags.push("[auth]");
-        } else if (metadataHasOptionalAuth(command.auth_requirement)) {
-          tags.push("[auth optional]");
-        }
-        if (command.quarantined === true) tags.push("[quarantined]");
-        const authRequirement = metadataAuthRequirement(
-          strategy,
-          command.capabilities,
-          command.auth_requirement,
-        );
-        const personalization = classifyPersonalization({
-          command: command.name,
-          description: command.description,
-          category,
-          auth: authRequirement,
-        });
-        return {
-          site,
-          command: command.name,
-          description: command.description ?? "",
-          category,
-          type: command.type ?? "web-api",
-          auth: tags.join(" "),
-          personalization: personalization ?? "",
-        };
-      }),
+          );
+          const personalization = classifyPersonalization({
+            command: command.name,
+            description: command.description,
+            category,
+            auth: authRequirement,
+          });
+          return {
+            site,
+            command: command.name,
+            description: command.description ?? "",
+            category,
+            type: command.type ?? "web-api",
+            auth: tags.join(" "),
+            personalization: personalization ?? "",
+          };
+        })
+        .filter((row) => row !== undefined),
     )
     .concat(coreListRows())
     .concat(dynamicListRows())
@@ -481,12 +488,14 @@ export function manifestSearchDocuments(
         command.capabilities,
         command.auth_requirement,
       );
-      const authSetup = metadataAuthSetupCommand(
-        site,
-        command.strategy,
-        command.capabilities,
-        command.auth_requirement,
-      );
+      const authSetup = command.availability?.environment.length
+        ? undefined
+        : metadataAuthSetupCommand(
+            site,
+            command.strategy,
+            command.capabilities,
+            command.auth_requirement,
+          );
       const personalization = classifyPersonalization({
         command: command.name,
         description: command.description,
@@ -511,6 +520,7 @@ export function manifestSearchDocuments(
             command,
           }),
         ),
+        ...(command.availability ? { availability: command.availability } : {}),
       });
     }
   }
@@ -834,32 +844,40 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   const [site, cmdName] = positionals;
 
   if (!site) {
-    const adapterSites = Object.entries(manifest.sites).map(([name, info]) => {
-      const personalizedCommands = info.commands.filter((command) => {
-        const auth = metadataAuthRequirement(
-          command.strategy,
-          command.capabilities,
-          command.auth_requirement,
+    const adapterSites = Object.entries(manifest.sites).flatMap(
+      ([name, info]) => {
+        const visibleCommands = info.commands.filter((command) =>
+          isCommandDiscoverable(command),
         );
-        return Boolean(
-          classifyPersonalization({
-            command: command.name,
-            description: command.description,
-            category: info.category,
-            auth,
-          }),
-        );
-      }).length;
-      return {
-        name,
-        display_name: name,
-        type: info.commands[0]?.type ?? "web-api",
-        strategy: info.commands[0]?.strategy ?? "public",
-        commands_count: info.commands.length,
-        personalized_commands_count: personalizedCommands,
-        description: "",
-      };
-    });
+        if (visibleCommands.length === 0) return [];
+        const personalizedCommands = visibleCommands.filter((command) => {
+          const auth = metadataAuthRequirement(
+            command.strategy,
+            command.capabilities,
+            command.auth_requirement,
+          );
+          return Boolean(
+            classifyPersonalization({
+              command: command.name,
+              description: command.description,
+              category: info.category,
+              auth,
+            }),
+          );
+        }).length;
+        return [
+          {
+            name,
+            display_name: name,
+            type: info.commands[0]?.type ?? "web-api",
+            strategy: info.commands[0]?.strategy ?? "public",
+            commands_count: visibleCommands.length,
+            personalized_commands_count: personalizedCommands,
+            description: "",
+          },
+        ];
+      },
+    );
     const sites = adapterSites
       .concat(
         listCoreDiscoverySites().map((coreSite) => ({
@@ -960,44 +978,48 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   }
 
   if (!cmdName) {
-    const commands = info.commands.map((command) => {
-      const strategy = command.strategy ?? "public";
-      const auth = metadataAuthRequirement(
-        strategy,
-        command.capabilities,
-        command.auth_requirement,
-      );
-      const authSetup = metadataAuthSetupCommand(
-        site,
-        strategy,
-        command.capabilities,
-        command.auth_requirement,
-      );
-      const authOptional = metadataHasOptionalAuth(command.auth_requirement);
-      const personalization = classifyPersonalization({
-        command: command.name,
-        description: command.description,
-        category: info.category,
-        auth,
+    const commands = info.commands
+      .filter((command) => isCommandDiscoverable(command))
+      .map((command) => {
+        const strategy = command.strategy ?? "public";
+        const auth = metadataAuthRequirement(
+          strategy,
+          command.capabilities,
+          command.auth_requirement,
+        );
+        const authSetup = command.availability?.environment.length
+          ? undefined
+          : metadataAuthSetupCommand(
+              site,
+              strategy,
+              command.capabilities,
+              command.auth_requirement,
+            );
+        const authOptional = metadataHasOptionalAuth(command.auth_requirement);
+        const personalization = classifyPersonalization({
+          command: command.name,
+          description: command.description,
+          category: info.category,
+          auth,
+        });
+        return {
+          name: command.name,
+          command: `unicli ${site} ${command.name}`,
+          inspect: `unicli describe ${site} ${command.name}`,
+          description: command.description ?? "",
+          quarantined: command.quarantined === true,
+          strategy,
+          auth: auth === "required",
+          ...(authOptional ? { auth_optional: true } : {}),
+          ...(authSetup ? { auth_setup: authSetup } : {}),
+          ...(personalization ? { personalization } : {}),
+          browser: manifestCommandUsesBrowser(
+            command,
+            command.type ?? info.commands[0]?.type ?? "web-api",
+          ),
+          args: summarizeArgs(command.args),
+        };
       });
-      return {
-        name: command.name,
-        command: `unicli ${site} ${command.name}`,
-        inspect: `unicli describe ${site} ${command.name}`,
-        description: command.description ?? "",
-        quarantined: command.quarantined === true,
-        strategy,
-        auth: auth === "required",
-        ...(authOptional ? { auth_optional: true } : {}),
-        ...(authSetup ? { auth_setup: authSetup } : {}),
-        ...(personalization ? { personalization } : {}),
-        browser: manifestCommandUsesBrowser(
-          command,
-          command.type ?? info.commands[0]?.type ?? "web-api",
-        ),
-        args: summarizeArgs(command.args),
-      };
-    });
     emitDescribePayload(
       io,
       {
@@ -1071,12 +1093,14 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
   if (!operationPolicy) return true;
 
   const strategy = command.strategy ?? "public";
-  const authSetup = metadataAuthSetupCommand(
-    site,
-    strategy,
-    command.capabilities,
-    command.auth_requirement,
-  );
+  const authSetup = command.availability?.environment.length
+    ? undefined
+    : metadataAuthSetupCommand(
+        site,
+        strategy,
+        command.capabilities,
+        command.auth_requirement,
+      );
   const authOptional = metadataHasOptionalAuth(command.auth_requirement);
   const auth = metadataAuthRequirement(
     strategy,
@@ -1096,6 +1120,7 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
     adapterType,
     command,
   });
+  const availability = evaluateCommandAvailability(command.availability);
 
   emitDescribePayload(
     io,
@@ -1112,6 +1137,7 @@ export function handleDescribe(parsed: ParsedArgv, io: Io): boolean {
       ...(authOptional ? { auth_optional: true } : {}),
       ...(authSetup ? { auth_setup: authSetup } : {}),
       ...(personalization ? { personalization } : {}),
+      configuration: availability,
       browser: manifestCommandUsesBrowser(command, adapterType),
       target_surface: targetSurface,
       adapter_path: adapterPath,

@@ -8,6 +8,7 @@ import {
   listRetrievalSources,
   normalizeEvidenceCandidates,
   projectRetrievalArguments,
+  selectRetrievalSources,
 } from "../../../src/engine/retrieval.js";
 import {
   loadAllAdapters,
@@ -102,6 +103,63 @@ describe("domain-neutral retrieval registry", () => {
       code: "retrieval_capability_not_contained",
       retryable: false,
     });
+  });
+
+  it("keeps the default search-index selection public while allowing explicit authenticated sources", () => {
+    const publicSearchIndexes = selectRetrievalSources(["search-index"]);
+    const explicitZhihu = selectRetrievalSources([
+      "zhihu.native-global-search",
+    ]);
+
+    expect(publicSearchIndexes.map((source) => source.ref)).toEqual(
+      expect.arrayContaining([
+        "brave.search",
+        "duckduckgo.search",
+        "yahoo.search",
+      ]),
+    );
+    expect(publicSearchIndexes.map((source) => source.ref)).not.toContain(
+      "zhihu.native-global-search",
+    );
+    expect(explicitZhihu.map((source) => source.ref)).toEqual([
+      "zhihu.native-global-search",
+    ]);
+  });
+
+  it("never spends configured provider credits through automatic or all selection", () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    try {
+      process.env.SERPBASE_API_KEY = "configured";
+      expect(
+        selectRetrievalSources([]).map((source) => source.ref),
+      ).not.toContain("serpbase.search");
+      expect(
+        selectRetrievalSources(["all"]).map((source) => source.ref),
+      ).not.toContain("serpbase.search");
+      expect(
+        selectRetrievalSources(["serpbase"]).map((source) => source.ref),
+      ).toEqual(["serpbase.search"]);
+      expect(
+        selectRetrievalSources(["serpbase.search"]).map((source) => source.ref),
+      ).toEqual(["serpbase.search"]);
+    } finally {
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
+  it("projects a shared result limit within each provider contract", () => {
+    const source = listRetrievalSources().find(
+      (candidate) => candidate.ref === "zhihu.native-global-search",
+    );
+
+    expect(source).toBeDefined();
+    expect(
+      projectRetrievalArguments(source!, {
+        query: "agent interfaces",
+        limit: 30,
+      }),
+    ).toMatchObject({ query: "agent interfaces", count: 20 });
   });
 
   it("propagates the caller's exact cancellation reason", async () => {

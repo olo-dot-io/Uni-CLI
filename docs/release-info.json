@@ -1,24 +1,24 @@
 {
-  "version": "1.2.0",
-  "codename": "Artemis · Hansen",
-  "date": "2026-08-11",
-  "status": "published",
+  "version": "1.2.1",
+  "codename": "Artemis · Wiseman",
+  "date": "2026-08-21",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#120--2026-08-11--artemis--hansen",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.2.1",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#121--2026-08-21--artemis--wiseman",
   "highlights": {
     "root": [
-      "Agents can distill failed runs, stage one scoped adapter change, verify it, promote it, inspect durable attempt history, and restore the prior overlay through one local lifecycle.",
-      "Paired baseline and candidate execution now requires strict validation improvement, every predicted fix, an independent held-out split, and zero measured regressions.",
-      "Agent Plugins 1.0 Skills and configuration-only MCP packages now project into the operation catalog, CLI, MCP, and ACP surfaces.",
-      "The documentation now organizes repair and evolution as one workflow, and the mobile navigation button keeps its intended layout and tap target."
+      "General open-web research now routes through `retrieval search`, with an optional SerpBase provider for users who set `SERPBASE_API_KEY`.",
+      "One availability contract keeps configured-only commands aligned across CLI help, search, describe, completion, schemas, Agents, retrieval, and MCP.",
+      "SerpBase follows the current `POST /google/search` contract, preserves typed JSON input, and reports authentication, quota, and HTTP failures through structured envelopes.",
+      "Paid providers stay explicit, so default and all-provider research never spends SerpBase credits."
     ],
     "zh": [
-      "Agent 现在可以在一条本地流程中提炼失败 run、暂存一次 scoped adapter 修改、验证并晋级候选、检查持久化尝试记录，以及恢复原有 overlay。",
-      "baseline 与 candidate 的成对执行现在要求 validation 严格提升、所有预测修复成立、held-out split 独立且完整，并且没有测得回退。",
-      "Agent Plugins 1.0 Skills 和仅含配置的 MCP package 现在可以投影到 operation catalog、CLI、MCP 和 ACP。",
-      "文档现已把 repair 与 evolution 组织成同一条工作流，手机端导航按钮也恢复了预期布局和点击区域。"
+      "通用开放网页研究现由 `retrieval search` 承接。设置 `SERPBASE_API_KEY` 后可显式选用 SerpBase。",
+      "统一的 availability 契约让 CLI help、search、describe、completion、schema、Agent、retrieval 和 MCP 对配置型命令保持一致。",
+      "SerpBase 按当前 `POST /google/search` 契约发送请求，保留 JSON 参数类型，并通过结构化 envelope 报告鉴权、额度和 HTTP 错误。",
+      "付费 provider 只接受显式选择，默认检索与 `all` 均不会消耗 SerpBase 额度。"
     ]
   }
 }

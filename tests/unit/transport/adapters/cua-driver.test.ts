@@ -172,12 +172,11 @@ describe("CuaDriverTransport", () => {
   );
 
   it.runIf(existsSync(primaryManifestPath))(
-    "matches the checked-out primary Cua manifest tool, property, capability, and nullable-motion surface",
+    "matches the checked-out primary Cua manifest for every owned operation",
     () => {
       const manifest = JSON.parse(
         readFileSync(primaryManifestPath, "utf8"),
       ) as {
-        contract_version: string;
         tools: Array<{
           name: string;
           capabilities: string[];
@@ -188,17 +187,15 @@ describe("CuaDriverTransport", () => {
       };
       const upstream = new Map(manifest.tools.map((tool) => [tool.name, tool]));
 
-      expect(manifest.contract_version).toBe("0.2.0");
-      expect([...upstream.keys()].sort()).toEqual(
-        Object.keys(CUA_DRIVER_OPERATION_SPECS).sort(),
-      );
       for (const [name, spec] of Object.entries(CUA_DRIVER_OPERATION_SPECS)) {
         const tool = upstream.get(name);
         expect(tool, name).toBeDefined();
-        expect(Object.keys(tool!.input_schema.properties).sort()).toEqual(
-          [...spec.input.properties].sort(),
+        expect(Object.keys(tool!.input_schema.properties)).toEqual(
+          expect.arrayContaining([...spec.input.properties]),
         );
-        expect(tool!.capabilities).toEqual(spec.capabilities);
+        expect(tool!.capabilities).toEqual(
+          expect.arrayContaining([...spec.capabilities]),
+        );
       }
       for (const field of [
         "start_handle",

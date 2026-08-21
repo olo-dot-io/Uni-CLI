@@ -19,7 +19,7 @@ export interface CapturedEndpointRequest {
 }
 
 export interface AdapterAuthoringAuthInfo {
-  strategy: "public" | "cookie" | "header";
+  strategy: "public" | "cookie" | "header" | "environment";
   cookies: string[];
   csrfToken: boolean;
   notes: string[];
@@ -274,7 +274,10 @@ export function buildGeneratedAdapterYaml(
     `description: "${description}"`,
   ];
   const body =
-    strategy === "public" || strategy === "cookie" || strategy === "header"
+    strategy === "public" ||
+    strategy === "cookie" ||
+    strategy === "header" ||
+    strategy === "environment"
       ? buildApiPipeline(ep, strategy, selectPath, fields)
       : buildBrowserPipeline(ep, selectPath, fields);
   const footer = [
