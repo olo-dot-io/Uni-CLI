@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.2.1 · Artemis · Wiseman.
+Latest: v1.2.1 · Artemis · Wiseman.
 
 ## Agent Index
 

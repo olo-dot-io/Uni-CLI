@@ -53,7 +53,7 @@ unicli hackernews top --limit 5 -f json
 
 ## 当前版本
 
-本地版本：v1.2.1 · Artemis · Wiseman。
+当前 latest：v1.2.1 · Artemis · Wiseman。
 
 ## Agent 索引
 
