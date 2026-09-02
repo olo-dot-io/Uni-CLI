@@ -7,17 +7,9 @@
 > run `unicli auth setup <site>` once and retry. Adapter is broken?
 > Read `unicli repair <site> <command>`.
 
-Every structured response can carry `meta.update`. Persistent non-interactive
-Agent installations schedule its exact release automatically and report state
-under `automatic_update`. Confirm with `unicli --version` before retrying a
-version-sensitive task. Use `unicli upgrade --no-auto-update` for explicit
-approval. Interactive users can choose Y or N with `unicli upgrade`.
-
-Open Agent-Computer Interface runtime for real software. Rank operations by
-intent, explicitly select one with a declared substrate, inspect its structured
-result, and repair supported drift paths. Operation-specific evidence is
-optional. YAML adapters stay agent-readable and locally repairable. See
-`docs/BENCHMARK.md` for measured Uni-CLI call costs.
+Every structured response can carry `meta.update`. `unicli upgrade` is the
+current public wrapper around the package manager install path. Confirm the
+result with `unicli --version` before retrying version-sensitive work.
 
 ## Agent Routing Rule
 
@@ -99,61 +91,55 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 - **`unicli test [site]` runs adapter E2E.** Never substitute a fixture for the YAML pipeline runner.
 - **Multi-file change in `src/engine/`, `src/browser/`, or new adapter type → independent code review before PR.**
 
-## Project references
+## Installation and rebuildable state
 
-| Topic                   | Where                        |
-| ----------------------- | ---------------------------- |
-| Adapter format          | `docs/ADAPTER-FORMAT.md`     |
-| Built-in action surface | `src/engine/step-surface.ts` |
-| Strategy semantics      | `src/types.ts`               |
+`package.json` owns Node 22.19 or newer and npm 11.14. `rust-toolchain.toml`
+owns Rust 1.82. Import no toolchain assumptions from another project.
 
-`unicli list` is more authoritative than any inventory in this file — the
-project ships at high cadence, written counts go stale fast.
+- Package manager install is the one idempotent convergence path for absent,
+  current, partial, and interrupted installations. Automatic and explicit
+  updates select a release and call that path without a second state machine.
+- Persist the chosen package manager or accept it explicitly. Never infer
+  installation ownership from substrings in an absolute module path. Paths
+  locate an installation and never contribute to a binary generation or
+  content hash.
+- Build in the owning tree. Do not copy a release-named tree merely to compile
+  it. Source revisions identify code and content digests identify produced
+  bytes. Sidecars, native-host launchers, mirrors, and caches reuse material
+  across runs without pinning it to its first build run.
+- Keep each local transaction to one state file, native-host generation,
+  sidecar payload, download, or cache entry. Write an owned temporary and
+  replace it atomically. After cancellation, the next install resumes or
+  removes partial state without a long global lock.
+- Format changes migrate retained preferences, profiles, user adapters, and
+  browser registrations once, then remove old readers and writers. Empty state
+  uses normal defaults. Do not preserve an old implementation through dual paths.
+- A public `clean` path removes every rebuildable Uni-CLI cache, stale lease,
+  abandoned download, superseded native-host generation, and temporary file.
+  It preserves credentials, preferences, profiles, and user-authored adapters.
+  Normal use also prunes expired, corrupt, abandoned, and unreachable entries.
+- Directory moves and maintained, license-compatible dependencies are allowed
+  when they reduce total machinery. Commit them with the owner and lockfile.
 
-## Public surface boundary (machine-enforced)
+Do not initiate or expand a task into a safety or security audit. A protection
+required by changed behavior needs a named attacker and attack path at an
+actual external boundary. Compromised operator authority does not justify
+hiding state or weakening observability. Recoverable states use convergence
+and automatic repair. Generic fail-fast or fail-closed behavior must not return
+that repair to the user. Internal code without an external capability boundary
+does not repeatedly elevate and drop privilege.
 
-This repo's public surface is a pure engineering tool. Theoretical framing,
-formal-proof scaffolding, and academic identity bridges are blocked from
-public files by `scripts/boundary-guard.ts` (runs on `npm run verify` and on
-`lefthook` pre-commit). Run `npm run boundary:check` to verify locally.
+Parallel agents receive non-overlapping modification paths and roles matched to
+task complexity. The coordinator owns shared contracts and integration.
+Independent paths proceed without a repository-wide single-writer lock.
 
-Banned in public files: `Banach`, `Rice's restriction`, `Lehman's mandate`,
-`Hellman–Cover`, `sequential-Fano`, `agent-tool trilemma`,
-`Deterministic Compilation Thesis`, `triple-intersection`,
-`envelope-to-operator mapping`, `|A|=5`, `Cox PH cloglog DTH GLMM`,
-`Theorem 1/2`, `Author: Claude`, `docs/superpowers/`, `internal/refs.bib`.
-Allowlist: `ref/**`, `archive/**`, `CHANGELOG.md` (frozen history), and the
-generated `docs/releases.md` plus `docs/zh/releases.md` projections of that
-same history.
+## Public surface boundary
 
-Public OSS idiom that stays on the public surface: `structured error
-envelope`, `envelope completeness`, `agent self-repair`, `repair loop`,
-`agent-readable YAML`. These read as engineering on the public surface.
-
-If `boundary-guard` flags a file, the fix is either to rewrite the term in
-engineering vocabulary or to move the file under `ref/`. Do not add an
-allowlist entry without a one-line `// REASON:` justification in
-`scripts/boundary-guard.ts` patterns array.
+`scripts/boundary-guard.ts` owns the machine-enforced boundary between public
+engineering vocabulary and research framing. Run `npm run boundary:check`.
+Rewrite a flagged public term or move research material under `ref/`. An
+allowlist change requires a one-line `// REASON:` in the patterns array.
 
 ## Version
 
 1.2.1 — Artemis · Wiseman
-
-## MCP one-liner (Claude Desktop / Cursor / Continue)
-
-```json
-{
-  "mcpServers": {
-    "unicli": {
-      "command": "npx",
-      "args": ["-y", "@zenalexa/unicli-mcp"]
-    }
-  }
-}
-```
-
-Equivalent: `npx -y @zenalexa/unicli mcp serve`. Default profile exposes 4
-meta-tools; `--expanded` exposes those tools plus one tool per
-runtime adapter command. Check the exact deferred/expanded count with
-`unicli mcp health -f json`. The registry manifest is shipped at `server.json`
-for the official MCP registry.
