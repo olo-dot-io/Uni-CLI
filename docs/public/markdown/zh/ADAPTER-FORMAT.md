@@ -43,18 +43,18 @@ schema_version: v2
 
 ## 标识与连接
 
-| 字段                | 含义                                                   |
-| ------------------- | ------------------------------------------------------ |
-| `site`              | 命令 namespace，例如 `hackernews`                      |
-| `name`              | Site 下的命令名                                        |
-| `description`       | Search 使用的一句话用户意图                            |
-| `domain`            | 主要远程域名                                           |
-| `type`              | `web-api`、`browser`、`desktop`、`bridge` 或 `service` |
-| `strategy`          | `public`、`cookie`、`header`、`intercept` 或 `ui`      |
-| `browser`           | 标记需要 browser runtime 的命令                        |
-| `browserSession`    | `auto`、`user` 或 `cdp`                                |
-| `auth_cookies`      | Site adapter 使用的 cookie 名称                        |
-| `binary` / `detect` | Bridge adapter 的外部 CLI 与检测命令                   |
+| 字段                | 含义                                                             |
+| ------------------- | ---------------------------------------------------------------- |
+| `site`              | 命令 namespace，例如 `hackernews`                                |
+| `name`              | Site 下的命令名                                                  |
+| `description`       | Search 使用的一句话用户意图                                      |
+| `domain`            | 主要远程域名                                                     |
+| `type`              | `web-api`、`browser`、`desktop`、`bridge` 或 `service`           |
+| `strategy`          | `public`、`cookie`、`header`、`environment`、`intercept` 或 `ui` |
+| `browser`           | 标记需要 browser runtime 的命令                                  |
+| `browserSession`    | `auto`、`user` 或 `cdp`                                          |
+| `auth_cookies`      | Site adapter 使用的 cookie 名称                                  |
+| `binary` / `detect` | Bridge adapter 的外部 CLI 与检测命令                             |
 
 ## Operation metadata
 
@@ -66,6 +66,38 @@ schema_version: v2
 | `operation_effect`   | `read`、`download_file`、`send_message`、`publish_content`、`account_state`、`remote_transform`、`remote_resource`、`service_state`、`local_app`、`local_file`、`destructive`、`unknown_write` |
 | `idempotency`        | `guaranteed`、`conditional`、`none`、`unknown`                                                                                                                                                 |
 | `auth_requirement`   | `required`、`optional`、`none`                                                                                                                                                                 |
+
+## 配置可用性
+
+使用进程凭据的命令单独声明配置要求。`strategy: environment` 表示 pipeline 从环境变量模板读取凭据，执行时不会访问浏览器 cookie 存储。
+
+```yaml
+strategy: environment
+auth_requirement: required
+availability:
+  environment: [SEARCH_API_KEY]
+  discovery: configured
+  setup_url: https://search.example.com/keys
+```
+
+`availability.environment` 中的变量全部为必填项。配置 `discovery: configured` 后，缺少凭据的命令不会进入 list、search、completion 和 expanded MCP。显式 describe 仍会返回命令合同，并列出 `missing_environment`。直接调用会在发起网络请求前结束。
+
+## Retrieval provider
+
+只读 discovery 命令通过统一 retrieval metadata 加入 `unicli retrieval search`。
+
+```yaml
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  selection: explicit
+  arguments:
+    query: query
+    limit: limit
+```
+
+`selection` 默认使用 `automatic`。自动 selector 与 `all` 只选择已配置、无需认证的 automatic source。付费或消耗 quota 的 provider 使用 `selection: explicit`，调用方必须传入精确 source ref 或 site。
 
 ## 参数
 
@@ -126,7 +158,7 @@ defaultFormat: md
 
 ## Schema-v2 必填 metadata
 
-提交到仓库的 YAML adapter 带有六个字段：
+提交到仓库的 YAML adapter 带有以下六个字段。
 
 | 字段                 | 用途                                       |
 | -------------------- | ------------------------------------------ |
@@ -137,7 +169,7 @@ defaultFormat: md
 | `confidentiality`    | `public`、`internal` 或 `private` 数据类别 |
 | `quarantine`         | 标记等待修复的 adapter                     |
 
-给已有 adapter 加入当前 metadata：
+使用下面的命令为已有 adapter 加入当前 metadata。
 
 ```bash
 unicli migrate schema-v2 path/to/adapter.yaml --write

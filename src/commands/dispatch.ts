@@ -57,6 +57,7 @@ import {
 } from "../output/auth-guidance.js";
 import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 
 export function allowsDashPrefixedPositionals(
   adapterArgs: AdapterArg[],
@@ -103,8 +104,11 @@ export function adapterLimitDefault(args: readonly AdapterArg[]): string {
  */
 export function registerAdapterDispatch(program: Command): void {
   for (const adapter of getAllAdapters()) {
+    const hasDiscoverableCommand = Object.values(adapter.commands).some(
+      (command) => isCommandDiscoverable(command),
+    );
     const siteCmd = program
-      .command(adapter.name)
+      .command(adapter.name, { hidden: !hasDiscoverableCommand })
       .description(
         adapter.description ??
           `Commands for ${adapter.displayName ?? adapter.name}`,
@@ -133,7 +137,9 @@ export function registerAdapterDispatch(program: Command): void {
       const description = isQuarantined
         ? `[quarantined] ${descBase || "disabled by health gate"}${cmd.quarantineReason ? ` — ${cmd.quarantineReason}` : ""}`
         : descBase;
-      const subCmd = siteCmd.command(cmdStr).description(description);
+      const subCmd = siteCmd
+        .command(cmdStr, { hidden: !isCommandDiscoverable(cmd) })
+        .description(description);
       if (allowsDashPrefixedPositionals(adapterArgs)) {
         subCmd.allowUnknownOption();
       }

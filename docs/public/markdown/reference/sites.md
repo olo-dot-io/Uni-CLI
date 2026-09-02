@@ -23,7 +23,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 337 sites, 1890 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1891 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -168,7 +168,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | obs | service | 8 | 0 | no | unicli obs record-start<br>unicli obs record-stop<br>unicli obs scenes |
 | obsidian | desktop | 10 | 0 | no | unicli obsidian daily<br>unicli obsidian open<br>unicli obsidian search |
 | ollama | service | 4 | 0 | no | unicli ollama generate<br>unicli ollama list<br>unicli ollama models |
-| ollama-cloud | web-api | 2 | 0 | no | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
+| ollama-cloud | web-api | 2 | 0 | yes | unicli ollama-cloud fetch<br>unicli ollama-cloud search |
 | ones | web-api | 11 | 1 | yes | unicli ones me<br>unicli ones enrich-tasks<br>unicli ones login |
 | opencode | bridge | 1 | 0 | no | unicli opencode version |
 | opencsg | web-api | 2 | 0 | no | unicli opencsg datasets<br>unicli opencsg models |
@@ -198,6 +198,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | reuters | web-api | 5 | 0 | no | unicli reuters article<br>unicli reuters latest<br>unicli reuters search |
 | rubygems | web-api | 3 | 0 | no | unicli rubygems info<br>unicli rubygems search<br>unicli rubygems gem |
 | safebooru | web-api | 4 | 0 | no | unicli safebooru detail<br>unicli safebooru download<br>unicli safebooru search |
+| serpbase | web-api | 1 | 0 | yes | unicli serpbase search |
 | shotcut | desktop | 3 | 0 | no | unicli shotcut effects<br>unicli shotcut info<br>unicli shotcut render |
 | sinablog | browser | 4 | 0 | no | unicli sinablog article<br>unicli sinablog hot<br>unicli sinablog search |
 | sinafinance | web-api | 5 | 0 | no | unicli sinafinance market<br>unicli sinafinance news<br>unicli sinafinance rolling-news |

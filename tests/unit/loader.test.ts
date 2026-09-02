@@ -42,6 +42,115 @@ describe("adapter loader", () => {
     }
   });
 
+  it("loads configured search providers without advertising them before setup", () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    try {
+      delete process.env.SERPBASE_API_KEY;
+      expect(
+        listCommands().some(
+          (command) =>
+            command.site === "serpbase" && command.command === "search",
+        ),
+      ).toBe(false);
+      expect(
+        listCommands({ includeUnavailable: true }).find(
+          (command) =>
+            command.site === "serpbase" && command.command === "search",
+        ),
+      ).toMatchObject({
+        authRequirement: "required",
+        availability: {
+          environment: ["SERPBASE_API_KEY"],
+          discovery: "configured",
+        },
+      });
+    } finally {
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
+  it("blocks an unconfigured provider before any network request", async () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    try {
+      delete process.env.SERPBASE_API_KEY;
+      const invocation = buildInvocation("cli", "serpbase", "search", {
+        args: { query: "Next.js release" },
+        source: "shell",
+      });
+      expect(invocation).not.toBeNull();
+      const result = await execute(invocation!);
+      expect(result.error).toMatchObject({
+        code: "auth_required",
+        retryable: false,
+        suggestion: expect.stringContaining("SERPBASE_API_KEY"),
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
+  it("calls the current SerpBase POST contract and returns organic results", async () => {
+    const previous = process.env.SERPBASE_API_KEY;
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          organic: [
+            {
+              position: 1,
+              title: "Next.js release notes",
+              link: "https://nextjs.org/blog/release",
+              snippet: "Current release changes",
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    try {
+      process.env.SERPBASE_API_KEY = "test-key";
+      const invocation = buildInvocation("cli", "serpbase", "search", {
+        args: {
+          query: "Next.js release",
+          lang: "en",
+          country: "us",
+          page: 2,
+          limit: 5,
+        },
+        source: "shell",
+      });
+      const result = await execute(invocation!);
+      expect(result.error).toBeUndefined();
+      expect(result.results).toEqual([
+        {
+          rank: "1",
+          title: "Next.js release notes",
+          link: "https://nextjs.org/blog/release",
+          snippet: "Current release changes",
+        },
+      ]);
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchSpy.mock.calls[0]!;
+      expect(String(url)).toBe("https://api.serpbase.dev/google/search");
+      expect(init?.method).toBe("POST");
+      expect(new Headers(init?.headers).get("X-API-Key")).toBe("test-key");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        q: "Next.js release",
+        hl: "en",
+        gl: "us",
+        page: 2,
+      });
+    } finally {
+      fetchSpy.mockRestore();
+      if (previous === undefined) delete process.env.SERPBASE_API_KEY;
+      else process.env.SERPBASE_API_KEY = previous;
+    }
+  });
+
   it("keeps every resolved read-family command semantically read-only", () => {
     const mismatches: string[] = [];
     for (const adapter of getAllAdapters()) {

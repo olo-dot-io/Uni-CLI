@@ -39,6 +39,7 @@ import type {
   AdapterArg,
   AdapterCommand,
   AdapterManifest,
+  CommandAvailability,
   OutputSchema,
   RetrievalMetadata,
   Strategy,
@@ -125,6 +126,13 @@ export interface CommandContractAuth {
   setup_command?: string;
 }
 
+export interface CommandContractAvailability {
+  required_environment: string[];
+  discovery: "always" | "configured";
+  setup_url?: string;
+  runtime_state: "not_evaluated";
+}
+
 export interface CommandContractGovernance {
   dimensions: ReturnType<
     typeof evaluateOperationPolicy
@@ -164,6 +172,7 @@ export interface CommandContract {
   execution: CommandOperatorProfile;
   effect: CommandContractEffect;
   auth: CommandContractAuth;
+  availability?: CommandContractAvailability;
   governance: CommandContractGovernance;
   eval: CommandContractEval;
   repair: CommandContractRepair;
@@ -210,6 +219,7 @@ export interface BuildManifestCommandContractInput {
     args?: AdapterArg[];
     capabilities?: string[];
     auth_requirement?: AdapterCommand["auth_requirement"];
+    availability?: CommandAvailability;
     executables?: string[];
     minimum_capability?: string;
     adapter_path?: string;
@@ -484,6 +494,18 @@ export function buildCommandContract(
       ...(authOptional ? { optional: true } : {}),
       ...(authSetupCommand ? { setup_command: authSetupCommand } : {}),
     },
+    ...(command.availability
+      ? {
+          availability: {
+            required_environment: [...command.availability.environment],
+            discovery: command.availability.discovery ?? "always",
+            ...(command.availability.setup_url
+              ? { setup_url: command.availability.setup_url }
+              : {}),
+            runtime_state: "not_evaluated" as const,
+          },
+        }
+      : {}),
     governance: {
       dimensions: policy.capability_scope.dimensions,
       resources: policy.capability_scope.resources,
@@ -541,6 +563,7 @@ export function buildManifestCommandContract(
     adapterArgs: input.command.args,
     capabilities: input.command.capabilities,
     auth_requirement: input.command.auth_requirement,
+    availability: input.command.availability,
     executables: input.command.executables,
     minimum_capability: input.command.minimum_capability,
     quarantine: input.command.quarantined === true ? true : undefined,

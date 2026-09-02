@@ -16,7 +16,8 @@
 import { createHash } from "node:crypto";
 
 import { buildCommandContract } from "../core/command-contract.js";
-import { getAllAdapters } from "../registry.js";
+import { commandRequiresAuth, getAllAdapters } from "../registry.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 import type {
   AdapterCommand,
   AdapterManifest,
@@ -108,7 +109,9 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
-export function listRetrievalSources(): RetrievalSource[] {
+export function listRetrievalSources(
+  options: { discoverableOnly?: boolean } = {},
+): RetrievalSource[] {
   return getAllAdapters()
     .flatMap((adapter) =>
       Object.entries(adapter.commands)
@@ -119,6 +122,10 @@ export function listRetrievalSources(): RetrievalSource[] {
             string,
             AdapterCommand & { retrieval: RetrievalMetadata },
           ] => entry[1].retrieval?.operation === "discover",
+        )
+        .filter(
+          ([, command]) =>
+            !options.discoverableOnly || isCommandDiscoverable(command),
         )
         .map(([name, command]) => {
           const contract = buildCommandContract({
@@ -152,15 +159,23 @@ export function selectRetrievalSources(
   filters: { resultKind?: string; sourceClass?: string } = {},
 ): RetrievalSource[] {
   const available = listRetrievalSources();
+  const automatic = available.filter(
+    (source) =>
+      source.metadata.selection !== "explicit" &&
+      !commandRequiresAuth(source.adapter, source.command) &&
+      isCommandDiscoverable(source.command),
+  );
   const selected =
     selectors.length === 0
-      ? available
+      ? automatic
       : selectors.flatMap((selector) => {
-          if (selector === "all") return available;
-          const matches = available.filter(
+          if (selector === "all") return automatic;
+          const exactMatches = available.filter(
+            (source) => source.ref === selector || source.site === selector,
+          );
+          if (exactMatches.length > 0) return exactMatches;
+          const matches = automatic.filter(
             (source) =>
-              source.ref === selector ||
-              source.site === selector ||
               source.metadata.result_kind === selector ||
               source.metadata.source_class === selector,
           );
@@ -223,7 +238,21 @@ export function projectRetrievalArguments(
           "Fix retrieval.arguments so every target names a declared adapter argument.",
       });
     }
-    if (values[role] !== undefined) projected[target] = values[role];
+    if (values[role] !== undefined) {
+      const argument = schema.find((candidate) => candidate.name === target)!;
+      let value = values[role];
+      if (
+        role === "limit" &&
+        typeof value === "number" &&
+        Number.isFinite(value)
+      ) {
+        value = Math.min(
+          argument.maximum ?? Number.POSITIVE_INFINITY,
+          Math.max(argument.minimum ?? Number.NEGATIVE_INFINITY, value),
+        );
+      }
+      projected[target] = value;
+    }
   }
   const resolved = resolveArgs({
     opts: projected,

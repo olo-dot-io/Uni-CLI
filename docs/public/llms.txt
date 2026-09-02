@@ -4,12 +4,12 @@ Uni-CLI gives AI agents one command model for searching and operating websites, 
 
 ## Operation Snapshot
 
-- Static adapter sites: 337
-- Registered adapter commands: 1890
+- Static adapter sites: 338
+- Registered adapter commands: 1891
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1267 (1008 YAML + 259 TypeScript)
+- Adapters: 1268 (1009 YAML + 259 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10364
+- Tests: 10392
 
 ## Agent Contract
 

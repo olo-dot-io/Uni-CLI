@@ -112,13 +112,14 @@ describe("usage report command", () => {
   });
 
   it("surfaces corrupt event evidence instead of silently dropping it", async () => {
+    const eventLogFile = new Date().toISOString().slice(0, 10) + ".jsonl";
     mkdirSync(logDir, { recursive: true });
-    writeFileSync(join(logDir, "2026-07-18.jsonl"), "not-json\n");
+    writeFileSync(join(logDir, eventLogFile), "not-json\n");
     await run();
 
     const envelope = JSON.parse(String(errorSpy.mock.calls[0][0]));
     expect(envelope.error.code).toBe("local_log_corrupt");
-    expect(envelope.error.message).toContain("2026-07-18.jsonl");
+    expect(envelope.error.message).toContain(eventLogFile);
     expect(envelope.error.message).toContain("line 1");
     expect(process.exitCode).toBe(78);
   });

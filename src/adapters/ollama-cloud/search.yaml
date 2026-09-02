@@ -1,9 +1,18 @@
 site: ollama-cloud
 name: search
 description: Search the web through Ollama Cloud web_search
+operation_effect: read
+execution_operator: structured-api
+operation_family: search
+idempotency: guaranteed
+target_surface: web
 type: web-api
 domain: ollama.com
-strategy: public # auth is via OLLAMA_API_KEY Authorization header, no cookies
+strategy: environment
+auth_requirement: required
+availability:
+  environment: [OLLAMA_API_KEY]
+  discovery: configured
 
 args:
   query:
@@ -14,6 +23,8 @@ args:
   limit:
     type: int
     default: 5
+    minimum: 1
+    maximum: 20
     description: Maximum number of results to return
 
 pipeline:
@@ -22,7 +33,7 @@ pipeline:
       method: POST
       headers:
         Accept: "application/json"
-        Authorization: "Bearer ${{ env.OLLAMA_API_KEY || '' }}"
+        Authorization: "Bearer ${{ env.OLLAMA_API_KEY }}"
       body:
         query: "${{ args.query }}"
   - select: results
@@ -34,8 +45,17 @@ pipeline:
 
 columns: [title, url, content]
 
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  selection: explicit
+  arguments:
+    query: query
+    limit: limit
+
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
-capabilities: ["http.fetch", "select", "map", "limit"]
+capabilities: ["http.fetch"]
 minimum_capability: http.fetch
 trust: public
 confidentiality: public

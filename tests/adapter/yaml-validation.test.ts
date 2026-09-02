@@ -8,7 +8,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADAPTERS_DIR = join(__dirname, "..", "..", "src", "adapters");
 
 const VALID_TYPES = ["web-api", "desktop", "browser", "bridge", "service"];
-const VALID_STRATEGIES = ["public", "cookie", "header", "intercept", "ui"];
+const VALID_STRATEGIES = [
+  "public",
+  "cookie",
+  "header",
+  "environment",
+  "intercept",
+  "ui",
+];
 
 interface ParsedAdapter {
   site: string;

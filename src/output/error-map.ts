@@ -65,6 +65,7 @@ export const ERROR_TAXONOMY: Readonly<Record<string, ErrorTaxonomyEntry>> =
     empty_result: { exitCode: ExitCode.EMPTY_RESULT, retryable: false },
     not_found: { exitCode: ExitCode.EMPTY_RESULT, retryable: false },
     auth_required: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
+    quota_exhausted: { exitCode: ExitCode.CONFIG_ERROR, retryable: false },
     challenge_required: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
     permission_denied: { exitCode: ExitCode.AUTH_REQUIRED, retryable: false },
     config_error: { exitCode: ExitCode.CONFIG_ERROR, retryable: false },
@@ -217,6 +218,7 @@ export function errorTypeToCode(err: unknown): string {
           isAuthMessage(err.message)))
     )
       return "auth_required";
+    if (statusCode === 402) return "quota_exhausted";
     if (statusCode === 404) return "not_found";
     if (statusCode === 429) return "rate_limited";
     if (
@@ -397,7 +399,9 @@ export function emptySearchResultError(
       "Rephrase with a site or domain word (e.g. 'twitter search', '股票行情'), or fall back to a generic web search.",
     retryable: false,
     alternatives: [
-      ...(webSearchQuery ? [`unicli google search "${webSearchQuery}"`] : []),
+      ...(webSearchQuery
+        ? [`unicli retrieval search "${webSearchQuery}"`]
+        : []),
       "unicli list --site <site>",
       "unicli list",
     ],

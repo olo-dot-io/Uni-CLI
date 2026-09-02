@@ -67,6 +67,46 @@ describe("validateAdapterV2", () => {
     const res = validateAdapterV2(cmd);
     expect(res.ok).toBe(false);
   });
+
+  it("validates configuration availability and retrieval selection", () => {
+    const valid = validateAdapterV2({
+      name: "search",
+      capabilities: ["http.fetch"],
+      minimum_capability: "http.fetch",
+      trust: "public",
+      confidentiality: "public",
+      quarantine: false,
+      availability: {
+        environment: ["SEARCH_API_KEY"],
+        discovery: "configured",
+        setup_url: "https://search.example.com/keys",
+      },
+      retrieval: {
+        operation: "discover",
+        result_kind: "docs",
+        source_class: "search-index",
+        selection: "explicit",
+      },
+    });
+    expect(valid.ok).toBe(true);
+
+    const invalid = validateAdapterV2({
+      name: "search",
+      capabilities: ["http.fetch"],
+      minimum_capability: "http.fetch",
+      trust: "public",
+      confidentiality: "public",
+      quarantine: false,
+      availability: {
+        environment: ["search-api-key"],
+        discovery: "configured",
+      },
+    });
+    expect(invalid).toMatchObject({
+      ok: false,
+      error: expect.stringContaining("uppercase environment variable"),
+    });
+  });
 });
 
 describe("parseAdapterV2", () => {

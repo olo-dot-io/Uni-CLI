@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-11T10:06:37.753Z",
-  "total_sites": 337,
-  "total_commands": 1890,
+  "generated": "2026-08-21T08:11:13.128Z",
+  "total_sites": 338,
+  "total_commands": 1891,
   "sites": [
     {
       "site": "12306",
@@ -4194,7 +4194,7 @@
         },
         {
           "name": "search",
-          "description": "Google web search via RSS",
+          "description": "Search Google News through its public RSS feed",
           "command": "unicli google search",
           "auth": false,
           "auth_requirement": "none",
@@ -8189,8 +8189,8 @@
       "site": "ollama-cloud",
       "type": "web-api",
       "domain": "ollama.com",
-      "auth": false,
-      "strategy": "public",
+      "auth": true,
+      "strategy": "environment",
       "command_count": 2,
       "personalized_commands": 0,
       "personalization_families": [],
@@ -8207,8 +8207,8 @@
           "name": "search",
           "description": "Search the web through Ollama Cloud web_search",
           "command": "unicli ollama-cloud search",
-          "auth": false,
-          "auth_requirement": "none",
+          "auth": true,
+          "auth_requirement": "required",
           "browser": false
         }
       ]
@@ -9565,6 +9565,26 @@
           "command": "unicli safebooru tags",
           "auth": false,
           "auth_requirement": "none",
+          "browser": false
+        }
+      ]
+    },
+    {
+      "site": "serpbase",
+      "type": "web-api",
+      "domain": "api.serpbase.dev",
+      "auth": true,
+      "strategy": "environment",
+      "command_count": 1,
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Google web results through the SerpBase structured API",
+          "command": "unicli serpbase search",
+          "auth": true,
+          "auth_requirement": "required",
           "browser": false
         }
       ]

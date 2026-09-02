@@ -403,6 +403,17 @@ export function evalTemplate(template: string, ctx: PipelineContext): string {
   });
 }
 
+/** Preserve the evaluated type when a nested value is exactly one template. */
+export function evalTemplateValue(
+  template: string,
+  ctx: PipelineContext,
+): unknown {
+  const fullMatch = template.match(/^\$\{\{\s*(.+?)\s*\}\}$/);
+  return fullMatch
+    ? evalExpression(fullMatch[1], buildScope(ctx))
+    : evalTemplate(template, ctx);
+}
+
 export function buildScope(ctx: PipelineContext): Record<string, unknown> {
   const scope: Record<string, unknown> = {
     args: ctx.args,
@@ -453,7 +464,7 @@ export function resolveTemplateDeep(
   ctx: PipelineContext,
 ): unknown {
   if (typeof value === "string") {
-    return evalTemplate(value, ctx);
+    return evalTemplateValue(value, ctx);
   }
   if (Array.isArray(value)) {
     return value.map((v) => resolveTemplateDeep(v, ctx));

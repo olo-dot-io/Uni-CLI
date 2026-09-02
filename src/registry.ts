@@ -21,6 +21,7 @@ import {
   metadataHasOptionalAuth,
   metadataRequiresAuth,
 } from "./core/auth-contract.js";
+import { isCommandDiscoverable } from "./core/command-availability.js";
 import {
   classifyPersonalization,
   type PersonalizationFamily,
@@ -155,6 +156,14 @@ function canonicalizeCommand(command: AdapterCommand): AdapterCommand {
       : {}),
     ...(command.executables ? { executables: [...command.executables] } : {}),
     ...(command.columns ? { columns: [...command.columns] } : {}),
+    ...(command.availability
+      ? {
+          availability: {
+            ...command.availability,
+            environment: [...command.availability.environment],
+          },
+        }
+      : {}),
   });
 }
 
@@ -239,6 +248,7 @@ export function commandAuthSetupCommand(
   adapter: AdapterManifest,
   command: AdapterCommand,
 ): string | undefined {
+  if (command.availability?.environment.length) return undefined;
   return metadataAuthSetupCommand(
     adapter.name,
     commandStrategy(adapter, command),
@@ -281,7 +291,9 @@ function adapterCategory(adapter: AdapterManifest): string {
 }
 
 /** List all available commands across all adapters */
-export function listCommands(): Array<{
+export function listCommands(
+  options: { includeUnavailable?: boolean } = {},
+): Array<{
   site: string;
   command: string;
   description: string;
@@ -294,6 +306,7 @@ export function listCommands(): Array<{
   args: readonly AdapterArg[];
   quarantined: boolean;
   quarantineReason?: string;
+  availability?: AdapterCommand["availability"];
 }> {
   const result: Array<{
     site: string;
@@ -308,10 +321,12 @@ export function listCommands(): Array<{
     args: readonly AdapterArg[];
     quarantined: boolean;
     quarantineReason?: string;
+    availability?: AdapterCommand["availability"];
   }> = [];
 
   for (const adapter of adapters.values()) {
     for (const [name, cmd] of Object.entries(adapter.commands)) {
+      if (!options.includeUnavailable && !isCommandDiscoverable(cmd)) continue;
       const category = adapterCategory(adapter);
       const strategy = commandStrategy(adapter, cmd);
       const authRequirement = metadataAuthRequirement(
@@ -339,6 +354,7 @@ export function listCommands(): Array<{
         args: cmd.adapterArgs ?? [],
         quarantined: cmd.quarantine === true,
         quarantineReason: cmd.quarantineReason,
+        ...(cmd.availability ? { availability: cmd.availability } : {}),
       });
     }
   }
@@ -383,6 +399,8 @@ export interface CliRegistration {
   capabilities?: readonly string[];
   /** Required, optional-by-route, or absent authentication contract. */
   auth_requirement?: AdapterCommand["auth_requirement"];
+  /** Configuration prerequisites and catalog visibility policy. */
+  availability?: AdapterCommand["availability"];
   /** Domain-neutral evidence discovery metadata; never used for permission. */
   retrieval?: RetrievalMetadata;
   /** Local executable names used by commands that declare subprocess.*. */
@@ -460,6 +478,7 @@ export function cli(config: CliRegistration): void {
     defaultFormat: config.defaultFormat,
     capabilities: config.capabilities ? [...config.capabilities] : undefined,
     auth_requirement: config.auth_requirement,
+    availability: config.availability,
     retrieval: config.retrieval,
     executables: config.executables ? [...config.executables] : undefined,
     minimum_capability: config.minimum_capability,

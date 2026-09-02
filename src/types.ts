@@ -33,11 +33,26 @@ export enum Strategy {
   PUBLIC = "public",
   COOKIE = "cookie",
   HEADER = "header",
+  ENVIRONMENT = "environment",
   INTERCEPT = "intercept",
   UI = "ui",
 }
 
 export type AuthRequirement = "required" | "optional" | "none";
+
+export type CommandDiscoveryPolicy = "always" | "configured";
+
+/**
+ * Static configuration prerequisites for one command.
+ *
+ * The declaration is shipped in the catalog. Runtime discovery evaluates it
+ * against the current process environment without probing the provider.
+ */
+export interface CommandAvailability {
+  environment: string[];
+  discovery?: CommandDiscoveryPolicy;
+  setup_url?: string;
+}
 
 export type TargetSurface = "web" | "desktop" | "system" | "mobile";
 export type BrowserSessionPreference = "auto" | "user" | "cdp";
@@ -240,6 +255,8 @@ export interface RetrievalMetadata {
   operation: "discover";
   result_kind: RetrievalResultKind;
   source_class: RetrievalSourceClass;
+  /** Explicit sources run only when selected by exact site or source ref. */
+  selection?: "automatic" | "explicit";
   /** Extensible semantic-role -> declared adapter argument mapping. */
   arguments?: Readonly<Record<string, string>>;
 }
@@ -304,6 +321,9 @@ export interface AdapterCommand {
    * run publicly but explicit routes may activate an authenticated source.
    */
   auth_requirement?: AuthRequirement;
+
+  /** Configuration prerequisites and catalog visibility policy. */
+  availability?: CommandAvailability;
 
   /** Read-only evidence discovery contract, independent of any domain pack. */
   retrieval?: RetrievalMetadata;

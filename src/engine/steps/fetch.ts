@@ -372,18 +372,19 @@ async function fetchJson(
         statusCode: resp.status,
         responsePreview: preview,
         suggestion:
-          resp.status === 403
-            ? "The API is blocking requests. The endpoint may require authentication (cookie strategy) or the User-Agent may need updating."
-            : resp.status === 404
-              ? "The API endpoint was not found. The URL path may have changed — check the target site for the current API."
-              : resp.status === 429
-                ? "Rate limited. Add a delay between requests or reduce the limit parameter."
-                : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
+          resp.status === 401
+            ? "The provider rejected the configured credentials. Refresh its declared header, cookie, or token configuration."
+            : resp.status === 402
+              ? "Add provider credits or quota before retrying this request."
+              : resp.status === 403
+                ? "The provider denied this request. Verify its declared credentials and account access."
+                : resp.status === 404
+                  ? "The API endpoint was not found. The URL path may have changed — check the target site for the current API."
+                  : resp.status === 429
+                    ? "Rate limited. Add a delay between requests or reduce the limit parameter."
+                    : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
         retryable: isRetryableStatus,
-        alternatives:
-          resp.status === 401 || resp.status === 403
-            ? ["unicli auth setup <site>"]
-            : [],
+        alternatives: [],
       },
     );
   }

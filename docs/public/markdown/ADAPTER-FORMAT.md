@@ -43,22 +43,22 @@ schema_version: v2
 
 ## Identity and connection
 
-| Field               | Value                                                       |
-| ------------------- | ----------------------------------------------------------- |
-| `site`              | Command namespace, such as `hackernews`                     |
-| `name`              | Command name inside the site                                |
-| `description`       | One-line user intent used by search                         |
-| `domain`            | Primary remote domain, when applicable                      |
-| `type`              | `web-api`, `browser`, `desktop`, `bridge`, or `service`     |
-| `strategy`          | `public`, `cookie`, `header`, `intercept`, or `ui`          |
-| `browser`           | Marks commands that require a browser runtime               |
-| `browserSession`    | `auto`, `user`, or `cdp`                                    |
-| `auth_cookies`      | Cookie names used by a site adapter                         |
-| `binary` / `detect` | External CLI name and detection command for bridge adapters |
+| Field               | Value                                                             |
+| ------------------- | ----------------------------------------------------------------- |
+| `site`              | Command namespace, such as `hackernews`                           |
+| `name`              | Command name inside the site                                      |
+| `description`       | One-line user intent used by search                               |
+| `domain`            | Primary remote domain, when applicable                            |
+| `type`              | `web-api`, `browser`, `desktop`, `bridge`, or `service`           |
+| `strategy`          | `public`, `cookie`, `header`, `environment`, `intercept`, or `ui` |
+| `browser`           | Marks commands that require a browser runtime                     |
+| `browserSession`    | `auto`, `user`, or `cdp`                                          |
+| `auth_cookies`      | Cookie names used by a site adapter                               |
+| `binary` / `detect` | External CLI name and detection command for bridge adapters       |
 
 ## Operation metadata
 
-These fields make search and policy decisions clearer:
+These fields make search and policy decisions clearer.
 
 | Field                | Values                                                                                                                                                                                         |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -68,6 +68,38 @@ These fields make search and policy decisions clearer:
 | `operation_effect`   | `read`, `download_file`, `send_message`, `publish_content`, `account_state`, `remote_transform`, `remote_resource`, `service_state`, `local_app`, `local_file`, `destructive`, `unknown_write` |
 | `idempotency`        | `guaranteed`, `conditional`, `none`, `unknown`                                                                                                                                                 |
 | `auth_requirement`   | `required`, `optional`, `none`                                                                                                                                                                 |
+
+## Configuration availability
+
+Commands backed by process credentials declare them separately from provider authentication. `strategy: environment` means the pipeline reads credentials from environment templates and never opens the browser cookie store.
+
+```yaml
+strategy: environment
+auth_requirement: required
+availability:
+  environment: [SEARCH_API_KEY]
+  discovery: configured
+  setup_url: https://search.example.com/keys
+```
+
+Every variable in `availability.environment` is required. `discovery: configured` removes the command from list, search, completion, and expanded MCP surfaces until configuration is present. An explicit describe remains available and reports `missing_environment`. Direct invocation stops before network access when configuration is incomplete.
+
+## Retrieval providers
+
+Read-only discovery commands can join `unicli retrieval search` through portable retrieval metadata.
+
+```yaml
+retrieval:
+  operation: discover
+  result_kind: docs
+  source_class: search-index
+  selection: explicit
+  arguments:
+    query: query
+    limit: limit
+```
+
+`selection: automatic` is the default. Automatic selectors and `all` use only configured, unauthenticated automatic sources. `selection: explicit` reserves paid or quota-bearing providers for an exact source ref or site selection.
 
 ## Arguments
 
@@ -128,7 +160,7 @@ defaultFormat: md
 
 ## Required schema-v2 metadata
 
-Committed YAML adapters carry six fields:
+Committed YAML adapters carry six fields.
 
 | Field                | Purpose                                       |
 | -------------------- | --------------------------------------------- |
@@ -139,7 +171,7 @@ Committed YAML adapters carry six fields:
 | `confidentiality`    | `public`, `internal`, or `private` data class |
 | `quarantine`         | Marks an adapter that is waiting for repair   |
 
-Add current metadata to an existing adapter with:
+Add current metadata to an existing adapter with this command.
 
 ```bash
 unicli migrate schema-v2 path/to/adapter.yaml --write

@@ -17,6 +17,7 @@ import { validateAdapterV2, type AdapterCommandV2 } from "./schema-v2.js";
 import {
   type AdapterArg,
   type AdapterCommand,
+  type CommandAvailability,
   type AdapterManifest,
   type AdapterType,
   type BrowserSessionPreference,
@@ -66,6 +67,7 @@ export interface YamlAdapterDocument {
   output?: AdapterCommand["output"];
   capabilities?: string[];
   auth_requirement?: AdapterCommand["auth_requirement"];
+  availability?: CommandAvailability;
   retrieval?: RetrievalMetadata;
   minimum_capability?: string;
   trust?: string;
@@ -144,6 +146,7 @@ export function normalizeYamlAdapterDocument(
       minimum_capability: validated.minimum_capability,
       capabilities: stringArray(document.capabilities),
       auth_requirement: document.auth_requirement,
+      availability: validated.availability,
       retrieval: validated.retrieval,
       executables: stringArray(document.executables),
       paginated: document.paginated === true ? true : undefined,

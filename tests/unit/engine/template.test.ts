@@ -11,6 +11,7 @@ import { describe, it, expect } from "vitest";
 import {
   evalExpression,
   evalTemplate,
+  resolveTemplateDeep,
   TemplateEvalError,
 } from "../../../src/engine/template.js";
 import type { PipelineContext } from "../../../src/engine/executor.js";
@@ -64,6 +65,22 @@ describe("evalTemplate — surface scope branching", () => {
     const key = "UNICLI_TEMPLATE_ENV_UNSET_KEY_8473";
     delete process.env[key];
     expect(evalTemplate(`\${{ env.${key} || 'absent' }}`, ctx)).toBe("absent");
+  });
+});
+
+describe("resolveTemplateDeep", () => {
+  it("preserves typed values for exact nested expressions", () => {
+    const ctx = makeCtx({ args: { page: 2, enabled: true } });
+    expect(
+      resolveTemplateDeep(
+        {
+          page: "${{ args.page }}",
+          enabled: "${{ args.enabled }}",
+          label: "page-${{ args.page }}",
+        },
+        ctx,
+      ),
+    ).toEqual({ page: 2, enabled: true, label: "page-2" });
   });
 });
 

@@ -47,6 +47,7 @@ const VALID_STRATEGIES = new Set([
   "public",
   "cookie",
   "header",
+  "environment",
   "intercept",
   "ui",
 ]);

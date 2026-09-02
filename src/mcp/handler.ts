@@ -16,6 +16,7 @@
 import { randomUUID } from "node:crypto";
 
 import { getAllAdapters, listCommands, resolveCommand } from "../registry.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 import {
   getCoreDiscoveryCommand,
   listCoreDiscoveryCommands,
@@ -306,10 +307,18 @@ async function handleRunCommand(
     }
     const adapters = getAllAdapters();
     const matchingSites = adapters
-      .filter((a) => a.name.includes(site))
+      .filter(
+        (adapter) =>
+          adapter.name.includes(site) &&
+          Object.values(adapter.commands).some((candidate) =>
+            isCommandDiscoverable(candidate),
+          ),
+      )
       .map((a) => ({
         site: a.name,
-        commands: Object.keys(a.commands),
+        commands: Object.entries(a.commands)
+          .filter(([, candidate]) => isCommandDiscoverable(candidate))
+          .map(([name]) => name),
       }));
 
     const errorData = {

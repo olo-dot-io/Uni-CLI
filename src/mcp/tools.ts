@@ -17,6 +17,7 @@
 
 import { getAllAdapters } from "../registry.js";
 import { buildCommandContract } from "../core/command-contract.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 import type { AdapterManifest, AdapterCommand } from "../types.js";
 import type { McpToolResult } from "./dispatch.js";
 import {
@@ -385,6 +386,7 @@ function sortedCommandEntries(): Array<{
   }> = [];
   for (const adapter of getAllAdapters()) {
     for (const [cmdName, cmd] of Object.entries(adapter.commands)) {
+      if (!isCommandDiscoverable(cmd)) continue;
       entries.push({
         adapter,
         cmdName,

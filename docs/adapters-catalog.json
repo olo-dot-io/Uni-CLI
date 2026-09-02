@@ -1,8 +1,8 @@
 {
-  "source": "unicli@1.2.0",
-  "generated": "2026-08-11T10:06:37.753Z",
-  "total_sites": 337,
-  "total_commands": 1890,
+  "source": "unicli@1.2.1",
+  "generated": "2026-08-21T08:11:13.128Z",
+  "total_sites": 338,
+  "total_commands": 1891,
   "adapters": [
     {
       "site": "12306",
@@ -11544,7 +11544,7 @@
         },
         {
           "name": "search",
-          "description": "Google web search via RSS",
+          "description": "Search Google News through its public RSS feed",
           "when_to_use": "When you need to search google for a specific query.",
           "command": "unicli google search",
           "auth": false,
@@ -21539,8 +21539,8 @@
       "site": "ollama-cloud",
       "type": "web-api",
       "domain": "ollama.com",
-      "auth": false,
-      "strategy": "public",
+      "auth": true,
+      "strategy": "environment",
       "personalized_commands": 0,
       "personalization_families": [],
       "commands": [
@@ -21569,9 +21569,9 @@
           "description": "Search the web through Ollama Cloud web_search",
           "when_to_use": "When you need to search ollama-cloud for a specific query.",
           "command": "unicli ollama-cloud search",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
+          "auth": true,
+          "auth_requirement": "required",
+          "strategy": "environment",
           "browser": false,
           "columns": ["title", "url", "content"],
           "args": [
@@ -25068,6 +25068,65 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "serpbase",
+      "type": "web-api",
+      "domain": "api.serpbase.dev",
+      "auth": true,
+      "strategy": "environment",
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "search",
+          "description": "Search Google web results through the SerpBase structured API",
+          "when_to_use": "When you need to search serpbase for a specific query.",
+          "command": "unicli serpbase search",
+          "auth": true,
+          "auth_requirement": "required",
+          "strategy": "environment",
+          "browser": false,
+          "columns": ["rank", "title", "snippet", "link"],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Google web search query"
+            },
+            {
+              "name": "lang",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Two-letter result language"
+            },
+            {
+              "name": "country",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Two-letter result country"
+            },
+            {
+              "name": "page",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Google result page"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum organic results to return"
             }
           ]
         }
@@ -50717,6 +50776,7 @@
             "title",
             "result_kind",
             "source_class",
+            "selection",
             "source_adapter",
             "updated_at",
             "url",
@@ -50735,7 +50795,7 @@
               "type": "str",
               "required": false,
               "positional": false,
-              "description": "Comma-separated exact refs, sites, kinds, or source classes; use all explicitly for every registered source"
+              "description": "Comma-separated exact refs, sites, kinds, or source classes; all selects automatic sources, while paid or configured providers require an exact ref or site"
             },
             {
               "name": "kind",

@@ -160,9 +160,9 @@ function adapterSourcePath(absPath: string): string {
 }
 
 // detect: field is stored on the adapter manifest for informational purposes.
-// It does NOT gate registration. All adapters are always visible and available.
-// If a desktop adapter requires a missing binary, the exec step gives a clear
-// runtime error with install instructions.
+// It does NOT gate catalog registration. Commands may separately declare an
+// availability discovery policy, while missing desktop binaries still surface
+// from the exec step with install instructions.
 
 /** Load all adapters from a directory */
 export function loadAdaptersFromDir(
@@ -261,7 +261,8 @@ export function loadAdaptersFromDir(
         }
 
         // detect: field is stored on the adapter manifest for runtime checks,
-        // but does NOT gate registration. All adapters are always visible.
+        // but does NOT gate catalog registration. Command availability owns
+        // any configuration-dependent discovery visibility.
         // Runtime exec step checks binary availability and gives clear errors.
 
         const normalizedSite = yamlSiteMetadata(parsed);

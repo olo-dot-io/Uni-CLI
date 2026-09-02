@@ -29,6 +29,7 @@ import { VERSION } from "../constants.js";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";
 import type { AdapterManifest, OutputFormat } from "../types.js";
+import { isCommandDiscoverable } from "../core/command-availability.js";
 
 // ── Template context shared by all formatters ─────────────────────────────
 
@@ -463,7 +464,16 @@ export function registerAgentsCommand(program: Command): void {
         return;
       }
 
-      const adapters = getAllAdapters();
+      const adapters = getAllAdapters()
+        .map((adapter) => ({
+          ...adapter,
+          commands: Object.fromEntries(
+            Object.entries(adapter.commands).filter(([, command]) =>
+              isCommandDiscoverable(command),
+            ),
+          ),
+        }))
+        .filter((adapter) => Object.keys(adapter.commands).length > 0);
       const commandList = listCommands();
 
       if (adapters.length === 0) {

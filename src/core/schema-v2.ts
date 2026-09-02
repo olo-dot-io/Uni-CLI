@@ -55,6 +55,18 @@ const RetrievalSourceClassSchema = z.enum([
   "search-index",
 ]);
 
+const EnvironmentVariableSchema = z
+  .string()
+  .regex(/^[A-Z][A-Z0-9_]*$/, "must be an uppercase environment variable name");
+
+const CommandAvailabilitySchema = z
+  .object({
+    environment: z.array(EnvironmentVariableSchema).min(1),
+    discovery: z.enum(["always", "configured"]).optional(),
+    setup_url: z.url().optional(),
+  })
+  .strict();
+
 const RetrievalArgumentsSchema = z.record(
   RetrievalTokenSchema,
   z.string().min(1),
@@ -65,6 +77,7 @@ const RetrievalMetadataSchema = z
     operation: z.literal("discover"),
     result_kind: RetrievalTokenSchema,
     source_class: RetrievalSourceClassSchema,
+    selection: z.enum(["automatic", "explicit"]).optional(),
     arguments: RetrievalArgumentsSchema.optional(),
   })
   .strict();
@@ -87,6 +100,7 @@ export const AdapterCommandV2Schema = z
     schema_version: AdapterSchemaVersionSchema.optional(),
     capabilities: z.array(z.string()),
     auth_requirement: z.enum(["required", "optional", "none"]).optional(),
+    availability: CommandAvailabilitySchema.optional(),
     operation_effect: z
       .enum([
         "read",
