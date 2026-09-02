@@ -100,7 +100,7 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 - <!-- STATS:command_count -->1891<!-- /STATS --> 条注册命令
 - <!-- STATS:adapter_count_total -->1268<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10392<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10389<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
