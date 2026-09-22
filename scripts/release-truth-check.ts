@@ -923,7 +923,7 @@ if (!releaseNeeds.includes("build-process-owner")) {
 }
 const releaseSteps = releaseJob?.steps ?? [];
 const bundledVerification = releaseSteps.find(
-  (step) => step.name === "Verify bundled process owners",
+  (step) => step.name === "Verify bundled Windows sidecars",
 );
 for (const path of processOwnerPaths) {
   if (!bundledVerification?.run?.includes(path)) {

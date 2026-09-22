@@ -17,7 +17,7 @@ permissions: {}
 
 jobs:
   build-process-owner:
-    name: Build Windows process owner (${{ matrix.arch }})
+    name: Build Windows sidecars (${{ matrix.arch }})
     runs-on: windows-2022
     permissions:
       contents: read
@@ -39,14 +39,22 @@ jobs:
           rustup toolchain install 1.82.0 --profile minimal --target "${{ matrix.target }}"
           rustup default 1.82.0
 
-      - name: Build process owner
-        run: cargo build --locked -p unicli-process-owner --profile release-sidecar --target "${{ matrix.target }}"
+      - name: Build Windows sidecars
+        run: cargo build --locked -p unicli-process-owner -p unicli-uia --profile release-sidecar --target "${{ matrix.target }}"
 
       - name: Upload process owner
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: process-owner-win32-${{ matrix.arch }}
           path: target/${{ matrix.target }}/release-sidecar/unicli-process-owner.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload UIA
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: uia-win32-${{ matrix.arch }}
+          path: target/${{ matrix.target }}/release-sidecar/unicli-uia.exe
           if-no-files-found: error
           retention-days: 1
 
@@ -86,16 +94,30 @@ jobs:
           name: process-owner-win32-arm64
           path: packages/sidecars/unicli-process-owner-win32-arm64
 
-      - name: Verify bundled process owners
+      - name: Download x64 UIA
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: uia-win32-x64
+          path: packages/sidecars/unicli-uia-win32-x64
+
+      - name: Download arm64 UIA
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: uia-win32-arm64
+          path: packages/sidecars/unicli-uia-win32-arm64
+
+      - name: Verify bundled Windows sidecars
         run: |
           node <<'NODE'
           const { copyFileSync, mkdirSync, openSync, closeSync, readSync, statSync } = require("node:fs");
           const binaries = [
-            ["x64", "packages/sidecars/unicli-process-owner-win32-x64/unicli-process-owner.exe"],
-            ["arm64", "packages/sidecars/unicli-process-owner-win32-arm64/unicli-process-owner.exe"],
+            ["unicli-process-owner", "x64", "packages/sidecars/unicli-process-owner-win32-x64/unicli-process-owner.exe"],
+            ["unicli-process-owner", "arm64", "packages/sidecars/unicli-process-owner-win32-arm64/unicli-process-owner.exe"],
+            ["unicli-uia", "x64", "packages/sidecars/unicli-uia-win32-x64/unicli-uia.exe"],
+            ["unicli-uia", "arm64", "packages/sidecars/unicli-uia-win32-arm64/unicli-uia.exe"],
           ];
           mkdirSync("release-assets", { recursive: true });
-          for (const [arch, path] of binaries) {
+          for (const [name, arch, path] of binaries) {
             if (statSync(path).size < 4096) throw new Error(`${path} is implausibly small`);
             const descriptor = openSync(path, "r");
             const magic = Buffer.alloc(2);
@@ -105,7 +127,7 @@ jobs:
               closeSync(descriptor);
             }
             if (magic.toString("ascii") !== "MZ") throw new Error(`${path} is not a PE executable`);
-            copyFileSync(path, `release-assets/unicli-process-owner-win32-${arch}.exe`);
+            copyFileSync(path, `release-assets/${name}-win32-${arch}.exe`);
           }
           NODE
 

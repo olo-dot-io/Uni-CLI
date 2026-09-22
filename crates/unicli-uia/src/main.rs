@@ -13,6 +13,7 @@ mod input;
 mod invoke;
 mod refs;
 mod screenshot;
+mod text_target;
 mod tree;
 
 #[derive(Debug, Parser)]
@@ -59,6 +60,7 @@ fn serve_stdio() -> Result<()> {
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
     let mut state = tree::State::new();
+    let mut text_targets = text_target::TextTargets::default();
 
     for line in stdin.lock().lines() {
         let line = match line {
@@ -73,6 +75,19 @@ fn serve_stdio() -> Result<()> {
         }
 
         let response = match serde_json::from_str::<SidecarRequest>(&line) {
+            Ok(request) if request.kind.starts_with("uia_text_") => {
+                let mut acknowledge = || -> io::Result<()> {
+                    writeln!(
+                        out,
+                        "{}",
+                        json!({"id": request.id, "kind": request.kind, "ok": true, "progress": "dispatch_ack"})
+                    )?;
+                    out.flush()
+                };
+                text_targets
+                    .handle(&request, &mut acknowledge)
+                    .into_response(request.id, request.kind)
+            }
             Ok(request) => dispatch(&mut state, request),
             Err(err) => SidecarResponse::error(
                 0,
