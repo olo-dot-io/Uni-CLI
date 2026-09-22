@@ -77,6 +77,21 @@ describe("WindowsTextTargetClient public contract", () => {
         kind: "uia_text_context",
         params: {},
       });
+      await expect(
+        client.observeContext({
+          retainTextTarget: true,
+          retainFocusIdentity: true,
+        }),
+      ).resolves.toEqual({
+        kind: "uia_text_context",
+        params: { retainTextTarget: true, retainFocusIdentity: true },
+      });
+      await expect(
+        client.observeContext({ retainTextTarget: false }),
+      ).resolves.toEqual({
+        kind: "uia_text_context",
+        params: { retainTextTarget: false },
+      });
       await expect(client.readVisibleText(target)).resolves.toEqual({
         kind: "uia_text_visible",
         params: { target },

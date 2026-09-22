@@ -55,7 +55,7 @@ export type TextTargetLease = TextTargetReference & {
 
 export interface TextContextSnapshot {
   readonly id: string;
-  /** Windows host uptime in nanoseconds, with millisecond clock resolution. */
+  /** Time since Windows boot in nanoseconds, with millisecond clock resolution. */
   readonly observedAtNanoseconds: string;
   readonly completedAtNanoseconds: string;
   readonly coherence: "stable" | "frontmost_changed";
@@ -65,7 +65,12 @@ export interface TextContextSnapshot {
 }
 
 export type TextContextResult =
-  | { readonly status: "ok"; readonly snapshot: TextContextSnapshot }
+  | {
+      readonly status: "ok";
+      readonly snapshot: TextContextSnapshot;
+      /** Present only when retention was requested, from this same native observation. */
+      readonly retainedTarget?: TextTargetCaptureResult;
+    }
   | { readonly status: "unavailable"; readonly reason: string };
 
 export interface VisibleTextTarget {
@@ -162,10 +167,22 @@ export class WindowsTextTargetClient {
     );
   }
 
+  /** Observe without retaining by default; requested retention shares this native observation. */
   observeContext(
-    options: TextTargetCallOptions = {},
+    options: TextTargetCallOptions & {
+      readonly retainTextTarget?: boolean;
+      readonly retainFocusIdentity?: boolean;
+    } = {},
   ): Promise<TextContextResult> {
-    return this.sidecar.call("uia_text_context", {}, options);
+    const { retainTextTarget, retainFocusIdentity, ...callOptions } = options;
+    return this.sidecar.call(
+      "uia_text_context",
+      {
+        ...(retainTextTarget === undefined ? {} : { retainTextTarget }),
+        ...(retainFocusIdentity === undefined ? {} : { retainFocusIdentity }),
+      },
+      callOptions,
+    );
   }
 
   readVisibleText(

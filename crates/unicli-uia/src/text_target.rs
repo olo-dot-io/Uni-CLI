@@ -158,7 +158,7 @@ mod native {
         ) -> HandlerResult {
             match request.kind.as_str() {
                 "uia_text_capture" => self.capture(&request.params),
-                "uia_text_context" => self.context(),
+                "uia_text_context" => self.context(&request.params),
                 "uia_text_visible" => self.visible(&request.params),
                 "uia_text_validate" => self.validate(&request.params),
                 "uia_text_recover" => self.recover(&request.params),
@@ -179,85 +179,72 @@ mod native {
         }
 
         fn capture(&mut self, params: &Value) -> HandlerResult {
-            if self.leases.len() >= MAX_LEASES {
-                return Err(UiaError::unavailable(
-                    "release an existing text target before capturing another",
-                ));
-            }
-            unsafe {
-                let hwnd = GetForegroundWindow();
-                if hwnd.0.is_null() {
-                    return Ok(rejected("no_foreground_window"));
-                }
-                let element = self
-                    .automation()
-                    .GetFocusedElement()
-                    .map_err(native_error)?;
-                let window = window_info(hwnd);
-                let element_pid = element.CurrentProcessId().map_err(native_error)?;
-                let retain_identity = match params.get("retainFocusIdentity") {
-                    None => false,
-                    Some(value) => value.as_bool().ok_or_else(|| {
-                        UiaError::invalid_input("retainFocusIdentity must be boolean")
-                    })?,
-                };
-                let (snapshot, selection, identity_only) = match read_snapshot(&element, true) {
-                    Ok((snapshot, selection)) => (snapshot, Some(selection), false),
-                    Err(reason)
-                        if retain_identity
-                            && identity_candidate(&element)
-                            && identity_snapshot_unavailable(reason) =>
-                    {
-                        (
-                            TextSnapshot {
-                                value: String::new(),
-                                selection_start: 0,
-                                selection_length: 0,
-                                composition_length: active_composition(&element),
-                            },
-                            None,
-                            true,
-                        )
-                    }
-                    Err(reason) => {
-                        return Ok(json!({"status":"unavailable","reason":reason,"window":window}))
-                    }
-                };
-                if snapshot.composition_length.is_some_and(|length| length > 0) {
-                    return Ok(rejected("active_composition"));
-                }
-                if !self.focus_matches(hwnd, &element, element_pid, window.pid) {
-                    return Ok(rejected("focus_changed"));
-                }
-                // UIA providers are out of process. A second observation rejects torn baselines.
-                if !identity_only {
-                    let (after, _) = match read_snapshot(&element, true) {
-                        Ok(value) => value,
-                        Err(reason) => return Ok(rejected(reason)),
-                    };
-                    if snapshot != after {
-                        return Ok(rejected("text_changed"));
-                    }
-                }
-                let id = snapshot_id()?;
-                let lease = Lease {
-                    element,
-                    selection,
-                    identity_only,
-                    follow_up_key_eligible: false,
-                    hwnd,
-                    element_pid,
-                    window,
-                    snapshot,
-                    revision: 0,
-                };
-                let result = self.snapshot_result(&id, &lease);
-                self.leases.insert(id, lease);
-                Ok(json!({"status":"ok","lease":result}))
-            }
+            let mut params = params.clone();
+            params["retainTextTarget"] = json!(true);
+            let result = self.context(&params)?;
+            Ok(result.get("retainedTarget").cloned().unwrap_or(result))
         }
 
-        fn context(&self) -> HandlerResult {
+        fn retained_candidate(
+            &self,
+            element: IUIAutomationElement,
+            hwnd: HWND,
+            element_pid: i32,
+            window: WindowInfo,
+            retain_identity: bool,
+        ) -> Result<Lease, &'static str> {
+            if self.leases.len() >= MAX_LEASES {
+                return Err("lease_limit");
+            }
+            let (snapshot, selection, identity_only) = match read_snapshot(&element, true) {
+                Ok((snapshot, selection)) => (snapshot, Some(selection), false),
+                Err(reason)
+                    if retain_identity
+                        && identity_candidate(&element)
+                        && identity_snapshot_unavailable(reason) =>
+                {
+                    (
+                        TextSnapshot {
+                            value: String::new(),
+                            selection_start: 0,
+                            selection_length: 0,
+                            composition_length: active_composition(&element),
+                        },
+                        None,
+                        true,
+                    )
+                }
+                Err(reason) => return Err(reason),
+            };
+            if snapshot.composition_length.is_some_and(|length| length > 0) {
+                return Err("active_composition");
+            }
+            if !self.focus_matches(hwnd, &element, element_pid, window.pid) {
+                return Err("focus_changed");
+            }
+            // UIA providers are out of process. A second observation rejects torn baselines.
+            if !identity_only {
+                let (after, _) = read_snapshot(&element, true)?;
+                if snapshot != after {
+                    return Err("text_changed");
+                }
+            }
+            Ok(Lease {
+                element,
+                selection,
+                identity_only,
+                follow_up_key_eligible: false,
+                hwnd,
+                element_pid,
+                window,
+                snapshot,
+                revision: 0,
+            })
+        }
+
+        fn context(&mut self, params: &Value) -> HandlerResult {
+            let retain = bool_option(params, "retainTextTarget")?;
+            let retain_identity = bool_option(params, "retainFocusIdentity")?;
             let observed = uptime_nanoseconds();
             unsafe {
                 let hwnd = GetForegroundWindow();
@@ -267,26 +254,51 @@ mod native {
                 let window = window_info(hwnd);
                 let mut text = None;
                 let mut text_status = "focused_element_unavailable";
+                let mut retained = Err("focused_element_unavailable");
                 let mut coherent = true;
                 if let Ok(element) = self.automation().GetFocusedElement() {
                     let pid = element.CurrentProcessId().map_err(native_error)?;
                     match read_snapshot(&element, false) {
                         Ok((snapshot, _)) => {
-                            let writable = writable(&element);
-                            let mut value = serde_json::to_value(&snapshot)
-                                .map_err(|error| UiaError::unavailable(error.to_string()))?;
-                            value["writable"] = json!(writable);
-                            text = Some(value);
+                            text = Some(context_text(&snapshot, writable(&element))?);
                             text_status = "ok";
                         }
                         Err(reason) => text_status = reason,
                     }
-                    coherent = self.focus_matches(hwnd, &element, pid, window.pid);
+                    if retain {
+                        retained = self.retained_candidate(
+                            element.clone(),
+                            hwnd,
+                            pid,
+                            window.clone(),
+                            retain_identity,
+                        );
+                        match &retained {
+                            Ok(lease) if !lease.identity_only => {
+                                // Facts and the lease expose the same verified native observation.
+                                text = Some(context_text(&lease.snapshot, Some(true))?);
+                                text_status = "ok";
+                            }
+                            Err("text_changed") => {
+                                text = None;
+                                text_status = "text_changed";
+                            }
+                            _ => {}
+                        }
+                    }
+                    coherent = self.focus_matches(hwnd, &element, pid, window.pid)
+                        && !matches!(&retained, Err("focus_changed"));
                 }
-                coherent = coherent && GetForegroundWindow() == hwnd;
+                let after = window_info(hwnd);
+                coherent = coherent
+                    && GetForegroundWindow() == hwnd
+                    && after.pid == window.pid
+                    && after.title == window.title
+                    && after.frame == window.frame;
                 if !coherent {
                     text = None;
                     text_status = "focus_changed";
+                    retained = Err("focus_changed");
                 }
                 let mut snapshot = json!({
                     "id": snapshot_id()?, "window": window,
@@ -298,7 +310,19 @@ mod native {
                 if let Some(text) = text {
                     snapshot["text"] = text;
                 }
-                Ok(json!({"status":"ok", "snapshot":snapshot}))
+                let mut result = json!({"status":"ok", "snapshot":snapshot});
+                if retain {
+                    result["retainedTarget"] = match retained {
+                        Ok(lease) => {
+                            let id = snapshot_id()?;
+                            let value = self.snapshot_result(&id, &lease);
+                            self.leases.insert(id, lease);
+                            json!({"status":"ok", "lease":value})
+                        }
+                        Err(reason) => rejected(reason),
+                    };
+                }
+                Ok(result)
             }
         }
 
@@ -895,6 +919,22 @@ mod native {
                 sleep(Duration::from_millis(10));
             }
         }
+    }
+
+    fn bool_option(params: &Value, key: &str) -> Result<bool, UiaError> {
+        match params.get(key) {
+            None => Ok(false),
+            Some(value) => value
+                .as_bool()
+                .ok_or_else(|| UiaError::invalid_input(format!("{key} must be boolean"))),
+        }
+    }
+
+    fn context_text(snapshot: &TextSnapshot, writable: Option<bool>) -> Result<Value, UiaError> {
+        let mut value = serde_json::to_value(snapshot)
+            .map_err(|error| UiaError::unavailable(error.to_string()))?;
+        value["writable"] = json!(writable);
+        Ok(value)
     }
 
     fn lease_id(params: &Value) -> Result<&str, UiaError> {
