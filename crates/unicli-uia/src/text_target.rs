@@ -1381,7 +1381,7 @@ pub use native::TextTargets;
 
 #[cfg(not(target_os = "windows"))]
 #[derive(Default)]
-pub struct TextTargets;
+pub struct TextTargets {}
 #[cfg(not(target_os = "windows"))]
 impl TextTargets {
     pub fn handle(
