@@ -18,6 +18,8 @@
     "crates/",
     "packages/sidecars/unicli-process-owner-win32-arm64/unicli-process-owner.exe",
     "packages/sidecars/unicli-process-owner-win32-x64/unicli-process-owner.exe",
+    "packages/sidecars/unicli-uia-win32-arm64/unicli-uia.exe",
+    "packages/sidecars/unicli-uia-win32-x64/unicli-uia.exe",
     "docs/operate/",
     "docs/mcp/clients/",
     "src/adapters/",
@@ -43,6 +45,10 @@
     "access": "public"
   },
   "exports": {
+    "./desktop/text-target": {
+      "types": "./dist/desktop/text-target.d.ts",
+      "import": "./dist/desktop/text-target.js"
+    },
     ".": {
       "types": "./dist/main.d.ts",
       "import": "./dist/main.js"
