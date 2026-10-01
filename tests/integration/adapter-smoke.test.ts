@@ -29,7 +29,10 @@ interface Envelope {
   data?: unknown;
 }
 
-function runCli(args: string[]): {
+function runCli(
+  args: string[],
+  environment: NodeJS.ProcessEnv = process.env,
+): {
   status: number;
   env: Envelope | null;
   stderr: string;
@@ -40,6 +43,7 @@ function runCli(args: string[]): {
     {
       encoding: "utf-8",
       timeout: CLI_TIMEOUT_MS,
+      env: environment,
     },
   );
   // The CLI routes the JSON envelope to stdout on success and stderr on
@@ -132,16 +136,11 @@ describe("adapter-smoke — live dispatch exercises hardening", () => {
     expect(String(env?.data)).toMatch(/title: "Example Domain"/);
   });
 
-  it("ollama-cloud fetch fails closed without OLLAMA_API_KEY", () => {
-    const { status, env } = runCli([
-      "ollama-cloud",
-      "fetch",
-      "https://example.com",
-    ]);
-    if (status === 0) {
-      expect(env?.ok).toBe(true);
-      return;
-    }
+  it("ollama-cloud fetch reports missing OLLAMA_API_KEY before dispatch", () => {
+    const { env } = runCli(["ollama-cloud", "fetch", "https://example.com"], {
+      ...process.env,
+      OLLAMA_API_KEY: "",
+    });
     expect(env?.ok).toBe(false);
     expect(env?.error?.code).toBe("auth_required");
   });

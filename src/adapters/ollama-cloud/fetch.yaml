@@ -3,7 +3,11 @@ name: fetch
 description: Fetch a public URL through Ollama Cloud web_fetch
 type: web-api
 domain: ollama.com
-strategy: public # auth is via OLLAMA_API_KEY Authorization header, no cookies
+strategy: environment
+auth_requirement: required
+availability:
+  environment: [OLLAMA_API_KEY]
+  discovery: configured
 
 args:
   url:
@@ -19,7 +23,7 @@ pipeline:
       method: POST
       headers:
         Accept: "application/json"
-        Authorization: "Bearer ${{ env.OLLAMA_API_KEY || '' }}"
+        Authorization: "Bearer ${{ env.OLLAMA_API_KEY }}"
       body:
         url: "${{ args.url }}"
   - map:
