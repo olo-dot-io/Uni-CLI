@@ -6,10 +6,15 @@
  * system (Commander registration, `unicli ext` subcommands, AGENTS.md).
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import {
+  accessSync,
+  constants,
+  existsSync,
+  readFileSync,
+  statSync,
+} from "node:fs";
+import { delimiter, extname, join, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFileSync } from "node:child_process";
 import * as yaml from "js-yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -93,26 +98,35 @@ export function loadExternalClis(): ExternalCli[] {
 
 // ── Discovery ───────────────────────────────────────────────────────────
 
-/**
- * Check whether a binary is available on $PATH.
- * Uses `which` (macOS/Linux) with a short timeout.  Results are cached.
- */
 export function isInstalled(binary: string): boolean {
-  if (_installedCache.has(binary)) {
-    return _installedCache.get(binary)!;
-  }
+  const cached = _installedCache.get(binary);
+  if (cached !== undefined) return cached;
 
-  try {
-    execFileSync("which", [binary], {
-      stdio: "pipe",
-      timeout: 3_000,
-    });
-    _installedCache.set(binary, true);
-    return true;
-  } catch {
-    _installedCache.set(binary, false);
-    return false;
-  }
+  const extensions =
+    process.platform === "win32" && !extname(binary)
+      ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";")
+      : [""];
+  const directories =
+    binary.includes(sep) ||
+    (process.platform === "win32" && binary.includes("/"))
+      ? [""]
+      : [...new Set((process.env.PATH ?? "/usr/bin:/bin").split(delimiter))];
+  const installed = directories.some((directory) =>
+    extensions.some((extension) => {
+      const executable = join(directory, `${binary}${extension}`);
+      try {
+        if (!statSync(executable, { throwIfNoEntry: false })?.isFile()) {
+          return false;
+        }
+        accessSync(executable, constants.X_OK);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+  );
+  _installedCache.set(binary, installed);
+  return installed;
 }
 
 /**
