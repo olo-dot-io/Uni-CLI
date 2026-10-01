@@ -174,8 +174,7 @@ describe("dist parity — production build must match source mode", () => {
         typeof distResult.stdout === "string" ? distResult.stdout : "";
       // v0.213: format() now wraps json in a v2 AgentEnvelope; unwrap .data
       const distParsed = JSON.parse(distStdout) as
-        | { ok: true; data: Array<{ site: string }> }
-        | Array<{ site: string }>;
+        { ok: true; data: Array<{ site: string }> } | Array<{ site: string }>;
       const distRows = Array.isArray(distParsed)
         ? distParsed
         : (distParsed as { data: Array<{ site: string }> }).data;
@@ -197,8 +196,7 @@ describe("dist parity — production build must match source mode", () => {
         typeof srcResult.stdout === "string" ? srcResult.stdout : "";
       // v0.213: unwrap v2 envelope
       const srcParsed = JSON.parse(srcStdout) as
-        | { ok: true; data: Array<{ site: string }> }
-        | Array<{ site: string }>;
+        { ok: true; data: Array<{ site: string }> } | Array<{ site: string }>;
       const srcRows = Array.isArray(srcParsed)
         ? srcParsed
         : (srcParsed as { data: Array<{ site: string }> }).data;

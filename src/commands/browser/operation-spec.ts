@@ -27,10 +27,7 @@ export interface BrowserOperationArg extends AdapterArg {
 }
 
 type BrowserActuation =
-  | "none"
-  | "protocol-call"
-  | "dom-action"
-  | "screen-capture";
+  "none" | "protocol-call" | "dom-action" | "screen-capture";
 type BrowserInteractionImpact = "background" | "target-scoped" | "foreground";
 
 export interface BrowserOperationSpec {
@@ -47,8 +44,7 @@ export interface BrowserOperationSpec {
   readonly verification: "protocol-result" | "dom-state" | "pixel-observation";
   readonly interaction_impact: BrowserInteractionImpact;
   readonly source_path:
-    | "src/commands/browser/actions.ts"
-    | "src/commands/browser/authoring.ts";
+    "src/commands/browser/actions.ts" | "src/commands/browser/authoring.ts";
 }
 
 interface BrowserOperationConfig {

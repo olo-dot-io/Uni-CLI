@@ -87,8 +87,7 @@ async function fetchTwitterThread(
   // Navigate: data.threaded_conversation_with_injections_v2.instructions
   const root = data.data as Record<string, unknown> | undefined;
   const conversation = root?.threaded_conversation_with_injections_v2 as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const instructions = (conversation?.instructions as unknown[]) ?? [];
 
   return normalizeTwitterThreadRows(

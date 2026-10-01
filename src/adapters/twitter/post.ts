@@ -47,11 +47,9 @@ cli({
 
     const root = data.data as Record<string, unknown> | undefined;
     const createTweet = root?.create_tweet as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const tweetResults = createTweet?.tweet_results as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const result = tweetResults?.result as Record<string, unknown> | undefined;
     const restId = (result?.rest_id as string) ?? "";
 

@@ -327,8 +327,7 @@ export class McpSubscriptionManager {
     const pump = (async () => {
       while (!subscription.closed && subscription.queuedTasks.size > 0) {
         const next = subscription.queuedTasks.entries().next().value as
-          | [string, ModernMcpDetailedTask]
-          | undefined;
+          [string, ModernMcpDetailedTask] | undefined;
         if (!next) break;
         subscription.queuedTasks.delete(next[0]);
         await this.enqueue(

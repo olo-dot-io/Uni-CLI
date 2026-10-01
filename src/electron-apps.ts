@@ -8,13 +8,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 export type AppInspectionSurface =
-  | "cdp-dom"
-  | "desktop-ax"
-  | "background-click"
-  | "visual";
+  "cdp-dom" | "desktop-ax" | "background-click" | "visual";
 
 export interface AppBackgroundClickPolicy {
   enabled: boolean;

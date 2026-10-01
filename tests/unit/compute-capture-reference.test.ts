@@ -110,15 +110,13 @@ describe("compute capture references", () => {
     expect(
       (
         storedPacket.packet?.screenshot?.data as
-          | { base64?: string; path?: string }
-          | undefined
+          { base64?: string; path?: string } | undefined
       )?.base64,
     ).toBeUndefined();
     expect(
       (
         storedPacket.packet?.screenshot?.data as
-          | { base64?: string; path?: string }
-          | undefined
+          { base64?: string; path?: string } | undefined
       )?.path,
     ).toBe(reference.files.image);
   });
@@ -197,15 +195,13 @@ describe("compute capture references", () => {
     expect(
       (
         contentPacket.screenshot?.data as
-          | { base64?: string; path?: string }
-          | undefined
+          { base64?: string; path?: string } | undefined
       )?.base64,
     ).toBeUndefined();
     expect(
       (
         contentPacket.screenshot?.data as
-          | { base64?: string; path?: string }
-          | undefined
+          { base64?: string; path?: string } | undefined
       )?.path,
     ).toBe(reference.files.image);
   });

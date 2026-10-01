@@ -44,11 +44,7 @@ export interface UpdateCache {
 }
 
 export type UpdateCheckStatus =
-  | "disabled"
-  | "fresh"
-  | "refresh-started"
-  | "worker-missing"
-  | "spawn-failed";
+  "disabled" | "fresh" | "refresh-started" | "worker-missing" | "spawn-failed";
 
 interface ParsedVersion {
   core: [number, number, number];

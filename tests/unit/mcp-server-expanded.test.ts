@@ -83,8 +83,7 @@ async function listAllTools(proc: ChildProcess): Promise<ListedTool[]> {
       params: cursor ? { cursor } : {},
     });
     const result = response.result as
-      | { tools?: ListedTool[]; nextCursor?: string }
-      | undefined;
+      { tools?: ListedTool[]; nextCursor?: string } | undefined;
     if (!result?.tools) {
       throw new Error(`tools/list failed: ${JSON.stringify(response.error)}`);
     }

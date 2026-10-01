@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 describe("maoyan hot adapter", () => {
   it("selects the current public box-office movie list path", () => {

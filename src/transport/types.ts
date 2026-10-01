@@ -55,11 +55,7 @@ export type TransportKind =
  * and `screenshot` via CDP Page.captureScreenshot).
  */
 export type SnapshotFormat =
-  | "dom-ax"
-  | "os-ax"
-  | "screenshot"
-  | "text"
-  | "json";
+  "dom-ax" | "os-ax" | "screenshot" | "text" | "json";
 
 /** Uniform snapshot shape returned by {@link TransportAdapter.snapshot}. */
 export interface Snapshot {

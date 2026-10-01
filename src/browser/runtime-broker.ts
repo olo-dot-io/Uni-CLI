@@ -79,9 +79,7 @@ interface RemoteTargetPolicy {
 }
 
 type TargetPolicy =
-  | ManagedTargetPolicy
-  | ChromeTargetPolicy
-  | RemoteTargetPolicy;
+  ManagedTargetPolicy | ChromeTargetPolicy | RemoteTargetPolicy;
 
 interface PendingTargetRelease {
   ownerSessionId: string;

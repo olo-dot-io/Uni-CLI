@@ -57,7 +57,7 @@ import {
 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import chalk from "chalk";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";

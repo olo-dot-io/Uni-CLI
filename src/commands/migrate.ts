@@ -19,7 +19,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { Command } from "commander";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import chalk from "chalk";
 import { format, detectFormat } from "../output/formatter.js";
 import { makeCtx } from "../output/envelope.js";

@@ -49,8 +49,7 @@ describe("uspto.live — Open Data Portal search end-to-end", () => {
       // boundary — no need to wait for an end-user repair.
       const first = rows[0];
       const meta = first.applicationMetaData as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const earliestPub = meta?.earliestPublicationNumber as string | undefined;
       const appNumber = first.applicationNumberText as string | undefined;
       const compactPub = earliestPub

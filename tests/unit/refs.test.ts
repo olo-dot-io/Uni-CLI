@@ -36,6 +36,8 @@ const require = createRequire(import.meta.url);
 const mutableFs = require("node:fs") as typeof import("node:fs");
 const realLinkSync = linkSync;
 const realUnlinkSync = unlinkSync;
+const realReadFileSync = readFileSync;
+const realExistsSync = existsSync;
 
 describe("RefAllocator", () => {
   it("allocates monotonic aliases and preserves stable-token identity", () => {
@@ -553,14 +555,34 @@ describe("RefStore", () => {
     const dir = mkdtempSync(join(tmpdir(), "unicli-refs-deduplicate-"));
     const file = join(dir, "refs.json");
     const order = vi.spyOn(process.hrtime, "bigint").mockReturnValue(123n);
+    const store = exactNativeStore(405, "Same", 1234);
+    const link = vi
+      .spyOn(mutableFs, "linkSync")
+      .mockImplementation((source, target) => {
+        const result = realLinkSync(source, target);
+        if (String(target).endsWith(".json")) {
+          store.put(exactNativeStore(405, "Updated", 1240).buckets()[0]!);
+          throw errno(
+            "EEXIST",
+            "publication completed during the link operation",
+          );
+        }
+        return result;
+      });
+    syncBuiltinESMExports();
     try {
-      saveRefStore(exactNativeStore(405, "Same", 1234), file);
-      saveRefStore(exactNativeStore(405, "Same", 1234), file);
+      saveRefStore(store, file);
+      link.mockRestore();
+      syncBuiltinESMExports();
+      saveRefStore(store, file);
+      saveRefStore(exactNativeStore(405, "Updated", 1240), file);
 
       expect(
         readdirSync(`${file}.d`).filter((name) => name.endsWith(".json")),
       ).toHaveLength(1);
     } finally {
+      link.mockRestore();
+      syncBuiltinESMExports();
       order.mockRestore();
       rmSync(dir, { recursive: true, force: true });
     }
@@ -571,7 +593,22 @@ describe("RefStore", () => {
     const file = join(dir, "refs.json");
     try {
       saveRefStore(exactNativeStore(406, "New", 2000), file);
-      saveRefStore(exactNativeStore(406, "Old", 1000), file);
+      const unlink = vi
+        .spyOn(mutableFs, "unlinkSync")
+        .mockImplementation((path) => {
+          const result = realUnlinkSync(path);
+          if (String(path).endsWith(".json")) {
+            throw errno("ENOENT", "record removed during pruning");
+          }
+          return result;
+        });
+      syncBuiltinESMExports();
+      try {
+        saveRefStore(exactNativeStore(406, "Old", 1000), file);
+      } finally {
+        unlink.mockRestore();
+        syncBuiltinESMExports();
+      }
 
       expect(loadRefStore(file).list()).toMatchObject([{ name: "New" }]);
       expect(
@@ -617,7 +654,10 @@ describe("RefStore", () => {
     const link = vi
       .spyOn(mutableFs, "linkSync")
       .mockImplementation((source, target) => {
-        if (String(target).endsWith(".json")) throw failure;
+        if (String(target).endsWith(".json")) {
+          realUnlinkSync(source);
+          throw failure;
+        }
         return realLinkSync(source, target);
       });
     syncBuiltinESMExports();
@@ -758,8 +798,29 @@ describe("RefStore", () => {
       loadRefStore(file);
       writeFileSync(join(recordDirectory, "a.json"), payload("record-a"));
       writeFileSync(join(recordDirectory, "b.json"), payload("record-b"));
-
-      expect(loadRefStore(file).list()).toMatchObject([{ name: "record-b" }]);
+      writeFileSync(
+        join(recordDirectory, "c.json"),
+        JSON.stringify({
+          schema_version: 1,
+          buckets: [{ ...bucket("older"), createdAt: 1200 }],
+        }),
+      );
+      const disappearingRecord = join(recordDirectory, "disappearing.json");
+      writeFileSync(disappearingRecord, payload("disappearing"));
+      const read = vi
+        .spyOn(mutableFs, "readFileSync")
+        .mockImplementation((...args) => {
+          if (String(args[0]) === disappearingRecord)
+            realUnlinkSync(disappearingRecord);
+          return Reflect.apply(realReadFileSync, mutableFs, args);
+        });
+      syncBuiltinESMExports();
+      try {
+        expect(loadRefStore(file).list()).toMatchObject([{ name: "record-b" }]);
+      } finally {
+        read.mockRestore();
+        syncBuiltinESMExports();
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -911,7 +972,18 @@ describe("RefStore", () => {
         }),
       );
 
-      expect(loadRefStore(file).list()).toEqual([]);
+      const exists = vi
+        .spyOn(mutableFs, "existsSync")
+        .mockImplementation((path) =>
+          String(path) === `${file}.d` ? false : realExistsSync(path),
+        );
+      syncBuiltinESMExports();
+      try {
+        expect(loadRefStore(file).list()).toEqual([]);
+      } finally {
+        exists.mockRestore();
+        syncBuiltinESMExports();
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

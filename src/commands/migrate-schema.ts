@@ -18,7 +18,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { readdirSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, extname, resolve, relative, sep, basename } from "node:path";
 import { ExitCode } from "../types.js";

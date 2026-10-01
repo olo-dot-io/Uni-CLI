@@ -102,9 +102,7 @@ thresholds; `models_passing_gate` counts how many pass.
   "total_cost_usd": 0.54,
   "by_model": {
     "deepseek/deepseek-chat": {
-      "rows": [
-        /* per (task × bucket) row with ICS + channel rates */
-      ],
+      "rows": [/* per (task × bucket) row with ICS + channel rates */],
       "summary": {
         "asr_sem_at_ics8_stdin": 0.96,
         "sed_at_ics8": 0.41,

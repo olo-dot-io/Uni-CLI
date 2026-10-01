@@ -9,7 +9,7 @@
 import { readFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { join } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SITE_CATEGORIES } from "../../src/discovery/aliases.js";
 import { loadAllAdapters, loadTsAdapters } from "../../src/discovery/loader.js";

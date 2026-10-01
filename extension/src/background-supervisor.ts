@@ -907,8 +907,7 @@ async function rememberUnresolvedUiCandidateLocked(
     ]);
     if (typeof tab.id !== "number" || typeof tab.windowId !== "number") return;
     const baseline = guards.values().next().value?.safe_state as
-      | ChromeUiState
-      | undefined;
+      ChromeUiState | undefined;
     const controlledTabIds = new Set<number>();
     for (const guard of guards.values()) {
       controlledTabIds.add(guard.tab_id);

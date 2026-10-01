@@ -89,8 +89,7 @@ interface CuaCall {
 }
 
 type CuaCallPreparation =
-  | { ok: true; value: CuaCall }
-  | { ok: false; result: ActionResult<never> };
+  { ok: true; value: CuaCall } | { ok: false; result: ActionResult<never> };
 
 export class CuaDriverTransport implements TransportAdapter {
   readonly kind: TransportKind = "cua-driver";
@@ -860,8 +859,7 @@ function boundedInteger(
 function parseStructuredOutput(
   stdout: string,
 ):
-  | { ok: true; value: Record<string, unknown> }
-  | { ok: false; reason: string } {
+  { ok: true; value: Record<string, unknown> } | { ok: false; reason: string } {
   const value = stdout.trim();
   if (!value) {
     return {

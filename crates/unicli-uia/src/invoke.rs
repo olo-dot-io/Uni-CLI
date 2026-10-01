@@ -140,7 +140,7 @@ fn require_top_level_stable_ref(stable: String) -> Result<String, UiaError> {
     if stable
         .split_once(':')
         .and_then(|(_, tail)| tail.split_once(':'))
-        .map_or(false, |(_, path)| path.contains('/'))
+        .is_some_and(|(_, path)| path.contains('/'))
     {
         return Err(UiaError::not_invokable(stable));
     }

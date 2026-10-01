@@ -53,10 +53,7 @@ export interface SignalCoverage extends SignalCase {
 }
 
 export type CommandParityStatus =
-  | "implemented"
-  | "equivalent"
-  | "strict-superset"
-  | "missing";
+  "implemented" | "equivalent" | "strict-superset" | "missing";
 
 export interface CommandParityEvidence {
   kind: "uni-command" | "mapping" | "archived-command" | "evidence-file";

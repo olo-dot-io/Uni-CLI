@@ -13,7 +13,7 @@
  * @since       2026-05-19
  */
 
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { cli, Strategy } from "../../registry.js";
 import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";

@@ -153,8 +153,7 @@ export type ChromeNativeCommand =
     });
 
 export type ChromeNativeBrokerCommand =
-  | ChromeNativeCommand
-  | (ChromeNativeCommandBase & { action: "host.shutdown" });
+  ChromeNativeCommand | (ChromeNativeCommandBase & { action: "host.shutdown" });
 
 export interface ChromeNativeError {
   code: string;
@@ -224,9 +223,7 @@ export type ChromeNativeResult =
     });
 
 export type ChromeNativeMessage =
-  | ChromeNativeHello
-  | ChromeNativeCommand
-  | ChromeNativeResult;
+  ChromeNativeHello | ChromeNativeCommand | ChromeNativeResult;
 
 export function chromeTargetId(
   browserSessionId: string,

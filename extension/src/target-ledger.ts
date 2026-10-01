@@ -190,12 +190,10 @@ export function reconcileChromeTargets(): Promise<ChromeNativeTarget[]> {
     );
     await writeLedger([
       ...unresolvedIntents,
-      ...reconciled.map(
-        (target): PersistedTarget => ({
-          state: "target",
-          target,
-        }),
-      ),
+      ...reconciled.map((target): PersistedTarget => ({
+        state: "target",
+        target,
+      })),
     ]);
     return reconciled;
   });

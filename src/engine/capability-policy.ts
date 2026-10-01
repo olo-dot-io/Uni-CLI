@@ -15,12 +15,7 @@ import type {
 
 export type CapabilityAccess = "none" | "read" | "write";
 export type CapabilityDimensionName =
-  | "network"
-  | "browser"
-  | "desktop"
-  | "file"
-  | "process"
-  | "account";
+  "network" | "browser" | "desktop" | "file" | "process" | "account";
 
 export interface CapabilityDimension {
   access: CapabilityAccess;

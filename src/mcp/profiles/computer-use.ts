@@ -97,11 +97,7 @@ const DEFINITIONS: ToolDef[] = [
           ...(typeof input.via === "string"
             ? {
                 via: input.via as
-                  | "native"
-                  | "browser"
-                  | "process"
-                  | "driver"
-                  | "visual",
+                  "native" | "browser" | "process" | "driver" | "visual",
               }
             : {}),
         },

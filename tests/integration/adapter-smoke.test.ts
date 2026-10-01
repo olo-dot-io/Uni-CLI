@@ -117,7 +117,9 @@ describe("adapter-smoke — live dispatch exercises hardening", () => {
       return;
     }
     expect(env?.ok).toBe(true);
-    expect(JSON.stringify(env?.data)).toMatch(/Example Domain/);
+    expect(JSON.stringify(env?.data)).toMatch(
+      /domain is for use in (?:illustrative|documentation) examples/i,
+    );
   });
 
   it("defuddle read converts example.com to frontmatter Markdown", () => {

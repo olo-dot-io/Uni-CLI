@@ -143,8 +143,7 @@ function route(
   res: ServerResponse,
   handler: Handler,
   oauthMiddleware:
-    | ((req: IncomingMessage, res: ServerResponse) => boolean)
-    | null,
+    ((req: IncomingMessage, res: ServerResponse) => boolean) | null,
   auth: boolean | undefined,
   activeRequests: StreamableRequestRegistry,
 ): void {

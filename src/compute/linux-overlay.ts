@@ -44,8 +44,7 @@ export class LinuxGtkOverlayDaemonProvider implements ComputeOverlayProvider {
   private readonly platform: NodeJS.Platform;
   private readonly scriptPath: string | undefined;
   private readonly sessionFactory:
-    | (() => Promise<ComputeOverlayDaemonSession>)
-    | undefined;
+    (() => Promise<ComputeOverlayDaemonSession>) | undefined;
   private session: ComputeOverlayDaemonSession | undefined;
   private tmpRoot: string | undefined;
   private lastPoint: ComputeVisualCursorPoint | undefined;

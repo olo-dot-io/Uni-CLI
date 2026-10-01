@@ -14,6 +14,7 @@
  */
 
 import { defineConfig } from "vitepress";
+import mathjax from "markdown-it-mathjax";
 import { readFileSync } from "node:fs";
 import { localizedSiteMaps, sidebarGroups, topNav } from "./site-map.js";
 
@@ -500,8 +501,8 @@ export default defineConfig({
     return head;
   },
   markdown: {
-    math: true,
     config: (md) => {
+      md.use(mathjax);
       escapeMustacheInFence(md);
     },
   },

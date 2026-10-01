@@ -48,16 +48,12 @@ fn windows_main() -> Result<(), Box<dyn std::error::Error>> {
         AssignProcessToJobObject(job, GetCurrentProcess())?;
     }
 
-    let mut child = match Command::new(&invocation.command)
+    let mut child = Command::new(&invocation.command)
         .args(&invocation.args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(error) => return Err(error.into()),
-    };
+        .spawn()?;
     if let Some(report_path) = invocation.report_path {
         write_report(&report_path, std::process::id(), child.id())?;
     }

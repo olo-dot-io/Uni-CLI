@@ -988,8 +988,7 @@ function readToolData(
   result: Record<string, unknown>,
 ): Record<string, unknown> {
   const structured = result.structuredContent as
-    | { data?: { data?: unknown } }
-    | undefined;
+    { data?: { data?: unknown } } | undefined;
   const data = structured?.data?.data;
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("MCP browser tool returned no structured data");

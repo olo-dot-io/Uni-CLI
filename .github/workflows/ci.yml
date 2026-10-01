@@ -60,6 +60,9 @@ jobs:
           - os: ubuntu-latest
             node-version: 24
             profile: node-compat
+          - os: ubuntu-latest
+            node-version: 26
+            profile: node-compat
           - os: windows-latest
             node-version: 22
             profile: windows-smoke
@@ -81,12 +84,19 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
+      - name: Install repository Rust toolchain
+        if: matrix.profile == 'windows-smoke'
+        shell: bash
+        run: |
+          toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+          export RUSTUP_TOOLCHAIN="$toolchain"
+          rustup toolchain install "$toolchain" --profile minimal
+          printf 'RUSTUP_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
+
       - name: Build Windows process owner
         if: matrix.profile == 'windows-smoke'
         shell: pwsh
         run: |
-          rustup toolchain install 1.82.0 --profile minimal
-          rustup default 1.82.0
           cargo build --locked -p unicli-process-owner
           "UNICLI_PROCESS_OWNER=$PWD\\target\\debug\\unicli-process-owner.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -165,10 +175,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Rust 1.82.0
+      - name: Install repository Rust toolchain
+        shell: bash
         run: |
-          rustup toolchain install 1.82.0 --profile minimal --component rustfmt --component clippy --target "${{ matrix.target }}"
-          rustup default 1.82.0
+          toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+          export RUSTUP_TOOLCHAIN="$toolchain"
+          rustup toolchain install "$toolchain" --profile minimal --component rustfmt --component clippy --target "${{ matrix.target }}"
+          printf 'RUSTUP_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
 
       - name: Install Linux accessibility tooling
         if: runner.os == 'Linux'
@@ -222,10 +235,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Rust 1.82.0
+      - name: Install repository Rust toolchain
+        shell: bash
         run: |
-          rustup toolchain install 1.82.0 --profile minimal --component rustfmt --component clippy --target "${{ matrix.target }}"
-          rustup default 1.82.0
+          toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+          export RUSTUP_TOOLCHAIN="$toolchain"
+          rustup toolchain install "$toolchain" --profile minimal --component rustfmt --component clippy --target "${{ matrix.target }}"
+          printf 'RUSTUP_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
 
       - name: Install Linux accessibility tooling
         if: runner.os == 'Linux'

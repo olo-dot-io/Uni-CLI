@@ -106,10 +106,7 @@ export function requireSemanticScholarPaperRef(value: unknown): string {
 }
 
 type SemanticScholarErrorCode =
-  | "invalid_input"
-  | "empty_result"
-  | "upstream_error"
-  | "rate_limited";
+  "invalid_input" | "empty_result" | "upstream_error" | "rate_limited";
 
 function semanticScholarError(
   code: SemanticScholarErrorCode,

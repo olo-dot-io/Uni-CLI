@@ -54,8 +54,7 @@ async function fetchHotFeed(page: IPage, limit: number): Promise<TrendRow[]> {
     .map((item) => {
       const note = item.note_card as Record<string, unknown> | undefined;
       const interact = note?.interact_info as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       return {
         title: String(note?.display_title ?? ""),
         likes: String(interact?.liked_count ?? ""),

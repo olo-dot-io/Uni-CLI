@@ -15,7 +15,7 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, extname, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

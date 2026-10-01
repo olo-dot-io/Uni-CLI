@@ -32,11 +32,7 @@ import {
 } from "../core/recovery.js";
 
 export type ComputeRouteName =
-  | "native"
-  | "browser"
-  | "process"
-  | "driver"
-  | "visual";
+  "native" | "browser" | "process" | "driver" | "visual";
 
 export interface ComputeProviderProfile {
   readonly transport: TransportKind;
@@ -105,9 +101,7 @@ export type ComputeVerification =
   | "local-result";
 
 export type ComputeInteractionImpact =
-  | "background"
-  | "target-scoped"
-  | "foreground";
+  "background" | "target-scoped" | "foreground";
 
 export type ComputeRouteDecision =
   | {

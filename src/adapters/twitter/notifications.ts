@@ -30,17 +30,13 @@ cli({
     })) as Record<string, unknown>;
 
     const globalObjects = data.globalObjects as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const notifications = globalObjects?.notifications as
-      | Record<string, Record<string, unknown>>
-      | undefined;
+      Record<string, Record<string, unknown>> | undefined;
     const tweets = globalObjects?.tweets as
-      | Record<string, Record<string, unknown>>
-      | undefined;
+      Record<string, Record<string, unknown>> | undefined;
     const users = globalObjects?.users as
-      | Record<string, Record<string, unknown>>
-      | undefined;
+      Record<string, Record<string, unknown>> | undefined;
 
     if (!notifications) return [];
 
@@ -80,18 +76,15 @@ cli({
       // Find the associated tweet URL if any
       const tweetNotif = notif.template as Record<string, unknown> | undefined;
       const aggregateUserActionsV1 = tweetNotif?.aggregateUserActionsV1 as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       const targetObjects = aggregateUserActionsV1?.targetObjects as
-        | unknown[]
-        | undefined;
+        unknown[] | undefined;
       let url = "https://x.com/notifications";
 
       if (targetObjects?.length) {
         const target = targetObjects[0] as Record<string, unknown>;
         const tweetId = (target.tweet as Record<string, unknown>)?.id as
-          | string
-          | undefined;
+          string | undefined;
         if (tweetId && tweets?.[tweetId]) {
           const tweetUser = tweets[tweetId].user_id_str as string;
           const screenName = users?.[tweetUser]?.screen_name as string;

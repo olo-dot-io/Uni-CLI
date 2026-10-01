@@ -109,8 +109,7 @@ export async function captureBrowserSessionTarget(
 
   try {
     const raw = (await page.sendCDP("Target.getTargetInfo")) as
-      | CdpTargetInfoResult
-      | undefined;
+      CdpTargetInfoResult | undefined;
     const info = raw?.targetInfo;
     if (!info) return undefined;
     return {

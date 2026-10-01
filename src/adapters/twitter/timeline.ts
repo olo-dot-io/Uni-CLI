@@ -41,8 +41,7 @@ cli({
     const root = data.data as Record<string, unknown> | undefined;
     const home = root?.home as Record<string, unknown> | undefined;
     const homeTimelineUrt = home?.home_timeline_urt as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (homeTimelineUrt?.instructions as unknown[]) ?? [];
 
     return extractTweetsFromInstructions(instructions);

@@ -15,8 +15,7 @@
 
 export type RecoveryStrategy = "none" | "same-primitive-retry";
 export type RecoveryTrigger =
-  | "pre-dispatch-transient"
-  | "retryable-read-failure";
+  "pre-dispatch-transient" | "retryable-read-failure";
 
 export interface RecoveryPolicy {
   strategy: RecoveryStrategy;

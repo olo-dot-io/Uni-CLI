@@ -16,7 +16,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { normalizeYamlAdapterDocument } from "../core/yaml-adapter.js";
 import type {
   AdapterArg,

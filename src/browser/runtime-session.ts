@@ -698,8 +698,7 @@ export class BrowserRuntimeSessionRegistry {
     }
     while (this.sessionTombstones.size > this.maxTombstones) {
       const oldest = this.sessionTombstones.keys().next().value as
-        | string
-        | undefined;
+        string | undefined;
       if (oldest === undefined) break;
       this.sessionTombstones.delete(oldest);
     }
@@ -712,8 +711,7 @@ export class BrowserRuntimeSessionRegistry {
     }
     while (session.endedTurnIds.size > this.maxTurnTombstones) {
       const oldest = session.endedTurnIds.keys().next().value as
-        | string
-        | undefined;
+        string | undefined;
       if (oldest === undefined) break;
       session.endedTurnIds.delete(oldest);
     }

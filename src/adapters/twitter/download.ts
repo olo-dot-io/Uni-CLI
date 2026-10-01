@@ -55,8 +55,7 @@ cli({
     // Navigate: data.threaded_conversation_with_injections_v2.instructions
     const root = data.data as Record<string, unknown> | undefined;
     const conversation = root?.threaded_conversation_with_injections_v2 as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (conversation?.instructions as unknown[]) ?? [];
 
     const media: MediaItem[] = [];
@@ -72,16 +71,13 @@ cli({
         if (!content) continue;
 
         const itemContent = content.itemContent as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!itemContent) continue;
 
         const tweetResults = itemContent.tweet_results as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const result = tweetResults?.result as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!result) continue;
 
         // Unwrap tweet_with_visibility_results
@@ -91,8 +87,7 @@ cli({
 
         const legacy = tweetObj.legacy as Record<string, unknown> | undefined;
         const extendedEntities = legacy?.extended_entities as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const mediaEntities = (extendedEntities?.media as unknown[]) ?? [];
 
         for (const m of mediaEntities) {
@@ -112,8 +107,7 @@ cli({
             });
           } else if (mediaType === "video" || mediaType === "animated_gif") {
             const videoInfo = mediaObj.video_info as
-              | Record<string, unknown>
-              | undefined;
+              Record<string, unknown> | undefined;
             const variants = (videoInfo?.variants as unknown[]) ?? [];
 
             // Pick highest bitrate mp4 variant

@@ -39,9 +39,7 @@ export interface EffectVerdict {
 }
 
 export type EffectSettlementPhase =
-  | "pre_dispatch"
-  | "dispatched_failure"
-  | "success";
+  "pre_dispatch" | "dispatched_failure" | "success";
 
 export function defaultEffectVerdict(input: {
   canMutate: boolean;

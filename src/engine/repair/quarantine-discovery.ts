@@ -9,7 +9,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 export interface QuarantinedAdapter {
   site: string;

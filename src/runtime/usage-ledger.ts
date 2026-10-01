@@ -142,19 +142,17 @@ export function loadUsageSources(
     .filter((event) =>
       shouldProjectEvent(event, directChildParents, legacyCliTerminalTraces),
     )
-    .map(
-      (event): UsageRecord => ({
-        ts: event.timestamp,
-        site: event.site ?? event.command.split(".")[0] ?? "core",
-        cmd: event.cmd ?? event.command.replace(/^[^.]+\./, ""),
-        strategy: event.strategy ?? "unknown",
-        transport: event.transport,
-        tokens: 0,
-        ms: event.duration_ms,
-        bytes: event.result_bytes ?? 0,
-        exit: event.exit_code,
-      }),
-    );
+    .map((event): UsageRecord => ({
+      ts: event.timestamp,
+      site: event.site ?? event.command.split(".")[0] ?? "core",
+      cmd: event.cmd ?? event.command.replace(/^[^.]+\./, ""),
+      strategy: event.strategy ?? "unknown",
+      transport: event.transport,
+      tokens: 0,
+      ms: event.duration_ms,
+      bytes: event.result_bytes ?? 0,
+      exit: event.exit_code,
+    }));
   return {
     records: [...legacy, ...events],
     legacy_records: legacy.length,

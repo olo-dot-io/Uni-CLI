@@ -431,7 +431,7 @@ google-scholar` returned `SCHOLAR_NOT_FOUND`, and `scholar doctor --live`
 - Experiment ladder:
   - Reproduction before edit: dev `google-scholar search "Llama 2" --limit 3`
     returned three live rows, including `Llama 2: Open foundation and
-    fine-tuned chat models`, but dev `scholar search "Llama 2" --sources
+fine-tuned chat models`, but dev `scholar search "Llama 2" --sources
 google-scholar --limit 3 -D` exited 66 with `SCHOLAR_NOT_FOUND`; dev
     `scholar doctor --sources google-scholar --live --query "Llama 2" -D`
     returned `live_health=empty` / `empty_normalized_result`.

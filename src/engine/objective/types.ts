@@ -19,10 +19,7 @@ import type { DeliveryOperatorSpec } from "../delivery/spec.js";
 export type ObjectiveKind = "media.playback";
 
 export type ObjectiveStrategySubstrate =
-  | "native-api"
-  | "desktop-cdp"
-  | "desktop-ax"
-  | "visual-coordinate";
+  "native-api" | "desktop-cdp" | "desktop-ax" | "visual-coordinate";
 
 export type ObjectiveStrategyStatus = "executable" | "partial" | "missing";
 

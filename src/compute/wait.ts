@@ -33,11 +33,7 @@ export const MAX_COMPUTE_WAIT_TIMEOUT_MS = 300_000;
 const POLL_INTERVAL_MS = 50;
 
 type ComputeWaitState =
-  | "appear"
-  | "disappear"
-  | "focused"
-  | "enabled"
-  | "checked";
+  "appear" | "disappear" | "focused" | "enabled" | "checked";
 
 interface BoundComputeWait {
   state: ComputeWaitState;

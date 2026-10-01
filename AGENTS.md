@@ -70,7 +70,6 @@ freecad (15 cmds), blender (13 cmds), gimp (12 cmds), ffmpeg (11 cmds), audacity
 ### Bridge (1 CLIs)
 
 jq (2 cmds)
-
 <!-- END ADAPTERS -->
 
 ## Done = these commands exit 0
@@ -93,8 +92,9 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 
 ## Installation and rebuildable state
 
-`package.json` owns Node 22.19 or newer and npm 11.14. `rust-toolchain.toml`
-owns Rust 1.82. Import no toolchain assumptions from another project.
+`package.json` owns Node 22.19 or newer and npm 11.21. `.nvmrc` owns the
+Node 26.10.0 development runtime. `rust-toolchain.toml` owns Rust 1.98.1.
+Toolchain settings come from the owning project.
 
 - Package manager install is the one idempotent convergence path for absent,
   current, partial, and interrupted installations. Automatic and explicit

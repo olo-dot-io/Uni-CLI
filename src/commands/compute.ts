@@ -1137,11 +1137,7 @@ async function runCaptureInInvocation(
           ...(typeof opts.via === "string"
             ? {
                 via: opts.via as
-                  | "native"
-                  | "browser"
-                  | "process"
-                  | "driver"
-                  | "visual",
+                  "native" | "browser" | "process" | "driver" | "visual",
               }
             : {}),
         },
@@ -1563,8 +1559,7 @@ function formatData(data: unknown): unknown[] | Record<string, unknown> {
 function parseComputeRouteParams(
   raw: string,
 ):
-  | { ok: true; value: Record<string, unknown> }
-  | { ok: false; reason: string } {
+  { ok: true; value: Record<string, unknown> } | { ok: false; reason: string } {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (

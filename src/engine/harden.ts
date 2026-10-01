@@ -208,8 +208,7 @@ type AjvValidator = {
 };
 
 let cachedFormatValidators:
-  | Map<NonNullable<AdapterArg["format"]>, AjvValidator>
-  | undefined;
+  Map<NonNullable<AdapterArg["format"]>, AjvValidator> | undefined;
 
 /**
  * Lazy-init ajv with the draft-2020-12 format-assertion vocabulary and

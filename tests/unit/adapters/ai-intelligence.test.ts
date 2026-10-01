@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { pulseAiContent, searchAiContent } from "../../../src/commands/ai.js";

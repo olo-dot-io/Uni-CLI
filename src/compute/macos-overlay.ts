@@ -123,8 +123,7 @@ export class MacosAppKitOverlayDaemonProvider implements ComputeOverlayProvider 
   private readonly platform: NodeJS.Platform;
   private readonly scriptPath: string | undefined;
   private readonly sessionFactory:
-    | (() => Promise<MacosOverlayDaemonSession>)
-    | undefined;
+    (() => Promise<MacosOverlayDaemonSession>) | undefined;
   private session: MacosOverlayDaemonSession | undefined;
   private tmpRoot: string | undefined;
   private lastPoint: ComputeVisualCursorPoint | undefined;

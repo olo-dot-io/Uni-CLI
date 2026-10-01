@@ -286,9 +286,7 @@ function dispatchRequest(
   };
 
   let response:
-    | JsonRpcResponse
-    | undefined
-    | Promise<JsonRpcResponse | undefined>;
+    JsonRpcResponse | undefined | Promise<JsonRpcResponse | undefined>;
   try {
     response = handler(request, {
       transport: "mcp-stdio",

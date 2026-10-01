@@ -134,7 +134,7 @@ fn require_top_level_stable_ref(stable: String) -> Result<String, AtspiError> {
     if stable
         .split_once(':')
         .and_then(|(_, tail)| tail.split_once(':'))
-        .map_or(false, |(_, path)| path.contains('/'))
+        .is_some_and(|(_, path)| path.contains('/'))
     {
         return Err(AtspiError::not_invokable(stable));
     }
@@ -613,11 +613,14 @@ pub(crate) async fn resolve_live_descendant_accessible<'a>(
     use atspi::proxy::accessible::ObjectRefExt;
     use std::collections::VecDeque;
 
-    let mut segments = descendant_segments(stable)
-        .ok_or_else(|| atspi::AtspiError::InterfaceNotAvailable("invalid stable ref"))?;
+    let mut segments = descendant_segments(stable).ok_or(
+        atspi::AtspiError::InterfaceNotAvailable("invalid stable ref"),
+    )?;
     let _window_segment = segments
         .first()
-        .ok_or_else(|| atspi::AtspiError::InterfaceNotAvailable("missing window segment"))?;
+        .ok_or(atspi::AtspiError::InterfaceNotAvailable(
+            "missing window segment",
+        ))?;
     let descendant_segments = segments.split_off(1);
     let root = connection.root_accessible_on_registry().await?;
     let mut candidates: VecDeque<_> = root.get_children().await?.into();
@@ -665,7 +668,7 @@ async fn accessible_matches_window(
 
 #[cfg(target_os = "linux")]
 async fn follow_descendant_segments<'a>(
-    conn: &'a zbus::Connection,
+    conn: &'a atspi::zbus::Connection,
     mut current: atspi::proxy::accessible::AccessibleProxy<'a>,
     segments: Vec<(String, usize)>,
 ) -> Result<atspi::proxy::accessible::AccessibleProxy<'a>, atspi::AtspiError> {

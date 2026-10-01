@@ -8,9 +8,9 @@
     "build": "tsc"
   },
   "peerDependencies": {
-    "@zenalexa/unicli": "^0.213.0"
+    "@zenalexa/unicli": "^1.2.1"
   },
   "devDependencies": {
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.2"
   }
 }

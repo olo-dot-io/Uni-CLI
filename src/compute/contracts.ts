@@ -20,13 +20,7 @@ import {
 } from "../core/argument-schema.js";
 
 export type ComputeArgType =
-  | "str"
-  | "str[]"
-  | "int"
-  | "float"
-  | "nullable-float"
-  | "str-or-int"
-  | "bool";
+  "str" | "str[]" | "int" | "float" | "nullable-float" | "str-or-int" | "bool";
 
 export interface ComputeCommandArg {
   readonly name: string;
@@ -891,14 +885,12 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         "dwell_after_click_ms",
         "idle_hide_ms",
         "turn_radius",
-      ].map(
-        (name): ComputeCommandArg => ({
-          name,
-          type: "nullable-float",
-          description:
-            "Optional presentation-only cursor motion value; null is also accepted by the driver call API.",
-        }),
-      ),
+      ].map((name): ComputeCommandArg => ({
+        name,
+        type: "nullable-float",
+        description:
+          "Optional presentation-only cursor motion value; null is also accepted by the driver call API.",
+      })),
     ],
     description:
       "Set presentation-only Cua Driver cursor motion parameters for one session.",
@@ -1099,8 +1091,7 @@ export function validateComputeRequiredArguments(
 }
 
 export type ComputeArgumentResolution =
-  | { ok: true; params: Record<string, unknown> }
-  | { ok: false; error: string };
+  { ok: true; params: Record<string, unknown> } | { ok: false; error: string };
 
 const computeArgumentValidators = new Map<string, CompiledArgumentSchema>();
 const SELECTOR_COMPATIBLE_KINDS = new Set([

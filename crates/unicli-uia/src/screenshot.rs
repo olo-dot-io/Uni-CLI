@@ -262,7 +262,7 @@ fn png_bytes_from_bgra(width: u32, height: u32, bgra: &[u8]) -> Result<Vec<u8>, 
     let mut raw = Vec::with_capacity((stride + 1) * height as usize);
     for row in bgra.chunks_exact(stride) {
         raw.push(0);
-        for pixel in row.chunks_exact(4) {
+        for pixel in row.as_chunks::<4>().0 {
             raw.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
         }
     }

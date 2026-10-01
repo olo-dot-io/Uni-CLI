@@ -187,8 +187,7 @@ export async function runBrowserInvocation<T>(
 }
 
 export function currentBrowserInvocationScope():
-  | BrowserInvocationScope
-  | undefined {
+  BrowserInvocationScope | undefined {
   return invocationStorage.getStore()?.scope;
 }
 

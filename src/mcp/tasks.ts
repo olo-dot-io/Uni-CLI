@@ -23,11 +23,7 @@ import {
 } from "./jsonrpc.js";
 
 export type McpTaskStatus =
-  | "working"
-  | "input_required"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "working" | "input_required" | "completed" | "failed" | "cancelled";
 
 export interface McpTaskView {
   taskId: string;

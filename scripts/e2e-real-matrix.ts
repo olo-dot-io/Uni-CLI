@@ -367,8 +367,7 @@ async function workflowCases(): Promise<WorkflowCase[]> {
           );
         }
         const actions = env.next_actions as
-          | Array<{ command?: string }>
-          | undefined;
+          Array<{ command?: string }> | undefined;
         if (
           actions?.[0]?.command !==
           "unicli delivery run <objective-delivery-spec.json>"
@@ -385,8 +384,7 @@ async function workflowCases(): Promise<WorkflowCase[]> {
       expect(result) {
         const env = expectEnvelopeOk(result);
         const actions = env.next_actions as
-          | Array<{ command?: string }>
-          | undefined;
+          Array<{ command?: string }> | undefined;
         if (
           actions?.[0]?.command !== "unicli delivery run <delivery-spec.json>"
         ) {

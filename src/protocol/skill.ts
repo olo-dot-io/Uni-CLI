@@ -28,7 +28,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, basename, resolve } from "node:path";
 import { homedir } from "node:os";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import type { PipelineStep } from "../types.js";
 
 export interface Skill {

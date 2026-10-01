@@ -411,8 +411,7 @@ const MCP_DISCOVERY_TTL_MS = 3_600_000;
 type McpProtocolEra = "legacy" | "modern";
 
 type McpProtocolClassification =
-  | { era: McpProtocolEra }
-  | { error: JsonRpcResponse };
+  { era: McpProtocolEra } | { error: JsonRpcResponse };
 
 function classifyProtocolRequest(
   req: JsonRpcRequest,
@@ -683,17 +682,13 @@ async function dispatchSearch(
   const searchLimit = (toolArgs.limit as number) || 5;
   const searchCategory = toolArgs.category as string | undefined;
   const searchOperator = toolArgs.operator as
-    | import("../types.js").ExecutionOperator
-    | undefined;
+    import("../types.js").ExecutionOperator | undefined;
   const targetSurface = toolArgs.target_surface as
-    | import("../types.js").TargetSurface
-    | undefined;
+    import("../types.js").TargetSurface | undefined;
   const searchEffect = toolArgs.effect as
-    | import("../types.js").OperationEffect
-    | undefined;
+    import("../types.js").OperationEffect | undefined;
   const maxInteractionImpact = toolArgs.max_interaction_impact as
-    | import("../discovery/feasibility.js").InteractionImpact
-    | undefined;
+    import("../discovery/feasibility.js").InteractionImpact | undefined;
   const searchPlatform = toolArgs.platform as NodeJS.Platform | undefined;
   if (!searchQuery) {
     return {
@@ -850,8 +845,7 @@ async function handleToolsCall(
   onBrowserInvocation?: (agentSessionId: string) => void,
 ): Promise<JsonRpcResponse> {
   const params = req.params as
-    | { name: string; arguments?: Record<string, unknown> }
-    | undefined;
+    { name: string; arguments?: Record<string, unknown> } | undefined;
   const observation = createMcpCallObservation(params?.name);
   if (!params?.name) {
     return completeMcpCallObservation(observation, {
@@ -930,8 +924,7 @@ function handleElicitationResponse(
   req: JsonRpcRequest,
 ): JsonRpcResponse {
   const elicitParams = req.params as
-    | { id: string | number; response: ElicitationResponse }
-    | undefined;
+    { id: string | number; response: ElicitationResponse } | undefined;
   if (elicitParams?.id == null || !elicitParams?.response) {
     return {
       jsonrpc: "2.0",

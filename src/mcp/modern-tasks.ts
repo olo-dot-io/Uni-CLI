@@ -40,11 +40,7 @@ export const MCP_TASKS_EXTENSION_ID = "io.modelcontextprotocol/tasks";
 export const MCP_TASKS_CAPABILITY_REQUIRED = -32_021;
 
 export type ModernMcpTaskStatus =
-  | "working"
-  | "input_required"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "working" | "input_required" | "completed" | "failed" | "cancelled";
 
 export interface ModernMcpTaskBase {
   taskId: string;

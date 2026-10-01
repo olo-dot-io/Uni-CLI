@@ -263,8 +263,7 @@ function validateSession(
     return false;
   }
   const clientProtocol = req.headers["mcp-protocol-version"] as
-    | string
-    | undefined;
+    string | undefined;
   if (!clientProtocol) {
     rpcErrorResponse(
       req,

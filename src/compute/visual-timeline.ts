@@ -42,14 +42,7 @@ export type ComputeCursorHalo =
   | "error-shake";
 
 export type ComputeCursorTransition =
-  | "settle"
-  | "glide"
-  | "pulse"
-  | "press"
-  | "spin"
-  | "snap"
-  | "fade"
-  | "scan";
+  "settle" | "glide" | "pulse" | "press" | "spin" | "snap" | "fade" | "scan";
 
 export interface ComputeVisualCoordinateSpace {
   kind: "screen-pixels" | "image-pixels";

@@ -15,11 +15,7 @@ import type { Judge } from "../../commands/eval.js";
 import type { PermissionProfile } from "../operation-policy.js";
 
 export type EvolutionSessionState =
-  | "draft"
-  | "verified"
-  | "rejected"
-  | "promoted"
-  | "rolled_back";
+  "draft" | "verified" | "rejected" | "promoted" | "rolled_back";
 
 export interface EvolutionScope {
   domain?: string;

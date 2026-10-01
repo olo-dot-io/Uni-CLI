@@ -162,8 +162,7 @@ export function findNetworkCacheEntry(
 }
 
 export type ParsedNetworkFilter =
-  | { ok: true; fields: string[] }
-  | { ok: false; reason: string };
+  { ok: true; fields: string[] } | { ok: false; reason: string };
 
 export function parseNetworkFilter(raw: string): ParsedNetworkFilter {
   const fields = raw

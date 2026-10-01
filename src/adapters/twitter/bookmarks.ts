@@ -38,11 +38,9 @@ cli({
     // Navigate: data.bookmark_timeline_v2.timeline.instructions
     const root = data.data as Record<string, unknown> | undefined;
     const bookmarkTimeline = root?.bookmark_timeline_v2 as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const timeline = bookmarkTimeline?.timeline as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (timeline?.instructions as unknown[]) ?? [];
 
     return extractTweetsFromInstructions(instructions);

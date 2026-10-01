@@ -104,12 +104,10 @@ export function evaluateManifestOperationPolicy(input: {
     }
     return policy;
   } catch (error) {
-    if (
-      !(
-        error instanceof InvalidPermissionProfileError ||
-        error instanceof PermissionRulesConfigError
-      )
-    ) {
+    if (!(
+      error instanceof InvalidPermissionProfileError ||
+      error instanceof PermissionRulesConfigError
+    )) {
       throw error;
     }
 

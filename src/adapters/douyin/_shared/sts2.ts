@@ -14,8 +14,7 @@ export async function getSts2Credentials(
 ): Promise<Sts2Credentials> {
   const js = `fetch(${JSON.stringify(STS2_URL)}, { credentials: 'include' }).then(r => r.json())`;
   const res = (await page.evaluate(js)) as
-    | Sts2Credentials
-    | { data?: Sts2Credentials };
+    Sts2Credentials | { data?: Sts2Credentials };
   const credentials =
     typeof res === "object" && res !== null && "data" in res && res.data
       ? res.data

@@ -39,11 +39,7 @@ export interface LocalBrowserDebugTarget {
 }
 
 export type LocalProfileCookieBrowserId =
-  | "chrome"
-  | "brave"
-  | "edge"
-  | "arc"
-  | "dia";
+  "chrome" | "brave" | "edge" | "arc" | "dia";
 
 export interface LocalBrowserProfile {
   id: string;

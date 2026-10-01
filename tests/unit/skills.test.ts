@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import {
   buildSkillForCommand,
   renderSkillMarkdown,

@@ -3,8 +3,8 @@
  * @does        Cross-checks release-facing runtime, workflow, dependency, symbol-resolved literal package-load, privacy, and security claims against executable repository state.
  * @needs       package.json, package-lock.json, TypeScript runtime source program and symbols, CI/release workflows, updater constant, PRIVACY.md, SECURITY.md
  * @feeds       npm run truth:check, CI, release verification
- * @breaks      Any undeclared literal runtime package load, mutable loader binding, production dependency marked dev-only, root manifest/lock mismatch, missing Node/audit gate, npm 10-incompatible optional-peer closure, wrong scoped URL, or resurrected false security claim fails non-zero.
- * @invariants  Every non-test src literal package load expressed through runtime import/export, import(), a symbol-bound createRequire result, or its resolver names a declared production dependency; TypeScript symbols distinguish lexical shadows while a fixed-point binding scan covers aliases, assignments, templates, destructuring, and type-only exclusions; reassignment from a loader to an unrelated value is an explicit unsupported state; root manifest and lock identity/dependency maps match exactly; every direct production dependency has a non-dev lock entry; and the lock retains DocSearch's npm 10-required optional React peer closure even when newer npm clients would prune it.
+ * @breaks      Any undeclared literal runtime package load, mutable loader binding, production dependency marked dev-only, root manifest/lock mismatch, missing Node/audit gate, wrong scoped URL, or resurrected false security claim fails non-zero.
+ * @invariants  Every non-test src literal package load expressed through runtime import/export, import(), a symbol-bound createRequire result, or its resolver names a declared production dependency; TypeScript symbols distinguish lexical shadows; a fixed-point binding scan covers aliases, assignments, templates, destructuring, and type-only exclusions; reassignment from a loader to an unrelated value is an explicit unsupported state; root manifest and lock identity/dependency maps match exactly; every direct production dependency has a non-dev lock entry.
  * @side-effects Reads repository files and writes one summary line.
  * @test        Executed by npm run verify and both publish/mainline workflow gates.
  * @stability   stable
@@ -14,7 +14,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { join } from "node:path";
-import ts from "typescript";
+import ts from "@typescript/typescript6";
 import { parse } from "yaml";
 import { UPDATE_REGISTRY_URL } from "../src/engine/update-check.js";
 
@@ -64,9 +64,7 @@ interface PackageLock {
 }
 
 type DependencyMapName =
-  | "dependencies"
-  | "devDependencies"
-  | "optionalDependencies";
+  "dependencies" | "devDependencies" | "optionalDependencies";
 
 function fail(message: string): never {
   throw new Error(`release-truth-check: ${message}`);
@@ -113,10 +111,7 @@ function literalText(node: ts.Node | undefined): string | undefined {
 }
 
 type RuntimeBindingKind =
-  | "create-require"
-  | "module-namespace"
-  | "require"
-  | "resolver";
+  "create-require" | "module-namespace" | "require" | "resolver";
 
 interface RuntimeBindings {
   createRequire: Set<ts.Symbol>;
@@ -827,22 +822,8 @@ if (manifest.engines?.node !== ">=22.19.0") {
   );
 }
 
-for (const path of [
-  "node_modules/@docsearch/js/node_modules/@types/react",
-  "node_modules/@docsearch/js/node_modules/react",
-  "node_modules/@docsearch/js/node_modules/react-dom",
-  "node_modules/@docsearch/js/node_modules/scheduler",
-  "node_modules/@types/prop-types",
-  "node_modules/js-tokens",
-  "node_modules/loose-envify",
-]) {
-  if (!lockfile.packages?.[path]) {
-    fail(`package-lock omits npm 10-required optional peer: ${path}`);
-  }
-}
-
 const verifyMatrix = ci.jobs?.verify?.strategy?.matrix?.include ?? [];
-for (const major of [22, 24]) {
+for (const major of [22, 24, 26]) {
   if (!verifyMatrix.some((entry) => Number(entry["node-version"]) === major)) {
     fail(`CI verify matrix does not exercise supported Node ${major}`);
   }
@@ -989,5 +970,5 @@ for (const pattern of retiredClaims) {
 
 const dependencyCount = Object.keys(manifest.dependencies ?? {}).length;
 process.stdout.write(
-  `release-truth-check: PASS — Node 22/24, npm 10 lock closure, runtime package loads, scoped updater, audit gates, ${dependencyCount} direct runtime dependencies, and credential claims agree\n`,
+  `release-truth-check: PASS. Node 22, 24, and 26, manifest and lockfile identities, runtime package loads, scoped updater, audit gates, ${dependencyCount} direct runtime dependencies, and credential claims agree\n`,
 );

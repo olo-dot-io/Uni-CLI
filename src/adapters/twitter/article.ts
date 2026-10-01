@@ -48,8 +48,7 @@ cli({
     // Navigate: data.threaded_conversation_with_injections_v2.instructions
     const root = data.data as Record<string, unknown> | undefined;
     const conversation = root?.threaded_conversation_with_injections_v2 as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (conversation?.instructions as unknown[]) ?? [];
 
     for (const instruction of instructions) {
@@ -63,16 +62,13 @@ cli({
         if (!content) continue;
 
         const itemContent = content.itemContent as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!itemContent) continue;
 
         const tweetResults = itemContent.tweet_results as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const result = tweetResults?.result as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!result) continue;
 
         // Unwrap tweet_with_visibility_results
@@ -82,26 +78,20 @@ cli({
 
         const core = tweetObj.core as Record<string, unknown> | undefined;
         const userResults = core?.user_results as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const userResult = userResults?.result as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const userLegacy = userResult?.legacy as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const screenName = (userLegacy?.screen_name as string) ?? "unknown";
 
         // Extract note/article content from note_tweet
         const noteTweet = tweetObj.note_tweet as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const noteTweetResults = noteTweet?.note_tweet_results as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const noteResult = noteTweetResults?.result as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const noteText = (noteResult?.text as string) ?? "";
 
         // Fallback to legacy full_text if no note content

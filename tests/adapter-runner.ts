@@ -31,7 +31,7 @@ import {
 import { dirname, join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, vi } from "vitest";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { runPipeline, PipelineError } from "../src/engine/executor.js";
 import type { PipelineStep } from "../src/types.js";
 

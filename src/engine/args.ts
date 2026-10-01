@@ -25,13 +25,7 @@ import {
 import type { AdapterArg } from "../types.js";
 
 export type ArgSource =
-  | "shell"
-  | "file"
-  | "stdin"
-  | "mixed"
-  | "mcp"
-  | "acp"
-  | "internal";
+  "shell" | "file" | "stdin" | "mixed" | "mcp" | "acp" | "internal";
 
 export interface ResolvedArgs {
   args: Record<string, unknown>;

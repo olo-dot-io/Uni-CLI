@@ -95,8 +95,7 @@ interface LockPayload {
 }
 
 type BrokerOwnershipGuard =
-  | { kind: "socket"; server: Server }
-  | { kind: "file"; lock: KernelFileLock };
+  { kind: "socket"; server: Server } | { kind: "file"; lock: KernelFileLock };
 
 interface BrowserBrokerEndpointEnvelope {
   product: typeof BROWSER_BROKER_PRODUCT;

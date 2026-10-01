@@ -419,8 +419,7 @@ async function runLifecycleCommand(
   operation: () => Promise<unknown>,
   jsonAlias = false,
   argumentValues:
-    | Record<string, unknown>
-    | (() => Record<string, unknown>) = {},
+    Record<string, unknown> | (() => Record<string, unknown>) = {},
 ): Promise<void> {
   const startedAt = Date.now();
   const outputFormat = detectFormat(

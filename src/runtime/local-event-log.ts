@@ -52,16 +52,12 @@ const DAY_FILE_PATTERN = /^(\d{4}-\d{2}-\d{2})\.jsonl$/;
 const MAX_SCALAR_STRING_BYTES = 1024;
 
 export type LocalEventName =
-  | "unicli.cli.invocation.completed"
-  | "unicli.tool.call.completed";
+  "unicli.cli.invocation.completed" | "unicli.tool.call.completed";
 export type LocalEventOutcome = "success" | "empty" | "error";
 export type LocalEventSeverity = "INFO" | "WARN" | "ERROR";
 export type LocalEventTransport = "cli" | "mcp" | "acp" | "bench" | "hub";
 export type LocalEventOperationRole =
-  | "invocation"
-  | "direct"
-  | "nested"
-  | "standalone";
+  "invocation" | "direct" | "nested" | "standalone";
 
 interface LocalDiagnosticFields {
   event_name: LocalEventName;
@@ -111,8 +107,7 @@ export interface LocalDiagnosticEventV2 extends LocalDiagnosticFields {
 }
 
 export type LocalDiagnosticEvent =
-  | LocalDiagnosticEventV1
-  | LocalDiagnosticEventV2;
+  LocalDiagnosticEventV1 | LocalDiagnosticEventV2;
 
 export interface LocalEventStore {
   rootDir: string;

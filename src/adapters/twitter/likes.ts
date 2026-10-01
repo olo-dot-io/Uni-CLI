@@ -52,11 +52,9 @@ cli({
     const user = root?.user as Record<string, unknown> | undefined;
     const result = user?.result as Record<string, unknown> | undefined;
     const timelineV2 = result?.timeline_v2 as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const timeline = timelineV2?.timeline as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (timeline?.instructions as unknown[]) ?? [];
 
     return extractTweetsFromInstructions(instructions);

@@ -440,16 +440,11 @@ function enrichMatch(
         adapter,
       );
       const argsSchema = description.args_schema as
-        | Record<string, unknown>
-        | string
-        | undefined;
+        Record<string, unknown> | string | undefined;
       const example = description.example_stdin as
-        | Record<string, unknown>
-        | string
-        | undefined;
+        Record<string, unknown> | string | undefined;
       const channels = description.channels as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (argsSchema !== undefined) match.args_schema = argsSchema;
       if (example !== undefined) match.example_stdin = example;
       if (typeof channels?.shell === "string") {
@@ -658,8 +653,7 @@ function argsSchemaToParams(
   if (typeof schema === "string") return undefined;
   const properties =
     (schema.properties as
-      | Record<string, Record<string, unknown>>
-      | undefined) ?? undefined;
+      Record<string, Record<string, unknown>> | undefined) ?? undefined;
   if (!properties) return undefined;
   const out: Record<string, AgentNextActionParam> = {};
   for (const [name, prop] of Object.entries(properties)) {

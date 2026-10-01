@@ -75,10 +75,7 @@ function newProgram(): Command {
 }
 
 function expectedNativeOverlayProvider():
-  | "macos-appkit"
-  | "windows-win32"
-  | "linux-gtk"
-  | undefined {
+  "macos-appkit" | "windows-win32" | "linux-gtk" | undefined {
   if (process.platform === "darwin") return "macos-appkit";
   if (process.platform === "win32") return "windows-win32";
   if (process.platform === "linux") return "linux-gtk";

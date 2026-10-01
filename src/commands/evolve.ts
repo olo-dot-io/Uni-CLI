@@ -196,8 +196,7 @@ export function registerEvolveCommand(program: Command): void {
             approvedNetworkOrigins: opts.allowOrigin,
             domain: opts.domain,
             permissionProfile: program.opts().permissionProfile as
-              | string
-              | undefined,
+              string | undefined,
             candidatePath: opts.candidate,
             sessionId: opts.sessionId,
             cliCommand: opts.cli,

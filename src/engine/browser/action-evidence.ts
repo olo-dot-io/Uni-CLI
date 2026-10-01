@@ -72,12 +72,7 @@ export interface BrowserActionEvidenceOptions {
 type BrowserEvidencePhase = "before" | "after";
 type BrowserEvidenceOutcome = "pending" | "success" | "failure";
 export type BrowserMovementDimension =
-  | "url"
-  | "title"
-  | "dom"
-  | "screenshot"
-  | "network"
-  | "console";
+  "url" | "title" | "dom" | "screenshot" | "network" | "console";
 export type BrowserActionWatchdogMode = "off" | "warn" | "error";
 
 export interface BrowserActionWatchdogOptions {

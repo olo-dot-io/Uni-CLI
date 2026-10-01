@@ -554,8 +554,7 @@ export class ChromeBrowserProvider {
       let pending!: PendingCommand;
       const settleConsumer = (
         outcome:
-          | { result: ChromeNativeResult }
-          | { error: ChromeProviderError },
+          { result: ChromeNativeResult } | { error: ChromeProviderError },
       ): void => {
         if (pending.consumerSettled) return;
         pending.consumerSettled = true;

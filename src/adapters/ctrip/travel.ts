@@ -427,8 +427,7 @@ async function fetchCtripSuggest(
     );
   }
   const responsePayload = payload.Response as
-    | { searchResults?: unknown }
-    | undefined;
+    { searchResults?: unknown } | undefined;
   return Array.isArray(responsePayload?.searchResults)
     ? (responsePayload.searchResults as CtripSuggestItem[])
     : [];

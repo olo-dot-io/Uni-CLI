@@ -685,13 +685,13 @@ pub(crate) fn window_matches_params(window: &WindowRecord, params: &Value) -> bo
         .get("app")
         .and_then(Value::as_str)
         .map(|app| app.to_ascii_lowercase());
-    pid_filter.map_or(true, |pid| window.pid == pid)
+    pid_filter.is_none_or(|pid| window.pid == pid)
         && params
             .get("windowId")
-            .map_or(true, |window_id| window_id_matches(&window.hwnd, window_id))
+            .is_none_or(|window_id| window_id_matches(&window.hwnd, window_id))
         && app_filter
             .as_ref()
-            .map_or(true, |app| window.title.to_ascii_lowercase().contains(app))
+            .is_none_or(|app| window.title.to_ascii_lowercase().contains(app))
 }
 
 fn validate_snapshot_target(windows: &[WindowRecord], params: &Value) -> Result<(), UiaError> {
@@ -776,10 +776,10 @@ fn window_node_matches_find_params(window: &WindowRecord, params: &Value) -> boo
 
     role_filter
         .as_ref()
-        .map_or(true, |role| role == "window" || role == "desktop-window")
-        && name_filter.as_ref().map_or(true, |name| {
-            window.title.to_ascii_lowercase().contains(name)
-        })
+        .is_none_or(|role| role == "window" || role == "desktop-window")
+        && name_filter
+            .as_ref()
+            .is_none_or(|name| window.title.to_ascii_lowercase().contains(name))
         && text_matches(&window.title, None, params)
 }
 
@@ -1259,10 +1259,10 @@ fn element_matches_find_params(element: &ElementRecord, params: &Value) -> bool 
 
     role_filter
         .as_ref()
-        .map_or(true, |role| element.role.to_ascii_lowercase() == *role)
-        && name_filter.as_ref().map_or(true, |name| {
-            element.name.to_ascii_lowercase().contains(name)
-        })
+        .is_none_or(|role| element.role.to_ascii_lowercase() == *role)
+        && name_filter
+            .as_ref()
+            .is_none_or(|name| element.name.to_ascii_lowercase().contains(name))
         && text_matches(&element.name, element.value.as_deref(), params)
 }
 
@@ -1429,17 +1429,19 @@ fn collect_child_records(
 fn element_record_from_windows_uia(
     element: &windows::Win32::UI::Accessibility::IUIAutomationElement,
 ) -> Option<ElementRecord> {
-    use windows::Win32::UI::Accessibility::UIA_ValueValuePropertyId;
+    use windows::Win32::UI::Accessibility::{IUIAutomationValuePattern, UIA_ValuePatternId};
 
     let control_type_id = unsafe { element.CurrentControlType().ok()? }.0;
     let name = unsafe { element.CurrentName() }
         .ok()
         .map(|value| value.to_string())
         .filter(|value| !value.is_empty());
-    let value = unsafe { element.GetCurrentPropertyValue(UIA_ValueValuePropertyId) }
-        .ok()
-        .map(|value| value.to_string())
-        .filter(|value| !value.is_empty());
+    let value =
+        unsafe { element.GetCurrentPatternAs::<IUIAutomationValuePattern>(UIA_ValuePatternId) }
+            .ok()
+            .and_then(|pattern| unsafe { pattern.CurrentValue() }.ok())
+            .map(|value| value.to_string())
+            .filter(|value| !value.is_empty());
     let enabled = unsafe { element.CurrentIsEnabled() }
         .ok()
         .map(|value| value.as_bool())

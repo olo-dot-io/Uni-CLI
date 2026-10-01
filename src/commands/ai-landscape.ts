@@ -48,10 +48,7 @@ export interface AiPrimarySource {
 }
 
 export type AiEvidenceRole =
-  | "origin"
-  | "artifact-host"
-  | "publication-venue"
-  | "community-platform";
+  "origin" | "artifact-host" | "publication-venue" | "community-platform";
 
 export interface AiRoleProfile {
   id: AiRoleProfileId;

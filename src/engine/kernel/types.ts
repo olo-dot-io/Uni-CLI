@@ -91,8 +91,7 @@ export interface InvocationResult {
 }
 
 export type InvocationDiagnostic =
-  | RuntimePermissionDeniedDiagnostic
-  | BrowserCommandDiagnostic;
+  RuntimePermissionDeniedDiagnostic | BrowserCommandDiagnostic;
 
 export interface RuntimePermissionDeniedDiagnostic {
   kind: "runtime_permission_denied";

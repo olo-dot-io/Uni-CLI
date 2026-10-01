@@ -16,7 +16,7 @@ import {
 import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { getBuiltInStepSurface } from "../src/engine/step-surface.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -243,7 +243,7 @@ function countTestsViaVitest(): number | null {
     const timeout = resolveVitestListTimeoutMs(process.env);
     const result = spawnSync(
       "npx",
-      ["vitest", "list", "--json", `--project=${project}`],
+      ["vitest", "list", "--json", "--no-static-parse", `--project=${project}`],
       {
         cwd: ROOT,
         encoding: "utf-8",

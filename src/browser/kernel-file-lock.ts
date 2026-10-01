@@ -27,9 +27,7 @@ import {
 import { createServer, type Server } from "node:net";
 
 export type KernelFileLockErrorCode =
-  | "contended"
-  | "unsupported"
-  | "unavailable";
+  "contended" | "unsupported" | "unavailable";
 
 export class KernelFileLockError extends Error {
   constructor(

@@ -18,12 +18,7 @@ import type { RunSummary } from "../session/query.js";
 import type { RunEvent, RunId } from "../session/types.js";
 
 export type DeliveryStrategyKind =
-  | "adapter"
-  | "browser"
-  | "desktop"
-  | "local"
-  | "mcp"
-  | "manual";
+  "adapter" | "browser" | "desktop" | "local" | "mcp" | "manual";
 
 export interface DeliveryStrategy {
   id: string;
@@ -139,11 +134,7 @@ export interface DeliveryStateInput {
 }
 
 export type DeliveryVerificationStatus =
-  | "unverified"
-  | "active"
-  | "verified"
-  | "blocked"
-  | "exhausted";
+  "unverified" | "active" | "verified" | "blocked" | "exhausted";
 
 export type DeliveryFailureClassification =
   | "product_defect"

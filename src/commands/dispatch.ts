@@ -195,8 +195,7 @@ export function registerAdapterDispatch(program: Command): void {
           };
           const fmt = detectFormat(
             (program.opts().format ?? cmd.defaultFormat) as
-              | OutputFormat
-              | undefined,
+              OutputFormat | undefined,
           );
           process.stderr.write(format([], cmd.columns, fmt, errCtx) + "\n");
           process.exit(ExitCode.CONFIG_ERROR);
@@ -223,8 +222,7 @@ export function registerAdapterDispatch(program: Command): void {
 
         const fmt = detectFormat(
           (program.opts().format ?? cmd.defaultFormat) as
-            | OutputFormat
-            | undefined,
+            OutputFormat | undefined,
         );
 
         // Unified arg resolver (v0.213.2): precedence is stdin-JSON >

@@ -31,12 +31,7 @@ const OOPSLA_SPLIT_FIRST_YEAR = 2022;
 
 export type PacmplConference = "OOPSLA" | "POPL" | "PLDI" | "ICFP";
 export type PacmplIssue =
-  | "OOPSLA"
-  | "OOPSLA1"
-  | "OOPSLA2"
-  | "POPL"
-  | "PLDI"
-  | "ICFP";
+  "OOPSLA" | "OOPSLA1" | "OOPSLA2" | "POPL" | "PLDI" | "ICFP";
 
 export interface PacmplVenueSelection {
   conference: PacmplConference;

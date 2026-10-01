@@ -58,8 +58,7 @@ cli({
     const result = user?.result as Record<string, unknown> | undefined;
     const timelineObj = result?.timeline as Record<string, unknown> | undefined;
     const timeline = timelineObj?.timeline as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const instructions = (timeline?.instructions as unknown[]) ?? [];
 
     return extractUsersFromInstructions(instructions);

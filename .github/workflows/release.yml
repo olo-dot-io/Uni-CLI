@@ -34,10 +34,13 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - name: Install Rust 1.82.0
+      - name: Install repository Rust toolchain
+        shell: bash
         run: |
-          rustup toolchain install 1.82.0 --profile minimal --target "${{ matrix.target }}"
-          rustup default 1.82.0
+          toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)
+          export RUSTUP_TOOLCHAIN="$toolchain"
+          rustup toolchain install "$toolchain" --profile minimal --target "${{ matrix.target }}"
+          printf 'RUSTUP_TOOLCHAIN=%s\n' "$toolchain" >> "$GITHUB_ENV"
 
       - name: Build process owner
         run: cargo build --locked -p unicli-process-owner --profile release-sidecar --target "${{ matrix.target }}"
@@ -218,7 +221,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           generate_release_notes: true
           name: ${{ steps.release_metadata.outputs.title }}

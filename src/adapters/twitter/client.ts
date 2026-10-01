@@ -370,15 +370,13 @@ export function extractTweetsFromInstructions(
 
         if (entryType === "TimelineTimelineItem") {
           const itemContent = content.itemContent as
-            | Record<string, unknown>
-            | undefined;
+            Record<string, unknown> | undefined;
           if (
             itemContent &&
             (itemContent.itemType as string) === "TimelineTweet"
           ) {
             const tweetResults = itemContent.tweet_results as
-              | Record<string, unknown>
-              | undefined;
+              Record<string, unknown> | undefined;
             if (tweetResults?.result) {
               const tweet = extractTweet(
                 tweetResults.result as Record<string, unknown>,
@@ -393,15 +391,13 @@ export function extractTweetsFromInstructions(
             const i = item as Record<string, unknown>;
             const itemObj = i.item as Record<string, unknown> | undefined;
             const itemContent = itemObj?.itemContent as
-              | Record<string, unknown>
-              | undefined;
+              Record<string, unknown> | undefined;
             if (
               itemContent &&
               (itemContent.itemType as string) === "TimelineTweet"
             ) {
               const tweetResults = itemContent.tweet_results as
-                | Record<string, unknown>
-                | undefined;
+                Record<string, unknown> | undefined;
               if (tweetResults?.result) {
                 const tweet = extractTweet(
                   tweetResults.result as Record<string, unknown>,
@@ -447,19 +443,16 @@ export function extractUsersFromInstructions(
         if (!content) continue;
 
         const itemContent = content.itemContent as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!itemContent) continue;
 
         const itemType = itemContent.itemType as string | undefined;
         if (itemType !== "TimelineUser") continue;
 
         const userResults = itemContent.user_results as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         const result = userResults?.result as
-          | Record<string, unknown>
-          | undefined;
+          Record<string, unknown> | undefined;
         if (!result) continue;
 
         const legacy = result.legacy as Record<string, unknown> | undefined;

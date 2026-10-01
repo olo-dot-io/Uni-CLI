@@ -90,9 +90,7 @@ export interface AgentPluginInspection {
 export class AgentPluginError extends Error {
   constructor(
     public readonly code:
-      | "manifest_invalid"
-      | "unsupported_version"
-      | "path_escape",
+      "manifest_invalid" | "unsupported_version" | "path_escape",
     message: string,
     public readonly path?: string,
   ) {

@@ -25,9 +25,7 @@ export interface WatchRunEventsOptions {
 }
 
 export type RunStoreErrorCode =
-  | "invalid_run_id"
-  | "malformed_jsonl"
-  | "io_error";
+  "invalid_run_id" | "malformed_jsonl" | "io_error";
 
 export class RunStoreError extends Error {
   constructor(

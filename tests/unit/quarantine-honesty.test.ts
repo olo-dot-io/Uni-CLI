@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 const ADAPTERS_ROOT = join(process.cwd(), "src", "adapters");
 const YEAR_PATTERN = /\b(19|20|21)\d{2}\b/;

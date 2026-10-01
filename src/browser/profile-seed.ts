@@ -50,12 +50,7 @@ const OPTIONAL_PROFILE_FILES = ["Preferences", "Secure Preferences"] as const;
 const MAX_SEED_ATTEMPTS = 2;
 
 export type AutomationProfileSeedStatus =
-  | "fresh"
-  | "missing"
-  | "stale"
-  | "unsupported"
-  | "unseedable"
-  | "error";
+  "fresh" | "missing" | "stale" | "unsupported" | "unseedable" | "error";
 
 export type AutomationProfileSeedWriteStatus = "fresh" | "seeded";
 

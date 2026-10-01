@@ -290,8 +290,7 @@ export class BrowserRefTargetError extends Error {
 
 export class BrowserViewportPointError extends Error {
   readonly code:
-    | "browser_coordinate_out_of_bounds"
-    | "browser_viewport_invalid";
+    "browser_coordinate_out_of_bounds" | "browser_viewport_invalid";
   readonly retryable = false;
   readonly suggestion: string;
 

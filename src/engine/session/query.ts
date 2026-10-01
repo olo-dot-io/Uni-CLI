@@ -6,11 +6,7 @@ import { runTracePath, type RunStore, RunStoreError } from "./store.js";
 import type { PublicRunEvent, RunEvent, RunId } from "./types.js";
 
 export type RunTraceStatus =
-  | "completed"
-  | "failed"
-  | "running"
-  | "empty"
-  | "unreadable";
+  "completed" | "failed" | "running" | "empty" | "unreadable";
 
 export interface RunSummary {
   run_id: RunId;

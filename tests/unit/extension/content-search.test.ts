@@ -464,8 +464,7 @@ function installChrome(input: {
             url: String(
               (
                 tabs.find((tab) => tab.id === tabId) as
-                  | { url?: unknown }
-                  | undefined
+                  { url?: unknown } | undefined
               )?.url ?? "",
             ),
           },

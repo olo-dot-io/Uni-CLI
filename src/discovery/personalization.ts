@@ -14,11 +14,7 @@
  */
 
 export type PersonalizationFamily =
-  | "account"
-  | "feed"
-  | "library"
-  | "network"
-  | "activity";
+  "account" | "feed" | "library" | "network" | "activity";
 
 export interface PersonalizationCommandInput {
   command: string;

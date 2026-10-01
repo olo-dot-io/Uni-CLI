@@ -25,10 +25,7 @@ import type {
 export interface CommandOperatorProfile {
   operator: ExecutionOperator;
   operator_source:
-    | "declared"
-    | "minimum_capability"
-    | "capability"
-    | "adapter_default";
+    "declared" | "minimum_capability" | "capability" | "adapter_default";
   operator_confidence: "high" | "medium" | "low";
   provider: string;
   perception: PerceptionModality;

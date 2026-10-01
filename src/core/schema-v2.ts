@@ -190,8 +190,7 @@ export type AdapterCommandV2 = z.infer<typeof AdapterCommandV2Schema>;
 
 /** Result of {@link validateAdapterV2}. */
 export type AdapterValidationResult =
-  | { ok: true; data: AdapterCommandV2 }
-  | { ok: false; error: string };
+  { ok: true; data: AdapterCommandV2 } | { ok: false; error: string };
 
 /**
  * Strict parse — throws on invalid input. Use inside trusted boundaries

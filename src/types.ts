@@ -132,10 +132,7 @@ export type OperationEffect =
   | "unknown_write";
 
 export type IdempotencyClass =
-  | "guaranteed"
-  | "conditional"
-  | "none"
-  | "unknown";
+  "guaranteed" | "conditional" | "none" | "unknown";
 
 export interface CommandExecutionContext {
   signal?: AbortSignal;
@@ -240,10 +237,7 @@ export interface OutputSchema {
 export type RetrievalResultKind = string;
 
 export type RetrievalSourceClass =
-  | "official"
-  | "hosted-artifact"
-  | "community"
-  | "search-index";
+  "official" | "hosted-artifact" | "community" | "search-index";
 
 /**
  * Domain-neutral metadata for commands that discover evidence candidates.

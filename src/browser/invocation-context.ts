@@ -16,12 +16,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 export type BrowserInvocationTransport =
-  | "cli"
-  | "mcp-stdio"
-  | "mcp-http"
-  | "plugin"
-  | "native-host"
-  | "broker";
+  "cli" | "mcp-stdio" | "mcp-http" | "plugin" | "native-host" | "broker";
 
 export interface BrowserInvocationContext {
   agent_session_id: string;

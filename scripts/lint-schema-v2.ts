@@ -20,7 +20,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, dirname, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { parseAdapterV2 } from "../src/core/schema-v2.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

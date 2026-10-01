@@ -194,8 +194,7 @@ describe("deterministic tool ordering", () => {
       params: {},
     });
     const result = response?.result as
-      | { _meta?: Record<string, unknown> }
-      | undefined;
+      { _meta?: Record<string, unknown> } | undefined;
     expect(result?._meta?.["io.unicli/update"]).toMatchObject({
       status: "available",
       latest: "1.1.0",

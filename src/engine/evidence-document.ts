@@ -16,13 +16,7 @@
 import { createHash } from "node:crypto";
 
 export type EvidenceContentFormat =
-  | "markdown"
-  | "text"
-  | "html"
-  | "json"
-  | "xml"
-  | "pdf-text"
-  | "github-thread";
+  "markdown" | "text" | "html" | "json" | "xml" | "pdf-text" | "github-thread";
 
 export interface EvidenceDocument {
   schema_version: "evidence-document.v1";
