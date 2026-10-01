@@ -70,7 +70,7 @@ describe("doctor compute", () => {
     expect(
       report.checks.find(
         (check) =>
-          check.transport === "cua-driver" && check.name === "contract-0.2.0",
+          check.transport === "cua-driver" && check.name === "contract-0.8.0",
       ),
     ).toMatchObject({
       status: expect.stringMatching(/^(ok|warn|skip)$/),

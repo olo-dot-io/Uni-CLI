@@ -101,17 +101,17 @@ cannot detect an external human or unrelated process changing the screen after
 capture; agents must keep the observe-act interval short and take a new
 screenshot whenever the visible target may have changed.
 
-The built-in adapter targets Cua Driver portable contract `0.2.0`. It invokes
-`cua-driver call <tool> <json>` with argv, never through a shell. Uni-CLI does
-not install or start the daemon and does not inherit its app/window-specific
-APIs under the coordinate route. The portable `click`, `drag`, `type_text`,
-`press_key`/`hotkey`, and `scroll` calls are always compiled with
-`scope:"desktop"`. `get_desktop_state` is the pixel source. This boundary
-follows the upstream
-[portable manifest](https://github.com/trycua/cua/blob/7e13c6437acb1e2193548d36f520b3519ceee05c/libs/cua-driver/contract/manifest.json).
+The built-in adapter consumes Cua Driver portable contract `0.8.0` from
+stable release `0.31.0`. It invokes `cua-driver call <tool> <json>` through
+literal argv. The caller owns the daemon lifecycle. The coordinate route
+selects `target:{kind:"desktop",display_id:"primary"}` for `click`, `drag`,
+`type_text`, `press_key`, `hotkey`, `scroll`, and `move_cursor`. Click requests
+include `delivery_mode:"foreground"`. `get_desktop_state` supplies the pixel
+source. The request fields and action result follow the upstream
+[portable manifest](https://github.com/trycua/cua/blob/5272e492d61b96caf08e3bf434d91126c1f3dccc/libs/cua-driver/contract/manifest.json).
 
 A named session gives concurrent agent runs separate cursor and capture-policy
-identity:
+identity.
 
 ```bash
 unicli compute session-start research-run-1 --capture-scope auto
@@ -127,11 +127,14 @@ with a bounded reason. Session operations explicitly name the driver lifecycle,
 so they select `cua-driver` without presenting an unrelated provider list.
 Ending a session releases its cursor, recording, and per-session state.
 
-When Cua Driver returns `verified:true` or `effect:"confirmed"`, Uni-CLI emits
-a `confirmed` `effect_verdict` backed by provider postcondition observation.
-`verified:false` alone remains `unverifiable`: it means delivery completed
-without read-back proof. Only `effect:"suspected_noop"` becomes
-`suspected_noop`. A dispatch receipt is never upgraded by inference.
+Cua Driver action results carry `effect` and `route`, with optional `delivery`
+and `evidence`. A `confirmed` effect includes provider evidence and produces a
+`confirmed` `effect_verdict` backed by postcondition observation. A `partial`
+effect includes `delivery.delivered_count`; its overall `effect_verdict` is
+`unverifiable`. An `unverifiable` effect records completed delivery with
+unconfirmed postconditions. A `suspected_noop` effect preserves the provider's
+explicit signal. A `refused` effect records a rejected operation and its
+provider diagnostic. Lifecycle receipts bind the requested named session.
 
 ## Capture Context
 

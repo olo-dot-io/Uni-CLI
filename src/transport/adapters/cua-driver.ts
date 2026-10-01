@@ -1,10 +1,10 @@
 /**
  * @owner       src::transport::adapters::cua-driver
- * @does        Adapt the portable Cua Driver desktop contract into Uni-CLI's explicitly selected coordinate/session transport.
- * @needs       Cua Driver CLI contract 0.2.0, contained process ownership, effect verdicts, transport envelopes.
+ * @does        Adapt the portable Cua Driver desktop contract into Uni-CLI's explicitly selected coordinate and session transport.
+ * @needs       Cua Driver CLI contract 0.8.0, contained process ownership, effect verdicts, transport envelopes.
  * @feeds       explicit compute driver routes and provider conformance probes.
  * @breaks      Schema drift, an unavailable daemon, or cancellation after a mutating daemon call can leave the desktop outcome unknown.
- * @invariants  This adapter never starts a daemon, changes route, targets an app/window, or retries a mutation; every physical call is desktop-scoped and uses argv rather than a shell.
+ * @invariants  Each physical call selects the primary desktop through literal argv; the caller owns daemon lifecycle, routing, and mutation retries.
  * @side-effects Invokes an optional local cua-driver daemon through its one-shot CLI and may capture or mutate the foreground desktop.
  * @perf        One contained CLI process per call; provider latency dominates.
  * @concurrency Each call owns one child process; daemon session identity is caller-supplied and never stored globally.
@@ -16,12 +16,13 @@
 import {
   attachDefaultEffectVerdict,
   confirmedEffectVerdict,
-  pendingEffectVerdict,
   suspectedNoopEffectVerdict,
 } from "../../core/effect-verdict.js";
 import { err, exitCodeFor, ok, type Envelope } from "../../core/envelope.js";
 import { settleDispatchedAction } from "../action-settlement.js";
 import {
+  CUA_DRIVER_CONTRACT_VERSION,
+  CUA_DRIVER_DESKTOP_TARGET,
   CUA_DRIVER_LOGICAL_ACTIONS,
   CUA_DRIVER_READ_ONLY_ACTIONS,
   CURSOR_MOTION_FIELDS,
@@ -44,7 +45,7 @@ import type {
   TransportKind,
 } from "../types.js";
 
-export const CUA_DRIVER_CONTRACT_VERSION = "0.2.0";
+export { CUA_DRIVER_CONTRACT_VERSION } from "./cua-driver-contract.js";
 
 export const CUA_DRIVER_STEPS = CUA_DRIVER_LOGICAL_ACTIONS;
 
@@ -268,8 +269,7 @@ export class CuaDriverTransport implements TransportAdapter {
         step: 0,
         action: req.kind,
         reason: parsed.reason,
-        suggestion:
-          "upgrade Cua Driver to a release implementing portable contract 0.2.0 and rerun the provider doctor",
+        suggestion: `upgrade Cua Driver to a release implementing portable contract ${CUA_DRIVER_CONTRACT_VERSION} and rerun the provider doctor`,
         minimum_capability: `cua-driver.contract.${CUA_DRIVER_CONTRACT_VERSION}`,
         retryable: false,
         exit_code: exitCodeFor("config_error"),
@@ -339,11 +339,6 @@ export class CuaDriverTransport implements TransportAdapter {
         "cua-driver effect",
         "provider_noop_signal",
       );
-    } else if (canMutate && validation.effect === "pending") {
-      envelope.effect_verdict = pendingEffectVerdict(
-        "Cua Driver accepted the action but deferred effect confirmation; take a fresh observation before considering any retry",
-        "cua-driver deferred observation",
-      );
     }
     return envelope;
   }
@@ -412,7 +407,8 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
             ...point.value,
             button,
             count: count.value,
-            scope: "desktop",
+            target: CUA_DRIVER_DESKTOP_TARGET,
+            delivery_mode: "foreground",
           }),
         },
       };
@@ -454,7 +450,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
               ? {}
               : { modifier: modifier.value }),
             ...(steps.value === undefined ? {} : { steps: steps.value }),
-            scope: "desktop",
+            target: CUA_DRIVER_DESKTOP_TARGET,
           }),
         },
       };
@@ -469,7 +465,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
           tool: "type_text",
           args: withSession({
             text: req.params.text,
-            scope: "desktop",
+            target: CUA_DRIVER_DESKTOP_TARGET,
           }),
         },
       };
@@ -506,7 +502,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
                 ...(modifiers.value === undefined
                   ? {}
                   : { modifiers: modifiers.value }),
-                scope: "desktop",
+                target: CUA_DRIVER_DESKTOP_TARGET,
               }),
             },
           }
@@ -514,7 +510,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
             ok: true,
             value: {
               tool: "hotkey",
-              args: withSession({ keys, scope: "desktop" }),
+              args: withSession({ keys, target: CUA_DRIVER_DESKTOP_TARGET }),
             },
           };
     }
@@ -552,7 +548,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
             direction,
             amount,
             by,
-            scope: "desktop",
+            target: CUA_DRIVER_DESKTOP_TARGET,
           }),
         },
       };
@@ -593,7 +589,10 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
         ok: true,
         value: {
           tool: "move_cursor",
-          args: withSession({ ...point.value, scope: "desktop" }),
+          args: withSession({
+            ...point.value,
+            target: CUA_DRIVER_DESKTOP_TARGET,
+          }),
         },
       };
     }

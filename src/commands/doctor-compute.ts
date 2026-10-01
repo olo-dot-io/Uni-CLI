@@ -18,6 +18,7 @@ import {
 } from "../transport/sidecar-binary.js";
 import { StdioSidecarClient } from "../transport/sidecar.js";
 import {
+  CUA_DRIVER_CONTRACT_VERSION,
   probeCuaDriverFeatures,
   type CuaDriverFeatureProbe,
 } from "../transport/adapters/cua-driver-contract.js";
@@ -252,12 +253,17 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
   const command = process.env.UNICLI_CUA_DRIVER_COMMAND?.trim() || "cua-driver";
   const args = parseCuaDriverArgs(process.env.UNICLI_CUA_DRIVER_ARGS);
   if (!args.ok) {
-    return warn("cua-driver", "contract-0.2.0", args.reason, {
-      message:
-        "Set UNICLI_CUA_DRIVER_ARGS to a JSON array of literal argv entries.",
-      command: 'UNICLI_CUA_DRIVER_ARGS=\'["--socket","/path"]\'',
-      doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
-    });
+    return warn(
+      "cua-driver",
+      `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
+      args.reason,
+      {
+        message:
+          "Set UNICLI_CUA_DRIVER_ARGS to a JSON array of literal argv entries.",
+        command: 'UNICLI_CUA_DRIVER_ARGS=\'["--socket","/path"]\'',
+        doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
+      },
+    );
   }
   try {
     const version = await execFileP(command, [...args.value, "--version"], {
@@ -274,8 +280,8 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
     } catch (error) {
       return warn(
         "cua-driver",
-        "contract-0.2.0",
-        `Cua Driver is installed but its live tool contract could not be inspected: ${errorMessage(error)}`,
+        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
+        `Cua Driver live tool contract inspection failed: ${errorMessage(error)}`,
         {
           message:
             "Install a Cua Driver release exposing machine-readable MCP tool schemas.",
@@ -291,7 +297,7 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
         .join(", ");
       return warn(
         "cua-driver",
-        "contract-0.2.0",
+        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
         `Cua Driver does not satisfy Uni-CLI's required live tool contract (${features.requiredToolCount - features.missingTools.length}/${features.requiredToolCount} tools present${missing ? `; missing ${missing}` : ""}${incompatible ? `; incompatible ${incompatible}` : ""})`,
         {
           message:
@@ -307,14 +313,14 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
       });
       return pass(
         "cua-driver",
-        "contract-0.2.0",
+        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
         `${firstLine(version.stdout) || "Cua Driver installed"}; ${features.requiredToolCount}/${features.requiredToolCount} required live tools compatible; ${firstLine(status.stdout) || "daemon reachable"}`,
       );
     } catch (error) {
       return warn(
         "cua-driver",
-        "contract-0.2.0",
-        `Cua Driver is installed but its daemon is unavailable: ${errorMessage(error)}`,
+        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
+        `Cua Driver daemon is unavailable: ${errorMessage(error)}`,
         {
           message:
             "Start the Cua Driver daemon and verify its permission policy before selecting --via driver.",
@@ -327,13 +333,13 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
     if (isMissingExecutable(error)) {
       return skip(
         "cua-driver",
-        "contract-0.2.0",
+        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
         `optional executable ${JSON.stringify(command)} is not installed`,
       );
     }
     return warn(
       "cua-driver",
-      "contract-0.2.0",
+      `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
       `Cua Driver version probe failed: ${errorMessage(error)}`,
       {
         message:

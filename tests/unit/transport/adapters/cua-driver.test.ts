@@ -52,11 +52,31 @@ const PNG_BYTES = Buffer.from(
   "base64",
 );
 
+const DESKTOP_ACTION_RECEIPT = {
+  effect: "unverifiable",
+  route: "global_input",
+  delivery: { mode: "foreground" },
+};
+
+const CONFIRMED_ACTION_RECEIPT = {
+  ...DESKTOP_ACTION_RECEIPT,
+  effect: "confirmed",
+  evidence: [{ kind: "window_change", detail: "the observed target changed" }],
+};
+
 const CUA_INPUTS: Record<string, { properties: string[]; required: string[] }> =
   {
     click: {
-      properties: ["x", "y", "button", "count", "scope", "session"],
-      required: ["x", "y", "scope"],
+      properties: [
+        "x",
+        "y",
+        "button",
+        "count",
+        "target",
+        "delivery_mode",
+        "session",
+      ],
+      required: ["x", "y", "target", "delivery_mode"],
     },
     drag: {
       properties: [
@@ -68,26 +88,26 @@ const CUA_INPUTS: Record<string, { properties: string[]; required: string[] }> =
         "duration_ms",
         "modifier",
         "steps",
-        "scope",
+        "target",
         "session",
       ],
-      required: ["from_x", "from_y", "to_x", "to_y", "scope"],
+      required: ["from_x", "from_y", "to_x", "to_y"],
     },
     type_text: {
-      properties: ["text", "scope", "session"],
-      required: ["text", "scope"],
+      properties: ["text", "target", "session"],
+      required: ["text"],
     },
     press_key: {
-      properties: ["key", "modifiers", "scope", "session"],
-      required: ["key", "scope"],
+      properties: ["key", "modifiers", "target", "session"],
+      required: ["key"],
     },
     hotkey: {
-      properties: ["keys", "scope", "session"],
-      required: ["keys", "scope"],
+      properties: ["keys", "target", "session"],
+      required: ["keys"],
     },
     scroll: {
-      properties: ["x", "y", "direction", "amount", "by", "scope", "session"],
-      required: ["x", "y", "direction", "scope"],
+      properties: ["x", "y", "direction", "amount", "by", "target", "session"],
+      required: ["x", "y", "direction"],
     },
     get_desktop_state: {
       properties: ["screenshot_out_file", "session"],
@@ -102,8 +122,8 @@ const CUA_INPUTS: Record<string, { properties: string[]; required: string[] }> =
       required: [],
     },
     move_cursor: {
-      properties: ["x", "y", "scope", "session"],
-      required: ["x", "y", "scope"],
+      properties: ["x", "y", "target", "session"],
+      required: ["x", "y"],
     },
     start_session: {
       properties: ["session", "capture_scope", "cursor_theme"],
@@ -152,7 +172,7 @@ const CUA_INPUTS: Record<string, { properties: string[]; required: string[] }> =
 
 function cuaDocs(): Record<string, unknown> {
   return {
-    version: "0.14.1",
+    version: "0.31.0",
     tools: Object.entries(CUA_INPUTS).map(([name, fields]) => ({
       name,
       input_schema: {
@@ -219,34 +239,35 @@ describe("CuaDriverTransport", () => {
 
   it("feature-probes the live provider schemas used by Uni-CLI", () => {
     const compatible = probeCuaDriverFeatures(cuaDocs());
-    const missingScope = cuaDocs();
-    const tools = missingScope.tools as Array<Record<string, unknown>>;
+    const missingTarget = cuaDocs();
+    const tools = missingTarget.tools as Array<Record<string, unknown>>;
     const click = tools.find((tool) => tool.name === "click")!;
     const schema = click.input_schema as Record<string, unknown>;
-    delete (schema.properties as Record<string, unknown>).scope;
-    const incompatible = probeCuaDriverFeatures(missingScope);
+    delete (schema.properties as Record<string, unknown>).target;
+    const incompatible = probeCuaDriverFeatures(missingTarget);
 
     expect(compatible).toMatchObject({
       ok: true,
-      providerVersion: "0.14.1",
+      providerVersion: "0.31.0",
       observedToolCount: 18,
       requiredToolCount: 18,
     });
     expect(incompatible).toMatchObject({
       ok: false,
       incompatibleInputs: [
-        { tool: "click", field: "scope", reason: "missing_property" },
+        { tool: "click", field: "target", reason: "missing_property" },
       ],
     });
 
-    const wrongScope = cuaDocs();
-    const wrongTools = wrongScope.tools as Array<Record<string, unknown>>;
+    const wrongTarget = cuaDocs();
+    const wrongTools = wrongTarget.tools as Array<Record<string, unknown>>;
     const wrongClick = wrongTools.find((tool) => tool.name === "click")!;
     const wrongSchema = wrongClick.input_schema as Record<string, unknown>;
-    (wrongSchema.properties as Record<string, unknown>).scope = {
-      const: "window",
+    (wrongSchema.properties as Record<string, unknown>).target = {
+      type: "object",
+      properties: { kind: { const: "window" } },
     };
-    expect(probeCuaDriverFeatures(wrongScope)).toMatchObject({
+    expect(probeCuaDriverFeatures(wrongTarget)).toMatchObject({
       ok: false,
       incompatibleInputs: [
         { tool: "click", field: "$sample", reason: "schema_rejected" },
@@ -283,7 +304,7 @@ describe("CuaDriverTransport", () => {
     }
   });
 
-  it("maps an explicit point click to portable desktop contract 0.2.0", async () => {
+  it("maps an explicit point click to portable desktop contract 0.8.0", async () => {
     // REASON: the external Cua daemon boundary is replaced; argument compilation and the real transport shell remain under test.
     const runner = vi
       .fn<
@@ -291,9 +312,7 @@ describe("CuaDriverTransport", () => {
           invocation: CuaDriverInvocation,
         ) => Promise<ReturnType<typeof completed>>
       >()
-      .mockResolvedValue(
-        completed({ x: 12, y: 34, scope: "desktop", verified: true }),
-      );
+      .mockResolvedValue(completed(CONFIRMED_ACTION_RECEIPT));
     const adapter = new CuaDriverTransport({
       command: "/opt/bin/cua-driver",
       argsPrefix: ["--socket", "/tmp/cua.sock"],
@@ -323,7 +342,7 @@ describe("CuaDriverTransport", () => {
           "/tmp/cua.sock",
           "call",
           "click",
-          '{"x":12,"y":34,"button":"middle","count":3,"scope":"desktop","session":"run-7"}',
+          '{"x":12,"y":34,"button":"middle","count":3,"target":{"kind":"desktop","display_id":"primary"},"delivery_mode":"foreground","session":"run-7"}',
         ],
       }),
     );
@@ -331,9 +350,10 @@ describe("CuaDriverTransport", () => {
       ok: true,
       data: {
         provider: "cua-driver",
-        minimum_contract_version: "0.2.0",
+        minimum_contract_version: "0.8.0",
         tool: "click",
-        verified: true,
+        effect: "confirmed",
+        route: "global_input",
       },
       effect_verdict: {
         status: "confirmed",
@@ -348,7 +368,7 @@ describe("CuaDriverTransport", () => {
       // REASON: the external daemon is replaced to make the portable tool selection deterministic.
       runner: async (invocation) => {
         invocations.push(invocation);
-        return completed({ verified: true });
+        return completed(CONFIRMED_ACTION_RECEIPT);
       },
     });
     const bus = createTransportBus();
@@ -371,12 +391,12 @@ describe("CuaDriverTransport", () => {
     ]);
     expect(JSON.parse(invocations[1]!.args[2]!)).toEqual({
       keys: ["cmd", "shift", "p"],
-      scope: "desktop",
+      target: { kind: "desktop", display_id: "primary" },
     });
     expect(JSON.parse(invocations[0]!.args[2]!)).toEqual({
       key: "Return",
       modifiers: ["Shift"],
-      scope: "desktop",
+      target: { kind: "desktop", display_id: "primary" },
     });
   });
 
@@ -386,7 +406,7 @@ describe("CuaDriverTransport", () => {
       // REASON: deterministic external daemon replacement exposes the compiled portable drag request.
       runner: async (invocation) => {
         invocations.push(invocation);
-        return completed({ effect: "unverifiable", scope: "desktop" });
+        return completed(DESKTOP_ACTION_RECEIPT);
       },
     });
     const bus = createTransportBus();
@@ -418,11 +438,11 @@ describe("CuaDriverTransport", () => {
       duration_ms: 500,
       modifier: ["Shift"],
       steps: 20,
-      scope: "desktop",
+      target: { kind: "desktop", display_id: "primary" },
     });
   });
 
-  it("maps every remaining portable 0.2.0 tool including presentation cursor controls", async () => {
+  it("maps every remaining portable 0.8.0 tool including presentation cursor controls", async () => {
     const invocations: CuaDriverInvocation[] = [];
     const motion = {
       start_handle: 1,
@@ -443,7 +463,6 @@ describe("CuaDriverTransport", () => {
       fallback: null,
     };
     const adapter = new CuaDriverTransport({
-      // REASON: all 0.2.0 physical tool boundaries are replaced so request compilation and output settlement can be checked in one deterministic matrix.
       runner: async (invocation) => {
         invocations.push(invocation);
         const tool = invocation.args[1];
@@ -454,7 +473,7 @@ describe("CuaDriverTransport", () => {
           return completed({ x: 10, y: 20, available: true, source: "hid" });
         }
         if (tool === "move_cursor") {
-          return completed({ x: 30, y: 40, scope: "desktop" });
+          return completed(DESKTOP_ACTION_RECEIPT);
         }
         if (tool === "get_agent_cursor_state") {
           return completed({
@@ -609,7 +628,7 @@ describe("CuaDriverTransport", () => {
     expect(result).toMatchObject({
       ok: false,
       error: {
-        minimum_capability: "cua-driver.contract.0.2.0",
+        minimum_capability: "cua-driver.contract.0.8.0",
         retryable: false,
       },
       effect_verdict: {
@@ -618,10 +637,10 @@ describe("CuaDriverTransport", () => {
     });
   });
 
-  it("keeps an unverified provider success distinct from a suspected no-op", async () => {
+  it("preserves an unverifiable delivery receipt", async () => {
     const adapter = new CuaDriverTransport({
       // REASON: deterministic external verification response.
-      runner: async () => completed({ verified: false, scope: "desktop" }),
+      runner: async () => completed(DESKTOP_ACTION_RECEIPT),
     });
     const bus = createTransportBus();
     await adapter.open({ vars: {}, bus });
@@ -642,16 +661,10 @@ describe("CuaDriverTransport", () => {
   });
 
   it.each(["drag", "type_text", "press_key", "hotkey", "scroll"])(
-    "accepts official macOS %s HID receipts without a verified field",
+    "accepts official %s global-input action results",
     async (tool) => {
       const adapter = new CuaDriverTransport({
-        // REASON: official portable 0.2.0 action fields are optional, and macOS HID receipts omit verified.
-        runner: async () =>
-          completed({
-            scope: "desktop",
-            path: "hid",
-            effect: "unverifiable",
-          }),
+        runner: async () => completed(DESKTOP_ACTION_RECEIPT),
       });
       const bus = createTransportBus();
       await adapter.open({ vars: {}, bus });
@@ -681,10 +694,9 @@ describe("CuaDriverTransport", () => {
     },
   );
 
-  it("accepts a portable click receipt without optional coordinate echoes", async () => {
+  it("accepts a portable click action result", async () => {
     const adapter = new CuaDriverTransport({
-      // REASON: ClickOutput x/y/scope/verified are optional in portable contract 0.2.0.
-      runner: async () => completed({ path: "hid" }),
+      runner: async () => completed(DESKTOP_ACTION_RECEIPT),
     });
     const bus = createTransportBus();
     await adapter.open({ vars: {}, bus });
@@ -706,9 +718,8 @@ describe("CuaDriverTransport", () => {
       // REASON: deterministic external action-confidence response.
       runner: async () =>
         completed({
-          verified: false,
+          ...DESKTOP_ACTION_RECEIPT,
           effect: "suspected_noop",
-          scope: "desktop",
         }),
     });
     const bus = createTransportBus();
@@ -729,14 +740,13 @@ describe("CuaDriverTransport", () => {
     });
   });
 
-  it("preserves deferred provider settlement as pending", async () => {
+  it("preserves partial delivery as an unverifiable overall effect", async () => {
     const adapter = new CuaDriverTransport({
-      // REASON: deterministic external deferred-effect response.
       runner: async () =>
         completed({
-          verified: false,
-          effect: "pending",
-          scope: "desktop",
+          ...DESKTOP_ACTION_RECEIPT,
+          effect: "partial",
+          delivery: { mode: "foreground", delivered_count: 3 },
         }),
     });
     const bus = createTransportBus();
@@ -750,9 +760,13 @@ describe("CuaDriverTransport", () => {
 
     expect(result).toMatchObject({
       ok: true,
+      data: {
+        effect: "partial",
+        delivery: { mode: "foreground", delivered_count: 3 },
+      },
       effect_verdict: {
-        status: "pending",
-        evidence: "accepted_deferred_observation",
+        status: "unverifiable",
+        evidence: "dispatch_receipt",
       },
     });
   });
@@ -802,16 +816,23 @@ describe("CuaDriverTransport", () => {
   });
 
   it.each([
+    ["missing action evidence", { effect: "confirmed", route: "global_input" }],
     [
-      "invalid verified type",
-      { scope: "desktop", verified: "yes", effect: "confirmed" },
+      "missing partial delivery count",
+      { ...DESKTOP_ACTION_RECEIPT, effect: "partial" },
     ],
     [
-      "explicit unverifiable conflict",
-      { scope: "desktop", verified: true, effect: "unverifiable" },
+      "action error with delivered input",
+      { ...DESKTOP_ACTION_RECEIPT, error: { code: "unexpected" } },
     ],
-    ["wrong action scope", { scope: "window", verified: true }],
-    ["wrong click echo", { x: 9, y: 2, scope: "desktop" }],
+    [
+      "refused click with delivery",
+      {
+        ...DESKTOP_ACTION_RECEIPT,
+        effect: "refused",
+        error: { code: "permission_denied" },
+      },
+    ],
   ])("rejects exit-zero %s as a contract violation", async (_label, output) => {
     const adapter = new CuaDriverTransport({
       // REASON: malformed provider output is the external contract boundary under test.
@@ -821,7 +842,7 @@ describe("CuaDriverTransport", () => {
     await adapter.open({ vars: {}, bus });
 
     const result = await adapter.action(
-      _label === "wrong click echo"
+      _label === "refused click with delivery"
         ? {
             kind: "cua_click",
             params: { x: 1, y: 2 },
@@ -837,7 +858,7 @@ describe("CuaDriverTransport", () => {
     expect(result).toMatchObject({
       ok: false,
       error: {
-        minimum_capability: "cua-driver.contract.0.2.0",
+        minimum_capability: "cua-driver.contract.0.8.0",
         exit_code: 78,
       },
       effect_verdict: { status: "unverifiable" },
@@ -845,8 +866,12 @@ describe("CuaDriverTransport", () => {
   });
 
   it.each([
-    { effect: "refused", verified: false, scope: "desktop" },
-    { status: "refused", verified: false, scope: "desktop" },
+    {
+      effect: "refused",
+      route: "global_input",
+      error: { code: "permission_denied" },
+    },
+    { status: "refused", code: "permission_denied" },
     {
       refusal: { code: "permission_denied", facility: "accessibility" },
     },
@@ -889,6 +914,7 @@ describe("CuaDriverTransport", () => {
           session: "run-7",
           capture_scope: "desktop",
           effective_scope: "desktop",
+          desktop_capture_authorized: true,
           desktop_unlocked: true,
           escalation_reason: null,
           escalation_detail: null,
@@ -939,6 +965,7 @@ describe("CuaDriverTransport", () => {
         session: "run-7",
         capture_scope: "auto",
         effective_scope: "window",
+        desktop_capture_authorized: false,
         desktop_unlocked: false,
         escalation_reason: null,
         escalation_detail: null,
@@ -960,6 +987,7 @@ describe("CuaDriverTransport", () => {
         session: "run-7",
         capture_scope: "auto",
         effective_scope: "desktop",
+        desktop_capture_authorized: true,
         desktop_unlocked: true,
         escalation_reason: "other",
         escalation_detail: "different",
@@ -975,6 +1003,7 @@ describe("CuaDriverTransport", () => {
         session: "run-7",
         capture_scope: "auto",
         effective_scope: "desktop",
+        desktop_capture_authorized: true,
         desktop_unlocked: true,
         escalation_reason: "other",
         escalation_detail: "unexpected",
@@ -996,7 +1025,7 @@ describe("CuaDriverTransport", () => {
     expect(result).toMatchObject({
       ok: false,
       error: {
-        minimum_capability: "cua-driver.contract.0.2.0",
+        minimum_capability: "cua-driver.contract.0.8.0",
       },
     });
   });
@@ -1014,7 +1043,7 @@ describe("CuaDriverTransport", () => {
     await adapter.open({ vars: {}, bus });
 
     await expect(adapter.snapshot()).rejects.toMatchObject({
-      minimum_capability: "cua-driver.contract.0.2.0",
+      minimum_capability: "cua-driver.contract.0.8.0",
     });
   });
 
@@ -1032,7 +1061,7 @@ describe("CuaDriverTransport", () => {
     await adapter.open({ vars: {}, bus });
 
     await expect(adapter.snapshot()).rejects.toMatchObject({
-      minimum_capability: "cua-driver.contract.0.2.0",
+      minimum_capability: "cua-driver.contract.0.8.0",
     });
   });
 
@@ -1054,7 +1083,7 @@ describe("CuaDriverTransport", () => {
     await adapter.open({ vars: {}, bus });
 
     await expect(adapter.snapshot()).rejects.toMatchObject({
-      minimum_capability: "cua-driver.contract.0.2.0",
+      minimum_capability: "cua-driver.contract.0.8.0",
     });
   });
 });

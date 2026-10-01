@@ -1,10 +1,10 @@
 /**
  * @owner       src::transport::adapters::cua-driver-contract
  * @does        Validate Cua Driver portable-contract success and refusal outputs per physical tool.
- * @needs       Ajv draft-2020-12 and portable contract 0.2.0 tool schemas.
+ * @needs       Ajv draft-2020-12 and portable contract 0.8.0 tool schemas.
  * @feeds       CuaDriverTransport result settlement and screenshot decoding.
- * @breaks      Accepting a syntactically valid but semantically incompatible object creates false action success.
- * @invariants  Tool identity selects one cached schema; action scope and echoed targets match the request; screenshots are real PNG bytes; session receipts bind the requested session.
+ * @breaks      Accepting incompatible structured results creates false action success.
+ * @invariants  Tool identity selects one cached schema; confirmed effects carry evidence; partial effects carry delivery counts; screenshots are real PNG bytes; session receipts bind the requested session.
  * @side-effects Compiles bounded schemas once at module initialization.
  * @perf        O(output fields + screenshot bytes) per result; schema lookup is O(1).
  * @concurrency Compiled validators are immutable after initialization.
@@ -16,11 +16,7 @@
 import Ajv2020 from "ajv/dist/2020.js";
 
 export type CuaDriverEffectEvidence =
-  | "postcondition"
-  | "authoritative"
-  | "pending"
-  | "suspected-noop"
-  | "unverified";
+  "postcondition" | "authoritative" | "suspected-noop" | "unverified";
 
 export type CuaDriverOutputValidation =
   | {
@@ -68,28 +64,116 @@ type Validator = ((value: unknown) => boolean) & {
   }[];
 };
 
-const ACTION_EFFECTS = [
-  "confirmed",
-  "unverifiable",
-  "pending",
-  "suspected_noop",
-  "refused",
-] as const;
+export const CUA_DRIVER_CONTRACT_VERSION = "0.8.0";
+
+export const CUA_DRIVER_DESKTOP_TARGET = Object.freeze({
+  kind: "desktop",
+  display_id: "primary",
+});
 
 const ACTION_SCHEMA = {
-  type: "object",
+  additionalProperties: false,
   properties: {
-    scope: { const: "desktop" },
-    verified: { type: "boolean" },
-    effect: { enum: ACTION_EFFECTS },
+    delivery: {
+      additionalProperties: false,
+      properties: {
+        delivered_count: {
+          minimum: 0,
+          type: ["integer", "null"],
+        },
+        mode: {
+          enum: ["background", "foreground", "not_applicable", "unknown"],
+          type: "string",
+        },
+      },
+      required: ["mode"],
+      type: ["object", "null"],
+    },
+    effect: {
+      enum: [
+        "confirmed",
+        "partial",
+        "unverifiable",
+        "suspected_noop",
+        "refused",
+      ],
+      type: "string",
+    },
+    error: {
+      additionalProperties: false,
+      properties: {
+        code: {
+          type: "string",
+        },
+        hint: {
+          type: ["string", "null"],
+        },
+      },
+      required: ["code"],
+      type: ["object", "null"],
+    },
+    escalation: {
+      additionalProperties: false,
+      properties: {
+        reason: {
+          enum: [
+            "route_unavailable",
+            "delivery_failed",
+            "effect_unconfirmed",
+            "suspected_noop",
+            "permission_required",
+          ],
+          type: "string",
+        },
+        target: {
+          enum: ["pixel", "foreground", "page", "session"],
+          type: "string",
+        },
+      },
+      required: ["target", "reason"],
+      type: ["object", "null"],
+    },
+    evidence: {
+      items: {
+        additionalProperties: false,
+        properties: {
+          detail: {
+            type: ["string", "null"],
+          },
+          kind: {
+            enum: ["value_readback", "window_change"],
+            type: "string",
+          },
+        },
+        required: ["kind"],
+        type: "object",
+      },
+      type: ["array", "null"],
+    },
+    route: {
+      enum: [
+        "accessibility",
+        "synthetic_events",
+        "global_input",
+        "system_api",
+        "dom",
+        "trusted_input",
+      ],
+      type: "string",
+    },
+    summary: {
+      type: ["string", "null"],
+    },
   },
-  additionalProperties: true,
+  required: ["effect", "route"],
+  type: "object",
 } as const;
 
 const SESSION_STATE_PROPERTIES = {
   session: { type: "string", minLength: 1 },
   capture_scope: { enum: ["auto", "window", "desktop"] },
   effective_scope: { enum: ["window", "desktop"] },
+  desktop_capture_authorized: { type: "boolean" },
   desktop_unlocked: { type: "boolean" },
   escalation_reason: {
     anyOf: [
@@ -114,6 +198,7 @@ const SESSION_STATE_REQUIRED = [
   "session",
   "capture_scope",
   "effective_scope",
+  "desktop_capture_authorized",
   "desktop_unlocked",
   "escalation_reason",
   "escalation_detail",
@@ -225,35 +310,41 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
       "input.pointer.click",
       "input.pointer.click.left",
       "accessibility.element_tokens",
+      "input.delivery_mode",
     ],
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["x", "y", "button", "count", "scope", "session"],
+      properties: [
+        "x",
+        "y",
+        "button",
+        "count",
+        "target",
+        "delivery_mode",
+        "session",
+      ],
       samples: withOptionalSession(
-        { x: 1, y: 2, button: "left", count: 1, scope: "desktop" },
-        { x: 1.5, y: 2.5, button: "middle", count: 3, scope: "desktop" },
+        {
+          x: 1,
+          y: 2,
+          button: "left",
+          count: 1,
+          target: CUA_DRIVER_DESKTOP_TARGET,
+          delivery_mode: "foreground",
+        },
+        {
+          x: 1.5,
+          y: 2.5,
+          button: "middle",
+          count: 3,
+          target: CUA_DRIVER_DESKTOP_TARGET,
+          delivery_mode: "foreground",
+        },
       ),
     },
-    schema: {
-      ...ACTION_SCHEMA,
-      properties: {
-        ...ACTION_SCHEMA.properties,
-        x: { type: "number" },
-        y: { type: "number" },
-      },
-    },
+    schema: ACTION_SCHEMA,
     effect: "action",
-    validate: (value, args) => {
-      const hasX = value.x !== undefined;
-      const hasY = value.y !== undefined;
-      if (hasX !== hasY) {
-        return "click success must echo both x and y or neither coordinate";
-      }
-      return !hasX || (value.x === args.x && value.y === args.y)
-        ? undefined
-        : "click success echoed a different desktop point";
-    },
   },
   drag: {
     logicalActions: ["cua_drag"],
@@ -270,7 +361,7 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
         "duration_ms",
         "modifier",
         "steps",
-        "scope",
+        "target",
         "session",
       ],
       samples: withOptionalSession(
@@ -279,7 +370,7 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
           from_y: 2,
           to_x: 3,
           to_y: 4,
-          scope: "desktop",
+          target: CUA_DRIVER_DESKTOP_TARGET,
         },
         {
           from_x: 1.5,
@@ -290,7 +381,7 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
           duration_ms: 10_000,
           modifier: ["Shift"],
           steps: 200,
-          scope: "desktop",
+          target: CUA_DRIVER_DESKTOP_TARGET,
         },
       ),
     },
@@ -307,8 +398,11 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["text", "scope", "session"],
-      samples: withOptionalSession({ text: "probe", scope: "desktop" }),
+      properties: ["text", "target", "session"],
+      samples: withOptionalSession({
+        text: "probe",
+        target: CUA_DRIVER_DESKTOP_TARGET,
+      }),
     },
     schema: ACTION_SCHEMA,
     effect: "action",
@@ -319,10 +413,14 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["key", "modifiers", "scope", "session"],
+      properties: ["key", "modifiers", "target", "session"],
       samples: withOptionalSession(
-        { key: "Return", scope: "desktop" },
-        { key: "P", modifiers: ["Control", "Shift"], scope: "desktop" },
+        { key: "Return", target: CUA_DRIVER_DESKTOP_TARGET },
+        {
+          key: "P",
+          modifiers: ["Control", "Shift"],
+          target: CUA_DRIVER_DESKTOP_TARGET,
+        },
       ),
     },
     schema: ACTION_SCHEMA,
@@ -334,10 +432,10 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["keys", "scope", "session"],
+      properties: ["keys", "target", "session"],
       samples: withOptionalSession({
         keys: ["Control", "P"],
-        scope: "desktop",
+        target: CUA_DRIVER_DESKTOP_TARGET,
       }),
     },
     schema: ACTION_SCHEMA,
@@ -349,18 +447,25 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["x", "y", "direction", "amount", "by", "scope", "session"],
+      properties: ["x", "y", "direction", "amount", "by", "target", "session"],
       samples: withOptionalSession(
         ...(["up", "down", "left", "right"] as const).flatMap((direction) =>
           (["line", "page"] as const).flatMap((by) => [
-            { x: 1, y: 2, direction, amount: 1, by, scope: "desktop" },
+            {
+              x: 1,
+              y: 2,
+              direction,
+              amount: 1,
+              by,
+              target: CUA_DRIVER_DESKTOP_TARGET,
+            },
             {
               x: 1.5,
               y: 2.5,
               direction,
               amount: 50,
               by,
-              scope: "desktop",
+              target: CUA_DRIVER_DESKTOP_TARGET,
             },
           ]),
         ),
@@ -464,31 +569,14 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
     capabilityDomain: "execution",
     readOnly: false,
     input: {
-      properties: ["x", "y", "scope", "session"],
+      properties: ["x", "y", "target", "session"],
       samples: withOptionalSession(
-        { x: 1, y: 2, scope: "desktop" },
-        { x: 1.5, y: 2.5, scope: "desktop" },
+        { x: 1, y: 2, target: CUA_DRIVER_DESKTOP_TARGET },
+        { x: 1.5, y: 2.5, target: CUA_DRIVER_DESKTOP_TARGET },
       ),
     },
-    schema: {
-      ...ACTION_SCHEMA,
-      properties: {
-        ...ACTION_SCHEMA.properties,
-        x: { type: "number" },
-        y: { type: "number" },
-      },
-    },
+    schema: ACTION_SCHEMA,
     effect: "action",
-    validate: (value, args) => {
-      const hasX = value.x !== undefined;
-      const hasY = value.y !== undefined;
-      if (hasX !== hasY) {
-        return "move_cursor success must echo both x and y or neither coordinate";
-      }
-      return !hasX || (value.x === args.x && value.y === args.y)
-        ? undefined
-        : "move_cursor success echoed a different desktop point";
-    },
   },
   start_session: {
     logicalActions: ["cua_start_session"],
@@ -581,7 +669,9 @@ export const CUA_DRIVER_OPERATION_SPECS: Readonly<
       (value.escalation_detail === (args.detail ?? null)
         ? undefined
         : "escalate_session success did not echo the requested detail") ??
-      (value.desktop_unlocked === true && value.effective_scope === "desktop"
+      (value.desktop_capture_authorized === true &&
+      value.desktop_unlocked === true &&
+      value.effective_scope === "desktop"
         ? undefined
         : "escalate_session success did not report unlocked desktop scope"),
   },
@@ -839,12 +929,6 @@ export function validateCuaDriverOutput(
       reason: boundedJson(value.refusal),
     };
   }
-  if (value.effect === "refused") {
-    return {
-      status: "refused",
-      reason: "provider returned effect=refused",
-    };
-  }
   if (value.status === "refused") {
     return {
       status: "refused",
@@ -870,7 +954,7 @@ export function validateCuaDriverOutput(
       .join("; ");
     return {
       status: "invalid",
-      reason: `${tool} success output violates contract 0.2.0${detail ? `: ${detail}` : ""}`,
+      reason: `${tool} success output violates contract ${CUA_DRIVER_CONTRACT_VERSION}${detail ? `: ${detail}` : ""}`,
     };
   }
   const semanticError = spec.validate?.(value, args);
@@ -882,42 +966,54 @@ export function validateCuaDriverOutput(
   if (spec.effect === "read") {
     return { status: "success", value, effect: "unverified" };
   }
-  if (value.effect === "suspected_noop") {
-    if (value.verified === true) {
-      return {
-        status: "invalid",
-        reason:
-          "suspected_noop conflicts with verified=true in Cua Driver output",
-      };
-    }
-    return { status: "success", value, effect: "suspected-noop" };
-  }
-  if (value.effect === "confirmed" && value.verified !== true) {
+  const actionError = validateActionResult(value);
+  if (actionError) return { status: "invalid", reason: actionError };
+  if (value.effect === "refused") {
     return {
-      status: "invalid",
-      reason: "effect=confirmed requires verified=true",
+      status: "refused",
+      reason: isRecord(value.error)
+        ? boundedJson(value.error)
+        : "provider returned effect=refused",
     };
-  }
-  if (value.effect === "unverifiable" && value.verified === true) {
-    return {
-      status: "invalid",
-      reason: "effect=unverifiable conflicts with verified=true",
-    };
-  }
-  if (value.effect === "pending") {
-    if (value.verified === true) {
-      return {
-        status: "invalid",
-        reason: "effect=pending conflicts with verified=true",
-      };
-    }
-    return { status: "success", value, effect: "pending" };
   }
   return {
     status: "success",
     value,
-    effect: value.verified === true ? "postcondition" : "unverified",
+    effect:
+      value.effect === "confirmed"
+        ? "postcondition"
+        : value.effect === "suspected_noop"
+          ? "suspected-noop"
+          : "unverified",
   };
+}
+
+function validateActionResult(
+  value: Record<string, unknown>,
+): string | undefined {
+  if (
+    value.effect === "confirmed" &&
+    (!Array.isArray(value.evidence) || value.evidence.length === 0)
+  ) {
+    return "confirmed effect requires provider evidence";
+  }
+  if (
+    value.effect === "partial" &&
+    (!isRecord(value.delivery) ||
+      typeof value.delivery.delivered_count !== "number")
+  ) {
+    return "partial effect requires delivered_count";
+  }
+  if (
+    value.effect === "refused" &&
+    (value.delivery != null || value.evidence != null)
+  ) {
+    return "refused effect contains delivery or evidence";
+  }
+  if (value.effect !== "refused" && value.error != null) {
+    return "action error requires a refused effect";
+  }
+  return undefined;
 }
 
 export function decodeCuaPng(value: unknown): Buffer | undefined {
