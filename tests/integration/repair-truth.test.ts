@@ -40,9 +40,9 @@ function runRepair(command: string): Promise<{
 }> {
   return new Promise((resolve, reject) => {
     const child = spawn(
-      join(process.cwd(), "node_modules", ".bin", "tsx"),
+      process.execPath,
       [
-        "src/main.ts",
+        join(process.cwd(), "dist", "main.js"),
         "-f",
         "json",
         "repair",
