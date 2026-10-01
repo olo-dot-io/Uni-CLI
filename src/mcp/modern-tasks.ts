@@ -511,7 +511,10 @@ export class ModernMcpTaskManager {
   ): Promise<void> {
     await this.mutate(taskId, async () => {
       const task = await this.readTask(taskId);
-      if (!task || isTerminal(task.status)) return;
+      if (!task || isTerminal(task.status)) {
+        this.finishRuntime(taskId);
+        return;
+      }
       if (!response) {
         task.status = "failed";
         task.statusMessage = "Task completed without a JSON-RPC response.";
@@ -562,16 +565,19 @@ export class ModernMcpTaskManager {
       delete task.workerId;
       touch(task);
       await this.writeTask(task);
+      this.finishRuntime(taskId);
       this.publish(task);
     });
-    this.finishRuntime(taskId);
     await this.prune();
   }
 
   private async settleThrown(taskId: string, error: unknown): Promise<void> {
     await this.mutate(taskId, async () => {
       const task = await this.readTask(taskId);
-      if (!task || isTerminal(task.status)) return;
+      if (!task || isTerminal(task.status)) {
+        this.finishRuntime(taskId);
+        return;
+      }
       const runtime = this.active.get(taskId);
       const ambiguity = findOperationOutcomeAmbiguousError(error);
       if (runtime?.controller.signal.aborted && isCancellation(error)) {
@@ -612,9 +618,9 @@ export class ModernMcpTaskManager {
       delete task.workerId;
       touch(task);
       await this.writeTask(task);
+      this.finishRuntime(taskId);
       this.publish(task);
     });
-    this.finishRuntime(taskId);
     await this.prune();
   }
 
@@ -660,10 +666,8 @@ export class ModernMcpTaskManager {
             .slice(offset, offset + TASK_READ_CONCURRENCY)
             .map(async (taskId) => {
               if (!isModernMcpTaskId(taskId)) return undefined;
-              const task = await this.readTask(taskId);
-              return task && ownsTask(task, principalId) && !isExpired(task)
-                ? detailedTaskView(task)
-                : undefined;
+              const task = await this.findTask(taskId, principalId);
+              return task instanceof Error ? undefined : detailedTaskView(task);
             }),
         )),
       );
@@ -722,6 +726,7 @@ export class ModernMcpTaskManager {
       return new Error("Missing or invalid taskId");
     }
     const task = await this.readTask(taskId);
+    await this.mutationTails.get(taskId);
     if (!task || !ownsTask(task, principalId))
       return new Error("Task not found");
     if (isExpired(task)) {

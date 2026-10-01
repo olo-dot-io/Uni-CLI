@@ -11,3 +11,5 @@ Require the configured Ollama Cloud environment credential before dispatching fe
 Discover external CLI executables through the platform PATH and file permissions.
 
 Select the TypeScript 7 CLI from its package entry and retain the TypeScript 6 compiler API.
+
+Release terminal MCP task capacity before publishing its committed state to requests and subscriptions.
