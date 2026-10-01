@@ -93,7 +93,9 @@ describe("verify scripts", () => {
     const scripts = rootScripts();
 
     expect(scripts.clean).toContain("rmSync('dist'");
-    expect(scripts.build).toMatch(/^npm run clean && tsc && /);
+    expect(scripts.build).toMatch(
+      /^npm run clean && node node_modules\/typescript\/bin\/tsc && /,
+    );
   });
 
   it("packages a root MCP binary wrapper for npm payload inspection", () => {

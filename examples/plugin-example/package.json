@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "node node_modules/typescript/bin/tsc"
   },
   "peerDependencies": {
     "@zenalexa/unicli": "^1.2.1"
