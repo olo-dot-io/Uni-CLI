@@ -5,6 +5,25 @@ import {
 } from "../../../src/transport/sidecar-binary.js";
 
 describe("sidecar binary resolution", () => {
+  it("resolves the UIA executable shipped in the same main package", () => {
+    const command =
+      "C:\\unicli\\packages\\sidecars\\unicli-uia-win32-x64\\unicli-uia.exe";
+    const resolved = resolveSidecarBinary("unicli-uia", {
+      platform: "win32",
+      arch: "x64",
+      env: {},
+      bundledRoot: "C:\\unicli",
+      exists: (path) => path === command,
+      requireResolve: () => {
+        throw new Error("no separately installed package");
+      },
+    });
+    expect(resolved).toEqual({
+      command,
+      source: "bundled",
+      packageName: "@zenalexa/unicli-uia-win32-x64",
+    });
+  });
   it("maps sidecar package names by host platform and arch", () => {
     expect(packageNameForSidecar("unicli-uia", "win32", "x64")).toBe(
       "@zenalexa/unicli-uia-win32-x64",
