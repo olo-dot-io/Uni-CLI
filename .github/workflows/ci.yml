@@ -132,7 +132,10 @@ jobs:
 
       - name: Compute perf tests
         if: matrix.profile == 'full'
-        run: npm run test:perf
+        run: |
+          observation_root=$(mktemp -d /dev/shm/unicli-perf.XXXXXX)
+          trap 'rm -rf "$observation_root"' EXIT
+          UNICLI_VISUAL_OBSERVATION_ROOT="$observation_root" npm run test:perf
 
       - name: Stats consistency gate
         if: matrix.profile == 'full'
