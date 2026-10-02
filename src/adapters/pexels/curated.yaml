@@ -3,7 +3,7 @@ name: curated
 description: Get Pexels curated photos
 type: web-api
 domain: api.pexels.com
-strategy: public
+strategy: header
 
 args:
   limit:

@@ -1,38 +1,24 @@
 name: CI
 
-# ── CI gating model ──────────────────────────────────────────────────────────
-# PR/push checks must be reliable enough to trust. Network-heavy probes,
-# cross-compiled sidecars, and non-primary Node/OS combinations still matter,
-# but they belong in scheduled/manual sweeps instead of blocking every change.
-#
-#   • `adapter-health` (pull_request)      — soft signal, continue-on-error=true.
-#     Reviewers see drift but a flaky fetch never blocks a merge.
-#   • `adapter-health-strict` (cron/manual) — scheduled repair signal with
-#     retry=2. It is not a push gate because third-party APIs and hosted-runner
-#     egress routinely fail independently of project correctness.
-#   • `rust-sidecars`                      — stable x64 targets on PR/push.
-#   • `rust-sidecars-extended`             — ARM cross-targets on cron/manual.
-#   • Node 22 runs the full Linux gate; Node 24 runs build, unit, integration,
-#     and production-audit compatibility because both majors satisfy `engines`.
-# ─────────────────────────────────────────────────────────────────────────────
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   schedule:
-    # 03:00 UTC — strict adapter-health sweep
-    - cron: "0 3 * * *"
-    # 09:00 UTC — nightly conformance (early-morning US, late-afternoon Asia)
-    - cron: "0 9 * * *"
+    - cron: "17 9 * * 1"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pr-title:
+    timeout-minutes: 15
     name: PR Title
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -47,6 +33,7 @@ jobs:
           bash scripts/check-commit-msg.sh "$RUNNER_TEMP/pr-title.txt"
 
   verify:
+    timeout-minutes: 30
     name: Verify (${{ matrix.os }} / Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
 
@@ -110,8 +97,6 @@ jobs:
         run: npm run lint
 
       - name: Context lint
-        # lint-context.sh uses bash (Git for Windows provides it).
-        # Skip on Windows runners to avoid PATH flakiness in CI.
         if: matrix.profile == 'full'
         run: npm run lint:context
 
@@ -147,7 +132,10 @@ jobs:
 
       - name: Compute perf tests
         if: matrix.profile == 'full'
-        run: npm run test:perf
+        run: |
+          observation_root=$(mktemp -d /dev/shm/unicli-perf.XXXXXX)
+          trap 'rm -rf "$observation_root"' EXIT
+          UNICLI_VISUAL_OBSERVATION_ROOT="$observation_root" npm run test:perf
 
       - name: Stats consistency gate
         if: matrix.profile == 'full'
@@ -158,6 +146,7 @@ jobs:
         run: npm run truth:check
 
   rust-sidecars:
+    timeout-minutes: 30
     name: Rust Sidecars (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
 
@@ -194,6 +183,13 @@ jobs:
           done
           exit 1
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: ${{ matrix.target }}
+          cache-on-failure: true
+          save-if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
+
       - name: Format check
         run: cargo fmt --check
 
@@ -211,12 +207,14 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sidecars-${{ matrix.target }}
+          retention-days: 3
           path: |
             target/${{ matrix.target }}/release-sidecar/unicli-process-owner*
             target/${{ matrix.target }}/release-sidecar/unicli-uia*
             target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 
   rust-sidecars-extended:
+    timeout-minutes: 30
     name: Rust Sidecars Extended (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -254,6 +252,13 @@ jobs:
           done
           exit 1
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          key: ${{ matrix.target }}
+          cache-on-failure: true
+          save-if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
+
       - name: Format check
         run: cargo fmt --check
 
@@ -271,27 +276,17 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sidecars-extended-${{ matrix.target }}
+          retention-days: 3
           path: |
             target/${{ matrix.target }}/release-sidecar/unicli-process-owner*
             target/${{ matrix.target }}/release-sidecar/unicli-uia*
             target/${{ matrix.target }}/release-sidecar/unicli-atspi*
 
-  # adapter-tests subjob removed 2026-05-14: it ran `npm run test:adapter`
-  # against live third-party APIs and was the dominant source of CI flakiness
-  # (the spec gate that protects main is `adapter-health-strict` below;
-  # `adapter-health` provides the PR soft-signal). Local `npm run test:adapter`
-  # remains available via `npm run verify`.
-  #
-  # docs-build subjob removed 2026-05-14: it duplicated the VitePress build in
-  # docs.yml, which already runs on push to main with the right path filter.
-
   adapter-health:
+    timeout-minutes: 15
     name: Adapter Health (PR signal)
     runs-on: ubuntu-latest
     needs: verify
-    # Soft-fail surface: only runs on PRs. Network-bound probes against
-    # third-party APIs make this too noisy to gate merges on, so drift here
-    # is an FYI for reviewers. The strict sweep below is scheduled/manual.
     if: github.event_name == 'pull_request'
     continue-on-error: true
 
@@ -316,13 +311,11 @@ jobs:
         run: npm run adapter:health
 
   adapter-health-strict:
+    timeout-minutes: 15
     name: Adapter Health (spec gate)
     runs-on: ubuntu-latest
     needs: verify
-    # Scheduled/manual repair signal: unquarantined adapter failures must be
-    # investigated, but third-party API drift must not red-X every main push.
-    # Retry=2 absorbs transient network blips without hiding repeated failures.
-    if: (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -357,6 +350,7 @@ jobs:
           done
 
   verify-changesets:
+    timeout-minutes: 15
     name: Verify Changesets
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
@@ -382,9 +376,10 @@ jobs:
           npm run verify:changesets
 
   conformance:
-    name: Nightly Conformance
+    timeout-minutes: 15
+    name: Scheduled Conformance
     runs-on: ubuntu-latest
-    if: (github.event_name == 'schedule' && github.event.schedule == '0 9 * * *') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -407,25 +402,28 @@ jobs:
         with:
           name: conformance-report-${{ github.run_id }}
           path: conformance-report.json
-          retention-days: 30
+          retention-days: 7
 
       - name: Summarize failures
         if: failure()
         run: |
-          echo "## Conformance failures" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          node -e "
+          {
+            echo "## Conformance failures"
+            echo ""
+            node -e "
             const r = require('./conformance-report.json');
             const failed = r.results.filter(x => x.status === 'fail');
             for (const f of failed) {
               console.log('- \`' + f.file + '\` — ' + f.errors.join('; '));
             }
-          " >> $GITHUB_STEP_SUMMARY
+            "
+          } >> "$GITHUB_STEP_SUMMARY"
 
   benchmark-evidence:
+    timeout-minutes: 15
     name: Scheduled Fixture Benchmark
     runs-on: ubuntu-latest
-    if: (github.event_name == 'schedule' && github.event.schedule == '0 9 * * *') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -454,4 +452,4 @@ jobs:
           path: |
             bench/results.json
             docs/BENCHMARK.md
-          retention-days: 30
+          retention-days: 7
