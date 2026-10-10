@@ -116,7 +116,7 @@ jobs:
 
       - name: Agent access lifecycle scenarios
         if: matrix.profile != 'full'
-        run: npx tsx tests/scenarios/credential-reuse.ts && npx tsx tests/scenarios/auth-recovery.ts && npx tsx tests/scenarios/resource-acquisition.ts
+        run: npx tsx tests/scenarios/kernel-lock-lifecycle.ts && npx tsx tests/scenarios/credential-reuse.ts && npx tsx tests/scenarios/auth-recovery.ts && npx tsx tests/scenarios/resource-acquisition.ts
 
       - name: Behavioral scenarios
         if: matrix.profile == 'full'

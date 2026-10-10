@@ -171,7 +171,7 @@
     "truth:check": "tsx scripts/release-truth-check.ts",
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit --maxWorkers=1 --reporter=dot",
-    "test:scenarios": "tsx tests/scenarios/discovery-routing.ts && tsx tests/scenarios/discovery-dynamic-cache.ts && tsx tests/scenarios/retrieval-lifecycle.ts && tsx tests/scenarios/cua-coordinate-lifecycle.ts && tsx tests/scenarios/cua-driver-install.ts && tsx tests/scenarios/internet-access.ts && tsx tests/scenarios/http-transport-lifecycle.ts && tsx tests/scenarios/academic-access.ts && tsx tests/scenarios/credential-reuse.ts && tsx tests/scenarios/auth-recovery.ts && tsx tests/scenarios/resource-acquisition.ts",
+    "test:scenarios": "tsx tests/scenarios/kernel-lock-lifecycle.ts && tsx tests/scenarios/discovery-routing.ts && tsx tests/scenarios/discovery-dynamic-cache.ts && tsx tests/scenarios/retrieval-lifecycle.ts && tsx tests/scenarios/cua-coordinate-lifecycle.ts && tsx tests/scenarios/cua-driver-install.ts && tsx tests/scenarios/internet-access.ts && tsx tests/scenarios/http-transport-lifecycle.ts && tsx tests/scenarios/academic-access.ts && tsx tests/scenarios/credential-reuse.ts && tsx tests/scenarios/auth-recovery.ts && tsx tests/scenarios/resource-acquisition.ts",
     "test:integration": "vitest run --project integration --maxWorkers=1 --reporter=dot",
     "test:adapter": "vitest run --project adapter",
     "test:perf": "vitest run --project perf",
