@@ -445,7 +445,16 @@ function applyCoordinateObservation(
   if (!claim) return req;
   const points = coordinateObservationPoints(req.kind, req.params) ?? [];
   const transformed = points.map((point) => claim.transform(point));
-  const { observation: _observation, ...params } = req.params;
+  const { observation: _observation, ...originalParams } = req.params;
+  const params = {
+    ...originalParams,
+    ...(claim.evidence.provider === "cua-driver" && claim.providerSession
+      ? { session: claim.providerSession }
+      : {}),
+    ...(req.kind === "compute_point_click" && claim.providerCaptureId
+      ? { captureId: claim.providerCaptureId }
+      : {}),
+  };
   if (req.kind === "compute_drag") {
     const [from, to] = transformed;
     return {

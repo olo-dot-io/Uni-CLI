@@ -5,7 +5,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { replaceAdapterCommands } from "../registry.js";
+import {
+  getAdapter,
+  getRegistryVersion,
+  replaceAdapterCommands,
+} from "../registry.js";
+import {
+  getCompiled,
+  updateCompiledCommands,
+} from "../engine/kernel/compile.js";
 import { AdapterType, type AdapterCommand } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -348,6 +356,12 @@ const DYNAMIC_DATA_CACHE_TTL_MS = 30_000;
 
 let cachedDynamicData: MacosDynamicData | null = null;
 let cachedDynamicDataAtMs = 0;
+const EMPTY_DYNAMIC_DATA: MacosDynamicData = { shortcuts: [], appActions: [] };
+let registeredDynamicData: {
+  data: MacosDynamicData;
+  registryVersion: number;
+  commandNames: string[];
+} | null = null;
 
 export function invalidateMacosDynamicCache(): void {
   cachedDynamicData = null;
@@ -356,7 +370,7 @@ export function invalidateMacosDynamicCache(): void {
 
 export function discoverMacosDynamicData(): MacosDynamicData {
   if (!dynamicMacosDiscoveryEnabled()) {
-    return { shortcuts: [], appActions: [] };
+    return EMPTY_DYNAMIC_DATA;
   }
 
   const now = Date.now();
@@ -619,15 +633,52 @@ export function buildMacosDynamicSearchDocuments(
 
 export function registerMacosDynamicCommands(): number {
   const data = discoverMacosDynamicData();
+  if (
+    registeredDynamicData?.data === data &&
+    registeredDynamicData.registryVersion === getRegistryVersion()
+  ) {
+    return registeredDynamicData.commandNames.length;
+  }
   const dynamicCommands = buildMacosDynamicCommands(data);
+  const currentCommands = getAdapter("macos")?.commands ?? {};
+  for (const name of Object.keys(dynamicCommands)) {
+    if (currentCommands[name]?.source_tier === "user") {
+      delete dynamicCommands[name];
+    }
+  }
+  const commandNames = Object.keys(dynamicCommands);
+  if (registeredDynamicData) {
+    const updates = new Map<string, AdapterCommand | undefined>();
+    for (const name of registeredDynamicData.commandNames) {
+      if (
+        !(name in dynamicCommands) &&
+        currentCommands[name]?.source_tier !== "user"
+      ) {
+        updates.set(`macos.${name}`, undefined);
+      }
+    }
+    for (const name of commandNames) {
+      // Dynamic commands keep a zero-argument contract across inventory refreshes.
+      if (getCompiled("macos", name)?.argByName.size !== 0) {
+        updates.set(`macos.${name}`, dynamicCommands[name]);
+      }
+    }
+    updateCompiledCommands(updates);
+  }
 
   replaceAdapterCommands(
     "macos",
     (_name, command) =>
-      command.adapter_path === DYNAMIC_SHORTCUTS_ADAPTER_PATH ||
-      command.adapter_path === DYNAMIC_APP_ACTIONS_ADAPTER_PATH,
+      command.source_tier !== "user" &&
+      (command.adapter_path === DYNAMIC_SHORTCUTS_ADAPTER_PATH ||
+        command.adapter_path === DYNAMIC_APP_ACTIONS_ADAPTER_PATH),
     dynamicCommands,
     { type: AdapterType.DESKTOP },
   );
-  return Object.keys(dynamicCommands).length;
+  registeredDynamicData = {
+    data,
+    registryVersion: getRegistryVersion(),
+    commandNames,
+  };
+  return commandNames.length;
 }

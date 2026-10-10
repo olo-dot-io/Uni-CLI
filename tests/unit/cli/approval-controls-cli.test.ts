@@ -15,13 +15,12 @@ import { ExitCode } from "../../../src/types.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 const SRC_MAIN = join(REPO_ROOT, "src", "main.ts");
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function runCli(
   args: string[],
   env: NodeJS.ProcessEnv,
 ): ReturnType<typeof spawnSync> {
-  return spawnSync(npxBin, ["tsx", SRC_MAIN, ...args], {
+  return spawnSync(process.execPath, ["--import", "tsx", SRC_MAIN, ...args], {
     encoding: "utf-8",
     env: {
       ...process.env,

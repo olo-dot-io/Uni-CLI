@@ -112,10 +112,9 @@ function sendMcpRequest(
 }
 
 async function invokeMcp(): Promise<{ rows: unknown[]; error?: unknown }> {
-  const proc = spawn("npx", ["tsx", MCP_SERVER], {
+  const proc = spawn(process.execPath, ["--import", "tsx", MCP_SERVER], {
     cwd: REPO_ROOT,
     stdio: ["pipe", "pipe", "pipe"],
-    shell: process.platform === "win32",
   });
 
   try {

@@ -5,7 +5,7 @@
  * @feeds   src/commands/search.ts, src/mcp/handler.ts, src/fast-path/handlers/discovery.ts
  * @breaks  Returns an empty result set when the registry/manifest has no matching commands.
  * @invariants Runtime search uses the live registry; generated search-index artifacts are not a source of truth.
- * @side-effects Caches an in-memory index by command-document signature; reads dynamic macOS data only when enabled.
+ * @side-effects Refreshes runtime macOS commands from their inventory snapshot and caches indexes by registry version and inventory identity.
  * @perf    Cold index build is O(commands * terms); warm retrieval is O(postings + feasible candidates * log(limit)) through a bounded min-heap.
  * @concurrency Module cache is process-local and rebuilt synchronously inside a search call.
  * @test    tests/unit/search.test.ts, tests/unit/search-eval.test.ts, tests/unit/commands/search.test.ts
@@ -31,12 +31,14 @@ import {
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
   invalidateMacosDynamicCache,
+  registerMacosDynamicCommands,
+  type MacosDynamicData,
 } from "./macos-dynamic.js";
 import {
   coreDiscoveryCategory,
   listCoreDiscoveryCommands,
 } from "./core-catalog.js";
-import { getRegistryVersion, listCommands } from "../registry.js";
+import { getAdapter, getRegistryVersion, listCommands } from "../registry.js";
 import {
   commandFeasibilityProfile,
   evaluateCommandFeasibility,
@@ -61,6 +63,7 @@ import {
 } from "./personalization.js";
 import type {
   AdapterArg,
+  AdapterCommand,
   CommandAvailability,
   OperationFamily,
 } from "../types.js";
@@ -110,6 +113,7 @@ export interface CommandSearchDocument {
   personalization?: PersonalizationFamily;
   usage?: string;
   availability?: CommandAvailability;
+  source_tier?: AdapterCommand["source_tier"];
 }
 
 /** One document in the search corpus: a single adapter command. */
@@ -182,6 +186,9 @@ export interface SearchIndex {
   siteLookup: Set<string>;
   /** Immutable exact, phrase, alias, and bounded-typo site resolver. */
   siteResolver: SiteResolver;
+  /** User-owned macOS commands replace dynamic inventory entries. */
+  macosUserCommands: ReadonlySet<string>;
+  macosUserCommandsKey: string;
 }
 
 // ── BM25 Parameters ─────────────────────────────────────────────────────────
@@ -236,6 +243,11 @@ const PROVIDER_DIVERSITY_ACTION_TERMS = new Set([
 
 let cachedIndex: SearchIndex | null = null;
 let cachedRegistryVersion = -1;
+let cachedDynamicIndex: {
+  inventory: MacosDynamicData;
+  userCommandsKey: string;
+  index: SearchIndex;
+} | null = null;
 const DOCUMENT_TOKEN_CACHE_LIMIT = 8192;
 type TokenizedDocument = Pick<
   Document,
@@ -272,6 +284,8 @@ export function runtimeSearchDocuments(): CommandSearchDocument[] {
       site: command.site,
       command: command.command,
       description: command.description,
+      source_tier: getAdapter(command.site)?.commands[command.command]
+        ?.source_tier,
       category: command.category,
       auth: command.authRequirement,
       ...(command.authSetup ? { auth_setup: command.authSetup } : {}),
@@ -306,6 +320,7 @@ export function buildIndexFromDocuments(
   searchDocuments: readonly CommandSearchDocument[],
 ): SearchIndex {
   const documents: Document[] = [];
+  const macosUserCommands = new Set<string>();
   const siteSet = new Set<string>();
   const siteTerms = new Map<string, string[]>();
   const postings = new Map<string, number[]>();
@@ -313,6 +328,9 @@ export function buildIndexFromDocuments(
   let totalTermCount = 0;
 
   for (const doc of searchDocuments) {
+    if (doc.site === "macos" && doc.source_tier === "user") {
+      macosUserCommands.add(doc.command);
+    }
     siteSet.add(doc.site);
     const tokenCacheKey = documentTokenCacheKey(doc);
     let tokenized = documentTokenCache.get(tokenCacheKey);
@@ -415,6 +433,8 @@ export function buildIndexFromDocuments(
     N,
     siteLookup,
     siteResolver,
+    macosUserCommands,
+    macosUserCommandsKey: JSON.stringify([...macosUserCommands].sort()),
   };
 }
 
@@ -452,13 +472,9 @@ export function searchDocuments(
   limit = 5,
   options: SearchOptions = {},
 ): SearchResult[] {
-  const staticResults = searchIndex(
-    buildIndexFromDocuments(documents),
-    query,
-    limit,
-    options,
-  );
-  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
+  const index = buildIndexFromDocuments(documents);
+  const staticResults = searchIndex(index, query, limit, options);
+  const dynamicResults = searchDynamicMacosIndex(index, query, limit, options);
 
   return mergeSearchResults(staticResults, dynamicResults, limit);
 }
@@ -580,8 +596,10 @@ export function search(
   limit = 5,
   options: SearchOptions = {},
 ): SearchResult[] {
-  const staticResults = searchIndex(loadIndex(), query, limit, options);
-  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
+  registerMacosDynamicCommands();
+  const index = loadIndex();
+  const staticResults = searchIndex(index, query, limit, options);
+  const dynamicResults = searchDynamicMacosIndex(index, query, limit, options);
 
   return mergeSearchResults(staticResults, dynamicResults, limit);
 }
@@ -608,6 +626,7 @@ function mergeSearchResults(
 }
 
 function searchDynamicMacosIndex(
+  catalog: SearchIndex,
   query: string,
   limit: number,
   options: SearchOptions,
@@ -615,22 +634,29 @@ function searchDynamicMacosIndex(
   if (!dynamicMacosDiscoveryEnabled()) return [];
   if (options.category && options.category !== "desktop") return [];
 
-  const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
-  if (docs.length === 0) return [];
+  const inventory = discoverMacosDynamicData();
+  if (
+    cachedDynamicIndex?.inventory !== inventory ||
+    cachedDynamicIndex.userCommandsKey !== catalog.macosUserCommandsKey
+  ) {
+    const docs = buildMacosDynamicSearchDocuments(inventory).filter(
+      (doc) => !catalog.macosUserCommands.has(doc.command),
+    );
+    cachedDynamicIndex = {
+      inventory,
+      userCommandsKey: catalog.macosUserCommandsKey,
+      index: buildIndexFromDocuments(
+        docs.map((doc) => ({
+          site: doc.site,
+          command: doc.command,
+          description: doc.description,
+          category: "desktop",
+        })),
+      ),
+    };
+  }
 
-  return searchIndex(
-    buildIndexFromDocuments(
-      docs.map((doc) => ({
-        site: doc.site,
-        command: doc.command,
-        description: doc.description,
-        category: "desktop",
-      })),
-    ),
-    query,
-    limit,
-    options,
-  );
+  return searchIndex(cachedDynamicIndex.index, query, limit, options);
 }
 
 function searchIndex(
@@ -643,8 +669,13 @@ function searchIndex(
 
   // Step 1: Tokenize
   const rawTokens = tokenizeQuery(query);
+  const rawTermSet = new Set(rawTokens.map((term) => term.toLowerCase()));
   const normalizedQuery = normalizeSitePhrase(query);
-  const siteResolution = index.siteResolver.resolve(query, rawTokens);
+  const siteResolution = index.siteResolver.resolve(
+    query,
+    rawTokens,
+    index.postings,
+  );
 
   // Step 2: Expand via aliases
   const expandedTerms: string[] = [];
@@ -860,6 +891,7 @@ function searchIndex(
       doc,
       queryTermSet,
       effectiveTaskSiteHints,
+      rawTermSet,
     );
     const entityIntentScore = intentEntityCommandBoost(
       taskIntentFrame,
@@ -1055,5 +1087,6 @@ export function buildRequiredUsage(
 export function invalidateCache(): void {
   cachedIndex = null;
   cachedRegistryVersion = -1;
+  cachedDynamicIndex = null;
   invalidateMacosDynamicCache();
 }

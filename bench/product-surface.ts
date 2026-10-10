@@ -573,6 +573,23 @@ async function main(): Promise<void> {
     await patchDocument(CHINESE_DOC, renderChinese(report));
   }
   if (checkOnly) {
+    if (!passed) {
+      console.error(
+        JSON.stringify(
+          {
+            failed_tasks: taskResults.filter(
+              (row) => !row.top1_ok || !row.family_ok || !row.actionable,
+            ),
+            failed_gates: Object.entries(gates)
+              .filter(([, ok]) => !ok)
+              .map(([name]) => name),
+            root_discovery: report.uni.root_discovery,
+          },
+          null,
+          2,
+        ),
+      );
+    }
     console.log(
       [
         `product-surface check ${passed ? "PASS" : "FAIL"}`,

@@ -9,6 +9,12 @@ import { tmpdir } from "node:os";
 import { buildLinuxOverlayPythonScript } from "../compute/linux-overlay.js";
 import { buildMacosOverlayDaemonSwiftScript } from "../compute/macos-overlay.js";
 import { buildWindowsOverlayPowerShellScript } from "../compute/windows-overlay.js";
+import {
+  cuaDriverInstallerUrl,
+  installCuaDriver,
+  parseCuaDriverArgs,
+  resolveCuaDriverCommand,
+} from "../compute/cua-driver-runtime.js";
 import { getCDPPort, isCDPAvailable } from "../browser/launcher.js";
 import { VERSION } from "../constants.js";
 import {
@@ -41,6 +47,7 @@ interface ComputeDoctorCheck {
   ok: boolean;
   detail: string;
   remedy?: Remedy;
+  installable?: boolean;
 }
 
 interface ComputeDoctorReport {
@@ -74,24 +81,45 @@ export function registerDoctorComputeCommand(doctor: Command): void {
     .command("compute")
     .description("Per-transport health probe for the compute family")
     .option("--json", "Machine-readable output")
-    .option("--install", "Install the matching native sidecar when missing")
+    .option(
+      "--install",
+      "Install missing native sidecars and selected external providers",
+    )
     .option("--providers", "Include optional external provider discovery")
     .action(async (opts: ComputeDoctorOptions) => {
-      const report = await runComputeDoctor({ providers: opts.providers });
-      if (opts.install) {
-        report.installActions = await installMissingSidecars(report);
+      const controller = new AbortController();
+      const cancel = () =>
+        controller.abort(
+          new DOMException("Compute installation cancelled", "AbortError"),
+        );
+      if (opts.install) process.once("SIGINT", cancel);
+      try {
+        const report = await runComputeDoctor({
+          ...opts,
+          signal: controller.signal,
+        });
+        if (opts.json) {
+          console.log(JSON.stringify(report, null, 2));
+        } else {
+          printComputeDoctor(report, opts);
+        }
+        process.exitCode = controller.signal.aborted
+          ? 130
+          : report.issueCount > 0
+            ? 1
+            : 0;
+      } finally {
+        process.removeListener("SIGINT", cancel);
       }
-      if (opts.json) {
-        console.log(JSON.stringify(report, null, 2));
-      } else {
-        printComputeDoctor(report, opts);
-      }
-      process.exitCode = report.issueCount > 0 ? 1 : 0;
     });
 }
 
 export async function runComputeDoctor(
-  options: { providers?: boolean } = {},
+  options: {
+    providers?: boolean;
+    install?: boolean;
+    signal?: AbortSignal;
+  } = {},
 ): Promise<ComputeDoctorReport> {
   const checks = [
     await checkSwift(),
@@ -110,7 +138,7 @@ export async function runComputeDoctor(
     checks.push(...(await checkExternalProviders()));
   }
   const issueCount = checks.filter((check) => check.status === "fail").length;
-  return {
+  let report: ComputeDoctorReport = {
     status: issueCount === 0 ? "ok" : "issues",
     host: {
       platform: platform() as NodeJS.Platform,
@@ -120,6 +148,44 @@ export async function runComputeDoctor(
     checks,
     issueCount,
   };
+  if (options.install) {
+    const actions = await installMissingSidecars(report, options.signal);
+    if (
+      options.providers &&
+      checks.some(
+        (check) => check.transport === "cua-driver" && check.installable,
+      )
+    ) {
+      try {
+        const result = await installCuaDriver({ signal: options.signal });
+        actions.push({
+          transport: "cua-driver",
+          packageName: "cua-driver",
+          command: cuaDriverInstallerUrl(),
+          ok: result.exitCode === 0,
+          detail:
+            result.exitCode === 0
+              ? "official installer completed"
+              : (result.stderr.trim() || result.stdout.trim()).slice(-2_000),
+        });
+      } catch (error) {
+        actions.push({
+          transport: "cua-driver",
+          packageName: "cua-driver",
+          command: cuaDriverInstallerUrl(),
+          ok: false,
+          detail: errorMessage(error),
+        });
+      }
+    }
+    if (actions.some((action) => action.ok) && !options.signal?.aborted) {
+      report = await runComputeDoctor({ providers: options.providers });
+    }
+    report.installActions = actions;
+    report.issueCount += actions.filter((action) => !action.ok).length;
+    report.status = report.issueCount === 0 ? "ok" : "issues";
+  }
+  return report;
 }
 
 async function checkMacosAppKitOverlay(): Promise<ComputeDoctorCheck> {
@@ -250,7 +316,7 @@ async function checkExternalProviders(): Promise<ComputeDoctorCheck[]> {
 }
 
 async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
-  const command = process.env.UNICLI_CUA_DRIVER_COMMAND?.trim() || "cua-driver";
+  const command = resolveCuaDriverCommand();
   const args = parseCuaDriverArgs(process.env.UNICLI_CUA_DRIVER_ARGS);
   if (!args.ok) {
     return warn(
@@ -324,18 +390,34 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
         {
           message:
             "Start the Cua Driver daemon and verify its permission policy before selecting --via driver.",
-          command: `${command} serve`,
+          command:
+            platform() === "darwin"
+              ? "open -n -g -a CuaDriver --args serve"
+              : `${command} serve`,
           doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
         },
       );
     }
   } catch (error) {
     if (isMissingExecutable(error)) {
-      return skip(
-        "cua-driver",
-        `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
-        `optional executable ${JSON.stringify(command)} is not installed`,
-      );
+      const installable = !process.env.UNICLI_CUA_DRIVER_COMMAND?.trim();
+      return {
+        ...skip(
+          "cua-driver",
+          `contract-${CUA_DRIVER_CONTRACT_VERSION}`,
+          `optional executable ${JSON.stringify(command)} is not installed`,
+        ),
+        installable,
+        remedy: {
+          message: installable
+            ? "Install the official Cua Driver binary for this host."
+            : "Point UNICLI_CUA_DRIVER_COMMAND at the configured provider executable.",
+          command: installable
+            ? "unicli doctor compute --providers --install --json"
+            : "UNICLI_CUA_DRIVER_COMMAND=/path/to/cua-driver unicli doctor compute --providers --json",
+          doc: "https://cua.ai/docs/cua-driver",
+        },
+      };
     }
     return warn(
       "cua-driver",
@@ -348,27 +430,6 @@ async function checkCuaDriver(): Promise<ComputeDoctorCheck> {
         doc: "docs/operate/compute.md#explicit-coordinate-and-os-driver-operations",
       },
     );
-  }
-}
-
-function parseCuaDriverArgs(
-  value: string | undefined,
-): { ok: true; value: string[] } | { ok: false; reason: string } {
-  if (!value?.trim()) return { ok: true, value: [] };
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) &&
-      parsed.every((item) => typeof item === "string")
-      ? { ok: true, value: parsed }
-      : {
-          ok: false,
-          reason: "UNICLI_CUA_DRIVER_ARGS must be a JSON array of strings",
-        };
-  } catch (error) {
-    return {
-      ok: false,
-      reason: `UNICLI_CUA_DRIVER_ARGS is invalid JSON: ${errorMessage(error)}`,
-    };
   }
 }
 
@@ -776,7 +837,12 @@ function printComputeDoctor(
     console.log(
       `${marker} ${check.transport.padEnd(14)} ${check.name.padEnd(18)} ${check.detail}`,
     );
-    if (check.remedy && (check.status === "fail" || opts.install)) {
+    if (
+      check.remedy &&
+      (check.status === "fail" ||
+        opts.install ||
+        (opts.providers && check.transport === "cua-driver"))
+    ) {
       console.log(`    ${check.remedy.message}`);
       if (check.remedy.command) console.log(`    Run: ${check.remedy.command}`);
       if (check.remedy.deeplink)
@@ -796,6 +862,7 @@ function printComputeDoctor(
 
 async function installMissingSidecars(
   report: ComputeDoctorReport,
+  signal?: AbortSignal,
 ): Promise<ComputeDoctorInstallAction[]> {
   const sidecarName = sidecarNameForPlatform(report.host.platform);
   const packageName = sidecarName
@@ -813,7 +880,7 @@ async function installMissingSidecars(
   const args = ["install", "-g", packageName];
   const command = `npm ${args.join(" ")}`;
   try {
-    await execFileP("npm", args, { timeout: 300_000 });
+    await execFileP("npm", args, { timeout: 300_000, signal });
     return [
       {
         transport: packageName.includes("uia")

@@ -4,7 +4,7 @@
  * @needs       canonical site ids and the maintained site alias table
  * @feeds       discovery search and intent compilation
  * @breaks      An ambiguous typo must never become a provider constraint or outrank an explicit site mention.
- * @invariants  Exact and phrase matches outrank fuzzy matches; fuzzy matches require one unique nearest site; lookup never invents a site outside the supplied catalog.
+ * @invariants  Exact and phrase matches outrank fuzzy matches; known catalog vocabulary stays lexical; fuzzy matches require one unique nearest site.
  * @side-effects None.
  * @perf        Construction is O(dictionary * deletion variants); lookup is O(query tokens * deletion variants + bounded candidate distance checks).
  * @concurrency Immutable after construction.
@@ -51,6 +51,7 @@ export class SiteResolver {
   private readonly exact = new Map<string, Set<string>>();
   private readonly phrases: Array<{ phrase: string; site: string }> = [];
   private readonly deletionIndex = new Map<string, DictionaryTerm[]>();
+  private maxFuzzyTermLength = 0;
 
   constructor(sites: Iterable<string>) {
     const catalog = new Set(sites);
@@ -67,7 +68,11 @@ export class SiteResolver {
     }
   }
 
-  resolve(query: string, tokens: readonly string[]): SiteResolution {
+  resolve(
+    query: string,
+    tokens: readonly string[],
+    vocabulary?: { has(term: string): boolean },
+  ): SiteResolution {
     const exact = new Set<string>();
     const phrase = new Set<string>();
     const fuzzy: FuzzySiteMatch[] = [];
@@ -87,8 +92,10 @@ export class SiteResolver {
       const normalized = compactSiteTerm(token);
       if (
         normalized.length < MIN_FUZZY_TOKEN_LENGTH ||
+        normalized.length > this.maxFuzzyTermLength + MAX_EDIT_DISTANCE ||
         !ASCII_WORD.test(normalized) ||
         this.exact.has(normalized) ||
+        vocabulary?.has(normalized) ||
         isSemanticVocabulary(normalized)
       ) {
         continue;
@@ -108,7 +115,7 @@ export class SiteResolver {
 
   private addIdentity(value: string, site: string): void {
     const normalized = normalizeSiteText(value);
-    if (!normalized) return;
+    if (!normalized || this.exact.get(normalized)?.has(site)) return;
     addToSetMap(this.exact, normalized, site);
     if (normalized.includes(" ")) {
       this.phrases.push({ phrase: normalized, site });
@@ -118,6 +125,7 @@ export class SiteResolver {
     if (compact.length < MIN_FUZZY_TOKEN_LENGTH || !ASCII_WORD.test(compact)) {
       return;
     }
+    this.maxFuzzyTermLength = Math.max(this.maxFuzzyTermLength, compact.length);
     const entry = { term: compact, site };
     for (const deletion of generateDeletes(compact, MAX_EDIT_DISTANCE)) {
       const entries = this.deletionIndex.get(deletion);
@@ -139,14 +147,14 @@ export class SiteResolver {
   private nearestUnique(
     query: string,
   ): { site: string; matched: string; distance: number } | undefined {
+    const allowedDistance = query.length < 6 ? 1 : MAX_EDIT_DISTANCE;
     const candidates = new Map<string, DictionaryTerm>();
-    for (const deletion of generateDeletes(query, MAX_EDIT_DISTANCE)) {
+    for (const deletion of generateDeletes(query, allowedDistance)) {
       for (const candidate of this.deletionIndex.get(deletion) ?? []) {
         candidates.set(`${candidate.site}\0${candidate.term}`, candidate);
       }
     }
 
-    const allowedDistance = query.length < 6 ? 1 : MAX_EDIT_DISTANCE;
     let bestDistance = allowedDistance + 1;
     let best: DictionaryTerm[] = [];
     for (const candidate of candidates.values()) {

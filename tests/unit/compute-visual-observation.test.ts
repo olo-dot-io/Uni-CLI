@@ -51,10 +51,10 @@ describe("opaque visual observations", () => {
     expect(observation.coordinate_space).toMatchObject({
       pixel_width: 200,
       pixel_height: 100,
-      action_width: 100,
-      action_height: 50,
-      scale_x: 0.5,
-      scale_y: 0.5,
+      action_width: 200,
+      action_height: 100,
+      scale_x: 1,
+      scale_y: 1,
     });
 
     const claim = await claimVisualObservation({
@@ -67,8 +67,8 @@ describe("opaque visual observations", () => {
       root: store,
     });
     expect(claim.transform({ x: 120, y: 40, label: "point" })).toEqual({
-      x: 60,
-      y: 20,
+      x: 120,
+      y: 40,
       label: "point",
     });
 

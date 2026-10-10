@@ -92,8 +92,9 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 
 ## Installation and rebuildable state
 
-`package.json` owns Node 22.19 or newer and npm 11.21. `.nvmrc` owns the
-Node 26.10.0 development runtime. `rust-toolchain.toml` owns Rust 1.98.1.
+`package.json` requires Node 22.19 or newer for production and npm 12.2.0 for
+development. `.nvmrc` owns the Node 26.11.1 development runtime.
+`rust-toolchain.toml` owns Rust 1.99.0.
 Toolchain settings come from the owning project.
 
 - Package manager install is the one idempotent convergence path for absent,

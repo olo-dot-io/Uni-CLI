@@ -181,14 +181,19 @@ describe("dist parity — production build must match source mode", () => {
       const distSites = new Set(distRows.map((r) => r.site));
 
       const srcResult = spawnSync(
-        "npx",
-        ["tsx", join(REPO_ROOT, "src", "main.ts"), "list", "--format", "json"],
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          join(REPO_ROOT, "src", "main.ts"),
+          "list",
+          "--format",
+          "json",
+        ],
         {
           encoding: "utf-8",
           env: { ...process.env, UNICLI_NO_LEDGER: "1" },
           timeout: 60_000,
-          // Windows needs shell: true to resolve npx.cmd; POSIX is unaffected.
-          shell: process.platform === "win32",
         },
       );
       expect(srcResult.status, srcResult.stderr || "").toBe(0);

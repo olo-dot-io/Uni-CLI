@@ -87,11 +87,6 @@ function sinceValue(value: unknown): string | undefined {
   return parsed.toISOString();
 }
 
-function timestamp(row: { updated_at: string; published_at: string }): number {
-  const parsed = Date.parse(row.updated_at || row.published_at);
-  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
-}
-
 cli({
   site: "retrieval",
   name: "search",
@@ -213,14 +208,28 @@ cli({
     const errors = outcomes
       .map((outcome) => outcome.error)
       .filter((error) => error !== undefined);
-    const candidates = normalizeEvidenceCandidates(outcomes, limit);
-    if (text(kwargs.sort) === "latest") {
-      candidates.sort((left, right) => timestamp(right) - timestamp(left));
-    }
+    const candidates = normalizeEvidenceCandidates(outcomes, limit, {
+      sort: text(kwargs.sort) === "latest" ? "latest" : "relevance",
+    });
     if (candidates.length === 0) {
+      const allFailed = errors.length === outcomes.length;
+      const failureDetails = errors
+        .map((error) => `${error.ref} (${error.code}): ${error.message}`)
+        .join("; ");
       throw new RetrievalFailure({
-        code: "empty_result",
-        message: "Selected retrieval sources returned no evidence candidates.",
+        code: allFailed
+          ? errors.every((error) => error.code === errors[0].code)
+            ? errors[0].code
+            : "upstream_error"
+          : "empty_result",
+        message: [
+          allFailed
+            ? "All selected retrieval sources failed."
+            : "Selected retrieval sources returned no evidence candidates.",
+          failureDetails,
+        ]
+          .filter(Boolean)
+          .join(" "),
         suggestion:
           "Broaden the query or inspect source-specific failures and retry commands.",
         retryable: errors.some((error) => error.retryable === true),

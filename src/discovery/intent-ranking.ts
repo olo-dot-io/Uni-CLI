@@ -13,7 +13,7 @@
  * @since   2026-06-01
  */
 
-import { SITE_CATEGORIES } from "./aliases.js";
+import { CATEGORY_ALIASES, SITE_CATEGORIES } from "./aliases.js";
 import type { SearchIndex } from "./search.js";
 
 type SearchDocument = SearchIndex["documents"][number];
@@ -84,8 +84,7 @@ const AUDIO_SECONDARY_PENALTY = new Map<string, number>([
 
 const MEDIA_PLAYBACK_TRIGGER =
   /(^|\s)(play|listen)\b|我想听|想听|听一下|收听|播放|放一下/u;
-const MEDIA_SEARCH_TRIGGER =
-  /\b(search|find|lookup|query)\b|搜索|查找|查询|检索/u;
+const SEARCH_TRIGGER = /\b(search|find|lookup|query)\b|搜索|查找|查询|检索/u;
 const MEDIA_STATUS_TRIGGER =
   /\b(now\s+playing|currently\s+playing|status)\b|正在播放/u;
 const NON_AUDIO_PLAY_HINT =
@@ -111,6 +110,10 @@ const LOCAL_CHANGE_CONTEXT_TRIGGER =
   /\b(?:git\s+status|working\s+(?:tree|copy)|local\s+(?:file|files|repository|repo|workspace)|uncommitted|staged)\b|(?:工作区|本地文件|本地仓库|未提交|已暂存)/u;
 const DISCUSSION_SYNTHESIS_TRIGGER =
   /\b(?:summarize|summary|overview|synthesize)\b.{0,96}\b(?:people|community|users|developers)\b.{0,64}\b(?:say|saying|think|discuss|discussing|reaction|reactions|opinion|opinions)\b/u;
+const DISCUSSION_TOPIC_TRIGGER =
+  /\b(?:discussions?|reactions?|opinions?|memes?)\b|讨论|热议|看法|舆论/u;
+const RECENT_DISCUSSION_CONTEXT_TRIGGER =
+  /\b(?:recent|latest|current|newest|trending)\b|最近|近期|最新|当前/u;
 const CJK_CURRENT_CHANGE_TRIGGER =
   /(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新).{0,48}(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动)|(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动).{0,48}(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新)/u;
 const CJK_DISCUSSION_SYNTHESIS_TRIGGER =
@@ -267,9 +270,10 @@ export function intentBoost(
   doc: SearchDocument,
   terms: ReadonlySet<string>,
   siteHints: readonly string[],
+  rawTerms: ReadonlySet<string>,
 ): number {
   return (
-    architectureIntentBoost(doc, terms) +
+    architectureIntentBoost(doc, terms, siteHints, rawTerms) +
     acgCreatorIntentBoost(doc, terms) +
     acgMediaTrendIntentBoost(doc, terms) +
     weatherIntentBoost(doc, terms) +
@@ -278,7 +282,7 @@ export function intentBoost(
     authWorkflowIntentBoost(doc, terms) +
     unicliUpdateIntentBoost(doc, terms) +
     marxistsArchiveIntentBoost(doc, terms) +
-    scholarlyIntentBoost(doc, terms, siteHints)
+    scholarlyIntentBoost(doc, terms, siteHints, rawTerms)
   );
 }
 
@@ -362,7 +366,7 @@ function isAudioPlaybackIntent(
   siteHints: Set<string>,
 ): boolean {
   if (MEDIA_STATUS_TRIGGER.test(normalizedQuery)) return false;
-  if (MEDIA_SEARCH_TRIGGER.test(normalizedQuery) && !hasPlaybackVerb(terms)) {
+  if (SEARCH_TRIGGER.test(normalizedQuery) && !hasPlaybackVerb(terms)) {
     return false;
   }
   if (NON_AUDIO_PLAY_HINT.test(normalizedQuery)) return false;
@@ -448,6 +452,9 @@ function isOpenWebResearchIntent(
     (CURRENT_CHANGE_QUESTION_TRIGGER.test(normalizedQuery) &&
       CURRENT_CHANGE_CONTEXT_TRIGGER.test(normalizedQuery)) ||
     DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery) ||
+    (SEARCH_TRIGGER.test(normalizedQuery) &&
+      RECENT_DISCUSSION_CONTEXT_TRIGGER.test(normalizedQuery) &&
+      DISCUSSION_TOPIC_TRIGGER.test(normalizedQuery)) ||
     CJK_CURRENT_CHANGE_TRIGGER.test(normalizedQuery) ||
     CJK_DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery)
   );
@@ -487,6 +494,8 @@ function documentCategory(doc: SearchDocument): string {
 function architectureIntentBoost(
   doc: SearchDocument,
   terms: ReadonlySet<string>,
+  siteHints: readonly string[],
+  rawTerms: ReadonlySet<string>,
 ): number {
   const browserAutomationCandidate =
     (doc.site === "browser" &&
@@ -509,9 +518,20 @@ function architectureIntentBoost(
     }
   }
 
-  const runTraceIntent =
-    (hasAny(terms, ["run", "runs"]) &&
-      hasAny(terms, [
+  if (isRecordedRunIntent(rawTerms, siteHints) && doc.site === "runs") {
+    return BOOST_RUN_TRACE_INTENT;
+  }
+  return 0;
+}
+
+function isRecordedRunIntent(
+  rawTerms: ReadonlySet<string>,
+  siteHints: readonly string[],
+): boolean {
+  if (isScholarlySubject(rawTerms, siteHints)) return false;
+  return (
+    (hasAny(rawTerms, ["run", "runs"]) &&
+      hasAny(rawTerms, [
         "trace",
         "traces",
         "recorded",
@@ -519,11 +539,8 @@ function architectureIntentBoost(
         "replay",
         "probe",
       ])) ||
-    (terms.has("trace") && hasAny(terms, ["evidence", "audit", "lease"]));
-  if (runTraceIntent && doc.site === "runs") {
-    return BOOST_RUN_TRACE_INTENT;
-  }
-  return 0;
+    (rawTerms.has("trace") && hasAny(rawTerms, ["evidence", "audit", "lease"]))
+  );
 }
 
 function acgCreatorIntentBoost(
@@ -836,10 +853,21 @@ function marxistsArchiveIntentBoost(
   return 0;
 }
 
+function isScholarlySubject(
+  rawTerms: ReadonlySet<string>,
+  siteHints: readonly string[],
+): boolean {
+  for (const term of rawTerms) {
+    if (CATEGORY_ALIASES.get(term) === "scholarly") return true;
+  }
+  return siteHints.some((site) => SITE_CATEGORIES.get(site) === "scholarly");
+}
+
 function scholarlyIntentBoost(
   doc: SearchIndex["documents"][number],
   terms: ReadonlySet<string>,
   siteHints: readonly string[],
+  rawTerms: ReadonlySet<string>,
 ): number {
   if (
     SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
@@ -932,7 +960,7 @@ function scholarlyIntentBoost(
     "clone",
     "run",
   ]);
-  if (!scholarlyIntent) return 0;
+  if (!scholarlyIntent || isRecordedRunIntent(rawTerms, siteHints)) return 0;
 
   const explicitNonScholarlySite = siteHints.some(
     (site) =>

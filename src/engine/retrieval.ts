@@ -6,7 +6,7 @@
  * @breaks      Inferring semantics from adapter names, bypassing outer capability scopes, or dropping source-specific raw records couples every domain to one orchestrator.
  * @invariants  Only read-only commands with valid retrieval metadata execute; semantic roles map only to declared arguments; source capabilities must be contained by the caller; cancellation retains caller identity; fused representatives come from the highest-ranked source while every outcome retains source identity and an exact retry command.
  * @side-effects Executes registered read-only source commands.
- * @perf        Request fan-out uses caller-bounded concurrency and per-source deadlines; candidate normalization is O(results).
+ * @perf        Request fan-out uses bounded concurrency and per-source deadlines; fusion selects K from U distinct candidates in O(N + U log K) time, plus sorting the selected candidates' source refs; candidate and per-source score maps retain O(N) entries.
  * @concurrency Each request owns its arguments, timeout signal, results, and error.
  * @test        tests/unit/engine/retrieval.test.ts, tests/unit/commands/ai.test.ts
  * @stability   experimental
@@ -16,6 +16,7 @@
 import { createHash } from "node:crypto";
 
 import { buildCommandContract } from "../core/command-contract.js";
+import { boundedTopK } from "../core/bounded-top-k.js";
 import { commandRequiresAuth, getAllAdapters } from "../registry.js";
 import { isCommandDiscoverable } from "../core/command-availability.js";
 import type {
@@ -387,7 +388,7 @@ async function executeRequest(
         code: actionable.code ?? "retrieval_source_failed",
         message: error instanceof Error ? error.message : String(error),
         suggestion: actionable.suggestion ?? `Inspect or repair ${source.ref}.`,
-        retryable: false,
+        retryable: actionable.retryable ?? false,
         alternatives: [
           ...(actionable.alternatives ?? []),
           ...(retryCommand ? [retryCommand] : []),
@@ -446,10 +447,22 @@ function recordRows(results: readonly unknown[]): Record<string, unknown>[] {
 export function normalizeEvidenceCandidates(
   outcomes: readonly RetrievalOutcome[],
   limit: number,
+  options: { sort?: "relevance" | "latest" } = {},
 ): EvidenceCandidate[] {
-  type CandidateGroup = { candidate: EvidenceCandidate; score: number };
+  type CandidateGroup = {
+    candidate: EvidenceCandidate;
+    score: number;
+    order: number;
+    timestamp: number;
+  };
   const groups = new Map<string, CandidateGroup>();
+  const scoresBySource = new Map<string, Map<string, number>>();
   for (const outcome of outcomes) {
+    let sourceScores = scoresBySource.get(outcome.source.ref);
+    if (!sourceScores) {
+      sourceScores = new Map();
+      scoresBySource.set(outcome.source.ref, sourceScores);
+    }
     recordRows(outcome.results).forEach((raw, index) => {
       const url = canonicalizeUrl(
         stringField(raw, ["url", "html_url", "source_url", "pdf_url", "link"]),
@@ -465,6 +478,17 @@ export function normalizeEvidenceCandidates(
       const key =
         url || `${outcome.source.metadata.result_kind}:${title.toLowerCase()}`;
       const score = 1 / (60 + index + 1);
+      const previousScore = sourceScores.get(key) ?? 0;
+      if (score > previousScore) sourceScores.set(key, score);
+      const current = groups.get(key);
+      if (current) {
+        if (score > previousScore) {
+          current.score += score - previousScore;
+        }
+        if (previousScore === 0)
+          current.candidate.source_refs.push(outcome.source.ref);
+        if (index + 1 >= current.candidate.source_rank) return;
+      }
       const candidate: EvidenceCandidate = {
         id: createHash("sha256").update(key).digest("hex").slice(0, 24),
         title: title || url,
@@ -483,7 +507,7 @@ export function normalizeEvidenceCandidates(
         source_adapter: outcome.source.site,
         source_command: outcome.source.name,
         source_rank: index + 1,
-        source_refs: [outcome.source.ref],
+        source_refs: current?.candidate.source_refs ?? [outcome.source.ref],
         published_at: stringField(raw, [
           "published_at",
           "publishedAt",
@@ -501,30 +525,39 @@ export function normalizeEvidenceCandidates(
         rrf_score: 0,
         raw,
       };
-      const current = groups.get(key);
+      let timestamp = Number.NEGATIVE_INFINITY;
+      if (options.sort === "latest") {
+        const updatedAt = Date.parse(candidate.updated_at);
+        const publishedAt = Date.parse(candidate.published_at);
+        timestamp = Number.isFinite(updatedAt)
+          ? updatedAt
+          : Number.isFinite(publishedAt)
+            ? publishedAt
+            : Number.NEGATIVE_INFINITY;
+      }
       if (current) {
-        current.score += score;
-        const sourceRefs = [
-          ...new Set([...current.candidate.source_refs, outcome.source.ref]),
-        ].sort();
-        if (candidate.source_rank < current.candidate.source_rank) {
-          current.candidate = { ...candidate, source_refs: sourceRefs };
-        } else {
-          current.candidate.source_refs = sourceRefs;
-        }
+        current.candidate = candidate;
+        current.timestamp = timestamp;
         return;
       }
       groups.set(key, {
         score,
         candidate,
+        order: groups.size,
+        timestamp,
       });
     });
   }
-  return [...groups.values()]
-    .sort((left, right) => right.score - left.score)
-    .slice(0, limit)
-    .map(({ candidate, score }) => ({
-      ...candidate,
-      rrf_score: Number(score.toFixed(8)),
-    }));
+  return boundedTopK(
+    groups.values(),
+    limit,
+    (left, right) =>
+      (options.sort === "latest" ? right.timestamp - left.timestamp : 0) ||
+      right.score - left.score ||
+      left.order - right.order,
+  ).map(({ candidate, score }) => ({
+    ...candidate,
+    source_refs: candidate.source_refs.sort(),
+    rrf_score: Number(score.toFixed(8)),
+  }));
 }

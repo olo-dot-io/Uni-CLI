@@ -28,7 +28,7 @@ import {
 } from "./evidence-document.js";
 import { resolveArgs } from "./args.js";
 import { PipelineError } from "./executor.js";
-import { htmlToMarkdown } from "./html-to-markdown.js";
+import { renderHtmlContent } from "./html-to-markdown.js";
 import { buildInvocation, execute } from "./kernel/execute.js";
 import { fetchTextResource } from "./steps/fetch-text.js";
 import { isHtmlVerificationChallenge } from "./steps/html-to-md.js";
@@ -416,16 +416,6 @@ async function readProviderMarkdown(
   });
 }
 
-function plainTextFromHtml(html: string): string {
-  return htmlToMarkdown(html)
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/!\[([^\]]*)]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
-    .replace(/[*_~`>|]/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 function directContent(input: {
   text: string;
   contentType: string;
@@ -446,7 +436,10 @@ function directContent(input: {
         suggestion: `Complete verification for ${new URL(input.url).hostname} in a shared browser session or use a source-specific API.`,
       });
     }
-    const markdown = htmlToMarkdown(input.text);
+    const { content, markdown } = renderHtmlContent(
+      input.text,
+      input.representation === "text" ? "text" : "markdown",
+    );
     if (isDynamicDocumentShell(input.text, markdown)) {
       throw new EvidenceReadFailure({
         code: "dynamic_content_required",
@@ -463,12 +456,7 @@ function directContent(input: {
       });
     }
     return {
-      content:
-        input.representation === "html"
-          ? input.text
-          : input.representation === "text"
-            ? plainTextFromHtml(input.text)
-            : markdown,
+      content: input.representation === "html" ? input.text : content,
       outline: markdown,
       contentFormat: input.representation,
     };

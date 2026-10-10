@@ -27,7 +27,7 @@ export const VISUAL_OBSERVATION_TTL_MS = 30_000;
 
 const REF_PREFIX = "visual-observation:";
 const REF_ID = /^[a-f0-9]{64}$/;
-const RECORD_SCHEMA = 1;
+const RECORD_SCHEMA = 2;
 
 export type VisualObservationProvider = Extract<
   TransportKind,
@@ -47,6 +47,8 @@ interface VisualObservationRecord {
   action_width: number;
   action_height: number;
   session?: string;
+  provider_session?: string;
+  provider_capture_id?: string;
   display?: string;
   scale_factor?: number;
 }
@@ -62,7 +64,7 @@ export interface VisualObservationEvidence {
   pixel_sha256: string;
   coordinate_space: {
     input: "image-pixels";
-    action: "screen-pixels";
+    action: "image-pixels" | "screen-pixels";
     origin: "top-left";
     pixel_width: number;
     pixel_height: number;
@@ -84,6 +86,8 @@ export interface VisualObservationPoint {
 
 export interface ClaimedVisualObservation {
   evidence: VisualObservationEvidence;
+  providerSession?: string;
+  providerCaptureId?: string;
   transform(point: VisualObservationPoint): VisualObservationPoint;
   release(): Promise<void>;
 }
@@ -132,6 +136,13 @@ export async function issueVisualObservation(input: {
   }
   const id = randomBytes(32).toString("hex");
   const session = optionalNonEmptyString(input.session);
+  const driverData =
+    input.provider === "cua-driver" && isRecord(input.data)
+      ? input.data
+      : undefined;
+  const providerSession =
+    optionalNonEmptyString(driverData?.session) ?? session;
+  const providerCaptureId = optionalNonEmptyString(driverData?.capture_id);
   const record: VisualObservationRecord = {
     schema_version: RECORD_SCHEMA,
     id,
@@ -142,9 +153,14 @@ export async function issueVisualObservation(input: {
     pixel_sha256: createHash("sha256").update(image.bytes).digest("hex"),
     pixel_width: image.pixelWidth,
     pixel_height: image.pixelHeight,
-    action_width: image.actionWidth,
-    action_height: image.actionHeight,
+    // Cua Driver owns PNG-to-native scaling, including Retina and capped captures.
+    action_width:
+      input.provider === "cua-driver" ? image.pixelWidth : image.actionWidth,
+    action_height:
+      input.provider === "cua-driver" ? image.pixelHeight : image.actionHeight,
     ...(session ? { session } : {}),
+    ...(providerSession ? { provider_session: providerSession } : {}),
+    ...(providerCaptureId ? { provider_capture_id: providerCaptureId } : {}),
     ...(image.display ? { display: image.display } : {}),
     ...(image.scaleFactor ? { scale_factor: image.scaleFactor } : {}),
   };
@@ -246,6 +262,12 @@ export async function claimVisualObservation(input: {
   let released = false;
   return {
     evidence: publicEvidence(record),
+    ...(record.provider_session
+      ? { providerSession: record.provider_session }
+      : {}),
+    ...(record.provider_capture_id
+      ? { providerCaptureId: record.provider_capture_id }
+      : {}),
     transform: (point) => ({
       ...point,
       x: point.x * (record.action_width / record.pixel_width),
@@ -362,6 +384,10 @@ function isObservationRecord(value: unknown): value is VisualObservationRecord {
     positiveInteger(value.action_height) &&
     (value.session === undefined ||
       optionalNonEmptyString(value.session) !== undefined) &&
+    (value.provider_session === undefined ||
+      optionalNonEmptyString(value.provider_session) !== undefined) &&
+    (value.provider_capture_id === undefined ||
+      optionalNonEmptyString(value.provider_capture_id) !== undefined) &&
     (value.display === undefined ||
       optionalNonEmptyString(value.display) !== undefined) &&
     (value.scale_factor === undefined || positiveFinite(value.scale_factor))
@@ -460,7 +486,8 @@ function publicEvidence(
     pixel_sha256: record.pixel_sha256,
     coordinate_space: {
       input: "image-pixels",
-      action: "screen-pixels",
+      action:
+        record.provider === "cua-driver" ? "image-pixels" : "screen-pixels",
       origin: "top-left",
       pixel_width: record.pixel_width,
       pixel_height: record.pixel_height,

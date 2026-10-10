@@ -6,16 +6,11 @@
  * system (Commander registration, `unicli ext` subcommands, AGENTS.md).
  */
 
-import {
-  accessSync,
-  constants,
-  existsSync,
-  readFileSync,
-  statSync,
-} from "node:fs";
-import { delimiter, extname, join, dirname, sep } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as yaml from "js-yaml";
+import { findExecutable } from "../core/executable.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -102,29 +97,7 @@ export function isInstalled(binary: string): boolean {
   const cached = _installedCache.get(binary);
   if (cached !== undefined) return cached;
 
-  const extensions =
-    process.platform === "win32" && !extname(binary)
-      ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";")
-      : [""];
-  const directories =
-    binary.includes(sep) ||
-    (process.platform === "win32" && binary.includes("/"))
-      ? [""]
-      : [...new Set((process.env.PATH ?? "/usr/bin:/bin").split(delimiter))];
-  const installed = directories.some((directory) =>
-    extensions.some((extension) => {
-      const executable = join(directory, `${binary}${extension}`);
-      try {
-        if (!statSync(executable, { throwIfNoEntry: false })?.isFile()) {
-          return false;
-        }
-        accessSync(executable, constants.X_OK);
-        return true;
-      } catch {
-        return false;
-      }
-    }),
-  );
+  const installed = findExecutable(binary) !== undefined;
   _installedCache.set(binary, installed);
   return installed;
 }

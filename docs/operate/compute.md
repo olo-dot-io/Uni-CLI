@@ -9,7 +9,7 @@ Desktop-coordinate control requires an explicit `--via driver` or
 
 Read [Task-Directed Capability Routing](task-routing.md) for the operator model,
 selection algorithm, complexity, and recovery state graph. Inspect any compute
-selection without acting on the host:
+selection without acting on the host.
 
 ```bash
 unicli -f json compute route snapshot --params '{"app":"Calculator"}'
@@ -47,14 +47,14 @@ whose value is not part of the accessible name.
 
 ## Explicit Coordinate and OS Driver Operations
 
-Semantic and coordinate operations have different public contracts:
+Semantic and coordinate operations have different public contracts.
 
 - `compute click/type/scroll` consume a ref owned by AX, UIA, AT-SPI, or CDP.
 - `compute point-click/drag/point-scroll/move-cursor` consume fresh,
   provider-owned pixels through an opaque observation ref. They never accept
   or synthesize an element ref.
 - `compute text` sends text through an explicitly selected foreground provider
-  but does not consume coordinates.
+  independently of coordinates.
 - `--via driver` selects the optional Cua Driver service.
 - `--via visual` selects the configured visual backend.
 
@@ -75,7 +75,7 @@ unicli compute point-scroll 640 480 --direction down --amount 3 --by line \
 ```
 
 For an executable two-step flow, read `.data.observation.ref` from the JSON
-screenshot envelope and pass it to exactly one coordinate action:
+screenshot envelope and pass it to exactly one coordinate action.
 
 ```bash
 OBSERVATION="$(
@@ -92,23 +92,41 @@ seconds, is atomically single-use across processes, and binds provider,
 desktop scope, optional session, pixel dimensions, action dimensions, and
 pixel hash. Actions reject forged, missing, expired, replayed,
 cross-provider, cross-session, and out-of-bounds refs before opening the
-provider. Retina and other scaled captures use the recorded width ratio to
-map screenshot pixels to action coordinates. Saving a screenshot directly to
-a path produces an artifact and no coordinate authority.
+provider. Driver actions retain the PNG pixel coordinates. Cua Driver owns
+Retina and size-capped screenshot transforms, so each point is scaled once.
+The visual backend uses the recorded image-to-screen ratio. Saving a screenshot
+directly to a path produces an artifact and no coordinate authority.
+An upgrade that changes the stored coordinate format requires a fresh
+screenshot. The public evidence schema remains `visual-observation.v1`.
 
 The evidence contract prevents stale capability reuse inside Uni-CLI. It
 cannot detect an external human or unrelated process changing the screen after
 capture; agents must keep the observe-act interval short and take a new
 screenshot whenever the visible target may have changed.
 
-The built-in adapter consumes Cua Driver portable contract `0.8.0` from
-stable release `0.31.0`. It invokes `cua-driver call <tool> <json>` through
+The built-in adapter consumes Cua Driver portable contract `0.8.0`, verified
+with stable release `0.34.0`. It invokes `cua-driver call <tool> <json>` through
 literal argv. The caller owns the daemon lifecycle. The coordinate route
 selects `target:{kind:"desktop",display_id:"primary"}` for `click`, `drag`,
 `type_text`, `press_key`, `hotkey`, `scroll`, and `move_cursor`. Click requests
 include `delivery_mode:"foreground"`. `get_desktop_state` supplies the pixel
 source. The request fields and action result follow the upstream
-[portable manifest](https://github.com/trycua/cua/blob/5272e492d61b96caf08e3bf434d91126c1f3dccc/libs/cua-driver/contract/manifest.json).
+[portable manifest](https://github.com/trycua/cua/blob/d2b14913df638f59d37c6b59b6d85764d48d7b23/libs/cua-driver/contract/manifest.json).
+
+The observation record retains the screenshot's driver session and
+`capture_id`. Click forwards both to the driver, which validates the capture
+and applies its exact transform. Move, drag, and scroll share the capture's
+session, whose screenshot scaling is owned by the driver. The
+[desktop capture implementation](https://github.com/trycua/cua/blob/d2b14913df638f59d37c6b59b6d85764d48d7b23/libs/cua-driver/rust/crates/cua-driver-core/src/desktop_capture_scale.rs)
+defines these coordinate semantics.
+
+Omitting `--session`, or using the driver's anonymous `default` label, creates
+a unique screenshot session that survives the next CLI invocation. Other
+commands retain their existing session defaults. A failed screenshot can leave
+this session idle. The driver's existing
+[five-minute idle eviction](https://github.com/trycua/cua/blob/d2b14913df638f59d37c6b59b6d85764d48d7b23/libs/cua-driver/rust/crates/cua-driver-core/src/session.rs#L30)
+releases its state. A daemon restart invalidates its captures, so the next
+coordinate click requires a fresh screenshot.
 
 A named session gives concurrent agent runs separate cursor and capture-policy
 identity.
@@ -171,8 +189,8 @@ ordered by `index` and `at_ms`, names the cursor state (`observe`, `move`,
 `press`, `wait`, `success`, or `error`), preserves target refs and coordinate
 spaces when available, and carries visual affordances such as a click ripple or
 progress orbit. This follows the same split used by GUI-agent UIs such as
-[UI-TARS ScreenshotDisplay](https://github.com/bytedance/UI-TARS-desktop/blob/e9f3387288da4af2ad99972da2ac916cdabce093/multimodal/tarko/ui/src/components/gui-agent/ScreenshotDisplay.tsx):
-actions remain structured evidence, while the UI renders a non-invasive cursor
+[UI-TARS ScreenshotDisplay](https://github.com/bytedance/UI-TARS-desktop/blob/e9f3387288da4af2ad99972da2ac916cdabce093/multimodal/tarko/ui/src/components/gui-agent/ScreenshotDisplay.tsx).
+Actions remain structured evidence. The UI renders a non-invasive cursor
 overlay on top of screenshots. Browser-use Terminal's protocol similarly keeps
 session events and artifacts separate from the TUI renderer; Uni-CLI keeps this
 visual replay in the compute packet so MCP clients, docs, and future desktops
@@ -184,7 +202,7 @@ consume one deterministic contract.
 
 The screenshot replay above is a frontend replay inside the docs page. It does
 not draw over arbitrary desktop apps. For a real system-level virtual pointer,
-opt in to the native HUD on mutating compute actions:
+opt in to the native HUD on mutating compute actions.
 
 ```bash
 unicli doctor compute --json
@@ -193,32 +211,32 @@ unicli -f json compute click @e13 --overlay
 ```
 
 `doctor compute --json` reports the native overlay checks for each desktop
-platform: `overlay/macos-appkit`, `overlay/windows-win32`, and
-`overlay/linux-gtk`. Non-host providers are reported as `skip` rather than
-silently disappearing. On macOS, the check parses the generated Swift/AppKit
-daemon source and the normal doctor checks still verify the Accessibility and
+platform through `overlay/macos-appkit`, `overlay/windows-win32`, and
+`overlay/linux-gtk`. Non-host providers are reported as `skip`.
+On macOS, the check parses the generated Swift/AppKit
+daemon source and the normal doctor checks verify the Accessibility and
 Screen Recording permissions. In other words, macOS arbitrary visible app
 windows require both Accessibility and Screen Recording. On
 Windows, the check parses the generated PowerShell/WinForms daemon and verifies
 that Windows Forms can load in the desktop session. On Linux, the check compiles
 the generated Python daemon and verifies the GTK/PyGObject/Cairo imports.
 
-Every provider implements the same JSONL HUD protocol: report `ready`, accept a
-`visual_action.pointer_plan` render request, draw a full-screen click-through
-pointer/halo/trail, report `arrived`, then let Uni-CLI dispatch the real compute
+Every provider implements the same JSONL HUD protocol. It reports `ready`, accepts a
+`visual_action.pointer_plan` render request, draws a full-screen click-through
+pointer/halo/trail, reports `arrived`, then lets Uni-CLI dispatch the real compute
 action through the already selected provider. This keeps the rendered pointer
 target and the actual action target on the same enriched request.
 
 Successful JSON output includes both legacy `visual_timeline` and the richer
-`visual_action` record:
+`visual_action` record.
 
-- `visual_action.target`: resolved ref or coordinate target in screen pixels.
-- `visual_action.pointer_plan`: sampled path used by the HUD and docs replay.
-- `visual_action.overlay`: native HUD provider status such as
+- `visual_action.target` records the resolved ref or coordinate target in screen pixels.
+- `visual_action.pointer_plan` carries the sampled path used by the HUD and docs replay.
+- `visual_action.overlay` records the native HUD provider status such as
   `macos-appkit/arrived`.
-- `visual_action.dispatch`: transport, status, and target used for the real
+- `visual_action.dispatch` records the transport, status, and target used for the real
   click/type/scroll action.
-- `visual_action.post_capture`: same-provider screenshot metadata captured
+- `visual_action.post_capture` carries same-provider screenshot metadata captured
   after an overlay action and after every successful MCP visual-coordinate
   action. MCP image bytes appear once as standard `ImageContent`; structured
   content retains dimensions, SHA-256, the next single-use observation ref,
@@ -228,7 +246,7 @@ This is intentionally not implemented as a Chrome extension. A Chrome extension
 can draw over Chrome pages only; it cannot cover arbitrary macOS apps such as
 Calculator, Figma, Xcode, or the Codex desktop window, and it cannot cover
 native Windows/Linux apps either. The system HUD is native-provider based and
-opt-in with `--overlay`: macOS uses AppKit, Windows uses a Win32/Windows Forms
+opt-in with `--overlay`. macOS uses AppKit, Windows uses a Win32/Windows Forms
 daemon, and Linux uses a GTK/Cairo daemon with an empty input shape.
 
 `--save-reference` writes a local artifact directory under
@@ -236,12 +254,12 @@ daemon, and Linux uses a GTK/Cairo daemon with an empty input shape.
 and metadata file paths. Use `--reference-root` to choose a different artifact
 root for CI, handoff directories, or isolated experiments. `--copy-reference`
 saves the same artifact and copies the markup to the host clipboard. The
-content and metadata files are optimized for agent handoff: element refs remain,
-but geometry strings and raw accessibility object pointers are stripped from
-the text copy so the packet does not encourage coordinate-string matching.
+content and metadata files preserve element refs for agent handoff. The text
+copy omits geometry strings and raw accessibility object pointers, keeping
+element refs as its addressing contract.
 
 The compute family is also part of the normal command discovery surface. Agents
-can find it without knowing the exact subcommand:
+can find it without knowing the exact subcommand.
 
 ```bash
 unicli search "Appshots"
@@ -328,7 +346,7 @@ observation; elapsed time or a different foreground window cannot satisfy it.
 
 The read-only five-category smoke exercises one real structured adapter, native
 CLI bridge, hidden semantic browser target, native accessibility read, and the
-optional coordinate driver:
+optional coordinate driver.
 
 ```bash
 npm run smoke:capabilities
@@ -339,13 +357,13 @@ provider that fails its declared contract is a failure. The browser case serves
 a local fixture and reads its DOM/accessibility state; it does not substitute a
 doctor probe for execution.
 
-Maintainers can generate the cross-OS smoke plan without touching the host:
+Maintainers can generate the cross-OS smoke plan without touching the host.
 
 ```bash
 npm run compute:smoke -- --json --platform linux
 ```
 
-To execute it on a real target machine, run:
+To execute it on a real target machine, run the following command.
 
 ```bash
 npm run compute:smoke -- --run --include-mutating --output smoke-report.json
@@ -356,11 +374,11 @@ The smoke harness uses a temporary ref store, checks `doctor compute`, lists
 apps, launches the platform calculator app, captures a compact snapshot, finds a
 button ref, waits for it, asserts it is enabled, clicks it with `--background`,
 exercises type/scroll routing, and captures a screenshot. Omit
-`--include-mutating` to skip launch/click/type/scroll steps while still
-collecting read-only evidence. For richer text-field or scroll-container
+`--include-mutating` to collect read-only evidence and skip
+launch/click/type/scroll steps. For richer text-field or scroll-container
 coverage, override the app and target label with `--app` and `--button`.
 When `--run` is used, the harness records every step's `ok`, `exit_code`,
-duration, stdout, and stderr instead of aborting at the first failed command, so
+duration, stdout, and stderr across failures, so
 cross-OS smoke artifacts keep enough evidence for repair. `--output` writes the
 same schema-versioned report to disk for CI artifacts or manual release
 evidence. Add `--overlay` to make the mutating click/type/scroll steps use the
@@ -383,9 +401,37 @@ Uni-CLI to probe an installed provider.
 unicli doctor compute --providers
 ```
 
+Install a missing default Cua Driver through the same doctor entry point.
+
+```bash
+unicli doctor compute --providers --install --json
+```
+
+The command downloads and runs the
+[official POSIX installer](https://cua.ai/driver/install.sh) on macOS or Linux,
+or the [official Windows installer](https://cua.ai/driver/install.ps1) on
+Windows. The upstream installer owns release selection and file replacement.
+Uni-CLI verifies the installed version, then repeats the contract and daemon
+probes. A repeated invocation reuses an available provider. After cancellation
+or an interrupted download, rerun the same command. An explicit
+`UNICLI_CUA_DRIVER_COMMAND` remains the caller's installation choice.
+
+Discovery also checks the upstream installation directory when the executable
+is outside `PATH`. Plain doctor probes remain read-only. Installation keeps
+daemon startup separate. On macOS, start the signed application in the
+background so the provider keeps its own permission identity.
+
+```bash
+open -n -g -a CuaDriver --args serve
+unicli doctor compute --providers --json
+```
+
+Follow the returned remedy for missing host permissions or an unavailable
+daemon. Driver input requires an explicit `--via driver` command.
+
 ## Focus Stealing
 
-Actuating commands prefer background mode: `compute click`, `compute type`,
+Actuating commands prefer background mode. `compute click`, `compute type`,
 `compute press`, and `compute scroll` pass `focus: false` to semantic providers
 unless `--focus` is set. Explicit driver and visual routes are desktop-scoped
 foreground capabilities.
@@ -410,10 +456,10 @@ descendants with `action: "scroll"` and slider/spinner/range descendants with
 `action: "set_value"`. Descendant invoke, value, focus, and scroll actions use
 native UIA patterns. Invoke also tries toggle and selection item patterns for
 controls such as
-checkboxes, radio buttons, and selectable list rows, while numeric set-value
+checkboxes, radio buttons, and selectable list rows. Numeric set-value
 inputs can use RangeValuePattern for sliders and spinners.
-Every emitted UIA ref is scoped by exact HWND rather than PID-local window
-position, so window reordering cannot redirect a later action.
+Every emitted UIA ref is scoped by exact HWND, so window reordering preserves
+the action's target identity.
 UIA sidecar launch support remains an internal sidecar primitive. The public
 `compute launch` contract selects the process provider.
 
@@ -462,7 +508,7 @@ inspected against the exact target before any replay.
 
 Read-only observations can declare one automatic same-primitive retry. The
 provider may retire a stale CDP page, native sidecar generation, or AX warm
-session first, but the route and physical primitive stay fixed. Mutating actions
+session first. The route and physical primitive stay fixed. Mutating actions
 never retry automatically. `meta.recovery_trace` reports the selected policy,
 attempt count, failures, provider, and physical action so an agent can
 distinguish a first-attempt result from a recovered read.
