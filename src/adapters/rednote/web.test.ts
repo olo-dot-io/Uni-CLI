@@ -342,10 +342,16 @@ describe("rednote agent-facing web commands", () => {
           error: "",
         }),
       ]);
-      expect(fetchMock).toHaveBeenCalledWith(
-        "https://ci.rednote.com/example.jpg?token=abc",
-        { headers: { Cookie: "sid=secret" }, redirect: "manual" },
-      );
+      const [downloadUrl, downloadOptions] = fetchMock.mock.calls[0] ?? [];
+      expect({
+        url: downloadUrl,
+        cookie: new Headers(downloadOptions?.headers).get("cookie"),
+        redirect: downloadOptions?.redirect,
+      }).toEqual({
+        url: "https://ci.rednote.com/example.jpg?token=abc",
+        cookie: "sid=secret",
+        redirect: "manual",
+      });
     } finally {
       vi.unstubAllGlobals();
       rmSync(dir, { recursive: true, force: true });
