@@ -5,7 +5,7 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Static adapter sites: 338
-- Registered adapter commands: 1892
+- Registered adapter commands: 1893
 - Runtime scope: fixed core and host-discovered commands are additional
 - Adapters: 1267
 - Built-in actions: 113 (58 registered + 55 transport-native)
@@ -56,7 +56,7 @@ unicli hackernews top --limit 5 -f json
 ## Coverage
 
 - Static adapter sites: 338
-- Registered adapter operations: 1892
+- Registered adapter operations: 1893
 - Built-in actions: 113 (58 registered + 55 transport-native)
 - Tests: 10374
 
@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Latest: v1.2.1 · Artemis · Wiseman.
+Local release: v1.3.0 · Artemis · Rubins.
 
 ## Agent Index
 
@@ -146,7 +146,7 @@ unicli do "show my saved Xiaohongshu notes" -f json
 unicli describe hackernews top
 ```
 
-`describe` shows the accepted arguments and an example invocation. It is the fastest way to prepare a reliable agent call.
+`describe` shows the accepted arguments and an example invocation. Use it to prepare required values and check defaults before execution.
 
 ## 5. Run the operation
 
@@ -154,7 +154,7 @@ unicli describe hackernews top
 unicli hackernews top --limit 5 -f json
 ```
 
-A successful call returns a v2 envelope.
+A successful call returns a v2 envelope. Check `ok` before reading the records in `data`.
 
 ```json
 {
@@ -306,7 +306,7 @@ MCP servers publish the same notice under `_meta["io.unicli/update"]`, including
 }
 ```
 
-An Agent can still request an immediate foreground update and verify the result.
+An Agent can request an immediate foreground update and verify the result.
 
 ```bash
 unicli upgrade --yes -f json
@@ -364,7 +364,7 @@ npm install -g @zenalexa/unicli
 unicli search "list the latest Hacker News stories" -f json
 ```
 
-Give the agent this short instruction:
+Give the agent this short instruction.
 
 ```text
 Use unicli search "<intent>" before operating a website, app, or local tool.
@@ -387,13 +387,13 @@ unicli lark native-message-search "release" -f json
 unicli bluesky native-resolve bsky.app -f json
 ```
 
-Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API, while Slack's hosted MCP remains an external OAuth service.
+Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API. Slack's hosted MCP remains an external OAuth service.
 
 Expanded MCP exposes the same typed `native-*` commands to MCP clients.
 
 ## MCP
 
-Start the server with `npx`:
+Start the server with `npx`.
 
 ```json
 {
@@ -406,13 +406,13 @@ Start the server with `npx`:
 }
 ```
 
-The equivalent terminal command is:
+The equivalent terminal command is.
 
 ```bash
 npx -y @zenalexa/unicli mcp serve
 ```
 
-Check the tools exposed by the selected profile:
+Check the tools exposed by the selected profile.
 
 ```bash
 unicli mcp health -f json
@@ -422,13 +422,13 @@ The default profile keeps discovery compact. Use `--expanded` when the client ne
 
 ## ACP
 
-Start the Agent Client Protocol server:
+Start the Agent Client Protocol server.
 
 ```bash
 unicli acp serve
 ```
 
-Inspect available options with:
+Inspect available options with.
 
 ```bash
 unicli help acp
@@ -436,7 +436,7 @@ unicli help acp
 
 ## Authentication
 
-Run authentication setup in the same user account and environment as the agent host:
+Run authentication setup in the same user account and environment as the agent host.
 
 ```bash
 unicli auth setup <site>
@@ -448,13 +448,13 @@ See [Authentication](/guide/authentication) for stored credentials and live brow
 
 ## Verify the connection
 
-Ask the client to perform a read-only call:
+Ask the client to perform a read-only call.
 
 ```text
 Use Uni-CLI to list the top three Hacker News stories and return JSON.
 ```
 
-The expected command is:
+The expected command is.
 
 ```bash
 unicli hackernews top --limit 3 -f json
@@ -555,7 +555,7 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change while Uni-CLI owns execution evidence and the promotion decision.
+Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change. Uni-CLI owns execution evidence and the promotion decision.
 
 ## CLI, MCP, and ACP
 
@@ -649,7 +649,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/internet-access.md
 - Section: Use Uni-CLI
 - Parent: Use Uni-CLI (/guide/)
 
-Verified on 2026-10-10 against the current workspace, official provider contracts, and live public endpoints. Local command discovery, remote source search, and document reading have separate measurement boundaries.
+Use Uni-CLI to find a source, search its records, and read the documents needed for a task. Start with local command discovery, run the selected source command, then retrieve content in a form an agent can consume. Each stage returns the information needed for the next call.
 
 ## Find and execute a source
 
@@ -676,6 +676,78 @@ Markdown reads prefer `Accept: text/markdown`. Native Markdown passes through un
 
 `extract` includes the requested and final URLs, retrieval time, content type, headings, links, and truncation metadata. Direct text responses have a five-million-byte limit and a 30-second read deadline. `web read` preserves its string result and reports `response_too_large` above one million characters. Use `extract --max-chars` for an explicitly bounded evidence record.
 
+## Save a research collection
+
+Use `retrieval acquire` when the task needs files on disk as well as search results. A query uses the same source selection and ranking as `retrieval search`. An explicit HTTP(S) URL starts from that URL directly.
+
+```bash
+unicli retrieval acquire "graph databases" \
+  --sources dblp,arxiv \
+  --limit 5 \
+  --max-resources 10 \
+  --dir ./research/graph-databases \
+  -f json
+
+unicli retrieval acquire \
+  https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/ \
+  --max-resources 0 \
+  --dir ./research/cloudflare \
+  -f json
+```
+
+The command streams each selected URL to a local original file. It uses the response MIME to structure downloaded text into an adjacent `<id>.document.json`, reusing the downloaded bytes. PDF, archive, image, and other binary responses retain their original bytes, including URLs without a filename extension. Text above the five-million-byte structuring limit retains the original file only.
+
+For each selected result page, the command collects links whose filename or label identifies a downloadable resource. It deduplicates them, ranks them against the query, and downloads one bounded layer. Those downloaded links are terminal resources. Their own links do not start another crawl.
+
+### Choose the collection size
+
+`--limit` controls selected search results. `--max-resources` separately controls additional file links found on those pages. A direct URL has one initial resource. Setting `--max-resources 0` saves only the selected URLs.
+
+| Option            | Default       | Accepted values and meaning                                       |
+| ----------------- | ------------- | ----------------------------------------------------------------- |
+| `--limit`         | `20`          | 1 to 100 selected search results                                  |
+| `--max-resources` | `20`          | 0 to 100 additional file links across the selected pages          |
+| `--concurrency`   | `3`           | 1 to 8 active resource downloads                                  |
+| `--max-bytes`     | `52428800`    | 1 byte to 1 GiB per original file; the default is 50 MiB          |
+| `--timeout-ms`    | `30000`       | 1 to 300000 milliseconds per resource download                    |
+| `--dir`           | `./downloads` | Directory for originals, structured documents, and `results.json` |
+| `--refresh`       | `false`       | Pass `true` to fetch completed resources again                    |
+
+Search queries also accept `--sources`, `--kind`, `--source-class`, `--repository`, `--since`, and `--sort`. Use `unicli describe retrieval acquire --full -f json` for their complete contract. Source search and file download retain separate time limits.
+
+### Inspect the saved result
+
+The JSON envelope's `data[0]` contains the acquisition result. Read `data[0].manifest_path` for its absolute result-file path. `results.json` stores that acquisition object directly and is updated as resources finish.
+
+- `candidates` retains selected search records and their source provenance.
+- `resources` records each URL, originating `source_urls`, local `path`, byte `size`, and `status`.
+- `document_path` identifies the structured companion when one was produced. `structure_error` reports a conversion failure. The original file remains available.
+- `source_errors` records source-search failures independently of file-download results.
+- `linked_resources_found` and `linked_resources_selected` show how the additional-resource limit affected selection. `selection_complete` records whether that selection finished. When an original page fails and capacity remains, it stays `false` so resume can fill the remaining slots from that page. Already selected linked resources remain terminal.
+
+Read every resource status. `success` means a new original was published, `skipped` means a complete existing original was reused, and `failed` includes an error and retry command. An interrupted run records unfinished resources as `cancelled` after active workers settle. Completed files remain available.
+
+### Resume the same collection
+
+Use the returned absolute `manifest_path` to resume without repeating source discovery. Supply a query or `--resume`, one per invocation.
+
+```bash
+unicli retrieval acquire \
+  --resume ./research/graph-databases/results.json \
+  -f json
+
+unicli retrieval acquire \
+  --resume ./research/graph-databases/results.json \
+  --refresh true \
+  -f json
+```
+
+Resume restores the saved resource selection. It reuses an original when its recorded URL, path, successful state, and byte size match the local file. Failed, missing, or size-mismatched originals are fetched again. A recorded text-structuring failure also triggers a fresh download on resume. This reuse check compares file metadata; `--refresh true` explicitly requests current source bytes.
+
+Each row's `retry_command` resumes the collection with its download size and timeout limits. It can therefore recover failures from more than one row in the same pass. The directory containing the resume file owns the output paths. Move the collection and its `results.json` together. A different directory produces new absolute paths, so resume fetches the resources again into that directory. A damaged or unsupported resume file produces `invalid_input` and remains unchanged.
+
+Downloads use the same anonymous-first, domain-scoped credential recovery described below. `--no-auth-retry` disables automatic credential recovery for these requests. A remaining authentication or challenge failure is recorded for that resource, so the completed files and source errors remain available for the next decision.
+
 ## Academic and model sources
 
 | Source     | Current path                                  | Pagination and identity                                                |
@@ -692,9 +764,11 @@ unicli openrouter model openai/gpt-5.6-luna -f json
 unicli openrouter search "gpt-5" --limit 2 --fresh true -f json
 ```
 
-OpenRouter search sends the query and page size to the server. Its public list and detail caches use the observed 120-second and 300-second freshness bounds, further restricted by each response's cache policy. `--fresh true` bypasses the stored response. Shared GET caches separate request headers, including credentials and content negotiation, and publish atomically. Writes always execute through their request path.
+OpenRouter search sends the query and page size to the server. Its public list and detail caches use 120-second and 300-second freshness bounds, further restricted by each response's cache policy. `--fresh true` bypasses the stored response. Shared GET caches separate request headers, including credentials and content negotiation, and publish atomically. Writes always execute through their request path.
 
-On the verification date, OpenRouter search and detail returned live data. DBLP returned an Anubis verification page. The configured OpenReview credential had expired. DBLP now reports `challenge_required` with a recovery action, and OpenReview reports the credential failure. Deterministic lifecycle scenarios separately exercise their successful payloads, pagination, cancellation, and recovery.
+When `dblp search` encounters an Anubis verification page, stderr retains `error.code = challenge_required`. Run the complete command in `error.alternatives[0]` to query the [official DBLP SPARQL service](https://blog.dblp.org/2024/09/09/introducing-our-public-sparql-query-service/). This explicit alternative matches the input as a case-insensitive literal phrase within publication titles, orders results by descending year and ascending record URI, and carries the original limit and offset. It uses its own matching semantics and runs only when selected. The `extract` response exposes records at `data.structured_data.results.bindings`. Pass the same URL to `retrieval acquire` to save the source JSON and a structured document.
+
+An expired OpenReview credential produces an authentication failure. Follow the source's recovery instructions, then rerun the original query with the same pagination arguments.
 
 ## Recover with the source contract
 
@@ -706,9 +780,11 @@ On the verification date, OpenRouter search and detail returned live data. DBLP 
 | `invalid_content`                        | Inspect the expected MIME and API endpoint                                                                             |
 | `operation_outcome_ambiguous`            | Read the current resource state before repeating an accepted write                                                     |
 
-The shared HTTP owner recognizes `cf-mitigated: challenge` before content parsing. Its HTML fallback combines a verification-page heading with challenge-specific content, keeping ordinary Turnstile documentation readable. Retry windows support seconds and HTTP dates. Failed response bodies are released before another attempt. Interrupted read responses use the remaining attempt budget. An accepted write with an interrupted response returns an ambiguous outcome for reconciliation.
+The HTTP reader recognizes `cf-mitigated: challenge` before parsing content. It also identifies HTML verification pages from their heading and challenge-specific content. Ordinary Turnstile documentation remains readable. Retry windows support seconds and HTTP dates. Failed response bodies are released before another attempt, and interrupted reads use the remaining attempt budget. If a write was accepted and its response is interrupted, inspect the resource state before repeating the write.
 
-[Cloudflare Web Bot Auth](https://developers.cloudflare.com/bots/reference/bot-verification/web-bot-auth/) requires a recognized operator key and verified HTTP signatures. Admission remains a source-side decision. The implementation provides content negotiation, challenge classification, and adapter-specific authenticated-session recovery. Public direct readers, including `extract`, `web read`, and DBLP requests, do not import browser cookies. Browser verification affects a later API retry only through an adapter that explicitly declares and consumes those credentials. Web Bot Auth enrollment and a general CAPTCHA solver are outside the implemented capability set.
+`extract` and `web read` start with an anonymous request. A 401, 403, or verification challenge can trigger a retry with domain-scoped saved cookies, followed by fresh cookies from the selected browser profile. The reader uses at most three authentication stages. Explicit third-party readers receive no source-site cookies. Read-only HTTP adapters that declare cookie authentication share a separate one-refresh retry in the execution runtime. Browser operations recover through a new browser turn. `--no-auth-retry` disables automatic credential recovery for both HTTP adapters and direct URL reads. See [Authentication](/guide/authentication) for profile selection, explicit imports, and `--no-auth-retry`.
+
+[Cloudflare Web Bot Auth](https://developers.cloudflare.com/bots/reference/bot-verification/web-bot-auth/) requires a recognized operator key and verified HTTP signatures. Admission remains a source-side decision. Use each source's supported API or authenticated browser flow when a challenge remains unresolved. Web Bot Auth enrollment and a general CAPTCHA solver are outside the implemented capability set.
 
 ## Compare the appropriate boundary
 
@@ -732,69 +808,115 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/authentication.md
 - Section: Use Uni-CLI
 - Parent: Use Uni-CLI (/guide/)
 
-Each operation declares how it connects to its target. Public operations run immediately. Cookie and header operations read site credentials. Browser operations use a managed or existing browser session.
+Uni-CLI reuses the login from a selected local browser profile when an operation needs cookies. Public requests start anonymously. API keys and header credentials follow the requirements declared by each adapter. Browser operations use the selected browser session.
 
-## Start with the error envelope
+## Start with the operation
 
-Run the operation once. When login is required, Uni-CLI returns `auth_required` with the matching setup command.
+Run the command you need. For a read-only HTTP command that declares cookie authentication, Uni-CLI first uses a usable saved credential or the selected browser profile. If the source returns `auth_required` or `challenge_required`, the runtime refreshes the declared credentials and retries once. CLI, MCP, ACP, and hub calls share this recovery path.
+
+To inspect the credential requirements, run the setup command from the error response.
 
 ```bash
 unicli auth setup <site>
 ```
 
-This shows the fields expected by the adapter and where Uni-CLI will read them.
+The result lists expected cookie names, the connection strategy, and the location used for explicit persistence. Sign in to the site in the intended browser profile, then retry the original operation.
 
-## Import a browser login
+## Select the browser identity
 
-List local browser profiles:
+List the local browser profiles.
 
 ```bash
 unicli browser profiles --json
 ```
 
-Import credentials from a selected browser:
+When several profiles exist, select the identity whose browser already has the required login. Copy its profile ID from the result and set it in the environment used by the agent host.
+
+```bash
+export UNICLI_BROWSER_PROFILE_ID="<profile-id>"
+```
+
+Selection follows the explicit profile ID, then the profile bound to the current managed invocation, then `UNICLI_BROWSER_PROFILE_ID`. Native Chrome and remote connections keep their own identity and do not imply a local profile. A machine with exactly one discovered profile can use it automatically. Multiple profiles without a selection produce an ambiguity error so that the next step can identify the intended account.
+
+## Persist a login explicitly
+
+Normal credential acquisition keeps browser values in memory. Use `auth import` when a site credential should remain available across later commands without reading the browser again.
+
+```bash
+unicli auth import <site> --profile-id <profile-id>
+```
+
+The established browser-name form remains available.
 
 ```bash
 unicli auth import <site> --browser chrome
 ```
 
-Then validate the saved site credentials:
+If that browser has several profiles, add `--profile <name>` with the profile directory name. Select one identity mechanism per import. `--profile-id`, `--browser` with `--profile`, and `--cdp` are separate choices.
+
+Check the saved file after importing.
 
 ```bash
 unicli auth check <site>
 ```
 
-`auth list` shows the sites configured for the current user.
+`auth check` checks that the saved cookie file contains usable values and the required keys. Run the original source command to confirm that the remote service accepts the credential.
+
+List sites with saved credentials.
 
 ```bash
 unicli auth list
 ```
 
-## Use a live browser session
+## Browser operations and Windows cookie import
 
-Some operations work through a signed-in tab. Start by reading browser health:
+Browser operations read and act through their own selected session. Start with browser health.
 
 ```bash
 unicli browser doctor --json
 ```
 
-For background control of an existing Chrome profile:
+For background control of an existing Chrome profile, use the background mode.
 
 ```bash
 unicli browser --background start
 ```
 
-For visible foreground control:
+For visible foreground control, select focus explicitly.
 
 ```bash
 unicli browser --focus start
 ```
 
-A browser command can also require the expected domain and path, which keeps the action attached to the intended page.
+On Windows, Chrome v20 cookies require the browser API. Install and connect the browser extension and native host following doctor’s instructions, then use the explicit connection-based import.
 
-## Where credentials live
+```bash
+unicli auth import <site> --cdp
+```
 
-Explicit imports are stored per site under `~/.unicli/cookies/`. Live browser values stay with the active browser session. Uni-CLI reports the selected source in its diagnostic output.
+A standalone Windows `auth import --cdp` selects the background Chrome/native connection. On macOS, a standalone call uses the managed hidden browser; use `--profile-id` for an ordinary signed-in local profile. Starting a browser in one CLI process does not bind a later `auth import` process to that session. Automatic local-profile acquisition retains its selected identity.
+
+Browser commands can also require an expected domain and path, keeping each action attached to its intended page.
+
+## Control automatic recovery
+
+Read-only HTTP commands with declared cookie authentication refresh once after a confirmed authentication failure. Use `--no-auth-retry` to disable automatic credential recovery for a call. Network and HTTP-status retries retain their own policy.
+
+```bash
+unicli --no-auth-retry <site> <command> -f json
+```
+
+HTTP writes require an explicit `--auth-retry` opt-in for a single credential refresh and retry after a confirmed authentication failure. If a command reports `operation_outcome_ambiguous`, inspect the resource before deciding whether to repeat the write.
+
+Browser-backed commands retain their own turn lifecycle. A browser authentication failure returns directly; complete the required login and start a new operation. Shared HTTP credential retry does not replay a finished browser turn.
+
+For general URLs, `extract` and `web read` make an anonymous request first. Only a 401, 403, or verification challenge starts credential acquisition for the requested domain. The reader can then try saved cookies and fresh browser cookies, through at most three authentication stages. `--no-auth-retry` disables automatic cookie acquisition and recovery. Explicit third-party readers receive the URL without forwarding the source site's cookies.
+
+## Storage and lifetime
+
+Explicit imports are saved per site under `~/.unicli/cookies/`. Files contain plaintext JSON. On macOS and Linux, Uni-CLI uses directory mode `0700` and file mode `0600`; Windows access follows the path's ACL. Keep these files out of source control and use `auth import` to replace an outdated saved login.
+
+Automatically acquired browser cookies remain in memory for the invocation. A refreshed invocation does not rewrite the saved site file. Diagnostic output identifies the selected credential source without printing its values.
 
 ## Diagnose a login problem
 
@@ -804,7 +926,7 @@ unicli doctor cookies
 unicli browser doctor --json
 ```
 
-Use the `checks[].next_step` field from browser doctor as the next command. It reflects the installed browser, available profiles, broker state, and managed policies on the current machine.
+Read the credential error first, then follow `checks[].next_step` from browser doctor. It reflects installed browsers, available profiles, broker state, and managed policies. An empty profile needs a login in that profile. An ambiguous selection needs a profile ID. A verification page needs the source's declared browser or API flow before the original operation can succeed.
 
 ---
 
@@ -843,6 +965,8 @@ Use an existing Chrome session in the background.
 ```bash
 unicli browser --background start
 ```
+
+The mode applies to the current CLI invocation. Include `--background` on each follow-up command to keep using the existing Chrome provider. The following unqualified commands use the default hidden managed browser.
 
 Open a page and inspect its accessible state.
 
@@ -892,7 +1016,7 @@ unicli compute screenshot --via driver -f json
 
 Inspect the screenshot, choose the target in its pixel coordinates, and pass `.data.observation.ref` to `compute point-click <x> <y> --observation <ref> --via driver`. Each observation expires after 30 seconds and permits one coordinate action. Capture a new screenshot after the visible target changes or the driver restarts.
 
-Uni-CLI forwards capture identity, driver session, and screenshot coordinates. Cua Driver owns Retina scaling and size-capped capture transforms. Live macOS checks on 2026-10-10 confirmed driver 0.34.0, permissions, and screenshots. Behavioral scenarios separately cover capture-bound coordinates, Retina scaling, and single-use observations. Missing permissions and provider failures return structured recovery information.
+Uni-CLI forwards the capture identity, driver session, and screenshot coordinates to Cua Driver. The driver applies Retina scaling and the coordinate transform for size-capped captures. Use coordinates from the returned image without applying an additional display-scale adjustment. Missing permissions and provider failures return structured recovery information with the next setup action.
 
 ## Choose the smallest useful interface
 
@@ -957,7 +1081,7 @@ Run `unicli describe arxiv download` if the downloaded filename differs from the
 
 ## Set up a signed-in site
 
-Start with the operation. The error envelope will identify missing authentication.
+Start with the operation. The error envelope identifies missing authentication.
 
 ```bash
 unicli <site> <command> -f json
@@ -1058,7 +1182,7 @@ unicli describe <site> <command> --full -f json
 unicli <site> <command> [args] --dry-run -f json
 ```
 
-For commands covered by the local permission policy, Uni-CLI will return the exact approval step with the planned arguments.
+For commands covered by the local permission policy, Uni-CLI returns the exact approval step with the planned arguments.
 
 ---
 
@@ -1254,6 +1378,8 @@ unicli scholar search "program synthesis" --venue PLDI --year 2025
 
 DBLP supplies proceedings for CCF venues whose publisher does not expose a suitable paper API, including Springer-backed CAV and FM. When a volume is published in a later calendar year, Uni-CLI reports the conference year in `year` and retains the deposit year in `publication_year`.
 
+A `dblp search` verification failure includes an explicit SPARQL query in `error.alternatives[0]`. Run that `unicli extract` command to search titles by the input phrase through the official knowledge graph, or pass its URL to `retrieval acquire` to save the JSON. This route uses case-insensitive literal phrase matching and preserves limit and offset. The [Internet access guide](/guide/internet-access) describes the response fields and ordering.
+
 FAST, NSDI, OSDI, USENIX Security, and the former USENIX ATC series have a first-party USENIX adapter. It reads official technical-session pages and fetches presentation metadata. A PDF is returned only when the official page exposes `citation_pdf_url`.
 
 ```bash
@@ -1277,7 +1403,7 @@ unicli scholar venue VLDB --year 2025
 unicli scholar venue "PPoPP 2025"
 ```
 
-`scholar search` extracts a CCF conference and year from the free-form query when possible. It removes proceedings front matter and applies final venue and year checks. A miss can trigger one bounded spelling-recovery pass. Corrected tokens appear in `query_corrections`, while `search_query` records the executed query.
+`scholar search` extracts a CCF conference and year from the free-form query when possible. It removes proceedings front matter and applies final venue and year checks. A miss can trigger one bounded spelling-recovery pass. Corrected tokens appear in `query_corrections`, and `search_query` records the executed query.
 
 ```bash
 unicli scholar search "PPoPP 2025 parallel programming"
@@ -1456,7 +1582,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/openreview-archive
 
 ## Start an archive
 
-Pass a venue group ID or OpenReview group URL:
+Pass a venue group ID or OpenReview group URL.
 
 ```bash
 unicli openreview conference "ICML.cc/2026/Conference" \
@@ -1476,7 +1602,7 @@ The venue group's configuration identifies submissions and decision headings acr
 
 ## Use a signed-in session
 
-When OpenReview asks for a login or browser challenge, inspect local profiles and browser health:
+When OpenReview asks for a login or browser challenge, inspect local profiles and browser health.
 
 ```bash
 unicli browser profiles --json
@@ -1504,7 +1630,7 @@ openreview-archives/
 
 ## Resume
 
-The manifest records progress and committed cursors. Run the same command again after an interruption:
+The manifest records progress and committed cursors. Run the same command again after an interruption.
 
 ```bash
 unicli openreview conference "ICML.cc/2026/Conference" \
@@ -1516,7 +1642,7 @@ Completed artifacts are recognized from the manifest and hashes.
 
 ## Metadata first
 
-Use metadata-only mode to collect threads, edits, decisions, and artifact references before downloading files:
+Use metadata-only mode to collect threads, edits, decisions, and artifact references before downloading files.
 
 ```bash
 unicli openreview conference "NeurIPS.cc/2025/Conference" \
@@ -1541,7 +1667,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/adapters.md
 - Section: Build
 
-An adapter turns a useful action into a searchable Uni-CLI operation. YAML is the default format: it keeps metadata, arguments, and pipeline steps together in one file.
+An adapter turns a useful action into a searchable Uni-CLI operation. YAML is the default format. It keeps metadata, arguments, and pipeline steps together in one file.
 
 ## Create the file
 
@@ -1553,7 +1679,7 @@ The generated file lives under `src/adapters/example/search.yaml`. Use `-o` to c
 
 ## Describe the operation
 
-A small public HTTP adapter can look like this:
+A small public HTTP adapter can look like this.
 
 ```yaml
 site: hackernews
@@ -1651,7 +1777,7 @@ When the behavior is durable, add the smallest adjacent test or fixture that exe
 
 TypeScript adapters are useful for SDKs, streaming protocols, stateful services, and control flow that maps poorly to a YAML pipeline. They register the same operation metadata and return the same envelope shape.
 
-The [Adapter format](/ADAPTER-FORMAT#typescript-escape-hatch) page contains the TypeScript contract.
+The [Adapter format](/ADAPTER-FORMAT#typescript-adapters) page contains the TypeScript contract.
 
 ---
 
@@ -2135,7 +2261,7 @@ unicli plugin inspect ./unicli-plugin-astronomy -f json
 unicli plugin inspect astronomy -f json
 ```
 
-An optional root `mcp.json` is inspected as client configuration. Uni-CLI reports supported server descriptor types but does not project them as operations, start them, or connect to them. The client that installs the package owns MCP execution and permission behavior. Invalid MCP configuration does not disable independently valid Skills.
+An optional root `mcp.json` is inspected as client configuration. Uni-CLI reports supported server descriptor types. Inspection leaves their execution to the installing client and creates no projected operations or server connections. The client that installs the package owns MCP execution and permission behavior. Invalid MCP configuration does not disable independently valid Skills.
 
 ## Uni-CLI runtime manifest
 
@@ -2362,6 +2488,19 @@ Available global output formats follow.
 
 Preview argument resolution and the selected pipeline with `--dry-run`.
 
+## Internet resources
+
+`retrieval search` returns ranked source records. `extract` reads one URL into a bounded evidence document. `retrieval acquire` saves a selected collection, including original files and structured text companions.
+
+```bash
+unicli retrieval search "graph databases" --sources dblp,arxiv --limit 5 -f json
+unicli extract https://example.com --max-chars 12000 -f json
+unicli retrieval acquire "graph databases" --limit 5 --dir ./research -f json
+unicli retrieval acquire --resume ./research/results.json -f json
+```
+
+Use `--max-resources` to limit additional file links, `--max-bytes` to bound each original, and `--refresh true` to refetch completed resources. The [Internet access guide](/guide/internet-access) explains result fields, partial failures, and resume behavior.
+
 ## Updates
 
 | Command                                      | Purpose                                  |
@@ -2387,6 +2526,8 @@ See [Keep Uni-CLI current](/guide/upgrading) for Agent metadata and installation
 | `unicli auth list`                           | List configured sites                   |
 | `unicli doctor cookies`                      | Diagnose browser cookie access          |
 
+Choose a local identity with `auth import <site> --profile-id <id>`. `auth check` validates the saved file locally; the original source command confirms remote acceptance. Read-only HTTP commands with declared cookies can refresh once after authentication failure. `--no-auth-retry` disables recovery. See [Authentication](/guide/authentication) for profile precedence, Windows connection-based import, and browser-turn recovery.
+
 ## Browser
 
 | Command                             | Purpose                                            |
@@ -2405,7 +2546,7 @@ Run `unicli help browser` for the complete action list.
 
 | Command                                         | Purpose                      |
 | ----------------------------------------------- | ---------------------------- |
-| `unicli doctor compute -f json`                 | Check desktop providers      |
+| `unicli doctor compute --json`                  | Check desktop providers      |
 | `unicli compute snapshot --app <name>`          | Read an application snapshot |
 | `unicli compute click <ref> --app <name>`       | Activate an element          |
 | `unicli compute type <ref> <text> --app <name>` | Enter text                   |
@@ -2432,7 +2573,7 @@ Run `unicli help browser` for the complete action list.
 | `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
 | `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
-Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` while creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` when creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 
 ## Plugins
 
@@ -2482,7 +2623,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1892 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1893 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -2808,7 +2949,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | qwen | web-api | 8 | 1 | yes | unicli qwen history<br>unicli qwen ask<br>unicli qwen read |
 | rednote | web-api | 7 | 2 | yes | unicli rednote feed<br>unicli rednote notifications<br>unicli rednote note |
 | rest-countries | web-api | 2 | 0 | no | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | 0 | no | unicli retrieval search<br>unicli retrieval sources |
+| retrieval | web-api | 3 | 0 | no | unicli retrieval search<br>unicli retrieval acquire<br>unicli retrieval sources |
 | rfc | web-api | 1 | 0 | no | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | 0 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | 0 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
@@ -2952,7 +3093,7 @@ The namespace before a command, such as `hackernews` in `unicli hackernews top`.
 
 ## Strategy
 
-The connection method declared by a web adapter: `public`, `cookie`, `header`, `intercept`, or `ui`.
+The connection method declared by a web adapter, chosen from `public`, `cookie`, `header`, `intercept`, or `ui`.
 
 ## User adapter
 
@@ -2977,7 +3118,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.2.1. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.3.0. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
@@ -3193,27 +3334,27 @@ Each root CLI measurement starts a new process. Adapter fixture timing covers in
 
 | command boundary      | wall p50 | wall p95 | evidence class                         |
 | --------------------- | -------- | -------- | -------------------------------------- |
-| `unicli --version`    | 32 ms    | 34 ms    | new subprocess, constant metadata path |
-| `unicli --help`       | 30 ms    | 34 ms    | new subprocess, concise root help      |
-| `unicli list -f json` | 350 ms   | 526 ms   | new subprocess, manifest fast path     |
+| `unicli --version`    | 29 ms    | 31 ms    | new subprocess, constant metadata path |
+| `unicli --help`       | 28 ms    | 31 ms    | new subprocess, concise root help      |
+| `unicli list -f json` | 231 ms   | 244 ms   | new subprocess, manifest fast path     |
 
 ### Full catalog response size
 
 | metric                                | value  |
 | ------------------------------------- | ------ |
-| response tokens                       | 136826 |
-| response chars                        | 492572 |
+| response tokens                       | 136947 |
+| response chars                        | 493006 |
 | distinct site labels in `list` output | 349    |
-| command rows in `list` output         | 2010   |
+| command rows in `list` output         | 2011   |
 
 ### Adapter call p50 and p95 response tokens
 
 | category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
 | --------- | ---------------------------------------- | ----------------- | ------------------- | ------------------- | ----------- | ----------- | ------- |
-| news      | `unicli hackernews top --limit 5`        | 9                 | 404                 | 404                 | 0.003       | 0.005       | fixture |
-| social    | `unicli reddit hot --limit 5`            | 8                 | 415                 | 415                 | 0.004       | 0.007       | fixture |
+| news      | `unicli hackernews top --limit 5`        | 9                 | 404                 | 404                 | 0.003       | 0.006       | fixture |
+| social    | `unicli reddit hot --limit 5`            | 8                 | 415                 | 415                 | 0.004       | 0.006       | fixture |
 | social-cn | `unicli 36kr hot --limit 5`              | 7                 | 357                 | 357                 | 0.003       | 0.003       | fixture |
-| dev       | `unicli github-trending daily --limit 5` | 11                | 400                 | 400                 | 0.004       | 0.011       | fixture |
+| dev       | `unicli github-trending daily --limit 5` | 11                | 400                 | 400                 | 0.004       | 0.004       | fixture |
 
 ### Public call budget
 
@@ -3237,23 +3378,23 @@ The public response target for common list operations is 600 total tokens or les
 
 ## Local ranking against strong baselines
 
-Measured on 2026-10-10 with Node 26.11.1 on an Apple M4 Pro. Every method receives the same 2,013 built-in and core command documents, including 2,010 discoverable documents. Host inventory and user overlays are disabled for all methods. The frozen comparison uses the complete `a3ccd598` source tree.
+Measured on 2026-10-10 with Node 26.11.1 on an Apple M4 Pro. Every method receives the same 2,014 built-in and core command documents, including 2,011 discoverable documents. Host inventory and user overlays are disabled for all methods. The frozen comparison uses the complete `a3ccd598` source tree.
 
 ```bash
 npm run build
 BENCH_RUNS=5 BENCH_COLD_RUNS=9 npm run bench:search
 ```
 
-The historical set contains 617 positive and 26 negative queries. A separate 32-query set covers academic providers, model lookup, topical boundaries, and explicit sources, with four additional no-match queries. The 32 cases informed this iteration's fixes and remain a diagnostic set. Their post-fix score measures those cases; an unseen-test estimate requires a separate holdout.
+The historical set contains 617 positive and 26 negative queries. A separate 32-query set covers academic providers, model lookup, topical boundaries, and explicit sources, with four additional no-match queries. The 32 cases were used to diagnose and repair ranking failures and remain a diagnostic set. Their post-fix score measures those cases; an unseen-test estimate requires a separate holdout.
 
 | Method                     | Historical Top-1 | Top-3   | Top-5   | MRR@5  | Diagnostic Top-1 | Resident p50 ms | Resident p95 ms |
 | -------------------------- | ---------------- | ------- | ------- | ------ | ---------------- | --------------- | --------------- |
-| Frozen Uni-CLI `a3ccd598`  | 482/617          | 557/617 | 577/617 | 0.8446 | 20/32            | 0.057           | 0.223           |
-| Current Uni-CLI            | 482/617          | 557/617 | 577/617 | 0.8446 | 26/32            | 0.053           | 0.199           |
-| BM25                       | 443/617          | 533/617 | 560/617 | 0.7913 | 19/32            | 0.020           | 0.085           |
-| TF-IDF cosine              | 454/617          | 544/617 | 566/617 | 0.8129 | 16/32            | 0.018           | 0.083           |
-| MiniSearch 7.2.0 BM25+     | 429/617          | 512/617 | 553/617 | 0.7678 | 15/32            | 0.043           | 0.174           |
-| MiniSearch BM25+ fuzzy 0.2 | 409/617          | 521/617 | 559/617 | 0.7581 | 13/32            | 0.152           | 0.450           |
+| Frozen Uni-CLI `a3ccd598`  | 482/617          | 556/617 | 577/617 | 0.8444 | 20/32            | 0.057           | 0.228           |
+| Current Uni-CLI            | 482/617          | 556/617 | 577/617 | 0.8444 | 26/32            | 0.052           | 0.191           |
+| BM25                       | 443/617          | 533/617 | 560/617 | 0.7913 | 19/32            | 0.020           | 0.083           |
+| TF-IDF cosine              | 454/617          | 544/617 | 566/617 | 0.8129 | 16/32            | 0.018           | 0.080           |
+| MiniSearch 7.2.0 BM25+     | 429/617          | 512/617 | 553/617 | 0.7678 | 15/32            | 0.043           | 0.172           |
+| MiniSearch BM25+ fuzzy 0.2 | 409/617          | 521/617 | 559/617 | 0.7581 | 13/32            | 0.153           | 0.456           |
 
 Resident samples interleave all methods over 3,395 queries per method. The full routers include query analysis, intent routing, scoring, top-five selection, and result shaping. Lexical baselines use the same frozen bilingual tokenization and alias expansion. BM25 uses `k1=1.2, b=0.75`; MiniSearch uses its shipped BM25+ defaults with exact matching and the documented fuzzy preset. Parameters remain fixed throughout the comparison.
 
@@ -3261,7 +3402,19 @@ The current router preserves the historical results and resolves six source-vers
 
 ### Separate cold boundary
 
-Nine fresh processes per full router include ESM import, index construction, and the first query. Baseline and current median process times are 84.396 ms and 82.326 ms. Median ready times are 50.470 ms and 49.725 ms. These samples exclude CLI argument parsing and host inventory. The cold CLI measurements above retain their own boundary. The report's single in-process build sample is descriptive; repeated cold samples provide the build comparison.
+Nine fresh processes per full router include ESM import, index construction, and the first query. Baseline and current median process times are 83.823 ms and 82.790 ms. Median ready times are 50.160 ms and 48.659 ms. These samples exclude CLI argument parsing and host inventory. The cold CLI measurements above retain their own boundary. The report's single in-process build sample is descriptive; repeated cold samples provide the build comparison.
+
+## Resident evidence-relevance scoring
+
+`npm run bench:relevance` compares the evidence scorer with the fixed `9634121c` source. On Apple M4 Pro, darwin-arm64, and Node 26.11.1, nine alternating rounds measured batches of 10,000 `scoreRetrievalAlternatives` calls. The median batch took 31.5234 ms for the baseline and 18.4456 ms for the current scorer, a 1.709× ratio.
+
+```bash
+npm run bench:relevance
+```
+
+The fixed workload combines 20 queries with 500 constructed records, including multilingual text, punctuation, alternatives, empty input, and overlapping terms. Complete-result comparisons cover both values of `requireAllTerms`. All 20,000 comparisons matched. Each implementation receives one warm-up batch before the alternating measurements.
+
+The measured call includes field normalization, term matching, scoring, and alternative selection. Query analyses are prepared once. Process startup, module loading, network requests, and file I/O are outside this timing boundary. These results establish the scorer's behavior and cost on the fixed workload; end-to-end source retrieval has separate network and acquisition costs. Raw samples and environment details are in `bench/retrieval-relevance.results.json`.
 
 ## Live representation and provider measurements
 
@@ -3286,7 +3439,7 @@ The comparison keeps each product inside its declared boundary. Catalog totals m
 
 | Product                                               | Source revision                                                                                                 | Declared surface                               | Current scale                                                           |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Uni-CLI                                               | working tree on 2026-10-10                                                                                      | web, browser, desktop, system, and local tools | 338 sites and 1892 commands                                             |
+| Uni-CLI                                               | working tree on 2026-10-10                                                                                      | web, browser, desktop, system, and local tools | 338 sites and 1893 commands                                             |
 | [OpenCLI](https://github.com/jackwener/opencli)       | [77af6bc](https://github.com/jackwener/opencli/blob/77af6bc433c1818a4abb1c8928e2a7fd0bbae376/cli-manifest.json) | website and browser adapter runtime            | 169 sites and 1215 commands                                             |
 | [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [34f5195](https://github.com/HKUDS/CLI-Anything/blob/34f519533bc175d2fe287ab8316b0dd99bb9cc43/registry.json)    | stateful harnesses and capability matrices     | 79 harnesses, 24 public entries, 5 matrices, and 62 matrix capabilities |
 
@@ -3359,11 +3512,11 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.2.1 — Artemis · Wiseman.
+Current release: v1.3.0 — Artemis · Rubins.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1892<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1893<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
@@ -3401,7 +3554,7 @@ The authoring loop is moving toward shorter scaffolds, reusable site notes, focu
 
 ### Compact discovery
 
-Search, deferred MCP tools, and generated agent indexes are being tuned so a large catalog stays useful while loading only the schemas relevant to the task.
+Search, deferred MCP tools, and generated agent indexes select the commands and schemas relevant to each task.
 
 ## Later
 
@@ -3452,13 +3605,13 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.2.1 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
+v1.3.0 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
 
-The same catalog contains <span><!-- STATS:command_count -->1892<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
+The same catalog contains <span><!-- STATS:command_count -->1893<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
 ## How do I know which arguments a command accepts?
 
-Run:
+Run.
 
 ```bash
 unicli describe <site> <command>

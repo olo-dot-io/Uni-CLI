@@ -7,7 +7,7 @@ import { USER_AGENT } from "../../constants.js";
 import { intArg, str } from "../_shared/browser-tools.js";
 
 async function bilibiliJson(url: string): Promise<Record<string, unknown>> {
-  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
+  const cookies = await loadCookiesWithCDP("bilibili", "api.bilibili.com");
   const headers: Record<string, string> = {
     "user-agent": USER_AGENT,
     referer: "https://www.bilibili.com",
@@ -31,6 +31,7 @@ cli({
   description: "Get Bilibili video metadata by BV ID or URL",
   domain: "api.bilibili.com",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [{ name: "bvid", type: "str", required: true, positional: true }],
   columns: ["title", "author", "duration", "views", "bvid"],
   func: async (_page, kwargs) => {

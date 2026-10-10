@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-10T13:17:53.394Z",
+  "generated_at": "2026-10-10T15:07:47.653Z",
   "passed": true,
   "sources": {
     "captured_at": "2026-10-10",
@@ -43,7 +43,7 @@
   "uni": {
     "catalog": {
       "sites": 338,
-      "commands": 1892,
+      "commands": 1893,
       "generated_catalog_in_sync": true
     },
     "personal_content": {

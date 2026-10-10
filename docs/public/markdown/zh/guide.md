@@ -27,7 +27,7 @@ unicli hackernews top
 unicli describe hackernews top
 ```
 
-需要完整操作合同时，加上 `--full`。
+需要完整操作契约时，加上 `--full`。
 
 ```bash
 unicli describe hackernews top --full -f json

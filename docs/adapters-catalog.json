@@ -1,8 +1,8 @@
 {
-  "source": "unicli@1.2.1",
-  "generated": "2026-10-10T13:17:46.467Z",
+  "source": "unicli@1.3.0",
+  "generated": "2026-10-10T15:20:29.200Z",
   "total_sites": 338,
-  "total_commands": 1892,
+  "total_commands": 1893,
   "adapters": [
     {
       "site": "12306",
@@ -2287,7 +2287,8 @@
           "when_to_use": "Get Bilibili video metadata by BV ID or URL",
           "command": "unicli bilibili video",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup bilibili",
           "strategy": "public",
           "browser": false,
           "columns": ["title", "author", "duration", "views", "bvid"],
@@ -49157,7 +49158,8 @@
           "when_to_use": "When you need to search openreview for a specific query.",
           "command": "unicli openreview search",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -49200,7 +49202,8 @@
           "when_to_use": "Show full metadata for a single OpenReview paper",
           "command": "unicli openreview paper",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -49234,7 +49237,8 @@
           "when_to_use": "When you need to download media or files from openreview.",
           "command": "unicli openreview download",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": ["id", "title", "pdf_url", "path", "_download"],
@@ -49261,7 +49265,8 @@
           "when_to_use": "Download and extract text from an OpenReview paper PDF",
           "command": "unicli openreview read",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -49317,7 +49322,8 @@
           "when_to_use": "List OpenReview submissions by author profile id",
           "command": "unicli openreview author",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -49360,7 +49366,8 @@
           "when_to_use": "List papers at an OpenReview venue or invitation",
           "command": "unicli openreview venue",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -49408,7 +49415,8 @@
           "when_to_use": "Show paper, reviews, decisions, and comments for an OpenReview forum",
           "command": "unicli openreview reviews",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "strategy": "public",
           "browser": false,
           "columns": [
@@ -50943,6 +50951,124 @@
               "required": false,
               "positional": false,
               "description": "Maximum normalized candidates (1-100)"
+            }
+          ]
+        },
+        {
+          "name": "acquire",
+          "description": "Search or open a URL, save structured source documents, and download a bounded set of resource links; 搜索并下载资料，保存结构化结果，支持恢复重跑",
+          "when_to_use": "Search or open a URL, save structured source documents, and download a bounded set of resource links; 搜索并下载资料，保存结构化结果，支持恢复重跑",
+          "command": "unicli retrieval acquire",
+          "auth": false,
+          "auth_requirement": "optional",
+          "auth_setup": "gh auth login",
+          "strategy": "public",
+          "browser": false,
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": true,
+              "description": "Research query in any domain"
+            },
+            {
+              "name": "sources",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated exact refs, sites, kinds, or source classes; all selects automatic sources, while paid or configured providers require an exact ref or site"
+            },
+            {
+              "name": "kind",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Extensible result kind such as docs, paper, or dataset"
+            },
+            {
+              "name": "source_class",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional acquisition/provenance class"
+            },
+            {
+              "name": "repository",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional source role value such as GitHub OWNER/REPO"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Optional YYYY-MM-DD source filter where supported"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Fuse by source relevance or sort by verifiable timestamp"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum normalized candidates (1-100)"
+            },
+            {
+              "name": "resume",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Resume the selected resources in a saved results.json without repeating discovery"
+            },
+            {
+              "name": "dir",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Output directory for files, structured documents, and results.json"
+            },
+            {
+              "name": "concurrency",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum active resource downloads"
+            },
+            {
+              "name": "max_resources",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum additional file links from selected result pages; 0 downloads selected URLs only"
+            },
+            {
+              "name": "max_bytes",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum bytes per downloaded resource"
+            },
+            {
+              "name": "timeout_ms",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Deadline in milliseconds per downloaded resource"
+            },
+            {
+              "name": "refresh",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Fetch selected resources again instead of reusing completed files"
             }
           ]
         },

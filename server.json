@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.olo-dot-io/Uni-CLI",
-  "description": "Give agents every interface—search 338 sites and tools through 1892 declared operations across web, browser, desktop, local, and MCP surfaces.",
-  "version": "1.2.1",
+  "description": "Give agents every interface—search 338 sites and tools through 1893 declared operations across web, browser, desktop, local, and MCP surfaces.",
+  "version": "1.3.0",
   "repository": {
     "url": "https://github.com/olo-dot-io/Uni-CLI",
     "source": "github"
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@zenalexa/unicli",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "transport": {
         "type": "stdio"
       },

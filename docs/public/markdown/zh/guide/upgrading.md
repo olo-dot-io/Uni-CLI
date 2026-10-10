@@ -22,7 +22,7 @@ unicli upgrade --auto-update
 unicli upgrade --no-auto-update
 ```
 
-`UNICLI_AUTO_UPDATE=0` 会关闭当前环境的自动更新。`UNICLI_AUTO_UPDATE=1` 也会为持久化的交互式安装启用自动更新。环境变量的优先级高于持久化设置。
+`UNICLI_AUTO_UPDATE=0` 关闭当前环境的自动更新。`UNICLI_AUTO_UPDATE=1` 为持久化的交互式安装启用自动更新。环境变量优先级高于持久化设置。
 
 ## 检查已安装版本
 
@@ -48,9 +48,9 @@ unicli upgrade --skip-version
 
 ## Agent 更新信息
 
-已安装版本落后时，JSON、YAML 和 Markdown envelope 会带上 `meta.update`。`automatic_update.status` 会说明后台安装已经排队、正在运行、已经完成、等待重试，或者需要明确选择。
+已安装版本落后时，JSON、YAML 与 Markdown envelope 包含 `meta.update`。`automatic_update.status` 说明后台安装已排队、正在运行、已完成、等待重试或需要明确选择。
 
-MCP server 会把同一份信息放在 `_meta["io.unicli/update"]` 中。通过 `unicli-mcp` 启动的 server 也使用这套规则。
+MCP 服务会把同一份信息放在 `_meta["io.unicli/update"]` 中。通过 `unicli-mcp` 启动的服务也使用这套规则。
 
 ```json
 {
@@ -72,20 +72,20 @@ MCP server 会把同一份信息放在 `_meta["io.unicli/update"]` 中。通过 
 }
 ```
 
-Agent 仍然可以立即执行前台更新并确认结果。
+Agent 可以立即执行前台更新并确认结果。
 
 ```bash
 unicli upgrade --yes -f json
 unicli --version
 ```
 
-关闭自动更新以后，非交互进程如果没有传入 `--yes`，结果会返回 `confirmation_required`，其中包含确认、延后和跳过当前版本的命令。
+关闭自动更新后，非交互进程未传入 `--yes` 时返回 `confirmation_required`，包含确认、延后与跳过当前版本的命令。
 
 ## 包管理器与恢复
 
-Uni-CLI 可以识别持久化的全局 npm、pnpm 和 Bun 安装。自动安装和明确执行的安装都会锁定经过校验的准确版本，并且不经过 Shell 启动包管理器。
+Uni-CLI 识别持久化的全局 npm、pnpm 与 Bun 安装。自动安装与显式执行的安装均锁定校验后的准确版本，不经过 Shell 启动包管理器。
 
-本地 lease 会阻止多个 Agent 进程同时修改全局安装。失败结果会写入仅当前用户可读的状态文件，并在限定时间后重试。
+本地租约避免多个 Agent 进程同时修改全局安装。失败结果写入仅当前用户可读的状态文件，并在限定时间后重试。
 
 源码目录和临时执行环境需要明确指定包管理器，或者重新进行全局安装。
 

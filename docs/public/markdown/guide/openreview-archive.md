@@ -11,7 +11,7 @@
 
 ## Start an archive
 
-Pass a venue group ID or OpenReview group URL:
+Pass a venue group ID or OpenReview group URL.
 
 ```bash
 unicli openreview conference "ICML.cc/2026/Conference" \
@@ -31,7 +31,7 @@ The venue group's configuration identifies submissions and decision headings acr
 
 ## Use a signed-in session
 
-When OpenReview asks for a login or browser challenge, inspect local profiles and browser health:
+When OpenReview asks for a login or browser challenge, inspect local profiles and browser health.
 
 ```bash
 unicli browser profiles --json
@@ -59,7 +59,7 @@ openreview-archives/
 
 ## Resume
 
-The manifest records progress and committed cursors. Run the same command again after an interruption:
+The manifest records progress and committed cursors. Run the same command again after an interruption.
 
 ```bash
 unicli openreview conference "ICML.cc/2026/Conference" \
@@ -71,7 +71,7 @@ Completed artifacts are recognized from the manifest and hashes.
 
 ## Metadata first
 
-Use metadata-only mode to collect threads, edits, decisions, and artifact references before downloading files:
+Use metadata-only mode to collect threads, edits, decisions, and artifact references before downloading files.
 
 ```bash
 unicli openreview conference "NeurIPS.cc/2025/Conference" \

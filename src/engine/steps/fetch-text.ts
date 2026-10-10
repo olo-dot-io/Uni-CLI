@@ -52,6 +52,10 @@ export const MAX_TEXT_RESOURCE_BYTES = 5_000_000;
 const TEXTUAL_CONTENT_TYPE =
   /^(?:text\/|application\/(?:json|xml|xhtml\+xml|javascript|x-javascript|graphql|yaml|x-yaml|toml|x-toml|ndjson|x-ndjson|json-seq|csv|markdown|sql|x-www-form-urlencoded|[a-z0-9.+-]+\+(?:json|xml))$)/i;
 
+export function isTextualContentType(contentType: string): boolean {
+  return TEXTUAL_CONTENT_TYPE.test(contentType.split(";", 1)[0].trim());
+}
+
 const BINARY_SIGNATURES: ReadonlyArray<{
   bytes: readonly number[];
   contentType: string;
@@ -217,7 +221,7 @@ export async function fetchTextResource(
       const contentType = (resp.headers.get("content-type") ?? "")
         .split(";", 1)[0]
         .trim();
-      if (contentType && !TEXTUAL_CONTENT_TYPE.test(contentType)) {
+      if (contentType && !isTextualContentType(contentType)) {
         await resp.body?.cancel();
         throw unsupportedContentTypeError(requestUrl, contentType, stepIndex);
       }
@@ -244,7 +248,7 @@ export async function fetchTextResource(
         isHtmlVerificationChallenge(text)
       )
         throw challengeRequiredError(
-          requestUrl,
+          finalUrl,
           "fetch_text",
           stepIndex,
           resp.status,

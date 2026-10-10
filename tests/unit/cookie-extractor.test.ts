@@ -35,14 +35,19 @@ describe("cookie extraction", () => {
     await expect(extractCookiesViaCDP("example.com")).resolves.toEqual({
       sid: "broker-secret",
     });
-    expect(sendCDP).toHaveBeenCalledWith("Network.getCookies", {
-      urls: [
-        "https://example.com",
-        "https://www.example.com",
-        "http://example.com",
-        "http://www.example.com",
-      ],
-    });
+    expect(sendCDP).toHaveBeenCalledWith(
+      "Network.getCookies",
+      {
+        urls: [
+          "https://example.com",
+          "https://www.example.com",
+          "http://example.com",
+          "http://www.example.com",
+        ],
+      },
+      undefined,
+      undefined,
+    );
     expect(close).toHaveBeenCalledOnce();
   });
 

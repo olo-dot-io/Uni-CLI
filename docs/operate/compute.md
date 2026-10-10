@@ -158,8 +158,8 @@ provider diagnostic. Lifecycle receipts bind the requested named session.
 
 `compute capture` combines a structured snapshot and screenshot evidence into
 one reusable context packet for agents. Use it when the next step needs both
-addressable refs and pixels, or when you want to hand a compact state packet to
-another tool without making it re-read the app.
+addressable refs and pixels, or to pass a compact state packet to
+another tool without re-reading the app.
 
 ```bash
 unicli compute capture --app Calculator --format compact
@@ -200,9 +200,9 @@ consume one deterministic contract.
 
 ## System Overlay HUD
 
-The screenshot replay above is a frontend replay inside the docs page. It does
-not draw over arbitrary desktop apps. For a real system-level virtual pointer,
-opt in to the native HUD on mutating compute actions.
+The screenshot replay above runs inside the docs page. To show a system-level
+virtual pointer over desktop apps, opt in to the native HUD on mutating compute
+actions.
 
 ```bash
 unicli doctor compute --json
@@ -215,8 +215,8 @@ platform through `overlay/macos-appkit`, `overlay/windows-win32`, and
 `overlay/linux-gtk`. Non-host providers are reported as `skip`.
 On macOS, the check parses the generated Swift/AppKit
 daemon source and the normal doctor checks verify the Accessibility and
-Screen Recording permissions. In other words, macOS arbitrary visible app
-windows require both Accessibility and Screen Recording. On
+Screen Recording permissions. Capturing and controlling arbitrary visible app windows on macOS
+requires both Accessibility and Screen Recording. On
 Windows, the check parses the generated PowerShell/WinForms daemon and verifies
 that Windows Forms can load in the desktop session. On Linux, the check compiles
 the generated Python daemon and verifies the GTK/PyGObject/Cairo imports.
@@ -242,12 +242,10 @@ Successful JSON output includes both legacy `visual_timeline` and the richer
   content retains dimensions, SHA-256, the next single-use observation ref,
   and exact encoded-frame change evidence.
 
-This is intentionally not implemented as a Chrome extension. A Chrome extension
-can draw over Chrome pages only; it cannot cover arbitrary macOS apps such as
-Calculator, Figma, Xcode, or the Codex desktop window, and it cannot cover
-native Windows/Linux apps either. The system HUD is native-provider based and
-opt-in with `--overlay`. macOS uses AppKit, Windows uses a Win32/Windows Forms
-daemon, and Linux uses a GTK/Cairo daemon with an empty input shape.
+The native system HUD can cover desktop apps such as Calculator, Figma, Xcode,
+and Codex. Enable it with `--overlay`. macOS uses AppKit, Windows uses a
+Win32/Windows Forms daemon, and Linux uses a GTK/Cairo daemon with an empty
+input shape. A browser extension overlay remains confined to browser pages.
 
 `--save-reference` writes a local artifact directory under
 `~/.unicli/app-shots` and returns `[app-shots ...]` markup with image, content,
@@ -335,7 +333,7 @@ Failures include a `minimum_capability` key and may include a structured
 `remedy` with a command or deeplink. See
 [Compute Troubleshooting](troubleshooting.md) for the remedy catalog.
 
-Refs are target-bound capabilities, not reusable selectors. Native refs encode
+Refs grant capabilities over their captured target identity. Native refs encode
 the exact OS window id (`desktop-ax:window-…`, `desktop-uia:window-…`, or
 `desktop-atspi:window-…`) and CDP refs retain the exact renderer WebSocket.
 Legacy refs without this identity fail closed and require a fresh snapshot.
@@ -394,7 +392,7 @@ commands and configured visual-model backends. These checks are reported as
 `UNICLI_CUA_DRIVER_ARGS` to a JSON argv array, for example
 `["--socket","/path/to/socket"]`. Set `UNICLI_COMPUTE_PROVIDER_COMMAND` or the
 platform-specific
-`UNICLI_<PLATFORM>_COMPUTE_PROVIDER_COMMAND` environment variable when you want
+`UNICLI_<PLATFORM>_COMPUTE_PROVIDER_COMMAND` environment variable for
 Uni-CLI to probe an installed provider.
 
 ```bash

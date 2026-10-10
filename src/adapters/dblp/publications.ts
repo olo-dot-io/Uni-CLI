@@ -390,6 +390,25 @@ function extractPidFromAuthorHit(hit: DblpHit): string {
   return match ? requirePid(match[1]) : "";
 }
 
+function titleSearchAlternative(
+  query: string,
+  limit: number,
+  offset: number,
+): string {
+  const url = new URL("https://sparql.dblp.org/sparql");
+  url.searchParams.set(
+    "query",
+    [
+      "PREFIX dblp: <https://dblp.org/rdf/schema#>",
+      "SELECT ?paper ?title ?year WHERE { ?paper dblp:title ?title .",
+      `FILTER(CONTAINS(LCASE(STR(?title)), LCASE(${JSON.stringify(query)})))`,
+      "OPTIONAL { ?paper dblp:yearOfPublication ?year } }",
+      `ORDER BY DESC(?year) ?paper LIMIT ${limit} OFFSET ${offset}`,
+    ].join(" "),
+  );
+  return `unicli extract '${url.href}' -f json`;
+}
+
 export async function fetchDblp(
   path: string,
   label: string,
@@ -499,11 +518,30 @@ cli({
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
     const offset = requireDblpOffset(kwargs.offset);
-    const body = await fetchDblpJson(
-      `/search/publ/api?q=${encodeURIComponent(query)}&format=json&h=${limit}&f=${offset}`,
-      "dblp search",
-      context.signal,
-    );
+    let body: DblpSearchBody;
+    try {
+      body = await fetchDblpJson(
+        `/search/publ/api?q=${encodeURIComponent(query)}&format=json&h=${limit}&f=${offset}`,
+        "dblp search",
+        context.signal,
+      );
+    } catch (error) {
+      if (
+        error instanceof PipelineError &&
+        error.detail.errorType === "challenge_required"
+      ) {
+        throw new PipelineError(error.message, {
+          ...error.detail,
+          suggestion:
+            "DBLP CompleteSearch returned a verification page. The extract alternative queries the public DBLP knowledge graph for a case-insensitive literal title phrase, ordered by year descending and record URI.",
+          alternatives: [
+            titleSearchAlternative(query, limit, offset),
+            ...(error.detail.alternatives ?? []),
+          ],
+        });
+      }
+      throw error;
+    }
     const rows = hitList(body, "dblp search")
       .slice(0, limit)
       .map((hit, index) => mapPublicationHit(hit, offset + index + 1));

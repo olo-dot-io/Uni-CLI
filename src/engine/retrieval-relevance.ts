@@ -163,10 +163,23 @@ function termWeight(term: string): number {
   return 1 + lengthWeight + technicalWeight;
 }
 
+function isTokenBoundary(code: number): boolean {
+  return !((code >= 97 && code <= 122) || (code >= 48 && code <= 57));
+}
+
 function termAppears(text: string, term: string): boolean {
   if (/[^\p{ASCII}]/u.test(term)) return text.includes(term);
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "u").test(text);
+  for (
+    let offset = text.indexOf(term);
+    offset !== -1;
+    offset = text.indexOf(term, offset + 1)
+  ) {
+    const before = text.charCodeAt(offset - 1);
+    const after = text.charCodeAt(offset + term.length);
+    if (isTokenBoundary(before) && isTokenBoundary(after)) return true;
+    if (offset === text.length) break;
+  }
+  return false;
 }
 
 export function scoreRetrievalCandidate(
@@ -225,13 +238,15 @@ export function scoreRetrievalAlternatives(
   fields: RetrievalCandidateFields,
   options: { requireAllTerms?: boolean } = {},
 ): RetrievalRelevance {
-  const scores = analyses.map((analysis) =>
-    scoreRetrievalCandidate(analysis, fields, options),
-  );
-  const best = scores.sort(
-    (left, right) =>
-      Number(right.qualifies) - Number(left.qualifies) ||
-      right.score - left.score,
-  )[0];
+  let best: RetrievalRelevance | undefined;
+  for (const analysis of analyses) {
+    const score = scoreRetrievalCandidate(analysis, fields, options);
+    if (
+      !best ||
+      Number(score.qualifies) > Number(best.qualifies) ||
+      (score.qualifies === best.qualifies && score.score > best.score)
+    )
+      best = score;
+  }
   return best ?? { score: 0, matchedTerms: 0, qualifies: false };
 }

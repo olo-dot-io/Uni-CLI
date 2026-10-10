@@ -7,12 +7,12 @@ focus-taking.
 
 The Browser Runtime Broker follows the same rule. Its default managed provider
 runs hidden against a Uni-CLI-owned automation profile under `~/.unicli/`.
-Existing Chrome is a separate provider: `background` creates or claims an
+Existing Chrome is a separate provider. `background` creates or claims an
 inactive tab in an existing normal window and verifies that focus and active-tab
 state did not change; `foreground` is available only through explicit
 `--focus`/`--visibility foreground`. Status, doctor, and session probes are
 read-only and allocate no target or `about:blank` placeholder. The broker is
-machine-scoped and reusable, while each Agent session owns distinct targets and
+machine-scoped and reusable. Each Agent session owns distinct targets and
 may opt into a shared login/storage partition.
 
 ## Defaults
@@ -20,15 +20,15 @@ may opt into a shared login/storage partition.
 One request selects one column before execution. Mechanisms listed inside a
 column remain within that provider's target, permission, and error boundary.
 
-| Verb                 | desktop-ax (macOS)                                                                  | desktop-uia (Windows)                                | desktop-atspi (Linux)                                        | cdp-browser                   | visual (explicit)            |
-| -------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | ----------------------------- | ---------------------------- |
-| `compute click`      | AXPress, then pid/window-bounded background input when the same ref has coordinates | UIA Invoke/Toggle/Selection, then HWND-bounded input | AT-SPI Action, then target-bounded display input             | Attached renderer action      | Foreground coordinate action |
-| `compute type`       | AXValue, then pid/window-bounded Unicode input                                      | UIA Value/RangeValue, then HWND-bounded input        | AT-SPI Value/EditableText, then target-bounded display input | Attached renderer action      | Foreground coordinate input  |
-| `compute press`      | pid/window-bounded key event for an app-scoped target                               | UIA provider key dispatch                            | Display-server key dispatch owned by AT-SPI provider         | Attached renderer key event   | Foreground key event         |
-| `compute scroll`     | AX scroll action                                                                    | UIA Scroll, then provider-owned wheel input          | AT-SPI Component scroll, then provider-owned wheel input     | Attached renderer wheel event | Foreground wheel event       |
-| `compute screenshot` | Window/screen capture; Screen Recording may be required                             | Owning HWND bitmap or bounded crop                   | X11 window or Wayland bounded capture                        | Attached renderer capture     | Visual-provider capture      |
+| Verb                 | desktop-ax (macOS)                                                      | desktop-uia (Windows)                                | desktop-atspi (Linux)                                        | cdp-browser                   | visual (explicit)            |
+| -------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------ | ----------------------------- | ---------------------------- |
+| `compute click`      | AXPress with structured failure when semantic activation is unavailable | UIA Invoke/Toggle/Selection, then HWND-bounded input | AT-SPI Action, then target-bounded display input             | Attached renderer action      | Foreground coordinate action |
+| `compute type`       | AXValue with structured failure when semantic text input is unavailable | UIA Value/RangeValue, then HWND-bounded input        | AT-SPI Value/EditableText, then target-bounded display input | Attached renderer action      | Foreground coordinate input  |
+| `compute press`      | pid/window-bounded key event for an app-scoped target                   | UIA provider key dispatch                            | Display-server key dispatch owned by AT-SPI provider         | Attached renderer key event   | Foreground key event         |
+| `compute scroll`     | AX scroll action                                                        | UIA Scroll, then provider-owned wheel input          | AT-SPI Component scroll, then provider-owned wheel input     | Attached renderer wheel event | Foreground wheel event       |
+| `compute screenshot` | Window/screen capture; Screen Recording may be required                 | Owning HWND bitmap or bounded crop                   | X11 window or Wayland bounded capture                        | Attached renderer capture     | Visual-provider capture      |
 
-Source implementations: [desktop-ax](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/adapters/desktop-ax.ts),
+Source implementations include [desktop-ax](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/adapters/desktop-ax.ts),
 [desktop-uia](https://github.com/olo-dot-io/Uni-CLI/tree/main/crates/unicli-uia/src),
 [desktop-atspi](https://github.com/olo-dot-io/Uni-CLI/tree/main/crates/unicli-atspi/src),
 [cdp-browser](https://github.com/olo-dot-io/Uni-CLI/blob/main/src/transport/adapters/cdp-browser.ts), and
@@ -46,8 +46,8 @@ Source implementations: [desktop-ax](https://github.com/olo-dot-io/Uni-CLI/blob/
   `browser status`, and `browser sessions` inspect existing runtime state
   without starting a provider or allocating a target.
 - Chrome 136+ disables remote debugging for the browser's default
-  user-data-dir. Treat a process with `--remote-debugging-port` but no listening
-  port as a default-profile launch defect, not a retryable CDP race. The
+  user-data-dir. Treat a default-profile process with `--remote-debugging-port` and no listening
+  port as a profile-launch defect requiring repair. The
   correct repair is a process-verified live attach or a Uni-CLI-owned seeded
   automation profile selected from `unicli browser profiles --json`.
   `unicli browser doctor --json` reports this through profile-ownership and
@@ -55,20 +55,19 @@ Source implementations: [desktop-ax](https://github.com/olo-dot-io/Uni-CLI/blob/
   windowless broker; `unicli browser --provider managed start` explicitly
   starts the safe hidden managed provider. The `profile_source` section reports
   seeded, explicit ephemeral, unavailable, and policy-blocked paths; the
-  `chrome_remote_debugging` section also reports `RemoteDebuggingAllowed`:
+  `chrome_remote_debugging` section also reports `RemoteDebuggingAllowed`.
   `false` blocks every local CDP path until the managed Chrome policy is
-  removed or set true, while `true` still does not bypass the Chrome 136+
-  default-directory restriction. Empty profiles require explicit
+  removed or set true. Chrome 136+ also requires an independent user-data
+  directory when this policy is `true`. Empty profiles require explicit
   `unicli browser start --ephemeral` or `UNICLI_BROWSER_EPHEMERAL=1`.
-- macOS background input is not a global HID path. It resolves a running app
-  and on-screen window, installs per-process event taps for the previous and
-  target apps, sends an AppKit activation primer plus a center primer only when
-  the target is not already frontmost, then posts events with target pid and
-  window fields.
+- macOS semantic click and text input use the accessibility operation on the
+  bound ref. A failed semantic operation returns its error. Desktop-coordinate
+  input requires a new explicit driver or visual route. The provider’s
+  app-scoped key path binds events to the target process and window.
 - The macOS background path uses Accessibility and Input Monitoring
-  permissions. It may still fail for minimized, hidden, off-screen, disabled, or
-  security-hardened windows; those failures remain structured errors rather
-  than implicit foregrounding.
+  permissions. It may fail for minimized, hidden, off-screen, disabled, or
+  security-hardened windows. These cases return structured errors and keep the
+  requested focus mode.
 - Linux AT-SPI refs from `compute snapshot` / `compute find --first` can target
   `compute click`, `compute type`, `compute scroll`, `compute screenshot`,
   `compute wait`, `compute observe`, and `compute assert`. Descendant click,

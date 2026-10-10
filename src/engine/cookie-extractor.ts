@@ -13,6 +13,9 @@
  * @since       2026-04-05
  */
 
+import { cookieValuesForUrl } from "./cookie-scope.js";
+import { currentBrowserInvocationScope } from "../browser/invocation-scope.js";
+
 interface CDPCookie {
   name: string;
   value: string;
@@ -26,50 +29,81 @@ interface CDPCookie {
 export async function extractCookiesViaCDP(
   domain: string,
   port?: number,
+  url?: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, string>> {
-  if (port === undefined) return extractCookiesViaBroker(domain);
+  signal?.throwIfAborted();
+  if (port === undefined) return extractCookiesViaBroker(domain, url, signal);
   const { CDPClient, resolveCdpPort } =
     await import("../browser/cdp-client.js");
   const cdpPort = resolveCdpPort(port);
   const client = await CDPClient.connectToChrome(cdpPort);
 
-  return extractCookiesWithClient(domain, {
-    sendCDP: (method, params) => client.send(method, params),
-    close: () => client.close(),
-  });
+  return extractCookiesWithClient(
+    domain,
+    {
+      sendCDP: (method, params, sessionId, requestSignal) =>
+        client.send(method, params, sessionId, requestSignal),
+      close: () => client.close(),
+    },
+    url,
+    signal,
+  );
 }
 
 async function extractCookiesViaBroker(
   domain: string,
+  url?: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, string>> {
   const { BrowserBridge } = await import("../browser/bridge.js");
-  const page = await new BrowserBridge().connect();
-  return extractCookiesWithClient(domain, page);
+  signal?.throwIfAborted();
+  const page = await new BrowserBridge().connect(
+    process.platform === "win32" && !currentBrowserInvocationScope()
+      ? { provider: "chrome", visibility: "background" }
+      : undefined,
+  );
+  return extractCookiesWithClient(domain, page, url, signal);
 }
 
 interface CookieCommandClient {
-  sendCDP(method: string, params?: Record<string, unknown>): Promise<unknown>;
+  sendCDP(
+    method: string,
+    params?: Record<string, unknown>,
+    sessionId?: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
   close(): Promise<void>;
 }
 
 async function extractCookiesWithClient(
   domain: string,
   client: CookieCommandClient,
+  url?: string,
+  signal?: AbortSignal,
 ): Promise<Record<string, string>> {
   let result: Record<string, string> | undefined;
   let operationError: unknown;
   try {
-    const { cookies } = (await client.sendCDP("Network.getCookies", {
-      urls: [
-        `https://${domain}`,
-        `https://www.${domain}`,
-        `http://${domain}`,
-        `http://www.${domain}`,
-      ],
-    })) as { cookies: CDPCookie[] };
+    signal?.throwIfAborted();
+    const { cookies } = (await client.sendCDP(
+      "Network.getCookies",
+      {
+        urls: url
+          ? [url]
+          : [
+              `https://${domain}`,
+              `https://www.${domain}`,
+              `http://${domain}`,
+              `http://www.${domain}`,
+            ],
+      },
+      undefined,
+      signal,
+    )) as { cookies: CDPCookie[] };
+    signal?.throwIfAborted();
 
-    result = {};
-    for (const cookie of cookies) result[cookie.name] = cookie.value;
+    result = cookieValuesForUrl(cookies, url ?? `https://${domain}/`);
   } catch (error) {
     operationError = error;
   }

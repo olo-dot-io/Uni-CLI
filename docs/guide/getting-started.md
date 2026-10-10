@@ -56,7 +56,7 @@ unicli do "show my saved Xiaohongshu notes" -f json
 unicli describe hackernews top
 ```
 
-`describe` shows the accepted arguments and an example invocation. It is the fastest way to prepare a reliable agent call.
+`describe` shows the accepted arguments and an example invocation. Use it to prepare required values and check defaults before execution.
 
 ## 5. Run the operation
 
@@ -64,7 +64,7 @@ unicli describe hackernews top
 unicli hackernews top --limit 5 -f json
 ```
 
-A successful call returns a v2 envelope.
+A successful call returns a v2 envelope. Check `ok` before reading the records in `data`.
 
 ```json
 {

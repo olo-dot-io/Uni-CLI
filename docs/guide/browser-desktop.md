@@ -27,6 +27,8 @@ Use an existing Chrome session in the background.
 unicli browser --background start
 ```
 
+The mode applies to the current CLI invocation. Include `--background` on each follow-up command to keep using the existing Chrome provider. The following unqualified commands use the default hidden managed browser.
+
 Open a page and inspect its accessible state.
 
 ```bash
@@ -75,7 +77,7 @@ unicli compute screenshot --via driver -f json
 
 Inspect the screenshot, choose the target in its pixel coordinates, and pass `.data.observation.ref` to `compute point-click <x> <y> --observation <ref> --via driver`. Each observation expires after 30 seconds and permits one coordinate action. Capture a new screenshot after the visible target changes or the driver restarts.
 
-Uni-CLI forwards capture identity, driver session, and screenshot coordinates. Cua Driver owns Retina scaling and size-capped capture transforms. Live macOS checks on 2026-10-10 confirmed driver 0.34.0, permissions, and screenshots. Behavioral scenarios separately cover capture-bound coordinates, Retina scaling, and single-use observations. Missing permissions and provider failures return structured recovery information.
+Uni-CLI forwards the capture identity, driver session, and screenshot coordinates to Cua Driver. The driver applies Retina scaling and the coordinate transform for size-capped captures. Use coordinates from the returned image without applying an additional display-scale adjustment. Missing permissions and provider failures return structured recovery information with the next setup action.
 
 ## Choose the smallest useful interface
 

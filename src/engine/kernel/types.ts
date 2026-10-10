@@ -36,6 +36,8 @@ interface InvocationCore {
   permissionProfile?: string;
   approved?: boolean;
   rememberApproval?: boolean;
+  /** Read commands recover site credentials once by default; false disables recovery. */
+  authRetry?: boolean;
   /** Opaque one-shot credential capability created by an explicit auth refresh. */
   cookieInvocationOverride?: CookieInvocationOverride;
   /** Request-owned cancellation propagated by transports that support it. */

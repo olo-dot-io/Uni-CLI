@@ -8,14 +8,14 @@
 
 import type { IPage } from "../types.js";
 import { readCookies, type CookieRow } from "../engine/chromium-cookies.js";
+import { chromeExpiresToUnixSeconds } from "../engine/cookie-scope.js";
+import { currentBrowserInvocationScope } from "./invocation-scope.js";
 import {
   browserCookieIdForLocalProfile,
   selectLocalBrowserIdentity,
   type LocalBrowserProfile,
   type LocalProfileDiscoveryOptions,
 } from "./local-profiles.js";
-
-const WINDOWS_EPOCH_OFFSET_SECONDS = 11_644_473_600;
 
 export type BrowserAuthSyncResult =
   | {
@@ -67,9 +67,12 @@ export async function syncLocalProfileCookiesToPage(
   const domain = authSyncDomain(opts);
   if (!domain) return { status: "skipped", reason: "missing-domain" };
 
+  const scope = currentBrowserInvocationScope();
   const selection = selectLocalBrowserIdentity({
     ...opts,
-    profileId: opts.profileId,
+    profileId:
+      opts.profileId ??
+      (scope?.provider === "managed" ? scope.profileId : undefined),
   });
   if (selection.status === "ambiguous") {
     return {
@@ -110,9 +113,14 @@ export async function syncLocalProfileCookiesToPage(
     };
   }
 
-  const cookies = rows.map(toCDPCookie).filter((cookie) => {
-    return cookie.name.length > 0 && cookie.domain.length > 0;
-  });
+  const cookies = rows
+    .filter(
+      (row) =>
+        !row.hasExpires ||
+        chromeExpiresToUnixSeconds(row.expires) > Date.now() / 1000,
+    )
+    .map(toCDPCookie)
+    .filter((cookie) => cookie.name.length > 0 && cookie.domain.length > 0);
   if (cookies.length === 0) {
     return {
       status: "skipped",
@@ -151,7 +159,9 @@ function authSyncDomain(opts: BrowserAuthSyncOptions): string | undefined {
 }
 
 function toCDPCookie(row: CookieRow): CDPCookieParam {
-  const expires = chromeExpiresToUnixSeconds(row.expires);
+  const expires = row.hasExpires
+    ? chromeExpiresToUnixSeconds(row.expires)
+    : undefined;
   return {
     name: row.name,
     value: row.value,
@@ -161,14 +171,6 @@ function toCDPCookie(row: CookieRow): CDPCookieParam {
     httpOnly: row.httpOnly,
     ...(expires ? { expires } : {}),
   };
-}
-
-function chromeExpiresToUnixSeconds(expiresUtc: number): number | undefined {
-  if (!Number.isFinite(expiresUtc) || expiresUtc <= 0) return undefined;
-  const unixSeconds = Math.floor(
-    expiresUtc / 1_000_000 - WINDOWS_EPOCH_OFFSET_SECONDS,
-  );
-  return unixSeconds > 0 ? unixSeconds : undefined;
 }
 
 function browserIdForLocalProfile(profile: LocalBrowserProfile) {

@@ -84,7 +84,7 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change while Uni-CLI owns execution evidence and the promotion decision.
+Promotion requires strict validation improvement and no held-out regression. The installed override retains an exact rollback artifact. The Agent proposes the change. Uni-CLI owns execution evidence and the promotion decision.
 
 ## CLI, MCP, and ACP
 

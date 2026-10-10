@@ -56,6 +56,8 @@ unicli scholar search "program synthesis" --venue PLDI --year 2025
 
 DBLP supplies proceedings for CCF venues whose publisher does not expose a suitable paper API, including Springer-backed CAV and FM. When a volume is published in a later calendar year, Uni-CLI reports the conference year in `year` and retains the deposit year in `publication_year`.
 
+A `dblp search` verification failure includes an explicit SPARQL query in `error.alternatives[0]`. Run that `unicli extract` command to search titles by the input phrase through the official knowledge graph, or pass its URL to `retrieval acquire` to save the JSON. This route uses case-insensitive literal phrase matching and preserves limit and offset. The [Internet access guide](./internet-access) describes the response fields and ordering.
+
 FAST, NSDI, OSDI, USENIX Security, and the former USENIX ATC series have a first-party USENIX adapter. It reads official technical-session pages and fetches presentation metadata. A PDF is returned only when the official page exposes `citation_pdf_url`.
 
 ```bash
@@ -79,7 +81,7 @@ unicli scholar venue VLDB --year 2025
 unicli scholar venue "PPoPP 2025"
 ```
 
-`scholar search` extracts a CCF conference and year from the free-form query when possible. It removes proceedings front matter and applies final venue and year checks. A miss can trigger one bounded spelling-recovery pass. Corrected tokens appear in `query_corrections`, while `search_query` records the executed query.
+`scholar search` extracts a CCF conference and year from the free-form query when possible. It removes proceedings front matter and applies final venue and year checks. A miss can trigger one bounded spelling-recovery pass. Corrected tokens appear in `query_corrections`, and `search_query` records the executed query.
 
 ```bash
 unicli scholar search "PPoPP 2025 parallel programming"

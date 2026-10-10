@@ -200,14 +200,14 @@ const replaySteps: ReplayStep[] = [
 
 .demo-steps strong {
   color: var(--appica-foreground-intense);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.2;
 }
 
 .demo-steps span {
   margin-top: 5px;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 @media (max-width: 700px) {

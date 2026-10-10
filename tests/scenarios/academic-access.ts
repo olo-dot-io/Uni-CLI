@@ -67,6 +67,17 @@ const legacyPaper = {
     authorids: ["~Jane_Doe1"],
   },
 };
+const graphBindings = [
+  {
+    paper: { type: "uri", value: "https://dblp.org/rec/conf/demo/Alpha24" },
+    title: { type: "literal", value: 'A "Graph Database" paper' },
+    year: {
+      type: "literal",
+      datatype: "http://www.w3.org/2001/XMLSchema#gYear",
+      value: "2024",
+    },
+  },
+];
 const record = (key: string, year: string): string =>
   `<inproceedings key='${key}'><author pid='56/953'>Jane Doe 0001</author><title>A &amp; B <i>with markup</i>.</title><year>${year}</year><booktitle>Conference</booktitle><ee>https://doi.org/10.1234/example</ee></inproceedings>`;
 const json = (body: unknown, cache?: string): Response =>
@@ -105,6 +116,14 @@ globalThis.fetch = async (input, init) => {
       `public, max-age=${url.searchParams.get("q") === "expire" ? 1 : 120}`,
     );
   }
+  if (url.hostname === "sparql.dblp.org" && url.pathname === "/sparql")
+    return new Response(
+      JSON.stringify({
+        head: { vars: ["paper", "title", "year"] },
+        results: { bindings: graphBindings },
+      }),
+      { headers: { "content-type": "application/sparql-results+json" } },
+    );
   if (url.hostname === "dblp.org") {
     if (cancellationStarted) {
       cancellationStarted();
@@ -218,6 +237,8 @@ try {
     await import("../../src/engine/cookie-storage.js");
   const { refreshCookiesFromBrowser, runWithCookieInvocationOverride } =
     await import("../../src/engine/cookies.js");
+  const { readEvidenceDocument } =
+    await import("../../src/engine/evidence-reader.js");
   const run = async (
     site: string,
     name: string,
@@ -404,6 +425,99 @@ try {
     )
       failures.push("DBLP challenge lost its structured cause");
   }
+  for (const args of [
+    {
+      query: '  Graph "Database" \\ O\'Reilly\n中文 ")) } #  ',
+      limit: 2,
+      offset: 3,
+    },
+    { query: "图数据库", limit: 100, offset: Number.MAX_SAFE_INTEGER },
+    { query: "graph databases" },
+  ]) {
+    let continuation: string | undefined;
+    try {
+      await run("dblp", "search", args);
+      failures.push("DBLP challenge was silently replaced by graph results");
+    } catch (error) {
+      const detail = (
+        error as {
+          detail?: {
+            errorType?: string;
+            url?: string;
+            statusCode?: number;
+            suggestion?: string;
+            alternatives?: string[];
+          };
+        }
+      ).detail;
+      continuation = detail?.alternatives?.[0];
+      if (
+        detail?.errorType !== "challenge_required" ||
+        detail.statusCode !== 200 ||
+        !detail.url?.startsWith("https://dblp.org/search/publ/api?") ||
+        !detail.suggestion?.includes("case-insensitive literal title phrase") ||
+        !detail.suggestion.includes("year descending")
+      )
+        failures.push(
+          "DBLP continuation lost its source failure or distinct query semantics",
+        );
+    }
+    const urlValue = continuation?.match(
+      /^unicli extract '([^']+)' -f json$/,
+    )?.[1];
+    if (!urlValue) {
+      failures.push(
+        "DBLP graph continuation was not a shell-safe extract command",
+      );
+      continue;
+    }
+    const url = new URL(urlValue);
+    const sparql = url.searchParams.get("query") ?? "";
+    const literal = sparql.match(/LCASE\(("(?:\\.|[^"\\])*")\)\)\)/)?.[1];
+    if (
+      url.origin !== "https://sparql.dblp.org" ||
+      url.pathname !== "/sparql" ||
+      !literal ||
+      JSON.parse(literal) !== args.query.trim() ||
+      !sparql.endsWith(
+        `ORDER BY DESC(?year) ?paper LIMIT ${args.limit ?? 20} OFFSET ${args.offset ?? 0}`,
+      )
+    )
+      failures.push(
+        "DBLP graph URL changed literal query text, bounds or ordering",
+      );
+    const document = await readEvidenceDocument(urlValue);
+    const result = document.structured_data as {
+      results?: { bindings?: unknown[] };
+    };
+    if (
+      document.content_format !== "json" ||
+      document.source_url !== urlValue ||
+      document.http_status !== 200 ||
+      JSON.stringify(result?.results?.bindings) !==
+        JSON.stringify(graphBindings)
+    )
+      failures.push(
+        "DBLP continuation failed to preserve SPARQL rows through the extract reader",
+      );
+  }
+  for (const args of [
+    { query: " \n\t " },
+    { query: "graph", limit: 101 },
+    { query: "graph", offset: -1 },
+    { query: "graph", offset: Number.MAX_SAFE_INTEGER + 1 },
+  ]) {
+    const before = requests.length;
+    try {
+      await run("dblp", "search", args);
+      failures.push("Invalid DBLP search produced a query continuation");
+    } catch (error) {
+      if ((error as { code?: string }).code !== "invalid_input")
+        failures.push("Invalid DBLP search lost its input boundary");
+    }
+    if (requests.length !== before)
+      failures.push("Invalid DBLP search reached the network");
+  }
   dblpChallenge = false;
   dblpMalformed = true;
   try {
@@ -552,7 +666,7 @@ try {
         requests: requests.length,
         workflows: [
           "model search, pagination, details, fresh, restart, expiry and recovery",
-          "bibliography search, details, author, challenge and cancellation",
+          "bibliography search, details, author, explicit graph continuation, query escaping, bounds and cancellation",
           "paper search, details, author, authentication recovery and cancellation",
         ],
         failures,

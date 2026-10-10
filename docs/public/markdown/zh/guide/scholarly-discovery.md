@@ -20,9 +20,9 @@ unicli scholar trace "Attention Is All You Need" -D
 
 `scholar trace` 先确定论文记录，再用确定后的标题搜索 OpenReview。能够识别会议时，它还会检查官方会议程序，并查询代码与数据集来源。资源记录保留来源、关系证据和候选状态。
 
-显式传入的会议与年份会先约束论文记录，再参与关系连接。论文记录已经带有 OpenReview forum 标识符时，trace 会直接复用它读取 review 与 rebuttal。按标题寻找资源时，命令只连接论文标题精确一致的记录，避免相近论文的代码仓库混入结果。
+显式传入的会议与年份会先约束论文记录，再参与关系连接。论文记录已经带有 OpenReview 论坛标识符时，trace 会直接复用它读取评审和作者回复。按标题寻找资源时，命令只连接论文标题精确一致的记录，避免相近论文的代码仓库混入结果。
 
-出版元数据使用完整 proceedings 名称时，可以直接指定会议。
+出版元数据使用完整论文集名称时，可以直接指定会议。
 
 ```bash
 unicli scholar trace 10.1145/3772318.3791239 \
@@ -46,7 +46,7 @@ unicli ccf conference "USENIX ATC"
 
 ## 按会议和年份检索
 
-`scholar venue` 用于跨来源检索 proceedings。命令会先解析 CCF 缩写和旧名，再选择可用来源。ACM 与 IEEE 都会进入候选来源，因为 DOI 注册方可能随年份变化，也可能与目录中的出版方标签不同。精确会议和年份检查会剔除相近缩写以及其他年份的记录。位置参数已经包含年份时，例如 `PPoPP 2025`，可以省略 `--year`。
+`scholar venue` 用于跨来源检索论文集。命令会先解析 CCF 缩写和旧名，再选择可用来源。ACM 与 IEEE 都会进入候选来源，因为 DOI 注册方可能随年份变化，也可能与目录中的出版方标签不同。精确会议和年份检查会剔除相近缩写以及其他年份的记录。位置参数已经包含年份时，例如 `PPoPP 2025`，可以省略 `--year`。
 
 ```bash
 unicli scholar venue FAST --year 2025
@@ -56,9 +56,11 @@ unicli scholar venue FM --year 2024
 unicli scholar search "program synthesis" --venue PLDI --year 2025
 ```
 
-DBLP 为缺少适用论文接口的 CCF 会议提供 proceedings，其中包括 Springer 出版的 CAV 与 FM。卷册在次年出版时，Uni-CLI 会把会议年份写入 `year`，并把出版年份保留在 `publication_year`。
+DBLP 为缺少适用论文接口的 CCF 会议提供论文集，其中包括 Springer 出版的 CAV 与 FM。卷册在次年出版时，Uni-CLI 会把会议年份写入 `year`，并把出版年份保留在 `publication_year`。
 
-FAST、NSDI、OSDI、USENIX Security 和旧名 USENIX ATC 已接入 USENIX 官方来源。适配器读取官方 technical session 页面和 presentation 元数据。官方页面提供 `citation_pdf_url` 时，结果才包含 PDF。
+`dblp search` 遇到验证失败时，`error.alternatives[0]` 提供显式 SPARQL 查询。执行其中的 `unicli extract` 命令，可以通过官方知识图谱按输入短语检索标题；将其 URL 交给 `retrieval acquire` 可以保存 JSON。该入口采用忽略大小写的字面短语匹配，并保留 limit 与 offset。[互联网访问指南](/zh/guide/internet-access)说明结果字段与排序规则。
+
+FAST、NSDI、OSDI、USENIX Security 和旧名 USENIX ATC 已接入 USENIX 官方来源。适配器读取官方技术会议页面和报告元数据。官方页面提供 `citation_pdf_url` 时，结果才包含 PDF。
 
 ```bash
 unicli usenix venue FAST --year 2025
@@ -66,7 +68,7 @@ unicli usenix awards FAST --year 2025
 unicli usenix paper "https://www.usenix.org/conference/fast25/presentation/liu-jing"
 ```
 
-AAAI 主轨论文来自 AAAI 官方 proceedings 站点。OOPSLA、POPL、PLDI 和 ICFP 使用 PACMPL 会议视图，并保留卷号与 issue。OOPSLA 在 2021 年及以前使用旧 issue，从 2022 年起合并 OOPSLA1 与 OOPSLA2。FSE 2024 及后续年份通过 PACMSE 查询。SIGMOD 2023 及后续年份按照官方论文索引列出的 PACMMOD issue 查询，索引可以包含上一自然年发表的 issue。SIGGRAPH 通过 ACM Transactions on Graphics 的主会 issue 查询。VLDB 通过 Proceedings of the VLDB Endowment 查询。直接使用 `PACMPL`、`PACMSE`、`PACMMOD`、`PVLDB` 或 `VLDB` 可以列出对应期刊内容，同时避免误认成其他会议缩写。
+AAAI 主轨论文来自 AAAI 官方论文集站点。OOPSLA、POPL、PLDI 和 ICFP 使用 PACMPL 会议视图，并保留卷号与期号。OOPSLA 在 2021 年及以前使用旧期号，从 2022 年起合并 OOPSLA1 与 OOPSLA2。FSE 2024 及后续年份通过 PACMSE 查询。SIGMOD 2023 及后续年份按照官方论文索引列出的 PACMMOD 期号查询，索引可以包含上一自然年发表的期号。SIGGRAPH 通过 ACM Transactions on Graphics 的主会期号查询。VLDB 通过 Proceedings of the VLDB Endowment 查询。直接使用 `PACMPL`、`PACMSE`、`PACMMOD`、`PVLDB` 或 `VLDB` 可以列出对应期刊内容，同时避免误认成其他会议缩写。
 
 ```bash
 unicli aaai papers --year 2025 --limit 20
@@ -81,7 +83,7 @@ unicli scholar venue VLDB --year 2025
 unicli scholar venue "PPoPP 2025"
 ```
 
-`scholar search` 会从自由文本中提取可以确认的 CCF 会议和年份，随后剔除 proceedings 前置页，并对融合结果执行会议与年份检查。首次检索没有相关结果时，命令会执行一次受限的拼写恢复。字段 `query_corrections` 保存改正的词，`search_query` 保存实际执行的查询。
+`scholar search` 会从自由文本中提取可以确认的 CCF 会议和年份，随后剔除论文集前置页，并对融合结果执行会议与年份检查。首次检索没有相关结果时，命令会执行一次受限的拼写恢复。字段 `query_corrections` 保存改正的词，`search_query` 保存实际执行的查询。
 
 ```bash
 unicli scholar search "PPoPP 2025 parallel programming"
@@ -104,7 +106,7 @@ unicli scholar venue FAST --year 2025 --timeout 30
 unicli scholar reviews abcDEF123 -D
 ```
 
-论坛公开相应内容时，评审读取器会按时间返回 review、作者回复、decision、meta-review 和公开评论。
+论坛公开相应内容时，评审读取器会按时间返回评审、作者回复、决定、综合评审和公开评论。
 
 ## 查找官方奖项
 
@@ -122,11 +124,11 @@ unicli scholar trace "https://openreview.net/forum?id=6Mxhg9PtDE" \
   -D
 ```
 
-奖项记录保留官方程序或公告 URL。SIGCHI 记录可以通过 DOI 继续查找出版和研究资源。ICLR 记录可以通过论坛标识符读取 OpenReview 的 review、rebuttal、decision 和 PDF。
+奖项记录保留官方程序或公告 URL。SIGCHI 记录可以通过 DOI 继续查找出版和研究资源。ICLR 记录可以通过论坛标识符读取 OpenReview 的评审、作者回复、决定和 PDF。
 
 ## 搜索 ACM 和 IEEE
 
-ACM 与 IEEE 的 DOI 注册元数据支持免密钥检索。配置 API key 后，IEEE Xplore 还能返回 article number、访问状态、引用量、会议详情和出版商 PDF 链接。
+ACM 与 IEEE 的 DOI 注册元数据支持免密钥检索。配置 API 密钥后，IEEE Xplore 还能返回文章编号、访问状态、引用量、会议详情和出版商 PDF 链接。
 
 ```bash
 unicli acm search "accessible interaction" --year 2026
@@ -185,7 +187,7 @@ unicli github-scholar search \
 | 奖项与公告     | SIGCHI 与 USENIX 官方程序、ICLR 官方公告                                                                             | ACM 奖项页、IEEE 学会奖项、会议新闻页、学会订阅源、更正与撤稿公告                                                                  |
 | 个人文献库     | Zotero                                                                                                               | BibTeX、CSL JSON、EndNote XML、RIS、本地 PDF 集合                                                                                  |
 
-付费和机构授权来源保留明确边界。适配器需要说明 API key、订阅或浏览器会话要求。受限结果必须返回相应错误，不能伪装成空结果。
+付费和机构授权来源保留明确边界。适配器需要说明 API 密钥、订阅或浏览器会话要求。受限结果必须返回相应错误，不能伪装成空结果。
 
 ## 官方接口依据
 

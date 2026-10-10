@@ -5,7 +5,7 @@ description: Uni-CLI YAML adapter 与 TypeScript 注册路径的完整字段参�
 
 # 适配器格式
 
-一个 YAML adapter 注册一条命令。文件中包含 discovery metadata、参数、执行步骤、输出列和 schema-v2 metadata。
+一个 YAML 适配器注册一条命令。文件中包含供命令发现使用的元数据、参数、执行步骤、输出列和 schema-v2 元数据。
 
 ## 最小示例
 
@@ -67,7 +67,7 @@ schema_version: v2
 
 ## 配置可用性
 
-使用进程凭据的命令单独声明配置要求。`strategy: environment` 表示 pipeline 从环境变量模板读取凭据，执行时不会访问浏览器 cookie 存储。
+使用进程凭据的命令需要单独声明配置要求。`strategy: environment` 表示流水线从环境变量模板读取凭据，执行时不访问浏览器 cookie 存储。
 
 ```yaml
 strategy: environment
@@ -78,11 +78,11 @@ availability:
   setup_url: https://search.example.com/keys
 ```
 
-`availability.environment` 中的变量全部为必填项。配置 `discovery: configured` 后，缺少凭据的命令不会进入 list、search、completion 和 expanded MCP。显式 describe 仍会返回命令合同，并列出 `missing_environment`。直接调用会在发起网络请求前结束。
+`availability.environment` 中的变量全部为必填项。配置 `discovery: configured` 后，缺少凭据的命令会从 list、search、completion 和 expanded MCP 中隐藏。显式调用 describe 仍可查看命令契约及 `missing_environment`。配置不完整时，直接调用会在发起网络请求前结束。
 
 ## Retrieval provider
 
-只读 discovery 命令通过统一 retrieval metadata 加入 `unicli retrieval search`。
+只读检索命令可以声明来源元数据，加入 `unicli retrieval search`。
 
 ```yaml
 retrieval:
@@ -95,11 +95,11 @@ retrieval:
     limit: limit
 ```
 
-`selection` 默认使用 `automatic`。自动 selector 与 `all` 只选择已配置、无需认证的 automatic source。付费或消耗 quota 的 provider 使用 `selection: explicit`，调用方必须传入精确 source ref 或 site。
+`selection` 默认为 `automatic`。自动选择和 `all` 只使用已配置、无需认证的自动来源。付费或消耗配额的提供方使用 `selection: explicit`，调用方必须传入准确的来源引用或站点名称。
 
 ## 参数
 
-YAML 参数以命令行名称为 key。
+YAML 参数以命令行参数名作为键。
 
 ```yaml
 args:
@@ -122,11 +122,11 @@ args:
 
 类型包括 `str`、`str[]`、`int`、`float`、`nullable-float`、`str-or-int` 和 `bool`。
 
-字符串参数可以使用 `minLength`、`maxLength`、`pattern` 和 `uri`、`uuid`、`date`、`date-time`、`email`、`hostname`、`ipv4`、`ipv6`、`regex` 等标准 format。Uni-CLI kind 提供 `path`、`adapter-ref`、`selector`、`shell-safe` 与 `id` 验证。
+字符串参数支持 `minLength`、`maxLength`、`pattern`，以及 `uri`、`uuid`、`date`、`date-time`、`email`、`hostname`、`ipv4`、`ipv6`、`regex` 等标准格式。Uni-CLI 的参数类别还提供 `path`、`adapter-ref`、`selector`、`shell-safe` 与 `id` 验证。
 
 ## Pipeline
 
-`pipeline` 是按顺序执行的 action object 列表。
+`pipeline` 是按顺序执行的动作对象列表。
 
 ```yaml
 pipeline:
@@ -145,18 +145,18 @@ pipeline:
 
 ## 输出
 
-`columns` 控制默认 Markdown、table 和 CSV 的字段顺序。JSON 保留完整结果。
+`columns` 控制默认 Markdown、表格和 CSV 的字段顺序。JSON 保留完整结果。
 
 ```yaml
 columns: [title, url, score]
 defaultFormat: md
 ```
 
-`output` 可为需要更明确合同的命令提供 result schema 和 agent hint。
+需要更明确的输出契约时，可以在 `output` 中声明结果 Schema 和 Agent 提示。
 
 ## Schema-v2 必填 metadata
 
-提交到仓库的 YAML adapter 带有以下六个字段。
+提交到仓库的 YAML 适配器需要包含以下六个字段。
 
 | 字段                 | 用途                                       |
 | -------------------- | ------------------------------------------ |
@@ -167,7 +167,7 @@ defaultFormat: md
 | `confidentiality`    | `public`、`internal` 或 `private` 数据类别 |
 | `quarantine`         | 标记等待修复的 adapter                     |
 
-使用下面的命令为已有 adapter 加入当前 metadata。
+使用下面的命令为已有适配器补充元数据。
 
 ```bash
 unicli migrate schema-v2 path/to/adapter.yaml --write
@@ -175,7 +175,7 @@ unicli migrate schema-v2 path/to/adapter.yaml --write
 
 ## TypeScript adapter
 
-SDK integration、streaming protocol、自定义 pagination 和 stateful flow 适合使用 TypeScript。
+SDK 集成、流式协议、自定义分页和有状态流程适合使用 TypeScript。
 
 ```typescript
 import { cli, Strategy } from "../../registry.js";
@@ -203,7 +203,7 @@ cli({
 });
 ```
 
-TypeScript registration 直接调用 registry API，因此参数使用 array。
+TypeScript 注册时直接调用注册表 API，参数采用数组形式。
 
 ## 验证
 
@@ -214,4 +214,4 @@ unicli describe <site> <command>
 unicli test <site>
 ```
 
-Loader 位于 `src/core/yaml-adapter.ts`，v2 metadata schema 位于 `src/core/schema-v2.ts`。
+加载器位于 `src/core/yaml-adapter.ts`，v2 元数据 Schema 位于 `src/core/schema-v2.ts`。

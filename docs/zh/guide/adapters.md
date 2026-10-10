@@ -5,7 +5,7 @@ description: 用 YAML adapter 把新站点或工具加入 Uni-CLI，并在本机
 
 # 创建适配器
 
-Adapter 会把一个实用动作变成可搜索的 Uni-CLI operation。YAML 是默认格式，metadata、参数和 pipeline steps 都放在同一个文件中。
+适配器把一个实用动作注册为可搜索的 Uni-CLI 操作。默认使用 YAML，在同一文件中声明元数据、参数和流水线步骤。
 
 ## 创建文件
 
@@ -17,7 +17,7 @@ unicli init example search
 
 ## 描述操作
 
-一个简短的公开 HTTP adapter：
+下面是一份简短的公开 HTTP 适配器。
 
 ```yaml
 site: hackernews
@@ -50,7 +50,7 @@ quarantine: false
 schema_version: v2
 ```
 
-Description 应贴近用户意图。Contract 字段帮助搜索、权限策略和 Agent 客户端在执行前选中操作。
+描述应贴近用户想完成的任务。契约字段帮助搜索、权限策略和 Agent 客户端在执行前判断操作是否适用。
 
 ## 选择类型
 
@@ -62,7 +62,7 @@ Description 应贴近用户意图。Contract 字段帮助搜索、权限策略�
 | `bridge`  | `gh`、`docker` 等已有 CLI                       |
 | `service` | 本机或远程 HTTP、WebSocket 服务                 |
 
-Type 表示集成类型，`execution_operator` 记录实际执行接口。
+类型字段说明集成方式，`execution_operator` 记录实际执行接口。
 
 ## 定义参数
 
@@ -80,11 +80,11 @@ args:
     maximum: 100
 ```
 
-参数支持 JSON Schema constraint，以及 path、ID、selector 和 URL 等 Uni-CLI kind。完整字段见[适配器格式](/zh/ADAPTER-FORMAT)。
+参数支持 JSON Schema 约束，以及路径、ID、选择器和 URL 等 Uni-CLI 参数类别。完整字段见[适配器格式](/zh/ADAPTER-FORMAT)。
 
 ## 编写 pipeline
 
-Pipeline step 会接收当前 context，并可在模板表达式中引用参数。
+流水线步骤接收当前上下文，并可通过模板表达式引用参数。
 
 ```yaml
 pipeline:
@@ -98,7 +98,7 @@ pipeline:
   - limit: ${{ args.limit }}
 ```
 
-可用 action 见 [Pipeline steps](/zh/reference/pipeline)。
+可用动作见 [Pipeline steps](/zh/reference/pipeline)。
 
 ## 本地运行
 
@@ -109,10 +109,10 @@ unicli example search "test" --limit 3 -f json
 unicli test example
 ```
 
-行为稳定后，为对应路径加入最小的 test 或 fixture。
+行为稳定后，加入覆盖实际执行路径的行为场景或复用已有测试数据。
 
 ## 自定义流程使用 TypeScript
 
-SDK、streaming protocol、stateful service 和复杂 control flow 更适合 TypeScript adapter。它们注册相同 operation metadata，并返回相同 envelope。
+SDK、流式协议、有状态服务和复杂控制流更适合 TypeScript 适配器。它们注册相同的操作元数据，并返回相同的响应结构。
 
-TypeScript 合同见[适配器格式](/zh/ADAPTER-FORMAT#typescript-escape-hatch)。
+TypeScript 契约见[适配器格式](/zh/ADAPTER-FORMAT#typescript-adapter)。

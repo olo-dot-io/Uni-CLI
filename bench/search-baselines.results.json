@@ -1,6 +1,6 @@
 {
   "baseline_revision": "a3ccd59862d2e2fde0c0e9519fbcf86ab07c38df",
-  "measured_at": "2026-10-10T13:26:37.568Z",
+  "measured_at": "2026-10-10T14:46:32.691Z",
   "environment": {
     "node": "v26.11.1",
     "platform": "darwin",
@@ -11,8 +11,8 @@
     "resident_repetitions": 5,
     "cold_processes_per_engine": 9
   },
-  "corpus_documents": 2013,
-  "discoverable_documents": 2010,
+  "corpus_documents": 2014,
+  "discoverable_documents": 2011,
   "dynamic_inventory": "disabled identically for all rankers",
   "methodology": {
     "corpus": "One current built-in adapter and core-command corpus shared by every method; host inventory and user overlays excluded",
@@ -30,18 +30,18 @@
   "results": [
     {
       "name": "baseline-full",
-      "build_ms": 27.75566600000002,
+      "build_ms": 31.565833999999995,
       "resident": {
         "queries": 3395,
         "median_ms": 0.057,
-        "p95_ms": 0.223
+        "p95_ms": 0.228
       },
       "regression": {
         "queries": 617,
         "top1": 482,
-        "top3": 557,
+        "top3": 556,
         "top5": 577,
-        "mrr5": 0.844570502431118,
+        "mrr5": 0.8444354403025388,
         "groups": {
           "zh": {
             "queries": 187,
@@ -1085,12 +1085,12 @@
             "query": "微信公众号",
             "accepted": ["weixin/article"],
             "group": "zh",
-            "rank": 3,
+            "rank": 4,
             "results": [
               "weixin/hot",
               "weixin/search",
-              "weixin/article",
               "weixin/download",
+              "weixin/article",
               "weixin/create-draft"
             ]
           },
@@ -2096,7 +2096,7 @@
           "count": 5,
           "first": {
             "id": "notebooklm/list",
-            "score": 3.45
+            "score": 3.46
           }
         },
         {
@@ -2180,18 +2180,18 @@
     },
     {
       "name": "candidate-full",
-      "build_ms": 24.35779199999979,
+      "build_ms": 19.647416999999678,
       "resident": {
         "queries": 3395,
-        "median_ms": 0.053,
-        "p95_ms": 0.199
+        "median_ms": 0.052,
+        "p95_ms": 0.191
       },
       "regression": {
         "queries": 617,
         "top1": 482,
-        "top3": 557,
+        "top3": 556,
         "top5": 577,
-        "mrr5": 0.844570502431118,
+        "mrr5": 0.8444354403025388,
         "groups": {
           "zh": {
             "queries": 187,
@@ -3235,12 +3235,12 @@
             "query": "微信公众号",
             "accepted": ["weixin/article"],
             "group": "zh",
-            "rank": 3,
+            "rank": 4,
             "results": [
               "weixin/hot",
               "weixin/search",
-              "weixin/article",
               "weixin/download",
+              "weixin/article",
               "weixin/create-draft"
             ]
           },
@@ -4168,7 +4168,7 @@
           "count": 5,
           "first": {
             "id": "notebooklm/list",
-            "score": 3.45
+            "score": 3.46
           }
         },
         {
@@ -4252,11 +4252,11 @@
     },
     {
       "name": "bm25",
-      "build_ms": 9.632500000000164,
+      "build_ms": 10.416333000000122,
       "resident": {
         "queries": 3395,
         "median_ms": 0.02,
-        "p95_ms": 0.085
+        "p95_ms": 0.083
       },
       "regression": {
         "queries": 617,
@@ -6730,7 +6730,7 @@
           "count": 1,
           "first": {
             "id": "ukipo/info",
-            "score": 6.223212415303855
+            "score": 6.224592446596651
           }
         },
         {
@@ -6738,7 +6738,7 @@
           "count": 5,
           "first": {
             "id": "coupang/hot",
-            "score": 14.828620147978228
+            "score": 14.831842776722432
           }
         },
         {
@@ -6746,7 +6746,7 @@
           "count": 5,
           "first": {
             "id": "jike/feed",
-            "score": 7.419848739879456
+            "score": 7.421041331278226
           }
         },
         {
@@ -6754,7 +6754,7 @@
           "count": 5,
           "first": {
             "id": "devto/latest",
-            "score": 7.115786003062767
+            "score": 7.116964269825965
           }
         },
         {
@@ -6762,7 +6762,7 @@
           "count": 5,
           "first": {
             "id": "google/suggest",
-            "score": 8.1122771371572
+            "score": 8.113526561675947
           }
         },
         {
@@ -6770,7 +6770,7 @@
           "count": 1,
           "first": {
             "id": "ai/pulse",
-            "score": 4.942553486145505
+            "score": 4.9438117200823015
           }
         },
         {
@@ -6778,7 +6778,7 @@
           "count": 5,
           "first": {
             "id": "v2ex/me",
-            "score": 8.12856185445728
+            "score": 8.129865576926981
           }
         },
         {
@@ -6786,7 +6786,7 @@
           "count": 4,
           "first": {
             "id": "qweather/forecast",
-            "score": 18.00553612810665
+            "score": 18.00822130874759
           }
         },
         {
@@ -6799,7 +6799,7 @@
           "count": 1,
           "first": {
             "id": "ctrip/flight",
-            "score": 9.74212342699087
+            "score": 9.743686017638762
           }
         },
         {
@@ -6807,7 +6807,7 @@
           "count": 5,
           "first": {
             "id": "hackernews/best",
-            "score": 10.592572822681099
+            "score": 10.593951269080007
           }
         },
         {
@@ -6815,7 +6815,7 @@
           "count": 5,
           "first": {
             "id": "blender/script",
-            "score": 6.637699221109714
+            "score": 6.639011160875542
           }
         },
         {
@@ -6823,7 +6823,7 @@
           "count": 1,
           "first": {
             "id": "cocoapods/info",
-            "score": 8.085442701429697
+            "score": 8.086849897242503
           }
         },
         {
@@ -6836,7 +6836,7 @@
           "count": 2,
           "first": {
             "id": "zoom/join",
-            "score": 10.95067579161123
+            "score": 10.952109622892385
           }
         },
         {
@@ -6844,7 +6844,7 @@
           "count": 5,
           "first": {
             "id": "uiverse/code",
-            "score": 6.637699221109714
+            "score": 6.639011160875542
           }
         },
         {
@@ -6899,11 +6899,11 @@
     },
     {
       "name": "tfidf",
-      "build_ms": 9.632500000000164,
+      "build_ms": 10.416333000000122,
       "resident": {
         "queries": 3395,
         "median_ms": 0.018,
-        "p95_ms": 0.083
+        "p95_ms": 0.08
       },
       "regression": {
         "queries": 617,
@@ -8782,11 +8782,11 @@
             "group": "zh",
             "rank": 0,
             "results": [
-              "instagram/save",
               "yt-dlp/download",
+              "instagram/save",
               "reddit/save",
-              "xiaohongshu/save",
-              "tiktok/save"
+              "tiktok/save",
+              "xiaohongshu/save"
             ]
           },
           {
@@ -9273,7 +9273,7 @@
           "count": 1,
           "first": {
             "id": "ukipo/info",
-            "score": 0.25099827054449275
+            "score": 0.2510025637883593
           }
         },
         {
@@ -9281,7 +9281,7 @@
           "count": 5,
           "first": {
             "id": "reddit/popular",
-            "score": 0.5649464597800299
+            "score": 0.5649329249196336
           }
         },
         {
@@ -9289,7 +9289,7 @@
           "count": 5,
           "first": {
             "id": "zhihu/feed",
-            "score": 0.7005170231249698
+            "score": 0.700514653242138
           }
         },
         {
@@ -9297,7 +9297,7 @@
           "count": 5,
           "first": {
             "id": "devto/latest",
-            "score": 0.47980208893672266
+            "score": 0.47980678531358945
           }
         },
         {
@@ -9305,7 +9305,7 @@
           "count": 5,
           "first": {
             "id": "google/search",
-            "score": 0.34024546215937046
+            "score": 0.34030756523997613
           }
         },
         {
@@ -9313,7 +9313,7 @@
           "count": 1,
           "first": {
             "id": "ai/pulse",
-            "score": 0.2115561667192661
+            "score": 0.21155229572856546
           }
         },
         {
@@ -9321,7 +9321,7 @@
           "count": 5,
           "first": {
             "id": "zhihu/me",
-            "score": 0.4306136500949533
+            "score": 0.4306046483386301
           }
         },
         {
@@ -9329,7 +9329,7 @@
           "count": 4,
           "first": {
             "id": "wttr/forecast",
-            "score": 0.6932592407791823
+            "score": 0.6932766530014804
           }
         },
         {
@@ -9342,7 +9342,7 @@
           "count": 1,
           "first": {
             "id": "ctrip/flight",
-            "score": 0.5020014043463882
+            "score": 0.5020014115548036
           }
         },
         {
@@ -9350,7 +9350,7 @@
           "count": 5,
           "first": {
             "id": "hackernews/best",
-            "score": 0.47087335064114355
+            "score": 0.47086762342447597
           }
         },
         {
@@ -9358,7 +9358,7 @@
           "count": 5,
           "first": {
             "id": "comfyui/status",
-            "score": 0.22394486323115384
+            "score": 0.22393921662214833
           }
         },
         {
@@ -9366,7 +9366,7 @@
           "count": 1,
           "first": {
             "id": "cocoapods/info",
-            "score": 0.31009550996017166
+            "score": 0.3100908730933166
           }
         },
         {
@@ -9379,7 +9379,7 @@
           "count": 2,
           "first": {
             "id": "zoom/join",
-            "score": 0.7141526660764732
+            "score": 0.7141451685483864
           }
         },
         {
@@ -9387,7 +9387,7 @@
           "count": 5,
           "first": {
             "id": "douyin/videos",
-            "score": 0.22115541552730028
+            "score": 0.2211497140895681
           }
         },
         {
@@ -9442,11 +9442,11 @@
     },
     {
       "name": "minisearch-bm25+",
-      "build_ms": 19.472207999999682,
+      "build_ms": 18.61441700000023,
       "resident": {
         "queries": 3395,
         "median_ms": 0.043,
-        "p95_ms": 0.174
+        "p95_ms": 0.172
       },
       "regression": {
         "queries": 617,
@@ -11007,9 +11007,9 @@
             "results": [
               "xiaohongshu/save",
               "xiaohongshu/download",
+              "retrieval/acquire",
               "instagram/save",
-              "reddit/save",
-              "quark/save"
+              "reddit/save"
             ]
           },
           {
@@ -12171,7 +12171,7 @@
           "count": 1,
           "first": {
             "id": "ukipo/info",
-            "score": 9.22421576015837
+            "score": 9.226415273872773
           }
         },
         {
@@ -12179,7 +12179,7 @@
           "count": 5,
           "first": {
             "id": "coupang/hot",
-            "score": 62.89428537048235
+            "score": 62.90846865850664
           }
         },
         {
@@ -12187,7 +12187,7 @@
           "count": 5,
           "first": {
             "id": "jike/feed",
-            "score": 9.87688493506714
+            "score": 9.878435822552486
           }
         },
         {
@@ -12195,7 +12195,7 @@
           "count": 5,
           "first": {
             "id": "devto/latest",
-            "score": 9.472133737318488
+            "score": 9.473667057284187
           }
         },
         {
@@ -12203,7 +12203,7 @@
           "count": 5,
           "first": {
             "id": "google/suggest",
-            "score": 10.579857861179644
+            "score": 10.581584426328828
           }
         },
         {
@@ -12211,7 +12211,7 @@
           "count": 1,
           "first": {
             "id": "ai/pulse",
-            "score": 8.260060177193226
+            "score": 8.262132406971796
           }
         },
         {
@@ -12219,7 +12219,7 @@
           "count": 5,
           "first": {
             "id": "v2ex/me",
-            "score": 10.908194225054004
+            "score": 10.910055026971463
           }
         },
         {
@@ -12227,7 +12227,7 @@
           "count": 4,
           "first": {
             "id": "qweather/forecast",
-            "score": 50.310710753191046
+            "score": 50.31820862125409
           }
         },
         {
@@ -12240,7 +12240,7 @@
           "count": 1,
           "first": {
             "id": "ctrip/flight",
-            "score": 13.112308222054732
+            "score": 13.11470309480886
           }
         },
         {
@@ -12248,7 +12248,7 @@
           "count": 5,
           "first": {
             "id": "hackernews/best",
-            "score": 14.083427049343843
+            "score": 14.085267706006979
           }
         },
         {
@@ -12256,7 +12256,7 @@
           "count": 5,
           "first": {
             "id": "blender/script",
-            "score": 10.029861914061529
+            "score": 10.03187344129075
           }
         },
         {
@@ -12264,7 +12264,7 @@
           "count": 1,
           "first": {
             "id": "cocoapods/info",
-            "score": 11.755539997580117
+            "score": 11.75766549438016
           }
         },
         {
@@ -12277,7 +12277,7 @@
           "count": 2,
           "first": {
             "id": "zoom/join",
-            "score": 14.829075573478027
+            "score": 14.83095543787354
           }
         },
         {
@@ -12285,7 +12285,7 @@
           "count": 5,
           "first": {
             "id": "uiverse/code",
-            "score": 10.029861914061529
+            "score": 10.03187344129075
           }
         },
         {
@@ -12340,11 +12340,11 @@
     },
     {
       "name": "minisearch-bm25+-fuzzy",
-      "build_ms": 19.472207999999682,
+      "build_ms": 18.61441700000023,
       "resident": {
         "queries": 3395,
-        "median_ms": 0.152,
-        "p95_ms": 0.45
+        "median_ms": 0.153,
+        "p95_ms": 0.456
       },
       "regression": {
         "queries": 617,
@@ -14172,8 +14172,8 @@
               "xiaohongshu/save",
               "xiaohongshu/download",
               "xiaohongshu/saved",
-              "pypi/downloads",
-              "instagram/save"
+              "retrieval/acquire",
+              "pypi/downloads"
             ]
           },
           {
@@ -15365,7 +15365,7 @@
           "count": 5,
           "first": {
             "id": "ukipo/info",
-            "score": 9.22421576015837
+            "score": 9.226415273872773
           }
         },
         {
@@ -15373,7 +15373,7 @@
           "count": 5,
           "first": {
             "id": "coupang/hot",
-            "score": 62.89428537048235
+            "score": 62.90846865850664
           }
         },
         {
@@ -15381,7 +15381,7 @@
           "count": 5,
           "first": {
             "id": "bluesky/feeds",
-            "score": 12.137365204739828
+            "score": 12.139744197260477
           }
         },
         {
@@ -15389,7 +15389,7 @@
           "count": 5,
           "first": {
             "id": "bilibili/user-videos",
-            "score": 10.440873992179398
+            "score": 10.443126328134513
           }
         },
         {
@@ -15397,7 +15397,7 @@
           "count": 5,
           "first": {
             "id": "google/suggest",
-            "score": 10.579857861179644
+            "score": 10.581584426328828
           }
         },
         {
@@ -15405,7 +15405,7 @@
           "count": 1,
           "first": {
             "id": "ai/pulse",
-            "score": 8.260060177193226
+            "score": 8.262132406971796
           }
         },
         {
@@ -15413,7 +15413,7 @@
           "count": 5,
           "first": {
             "id": "v2ex/me",
-            "score": 10.908194225054004
+            "score": 10.910055026971463
           }
         },
         {
@@ -15421,7 +15421,7 @@
           "count": 4,
           "first": {
             "id": "qweather/forecast",
-            "score": 62.173971211973466
+            "score": 62.182972971552914
           }
         },
         {
@@ -15429,7 +15429,7 @@
           "count": 5,
           "first": {
             "id": "dangdang/hot",
-            "score": 10.784649124495553
+            "score": 10.786953227695545
           }
         },
         {
@@ -15437,7 +15437,7 @@
           "count": 5,
           "first": {
             "id": "ctrip/flight",
-            "score": 17.205753009929932
+            "score": 17.20902938484173
           }
         },
         {
@@ -15445,7 +15445,7 @@
           "count": 5,
           "first": {
             "id": "hackernews/best",
-            "score": 14.083427049343843
+            "score": 14.085267706006979
           }
         },
         {
@@ -15453,7 +15453,7 @@
           "count": 5,
           "first": {
             "id": "blender/script",
-            "score": 10.029861914061529
+            "score": 10.03187344129075
           }
         },
         {
@@ -15461,7 +15461,7 @@
           "count": 5,
           "first": {
             "id": "cocoapods/info",
-            "score": 11.755539997580117
+            "score": 11.75766549438016
           }
         },
         {
@@ -15474,7 +15474,7 @@
           "count": 5,
           "first": {
             "id": "zoom/join",
-            "score": 14.829075573478027
+            "score": 14.83095543787354
           }
         },
         {
@@ -15482,7 +15482,7 @@
           "count": 5,
           "first": {
             "id": "uiverse/code",
-            "score": 10.029861914061529
+            "score": 10.03187344129075
           }
         },
         {
@@ -15636,7 +15636,7 @@
       "baseline": [
         {
           "id": "scholar/reproduce",
-          "score": 148.41
+          "score": 148.42
         },
         {
           "id": "arxiv/search",
@@ -15644,7 +15644,7 @@
         },
         {
           "id": "arxiv/trending",
-          "score": 80.65
+          "score": 80.66
         },
         {
           "id": "arxiv/author",
@@ -15662,7 +15662,7 @@
         },
         {
           "id": "arxiv/trending",
-          "score": 80.65
+          "score": 80.66
         },
         {
           "id": "arxiv/author",
@@ -15683,11 +15683,11 @@
       "baseline": [
         {
           "id": "scholar/evidence",
-          "score": 155.34
+          "score": 155.35
         },
         {
           "id": "arxiv/search",
-          "score": 83.09
+          "score": 83.08
         },
         {
           "id": "arxiv/trending",
@@ -15705,7 +15705,7 @@
       "candidate": [
         {
           "id": "arxiv/search",
-          "score": 83.09
+          "score": 83.08
         },
         {
           "id": "arxiv/trending",
@@ -15730,7 +15730,7 @@
       "baseline": [
         {
           "id": "scholar/reviews",
-          "score": 121.47
+          "score": 121.46
         },
         {
           "id": "scholar/datasets",
@@ -15768,7 +15768,7 @@
         },
         {
           "id": "openreview/conference",
-          "score": 68.32
+          "score": 68.33
         }
       ]
     },
@@ -15828,106 +15828,106 @@
         "samples": [
           {
             "query": "DBLP search papers about workflow provenance",
-            "wall_ms": 84.80708400000003,
-            "import_ms": 24.853875000000002,
-            "build_ms": 22.971417000000002,
-            "first_query_ms": 3.0506249999999966,
-            "ready_ms": 50.875917,
+            "wall_ms": 82.89524999999958,
+            "import_ms": 23.784124999999996,
+            "build_ms": 24.508125,
+            "first_query_ms": 3.0786250000000024,
+            "ready_ms": 51.370875,
             "results": 5
           },
           {
             "query": "OpenRouter search models with long context",
-            "wall_ms": 85.34658300000046,
-            "import_ms": 24.121457999999997,
-            "build_ms": 24.208833000000006,
-            "first_query_ms": 2.766999999999996,
-            "ready_ms": 51.097291,
+            "wall_ms": 83.82324999999946,
+            "import_ms": 23.217125000000003,
+            "build_ms": 23.962165999999996,
+            "first_query_ms": 2.7467499999999987,
+            "ready_ms": 49.926041,
             "results": 5
           },
           {
             "query": "arxiv search papers about installation environments",
-            "wall_ms": 86.73741700000028,
-            "import_ms": 25.483333,
-            "build_ms": 23.977958,
-            "first_query_ms": 2.890875000000001,
-            "ready_ms": 52.352166,
+            "wall_ms": 85.39800000000014,
+            "import_ms": 23.449583000000004,
+            "build_ms": 23.349542,
+            "first_query_ms": 2.827207999999999,
+            "ready_ms": 49.626333,
             "results": 5
           },
           {
             "query": "search papers on machine learning",
-            "wall_ms": 82.90445799999998,
-            "import_ms": 23.890292000000002,
-            "build_ms": 23.467582999999998,
-            "first_query_ms": 3.295917000000003,
-            "ready_ms": 50.653792,
+            "wall_ms": 86.35874999999942,
+            "import_ms": 23.749208,
+            "build_ms": 24.456333,
+            "first_query_ms": 3.2178749999999994,
+            "ready_ms": 51.423416,
             "results": 5
           },
           {
             "query": "twitter search posts about research reproducibility",
-            "wall_ms": 83.02549999999974,
-            "import_ms": 23.857916000000003,
-            "build_ms": 23.130249999999997,
-            "first_query_ms": 2.680084000000001,
-            "ready_ms": 49.66825,
+            "wall_ms": 83.53170799999953,
+            "import_ms": 24.403,
+            "build_ms": 23.428083,
+            "first_query_ms": 2.6845,
+            "ready_ms": 50.515583,
             "results": 5
           },
           {
             "query": "twiter search distributed systems",
-            "wall_ms": 82.30470800000057,
-            "import_ms": 23.377167,
-            "build_ms": 23.606916,
-            "first_query_ms": 2.346333999999999,
-            "ready_ms": 49.330417,
+            "wall_ms": 83.40549999999985,
+            "import_ms": 23.232208000000004,
+            "build_ms": 24.071166999999996,
+            "first_query_ms": 2.496167,
+            "ready_ms": 49.799542,
             "results": 5
           },
           {
             "query": "推特热门",
-            "wall_ms": 84.1415420000003,
-            "import_ms": 23.802625,
-            "build_ms": 23.170541999999998,
-            "first_query_ms": 2.303083000000001,
-            "ready_ms": 49.27625,
+            "wall_ms": 83.68525000000045,
+            "import_ms": 23.671040999999995,
+            "build_ms": 23.854959,
+            "first_query_ms": 2.1345829999999992,
+            "ready_ms": 49.660582999999995,
             "results": 5
           },
           {
             "query": "zqvpxmn78641",
-            "wall_ms": 84.39645800000017,
-            "import_ms": 24.190833000000005,
-            "build_ms": 24.436541999999996,
-            "first_query_ms": 1.2510410000000007,
-            "ready_ms": 49.878416,
+            "wall_ms": 84.35966699999972,
+            "import_ms": 25.043625,
+            "build_ms": 23.829833999999998,
+            "first_query_ms": 1.286750000000005,
+            "ready_ms": 50.160209,
             "results": 0
           },
           {
             "query": "DBLP search papers about workflow provenance",
-            "wall_ms": 85.76979099999971,
-            "import_ms": 23.658499999999997,
-            "build_ms": 23.992167000000002,
-            "first_query_ms": 2.819415999999997,
-            "ready_ms": 50.470082999999995,
+            "wall_ms": 86.1007499999996,
+            "import_ms": 23.855958,
+            "build_ms": 24.115791999999992,
+            "first_query_ms": 2.892792,
+            "ready_ms": 50.86454199999999,
             "results": 5
           }
         ],
         "summary": {
           "wall_ms": {
-            "median": 84.396,
-            "p95": 86.737
+            "median": 83.823,
+            "p95": 86.359
           },
           "import_ms": {
-            "median": 23.89,
-            "p95": 25.483
+            "median": 23.749,
+            "p95": 25.044
           },
           "build_ms": {
-            "median": 23.607,
-            "p95": 24.437
+            "median": 23.962,
+            "p95": 24.508
           },
           "first_query_ms": {
-            "median": 2.767,
-            "p95": 3.296
+            "median": 2.747,
+            "p95": 3.218
           },
           "ready_ms": {
-            "median": 50.47,
-            "p95": 52.352
+            "median": 50.16,
+            "p95": 51.423
           }
         }
       },
@@ -15936,106 +15936,106 @@
         "samples": [
           {
             "query": "DBLP search papers about workflow provenance",
-            "wall_ms": 82.32562499999949,
-            "import_ms": 23.488667,
-            "build_ms": 23.782916,
-            "first_query_ms": 2.841959000000003,
-            "ready_ms": 50.113542,
+            "wall_ms": 84.54674999999952,
+            "import_ms": 25.010375,
+            "build_ms": 23.476167000000004,
+            "first_query_ms": 2.596625000000003,
+            "ready_ms": 51.083167,
             "results": 5
           },
           {
             "query": "OpenRouter search models with long context",
-            "wall_ms": 86.01900000000023,
-            "import_ms": 24.971375000000002,
-            "build_ms": 23.646,
-            "first_query_ms": 2.7094999999999985,
-            "ready_ms": 51.326875,
+            "wall_ms": 82.76554100000067,
+            "import_ms": 23.139167,
+            "build_ms": 22.507333000000003,
+            "first_query_ms": 2.516292,
+            "ready_ms": 48.162792,
             "results": 5
           },
           {
             "query": "arxiv search papers about installation environments",
-            "wall_ms": 84.79833299999973,
-            "import_ms": 24.188208000000003,
-            "build_ms": 23.024666999999994,
-            "first_query_ms": 2.5124580000000023,
-            "ready_ms": 49.725333,
+            "wall_ms": 85.54925000000003,
+            "import_ms": 22.912708000000002,
+            "build_ms": 23.736083,
+            "first_query_ms": 2.9538340000000005,
+            "ready_ms": 49.602625,
             "results": 5
           },
           {
             "query": "search papers on machine learning",
-            "wall_ms": 82.3114999999998,
-            "import_ms": 23.944416,
-            "build_ms": 22.807834,
-            "first_query_ms": 3.0170829999999995,
-            "ready_ms": 49.769333,
+            "wall_ms": 86.0614999999998,
+            "import_ms": 24.708958000000003,
+            "build_ms": 23.124792,
+            "first_query_ms": 3.176040999999998,
+            "ready_ms": 51.009791,
             "results": 5
           },
           {
             "query": "twitter search posts about research reproducibility",
-            "wall_ms": 81.78004200000032,
-            "import_ms": 23.461624999999998,
-            "build_ms": 23.57575,
-            "first_query_ms": 2.483833000000004,
-            "ready_ms": 49.521208,
+            "wall_ms": 81.90566599999966,
+            "import_ms": 22.591041999999998,
+            "build_ms": 22.886708,
+            "first_query_ms": 2.5836670000000055,
+            "ready_ms": 48.061417000000006,
             "results": 5
           },
           {
             "query": "twiter search distributed systems",
-            "wall_ms": 82.01141600000028,
-            "import_ms": 24.262750000000004,
-            "build_ms": 23.057624999999994,
-            "first_query_ms": 2.3847080000000034,
-            "ready_ms": 49.705083,
+            "wall_ms": 82.20875000000069,
+            "import_ms": 23.038666999999997,
+            "build_ms": 22.660791000000003,
+            "first_query_ms": 2.453916999999997,
+            "ready_ms": 48.153375,
             "results": 5
           },
           {
             "query": "推特热门",
-            "wall_ms": 82.41920800000025,
-            "import_ms": 23.652667,
-            "build_ms": 23.323,
-            "first_query_ms": 2.3217500000000015,
-            "ready_ms": 49.297417,
+            "wall_ms": 80.87245799999982,
+            "import_ms": 23.724292,
+            "build_ms": 22.584166000000003,
+            "first_query_ms": 2.1666250000000034,
+            "ready_ms": 48.475083000000005,
             "results": 5
           },
           {
             "query": "zqvpxmn78641",
-            "wall_ms": 84.18804200000068,
-            "import_ms": 25.339790999999998,
-            "build_ms": 23.929541999999998,
-            "first_query_ms": 1.2354170000000053,
-            "ready_ms": 50.50475,
+            "wall_ms": 82.7899580000003,
+            "import_ms": 23.930916999999997,
+            "build_ms": 23.45225,
+            "first_query_ms": 1.3464580000000055,
+            "ready_ms": 48.729625,
             "results": 0
           },
           {
             "query": "DBLP search papers about workflow provenance",
-            "wall_ms": 81.04195900000013,
-            "import_ms": 23.346792,
-            "build_ms": 22.894915999999995,
-            "first_query_ms": 2.5350000000000037,
-            "ready_ms": 48.776708,
+            "wall_ms": 83.22541599999931,
+            "import_ms": 23.527040999999997,
+            "build_ms": 22.667292000000003,
+            "first_query_ms": 2.464374999999997,
+            "ready_ms": 48.658708,
             "results": 5
           }
         ],
         "summary": {
           "wall_ms": {
-            "median": 82.326,
-            "p95": 86.019
+            "median": 82.79,
+            "p95": 86.061
           },
           "import_ms": {
-            "median": 23.944,
-            "p95": 25.34
+            "median": 23.527,
+            "p95": 25.01
           },
           "build_ms": {
-            "median": 23.323,
-            "p95": 23.93
+            "median": 22.887,
+            "p95": 23.736
           },
           "first_query_ms": {
-            "median": 2.512,
-            "p95": 3.017
+            "median": 2.516,
+            "p95": 3.176
           },
           "ready_ms": {
-            "median": 49.725,
-            "p95": 51.327
+            "median": 48.659,
+            "p95": 51.083
           }
         }
       }

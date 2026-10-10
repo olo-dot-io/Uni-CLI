@@ -97,8 +97,7 @@ conservatively.
 
 The verdict appears in CLI AgentEnvelope metadata, MCP structured results and
 computer-use evidence, transport envelopes, run records, and visual action
-records. This gives every surface one replay boundary instead of relying on
-provider-specific booleans.
+records. Every surface therefore reads the same replay boundary.
 
 ### Web task examples
 
@@ -116,9 +115,11 @@ to the word “website.”
 
 Authentication is a separate declared precondition. A cookie or header
 strategy may obtain browser-owned credentials through its auth contract. A
-generic structured `fetch` does not guess a site, acquire CDP cookies, or
-change auth strategy after a `401` or `403`; it returns the original HTTP
-failure for repair or explicit replanning.
+generic structured `fetch` returns authentication failures to its caller. The
+execution runtime can refresh declared cookies once for a read-only HTTP
+adapter. The evidence reader owns anonymous-first recovery for general URLs.
+Browser operations retain their own turn lifecycle. See
+[Authentication](../guide/authentication.md) for selection and retry controls.
 
 ### Application task examples
 
@@ -177,8 +178,9 @@ An inline `compute screenshot --via driver|visual` returns a 256-bit opaque
 `observation.ref`. `point-click`, `drag`, `point-scroll`, and `move-cursor`
 require that ref. It is valid for 30 seconds, can be claimed once, and must
 match the action's provider, desktop scope, and named session. Coordinates are
-validated in screenshot-pixel space and transformed to provider action space
-from the recorded dimensions. A screenshot written directly to `path` is an
+validated in screenshot-pixel space. Cua Driver applies its own Retina and
+size-cap transform once. The visual backend converts from recorded image
+dimensions to screen coordinates. A screenshot written directly to `path` is an
 artifact. It returns no actuation capability or observation ref.
 
 ## Selection algorithm
@@ -234,8 +236,8 @@ BM25 and TF-IDF generate the candidate posting-list union. Entity, workflow,
 operation-family, and site signals adjust those candidates. Exact operation,
 site, operator, target, effect, platform, coordinate-actuation, and interaction
 constraints remove infeasible documents before bounded top-k selection. Live
-registry commands resolve missing profiles lazily only for candidate documents,
-while the generated manifest fast path uses preprojected profiles. Retrieval
+registry commands resolve missing profiles lazily only for candidate documents.
+The generated manifest fast path uses preprojected profiles. Retrieval
 score never grants execution authority.
 
 Let `q` be request length, `p` the postings visited, `c` the resulting
@@ -264,8 +266,8 @@ Operation
 Provider profiles hold stable provider defaults. Action bindings override
 perception, actuation, verification, or interaction impact when an operation
 differs from the provider default. For example, native screenshot capture
-perceives pixels and uses screen capture even though the owning provider also
-implements accessibility actions.
+perceives pixels and uses screen capture. The owning provider also implements
+accessibility actions under their own bindings.
 
 The manifest fast path preserves the same operator and effect contract as the
 live adapter registry. `unicli describe` therefore distinguishes structured
@@ -303,9 +305,8 @@ The transitions have different meanings.
 - **Outcome inspection** contains ambiguous mutations before any replay.
 
 A selected provider may reconnect or retry the same physical primitive when
-that recovery is declared safe. It may not change perception or actuation
-modality while retaining the old route label. In particular, an AX semantic
-failure no longer enters coordinate click or background text input. Moving
+that recovery is declared safe. A change in perception or actuation
+modality requires a new route label. An AX semantic failure returns directly. Moving
 from AX semantics to desktop input, CDP, or pixels requires a new explicit
 route.
 
@@ -322,8 +323,8 @@ Mutations declare `strategy: none` and `max_attempts: 1`. A retryable provider
 flag cannot override that rule. Every compute result carries
 `recovery_trace` with provider, physical action, attempts, triggering failures,
 and whether recovery succeeded. Route explanation exposes the policy before
-execution, while CLI metadata, MCP computer-use results, and visual evidence
-expose the trace afterward.
+execution. CLI metadata, MCP computer-use results, and visual evidence expose
+the trace afterward.
 
 Pipeline `fallback` is rejected at compile time. Alternative strategies must be
 separate ranked operations with independent contracts; execution never changes

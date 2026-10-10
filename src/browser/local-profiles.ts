@@ -133,7 +133,8 @@ export function resolvePreferredLocalBrowserProfile(
 export function selectLocalBrowserIdentity(
   opts: LocalProfileDiscoveryOptions & { profileId?: string } = {},
 ): BrowserIdentitySelection {
-  const requested = opts.profileId ?? opts.env?.UNICLI_BROWSER_PROFILE_ID;
+  const requested =
+    opts.profileId ?? (opts.env ?? process.env).UNICLI_BROWSER_PROFILE_ID;
   return selectBrowserIdentityFromProfiles(
     detectLocalBrowserProfiles(opts),
     requested,

@@ -30,6 +30,7 @@ export interface CookieRow {
 export interface ReadOptions {
   browser: BrowserId;
   domain: string;
+  url?: string;
   profile?: string;
   userDataDir?: string;
 }

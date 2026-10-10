@@ -55,7 +55,7 @@ unicli plugin inspect ./unicli-plugin-astronomy -f json
 unicli plugin inspect astronomy -f json
 ```
 
-An optional root `mcp.json` is inspected as client configuration. Uni-CLI reports supported server descriptor types but does not project them as operations, start them, or connect to them. The client that installs the package owns MCP execution and permission behavior. Invalid MCP configuration does not disable independently valid Skills.
+An optional root `mcp.json` is inspected as client configuration. Uni-CLI reports supported server descriptor types. Inspection leaves their execution to the installing client and creates no projected operations or server connections. The client that installs the package owns MCP execution and permission behavior. Invalid MCP configuration does not disable independently valid Skills.
 
 ## Uni-CLI runtime manifest
 

@@ -175,7 +175,7 @@ export async function fetchHttpResource<T>(
       if (response.headers.get("cf-mitigated")?.toLowerCase() === "challenge") {
         await response.body?.cancel();
         signal?.throwIfAborted();
-        throw challengeRequiredError(url, action, step, response.status);
+        throw challengeRequiredError(finalUrl, action, step, response.status);
       }
       if (response.ok) return await consume(response, finalUrl);
     } catch (error) {
@@ -240,7 +240,7 @@ export async function fetchHttpResource<T>(
         },
       );
     }
-    const { response } = result;
+    const { response, finalUrl } = result;
     const retryable = retryableStatus(response.status);
     if (retryable && attempt < attempts) {
       await response.body?.cancel();
@@ -260,17 +260,17 @@ export async function fetchHttpResource<T>(
     }
     signal?.throwIfAborted();
     throw new PipelineError(
-      `HTTP ${response.status} ${response.statusText} from ${url}`,
+      `HTTP ${response.status} ${response.statusText} from ${finalUrl}`,
       {
         step,
         action,
         config: { url, method: init.method },
-        url,
+        url: finalUrl,
         statusCode: response.status,
         responsePreview: preview,
         errorType: "http_error",
         retryable,
-        suggestion: httpFailureSuggestion(response, url),
+        suggestion: httpFailureSuggestion(response, finalUrl),
         alternatives:
           response.status === 401 || response.status === 403
             ? ["unicli auth setup <site>"]

@@ -584,6 +584,7 @@ cli({
   description: "Search OpenReview papers by free-text query",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "query",
@@ -674,6 +675,7 @@ cli({
   description: "Show full metadata for a single OpenReview paper",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "id",
@@ -739,6 +741,7 @@ cli({
   description: "Download an OpenReview paper PDF by forum id",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "id",
@@ -790,6 +793,7 @@ cli({
   description: "Download and extract text from an OpenReview paper PDF",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "id",
@@ -915,6 +919,7 @@ cli({
   description: "List OpenReview submissions by author profile id",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "profile",
@@ -989,6 +994,7 @@ cli({
   description: "List papers at an OpenReview venue or invitation",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "venue",
@@ -1077,6 +1083,7 @@ cli({
     "Show paper, reviews, decisions, and comments for an OpenReview forum",
   domain: "openreview.net",
   strategy: Strategy.PUBLIC,
+  auth_requirement: "optional",
   args: [
     {
       name: "forum",

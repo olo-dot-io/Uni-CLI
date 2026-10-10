@@ -24,7 +24,7 @@ npm install -g @zenalexa/unicli
 unicli --version
 ```
 
-检查后续版本，但不执行安装。
+仅检查是否存在新版本。
 
 ```bash
 unicli upgrade --check -f json
@@ -62,7 +62,7 @@ unicli describe hackernews top
 unicli hackernews top --limit 5 -f json
 ```
 
-成功结果使用 v2 envelope。
+成功结果使用 v2 响应结构。Agent 可以根据 `ok` 判断调用是否成功，再读取 `data` 中的数据。
 
 ```json
 {
@@ -112,7 +112,7 @@ unicli auth import <site> --browser chrome
 unicli auth check <site>
 ```
 
-浏览器操作使用 Uni-CLI 的 profile 和 session。详情见[登录与认证](./authentication)和[浏览器与桌面](./browser-desktop)。
+浏览器操作使用 Uni-CLI 管理的浏览器配置和会话。配置方法见[登录与认证](./authentication)和[浏览器与桌面](./browser-desktop)。
 
 ## 操作失效时
 

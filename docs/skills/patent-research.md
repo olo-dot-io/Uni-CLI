@@ -37,7 +37,7 @@ patent family. Each adapter is an agent-readable YAML pipeline; structured
 error envelopes carry actionable suggestions when an adapter is missing
 credentials or upstream returns an unexpected shape.
 
-**Install** (once): `npm install -g @zenalexa/unicli`
+**Install** once with `npm install -g @zenalexa/unicli`
 
 > **No API key? Start here.** See [docs/skills/patent-cookbook.md](./patent-cookbook.md)
 > for copy-pastable recipes that run on day zero against keyless web adapters
@@ -47,10 +47,10 @@ credentials or upstream returns an unexpected shape.
 
 ## TL;DR
 
-- `unicli patent search "<query>"` — fan-out across default sources (USPTO, EPO, JPO) with reciprocal-rank fusion.
-- `unicli patent search "<query>" --sources google-patents-web,freepatentsonline-web` — keyless day-zero search; no API key, no Chrome.
-- `unicli patent get <publication-number>` — route by ST.16 country prefix (US, EP, JP, KR, CN, DE, FR, GB, CA, AU, BR, RU).
-- `unicli patent prior-art --abstract "<text>"` — semantic + keyword + CPC fusion across PQAI, Google Patents BigQuery, and EPO.
+- `unicli patent search "<query>"`. Fan-out across default sources (USPTO, EPO, JPO) with reciprocal-rank fusion.
+- `unicli patent search "<query>" --sources google-patents-web,freepatentsonline-web`. Keyless day-zero search; no API key, no Chrome.
+- `unicli patent get <publication-number>`. Route by ST.16 country prefix (US, EP, JP, KR, CN, DE, FR, GB, CA, AU, BR, RU).
+- `unicli patent prior-art --abstract "<text>"`. Semantic + keyword + CPC fusion across PQAI, Google Patents BigQuery, and EPO.
 
 ---
 
@@ -77,13 +77,13 @@ FreePatentsOnline. Detailed recipes are in
 
 ## When to use this skill
 
-Use this skill when:
+Use this skill when.
 
-- An agent needs structured patent metadata (publication number, title, inventors, assignees, dates, family ID, legal status) rather than a raw HTML page.
+- An agent needs structured patent metadata, including publication number, title, inventors, assignees, dates, family ID, and legal status.
 - A user provides a publication number and wants the cross-jurisdiction family.
 - A draft abstract or claim needs a prior-art sweep before filing.
 - An audit needs `legal_status` for a batch of publication numbers across multiple offices.
-- A workflow needs a single deduped result list rather than one per office.
+- A workflow needs one deduplicated result list across offices.
 
 Do not use this skill for general web search, single-site browsing, or
 non-patent intellectual-property records (trademarks, designs); those have
@@ -93,7 +93,7 @@ their own adapters.
 
 ## Setup
 
-Each office has its own credential channel. Both forms below are accepted:
+Each office has its own credential channel. Both forms below are accepted.
 environment variable (highest precedence) and `~/.unicli/auth/<site>.json`
 fallback (managed by `unicli auth setup <site>`).
 
@@ -103,15 +103,15 @@ fallback (managed by `unicli auth setup <site>`).
 | `epo`               | `EPO_OPS_CLIENT_ID`, `EPO_OPS_CLIENT_SECRET` | `~/.unicli/auth/epo.json`         | Free tier (4 GB / week) at developers.epo.org; OAuth2 client_credentials.                                       |
 | `jpo`               | `JPO_API_TOKEN`                              | `~/.unicli/auth/jpo.json`         | Email application to `PA0630@jpo.go.jp`; quotas relaxed 2026-03.                                                |
 | `kipris`            | `KIPRIS_ACCESS_KEY`                          | `~/.unicli/auth/kipris.json`      | Free registration at plus.kipris.or.kr.                                                                         |
-| `inpi-fr`           | (none — public subset)                       | n/a                               | data.inpi.fr open subset; full records require session-cookie login (not yet implemented).                      |
+| `inpi-fr`           | (none, public subset)                        | n/a                               | data.inpi.fr open subset; full records require session-cookie login (not yet implemented).                      |
 | `dpma`              | `DPMA_AUTHORIZATION`                         | `~/.unicli/auth/dpma.json`        | Paid DPMAconnectPlus contract (~EUR 200 setup); precompute `Basic $(printf '%s:%s' "$USER" "$PASS" \| base64)`. |
 | `ipaustralia`       | `IPAUSTRALIA_API_KEY`                        | `~/.unicli/auth/ipaustralia.json` | Free registration at api.ipaustralia.gov.au.                                                                    |
 | `lens`              | `LENS_API_TOKEN`                             | `~/.unicli/auth/lens.json`        | Institutional Lens Toolkit subscription required.                                                               |
 | `google-patents-bq` | `GCLOUD_ACCESS_TOKEN`                        | n/a                               | `gcloud auth application-default print-access-token`; BigQuery sandbox is 10 GB / month free.                   |
 | `pqai`              | `PQAI_API_KEY`                               | `~/.unicli/auth/pqai.json`        | USD 20 / month individual tier (1,500 calls).                                                                   |
 | `patsnap`           | `PATSNAP_API_KEY`                            | `~/.unicli/auth/patsnap.json`     | Starter free tier (10K credits / 90 days); paid plans from USD 100.                                             |
-| `wipo-patentscope`  | (none — placeholder)                         | n/a                               | SOAP web service requires subscription; adapter emits `PATENT_API_DEPRECATED`.                                  |
-| `ukipo`             | (none — placeholder)                         | n/a                               | Ipsum retired 2025-01; OneIPO API on 2026 roadmap; adapter emits `PATENT_API_DEPRECATED`.                       |
+| `wipo-patentscope`  | (none, placeholder)                          | n/a                               | SOAP web service requires subscription; adapter emits `PATENT_API_DEPRECATED`.                                  |
+| `ukipo`             | (none, placeholder)                          | n/a                               | Ipsum retired 2025-01; OneIPO API on 2026 roadmap; adapter emits `PATENT_API_DEPRECATED`.                       |
 
 ---
 
@@ -135,13 +135,13 @@ and structured error JSON on stderr. The output schema is documented under
 
 ## Source selection
 
-The default `search` source list is `uspto,epo,jpo` — three free-tier sources
-that cover the largest fraction of global filings. Override with `--sources`:
+The default `search` source list is `uspto,epo,jpo`, three free-tier sources
+that cover the largest fraction of global filings. Override with `--sources`.
 
-- L0 (free, no key): `inpi-fr` (open subset), `wipo-patentscope` / `ukipo` (placeholders).
-- L1 (free with registered key): `uspto`, `epo`, `jpo`, `kipris`, `ipaustralia`, `google-patents-bq`.
-- L2 (paid subscription): `dpma`, `lens`, `patsnap`, `pqai`.
-- L3 (browser-driven, no API): future adapters for `cnipa`, `espacenet`, `cipo`, `inpi-br`, `fips`.
+- L0 (free, no key). `inpi-fr` (open subset), `wipo-patentscope` / `ukipo` (placeholders).
+- L1 (free with registered key). `uspto`, `epo`, `jpo`, `kipris`, `ipaustralia`, `google-patents-bq`.
+- L2 (paid subscription). `dpma`, `lens`, `patsnap`, `pqai`.
+- L3 (browser-driven, no API). Future adapters for `cnipa`, `espacenet`, `cipo`, `inpi-br`, `fips`.
 
 Pass `--sources all` to query every registered patent adapter; expect higher
 latency and possible per-source rate limits.
@@ -173,8 +173,9 @@ next action.
 
 The `@verification` line in each adapter file header records whether the
 adapter has been exercised against a live endpoint or whether it is gated
-on credentials we do not maintain. Treat anything other than `verified` as
-"compiles and lints; not yet end-to-end exercised in CI."
+on credentials we do not maintain. Read an unverified
+status as compilation and lint coverage. Live endpoint behavior requires the
+credentials and a source-specific execution check.
 
 | Adapter             | Status                  | Note                                                                       |
 | ------------------- | ----------------------- | -------------------------------------------------------------------------- |
@@ -199,7 +200,7 @@ shape.
 
 ---
 
-## End-to-end example: prior-art sweep
+## End-to-end prior-art sweep
 
 ```bash
 unicli patent prior-art \
@@ -210,7 +211,7 @@ unicli patent prior-art \
   | jq '.results[] | {publication_number, title, source_adapter}'
 ```
 
-What this does:
+What this does.
 
 1. Submits the abstract to PQAI's semantic ranker, Google Patents BigQuery's text search, and EPO Espacenet's keyword search in parallel.
 2. Normalises each result list to `PatentRecord` shape.
@@ -226,7 +227,7 @@ the per-source error inside the final envelope's `suggestion` field.
 ## Public TypeScript surface
 
 For third-party consumers building on top of `@zenalexa/unicli`, the patent
-vertical's type contract is re-exported from `@zenalexa/unicli/index`:
+vertical's type contract is re-exported from `@zenalexa/unicli/index`.
 
 ```ts
 import type {
@@ -249,7 +250,7 @@ versions, removals are major.
 
 ## See also
 
-- `docs/ARCHITECTURE.md` — pipeline, transport, and registry architecture.
-- `docs/ADAPTER-FORMAT.md` — adapter YAML schema and step reference.
-- `skills/unicli-repair/SKILL.md` — repair loop when an adapter breaks.
-- `docs/RECIPES.md` — agent-envelope JSON examples.
+- `docs/ARCHITECTURE.md`. Pipeline, transport, and registry architecture.
+- `docs/ADAPTER-FORMAT.md`. Adapter YAML schema and step reference.
+- `skills/unicli-repair/SKILL.md`. Repair loop when an adapter breaks.
+- `docs/RECIPES.md`. Agent-envelope JSON examples.

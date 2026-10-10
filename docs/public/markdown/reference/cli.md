@@ -39,6 +39,19 @@ Available global output formats follow.
 
 Preview argument resolution and the selected pipeline with `--dry-run`.
 
+## Internet resources
+
+`retrieval search` returns ranked source records. `extract` reads one URL into a bounded evidence document. `retrieval acquire` saves a selected collection, including original files and structured text companions.
+
+```bash
+unicli retrieval search "graph databases" --sources dblp,arxiv --limit 5 -f json
+unicli extract https://example.com --max-chars 12000 -f json
+unicli retrieval acquire "graph databases" --limit 5 --dir ./research -f json
+unicli retrieval acquire --resume ./research/results.json -f json
+```
+
+Use `--max-resources` to limit additional file links, `--max-bytes` to bound each original, and `--refresh true` to refetch completed resources. The [Internet access guide](/guide/internet-access) explains result fields, partial failures, and resume behavior.
+
 ## Updates
 
 | Command                                      | Purpose                                  |
@@ -64,6 +77,8 @@ See [Keep Uni-CLI current](/guide/upgrading) for Agent metadata and installation
 | `unicli auth list`                           | List configured sites                   |
 | `unicli doctor cookies`                      | Diagnose browser cookie access          |
 
+Choose a local identity with `auth import <site> --profile-id <id>`. `auth check` validates the saved file locally; the original source command confirms remote acceptance. Read-only HTTP commands with declared cookies can refresh once after authentication failure. `--no-auth-retry` disables recovery. See [Authentication](/guide/authentication) for profile precedence, Windows connection-based import, and browser-turn recovery.
+
 ## Browser
 
 | Command                             | Purpose                                            |
@@ -82,7 +97,7 @@ Run `unicli help browser` for the complete action list.
 
 | Command                                         | Purpose                      |
 | ----------------------------------------------- | ---------------------------- |
-| `unicli doctor compute -f json`                 | Check desktop providers      |
+| `unicli doctor compute --json`                  | Check desktop providers      |
 | `unicli compute snapshot --app <name>`          | Read an application snapshot |
 | `unicli compute click <ref> --app <name>`       | Activate an element          |
 | `unicli compute type <ref> <text> --app <name>` | Enter text                   |
@@ -109,7 +124,7 @@ Run `unicli help browser` for the complete action list.
 | `unicli evolve inspect [session_id]`                               | List sessions or inspect one session                   |
 | `unicli evolve rollback <session_id>`                              | Restore the exact pre-promotion user overlay           |
 
-Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` while creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
+Proposal runs provide evidence for the Agent and cannot also serve as validation or held-out runs. A changed candidate must declare a falsifiable hypothesis and expected fixes. It must improve validation without regressions, preserve held-out behavior, and retain its baseline operation contracts. Pass `--allow-origin <origin>` when creating the session for each reviewed replacement network origin. Mutation evaluation remains disabled unless the caller passes `--allow-mutation-eval`.
 
 ## Plugins
 

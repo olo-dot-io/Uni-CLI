@@ -23,7 +23,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1892 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1893 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -349,7 +349,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | qwen | web-api | 8 | 1 | yes | unicli qwen history<br>unicli qwen ask<br>unicli qwen read |
 | rednote | web-api | 7 | 2 | yes | unicli rednote feed<br>unicli rednote notifications<br>unicli rednote note |
 | rest-countries | web-api | 2 | 0 | no | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | 0 | no | unicli retrieval search<br>unicli retrieval sources |
+| retrieval | web-api | 3 | 0 | no | unicli retrieval search<br>unicli retrieval acquire<br>unicli retrieval sources |
 | rfc | web-api | 1 | 0 | no | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | 0 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | 0 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |

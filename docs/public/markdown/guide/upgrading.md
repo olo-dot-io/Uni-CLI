@@ -72,7 +72,7 @@ MCP servers publish the same notice under `_meta["io.unicli/update"]`, including
 }
 ```
 
-An Agent can still request an immediate foreground update and verify the result.
+An Agent can request an immediate foreground update and verify the result.
 
 ```bash
 unicli upgrade --yes -f json
