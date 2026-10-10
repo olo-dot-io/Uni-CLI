@@ -9,7 +9,7 @@ description: Uni-CLI 已完成的基础能力与下一阶段工程重点。
 
 静态目录包含 <!-- STATS:site_count -->338<!-- /STATS --> 个站点。
 
-它包含 <!-- STATS:command_count -->1891<!-- /STATS --> 条注册命令。运行时还会加入 core 与主机发现的命令。
+它包含 <!-- STATS:command_count -->1892<!-- /STATS --> 条注册命令。运行时还会加入 core 与主机发现的命令。
 
 ## 已完成
 

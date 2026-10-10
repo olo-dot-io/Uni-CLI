@@ -48,6 +48,10 @@ pipeline:
       Accept: application/json
 ```
 
+`fetch` 接收 JSON，`fetch_text` 接收有大小限制的文本。两者共用重定向验证、响应分类和重试调度。`retry` 表示总尝试次数。上游 `Retry-After` 以秒数或 HTTP 日期设定最短等待时间，调用方取消会结束等待。成功读取的响应中断会使用剩余尝试次数，已接受写入的响应中断返回 `operation_outcome_ambiguous`，交给调用方核对当前状态。
+
+`cache` 是 GET 请求的新鲜度上限，单位为秒。请求头用于区分内容表示和凭据，响应中的 `max-age` 和 `Age` 进一步限制有效期。`no-store`、`no-cache`、`private` 和 `Vary: *` 禁用复用，文件写入采用原子替换。`cache: 0` 跳过已有缓存。
+
 ## 数据转换
 
 | Action       | 用途                             |
@@ -137,7 +141,7 @@ pipeline:
 
 ## Registered actions
 
-当前 registered action 名称：
+以下列出当前 registered action 名称。
 
 ```text
 append, assert, click, compute_apps, compute_assert, compute_cdp_attach,
@@ -154,7 +158,7 @@ sort, split_text, tap, to_entries, type, wait, websocket, write_temp
 
 ## Transport-native actions
 
-Transport adapter 还提供 macOS AX、Windows UIA、Linux AT-SPI、clipboard、application 与 visual action：
+Transport adapter 还提供 macOS AX、Windows UIA、Linux AT-SPI、clipboard、application 与 visual action，名称如下。
 
 ```text
 applescript, ax_*, uia_*, atspi_*, clipboard_read, clipboard_write,

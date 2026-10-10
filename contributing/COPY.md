@@ -2,7 +2,7 @@
 
 > Current version: v1.2.1 — Artemis · Wiseman.
 >
-> Current static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1891<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1009<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->259<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10389<!-- /STATS --> tests.
+> Current static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1892<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1006<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->261<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10374<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

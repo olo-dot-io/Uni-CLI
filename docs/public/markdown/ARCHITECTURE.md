@@ -39,9 +39,19 @@ The catalog combines four sources.
 
 Discovery compiles each request once before it reads posting lists. The plan keeps the remaining task text together with entity, cardinality, site, operation family, operator, browser-negation, and other hard requirements.
 
-Exact site ids and maintained aliases resolve through hash indexes. Multi-word names resolve through bounded phrase matching. A precomputed symmetric-delete index proposes typo candidates, then bounded Damerau-Levenshtein distance accepts only one nearest provider. Ambiguous spellings add no site constraint.
+Exact site ids and maintained aliases resolve through hash indexes. Multi-word names resolve through bounded phrase matching. A precomputed symmetric-delete index proposes typo candidates, then bounded Damerau-Levenshtein distance accepts only one nearest provider. Catalog vocabulary remains ordinary query text, so a term such as `computer` keeps its meaning during typo resolution. Ambiguous spellings add no site constraint.
 
 The bilingual inverted index combines BM25 and TF-IDF. Entity, workflow, operation-family, and feasibility signals refine the lexical candidate set. Hard capability requirements remove incompatible commands before bounded top-k selection. Every result includes `ranking.lexical_score`, `ranking.semantic_score`, `ranking.prior`, and named `ranking.signals` so an agent can inspect the selection basis.
+
+Host-discovered macOS commands reuse the index derived from the current inventory snapshot. Inventory refresh, configuration changes, and explicit invalidation update the registry, affected compiled command keys, and derived index together. User-authored commands retain priority over host inventory in both runtime and manifest discovery. Resident CLI consumers and MCP share the inventory owner.
+
+## Evidence retrieval
+
+`retrieval search` selects registered read-only sources and dispatches them through the control kernel with bounded concurrency. Source metadata owns argument projection and result classification. Each result retains its source record, canonical URL, timestamps, and next-read command. Source failures include an exact retry command.
+
+Reciprocal rank fusion counts the best rank for each distinct source and canonical result. Repeated rows from one source contribute once. The requested relevance or timestamp ordering is applied before bounded top-k selection. Equal ordering keys retain their first-seen order. Partial failures remain attached to usable results. An all-source failure retains provider causes and retry routes; successful sources with no matches produce `empty_result`.
+
+The evidence reader follows redirects and records the original and final URLs. HTML cleanup selects one semantic content root for both Markdown and plain text. Turndown owns Markdown rendering, and `html-to-text` owns plain-text rendering so literal punctuation and code survive conversion. The evidence envelope owns output truncation and link resolution.
 
 ## Operation contract
 
@@ -104,6 +114,8 @@ State reads produce refs tied to a snapshot and target. Later actions resolve th
 
 `compute` routes actions to available providers on macOS, Windows, Linux, Electron, or an attached visual driver. Snapshot responses describe the selected provider and return refs for follow-up actions. Health commands report the setup supported by the current host.
 
+Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/guide/browser-desktop#native-coordinate-driver) describes platform setup and observation lifetimes.
+
 ## Result envelope
 
 Every normal command returns a v2 AgentEnvelope. The outer fields remain stable across interfaces.
@@ -123,7 +135,7 @@ Failed calls place their stable code, message, suggestion, and available repair 
 
 ## Repair
 
-Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs that are still being tested.
+Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs under evaluation.
 
 ## Harness evolution kernel
 

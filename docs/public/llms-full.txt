@@ -5,9 +5,9 @@ This file is generated from the same VitePress site map as the public docs.
 ## Snapshot
 
 - Static adapter sites: 338
-- Registered adapter commands: 1891
+- Registered adapter commands: 1892
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1268
+- Adapters: 1267
 - Built-in actions: 113 (58 registered + 55 transport-native)
 
 ---
@@ -56,9 +56,9 @@ unicli hackernews top --limit 5 -f json
 ## Coverage
 
 - Static adapter sites: 338
-- Registered adapter operations: 1891
+- Registered adapter operations: 1892
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10392
+- Tests: 10374
 
 These totals come from the current static adapter catalog. Core commands and host-discovered tools join at runtime.
 
@@ -590,7 +590,7 @@ Describe the result you want. Uni-CLI searches its local catalog and returns the
 unicli search "top Hacker News stories"
 ```
 
-A result includes a command you can run directly:
+A result includes a command you can run directly.
 
 ```text
 hackernews top  Hacker News top stories
@@ -630,6 +630,91 @@ unicli search "read through an API" --operator structured-api
 ```
 
 See the [operation catalog](/reference/sites) to browse by site, command, or interface.
+
+For source search, native Markdown, and recovery, continue with [Internet access for agents](/guide/internet-access).
+
+---
+
+# Page: Internet Access
+
+Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/internet-access
+Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/internet-access.md
+
+<!-- Generated from docs/guide/internet-access.md. Do not edit this copy directly. -->
+
+# Internet Access
+
+- Canonical: https://olo-dot-io.github.io/Uni-CLI/guide/internet-access
+- Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/internet-access.md
+- Section: Use Uni-CLI
+- Parent: Use Uni-CLI (/guide/)
+
+Verified on 2026-10-10 against the current workspace, official provider contracts, and live public endpoints. Local command discovery, remote source search, and document reading have separate measurement boundaries.
+
+## Find and execute a source
+
+`search` ranks the installed operation catalog locally. A source command performs the network request. Specify the source when the task requires its records.
+
+```bash
+unicli search "search DBLP papers about graph databases" -f json
+unicli describe dblp search --full -f json
+unicli dblp search "graph databases" --limit 10 --offset 0 -f json
+unicli retrieval search "graph databases" --sources dblp,arxiv --limit 10 -f json
+```
+
+The command router combines bilingual lexical retrieval, exact operation and site matches, and intent-specific ranking. Source-specific topical paper queries retain their named site's search route. Requests for a paper's code, reviews, or data keep the corresponding resource workflow. Cross-source retrieval merges canonical URLs using the best rank from each independent source. Repeated rows from one source contribute once. Requested chronological sorting runs before the final result limit.
+
+## Read an agent-oriented representation
+
+```bash
+unicli extract https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/ --max-chars 12000 -f json
+unicli web read https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/ -f json
+unicli extract https://example.com --as html -f json
+```
+
+Markdown reads prefer `Accept: text/markdown`. Native Markdown passes through unchanged. HTML falls back to the existing content converter. Explicit HTML reads keep HTML negotiation. [Cloudflare's native representation](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/) provides this path through ordinary HTTP content negotiation.
+
+`extract` includes the requested and final URLs, retrieval time, content type, headings, links, and truncation metadata. Direct text responses have a five-million-byte limit and a 30-second read deadline. `web read` preserves its string result and reports `response_too_large` above one million characters. Use `extract --max-chars` for an explicitly bounded evidence record.
+
+## Academic and model sources
+
+| Source     | Current path                                  | Pagination and identity                                                |
+| ---------- | --------------------------------------------- | ---------------------------------------------------------------------- |
+| DBLP       | Official search API and author XML            | `--offset`, source totals, author PID, year-sorted author publications |
+| OpenReview | Official paper search with `source=papers`    | `--offset`, v1/v2 content fields, author profile IDs                   |
+| OpenRouter | Native model search and single-model metadata | `--limit`, `--offset`, `--sort`, canonical model slug                  |
+
+```bash
+unicli dblp author "Yann LeCun" --limit 10 --offset 0 -f json
+unicli openreview search "diffusion" --limit 10 --offset 0 -f json
+unicli openrouter search "gpt-5" --limit 2 --sort newest -f json
+unicli openrouter model openai/gpt-5.6-luna -f json
+unicli openrouter search "gpt-5" --limit 2 --fresh true -f json
+```
+
+OpenRouter search sends the query and page size to the server. Its public list and detail caches use the observed 120-second and 300-second freshness bounds, further restricted by each response's cache policy. `--fresh true` bypasses the stored response. Shared GET caches separate request headers, including credentials and content negotiation, and publish atomically. Writes always execute through their request path.
+
+On the verification date, OpenRouter search and detail returned live data. DBLP returned an Anubis verification page. The configured OpenReview credential had expired. DBLP now reports `challenge_required` with a recovery action, and OpenReview reports the credential failure. Deterministic lifecycle scenarios separately exercise their successful payloads, pagination, cancellation, and recovery.
+
+## Recover with the source contract
+
+| Response                                 | Agent action                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `challenge_required`                     | Use an available official API or a browser reader; credential-aware adapters follow their declared authentication flow |
+| Authentication failure                   | Run `unicli auth setup <site>` and refresh the declared credential                                                     |
+| HTTP 429 or a retryable upstream failure | Respect `Retry-After`; cancellation interrupts the wait                                                                |
+| `invalid_content`                        | Inspect the expected MIME and API endpoint                                                                             |
+| `operation_outcome_ambiguous`            | Read the current resource state before repeating an accepted write                                                     |
+
+The shared HTTP owner recognizes `cf-mitigated: challenge` before content parsing. Its HTML fallback combines a verification-page heading with challenge-specific content, keeping ordinary Turnstile documentation readable. Retry windows support seconds and HTTP dates. Failed response bodies are released before another attempt. Interrupted read responses use the remaining attempt budget. An accepted write with an interrupted response returns an ambiguous outcome for reconciliation.
+
+[Cloudflare Web Bot Auth](https://developers.cloudflare.com/bots/reference/bot-verification/web-bot-auth/) requires a recognized operator key and verified HTTP signatures. Admission remains a source-side decision. The implementation provides content negotiation, challenge classification, and adapter-specific authenticated-session recovery. Public direct readers, including `extract`, `web read`, and DBLP requests, do not import browser cookies. Browser verification affects a later API retry only through an adapter that explicitly declares and consumes those credentials. Web Bot Auth enrollment and a general CAPTCHA solver are outside the implemented capability set.
+
+## Compare the appropriate boundary
+
+[Exa](https://exa.ai/docs/reference/search) exposes hosted web search with content extraction, domain filters, dates, and result limits. [Context7](https://context7.com/docs/api-guide) exposes documentation search with library selection, version hints, and snippet reranking. Uni-CLI routes local operations and composes registered sources with execution and recovery.
+
+The [benchmark report](/BENCHMARK) compares local routing with BM25, TF-IDF, and MiniSearch on a shared catalog, and measures live native Markdown and OpenRouter response sizes separately. Hosted Exa and Context7 search quality requires its own shared query set, credentials, and relevance judgments. The local-routing result establishes performance within its measured catalog.
 
 ---
 
@@ -741,25 +826,25 @@ Uni-CLI groups browser and desktop actions under stable command families. Start 
 
 ## Browser sessions
 
-Check the local setup:
+Check the local setup.
 
 ```bash
 unicli browser doctor --json
 ```
 
-Start a hidden managed browser:
+Start a hidden managed browser.
 
 ```bash
 unicli browser start
 ```
 
-Use an existing Chrome session in the background:
+Use an existing Chrome session in the background.
 
 ```bash
 unicli browser --background start
 ```
 
-Open a page and inspect its accessible state:
+Open a page and inspect its accessible state.
 
 ```bash
 unicli browser open https://example.com
@@ -775,19 +860,19 @@ unicli browser type <ref> "search text"
 
 ## Desktop applications
 
-Search by the result you want:
+Search by the result you want.
 
 ```bash
 unicli search "inspect a desktop application" --surface desktop
 ```
 
-Read compute health before the first desktop session:
+Read compute health before the first desktop session.
 
 ```bash
-unicli doctor compute -f json
+unicli doctor compute --json
 ```
 
-Take a snapshot, then act on a returned ref:
+Take a snapshot, then act on a returned ref.
 
 ```bash
 unicli compute snapshot --app "Calculator" -f json
@@ -795,6 +880,19 @@ unicli compute click <ref> --app "Calculator" -f json
 ```
 
 Available providers depend on the operating system and installed accessibility services. The health response lists the active provider and the setup action for each unavailable provider.
+
+## Native coordinate driver
+
+Cua Driver provides the explicit `--via driver` path for pixel-based desktop actions. Run the provider probe to install a missing driver through its official installer and report macOS Accessibility and Screen Recording permissions.
+
+```bash
+unicli doctor compute --providers --install --json
+unicli compute screenshot --via driver -f json
+```
+
+Inspect the screenshot, choose the target in its pixel coordinates, and pass `.data.observation.ref` to `compute point-click <x> <y> --observation <ref> --via driver`. Each observation expires after 30 seconds and permits one coordinate action. Capture a new screenshot after the visible target changes or the driver restarts.
+
+Uni-CLI forwards capture identity, driver session, and screenshot coordinates. Cua Driver owns Retina scaling and size-capped capture transforms. Live macOS checks on 2026-10-10 confirmed driver 0.34.0, permissions, and screenshots. Behavioral scenarios separately cover capture-bound coordinates, Retina scaling, and single-use observations. Missing permissions and provider failures return structured recovery information.
 
 ## Choose the smallest useful interface
 
@@ -1841,6 +1939,10 @@ pipeline:
       Accept: application/json
 ```
 
+`fetch` accepts JSON and `fetch_text` accepts bounded textual content. Both share validated redirects, response classification, and retry scheduling. `retry` counts total attempts. An upstream `Retry-After` value sets a minimum wait in seconds or HTTP-date form, and caller cancellation stops that wait. Interrupted successful read bodies use the remaining attempt budget. Accepted writes with interrupted bodies return `operation_outcome_ambiguous` for state reconciliation.
+
+`cache` is a GET-only freshness ceiling in seconds. Request headers partition the stored representation and credentials. Response `max-age` and `Age` further constrain freshness. `no-store`, `no-cache`, `private`, and `Vary: *` disable reuse. Writes publish atomically. `cache: 0` bypasses a stored response.
+
 ## Transform data
 
 | Action       | Purpose                                |
@@ -1930,7 +2032,7 @@ Common compute actions include `compute_snapshot`, `compute_find`, `compute_clic
 
 ## Registered actions
 
-The current registered action names are:
+The following names are registered actions.
 
 ```text
 append, assert, click, compute_apps, compute_assert, compute_cdp_attach,
@@ -1947,7 +2049,7 @@ sort, split_text, tap, to_entries, type, wait, websocket, write_temp
 
 ## Transport-native actions
 
-Transport adapters also expose macOS AX, Windows UIA, Linux AT-SPI, clipboard, application, and visual actions. Their names include:
+Transport adapters also expose macOS AX, Windows UIA, Linux AT-SPI, clipboard, application, and visual actions. The following names identify these actions.
 
 ```text
 applescript, ax_*, uia_*, atspi_*, clipboard_read, clipboard_write,
@@ -1958,7 +2060,7 @@ These actions execute through the selected transport provider and its capability
 
 ## Templates
 
-The most common values are:
+The following expressions access common values.
 
 | Expression          | Value                     |
 | ------------------- | ------------------------- |
@@ -2380,7 +2482,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1891 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1892 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -2530,7 +2632,6 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | opencode | bridge | 1 | 0 | no | unicli opencode version |
 | opencsg | web-api | 2 | 0 | no | unicli opencsg datasets<br>unicli opencsg models |
 | openharness | desktop | 2 | 0 | no | unicli openharness memory-read<br>unicli openharness skills-list |
-| openrouter | web-api | 2 | 0 | no | unicli openrouter models<br>unicli openrouter search |
 | packagist | web-api | 3 | 0 | no | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | 0 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | 0 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -2586,7 +2687,6 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | v2ex | web-api | 12 | 2 | yes | unicli v2ex me<br>unicli v2ex notifications<br>unicli v2ex daily |
 | vercel | bridge | 1 | 0 | no | unicli vercel list |
 | vscode | desktop | 10 | 0 | no | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| web | web-api | 1 | 0 | no | unicli web read |
 | wechat-channels | web-api | 2 | 0 | yes | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | 4 | yes | unicli weibo feed<br>unicli weibo me<br>unicli weibo timeline |
 | weixin | browser | 6 | 0 | yes | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
@@ -2699,6 +2799,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | openalex | web-api | 3 | 0 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | 0 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | 0 | yes | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
+| openrouter | web-api | 3 | 0 | no | unicli openrouter models<br>unicli openrouter search<br>unicli openrouter model |
 | osv | web-api | 2 | 0 | no | unicli osv query<br>unicli osv vulnerability |
 | pacmpl | web-api | 3 | 0 | no | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | 0 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
@@ -2721,6 +2822,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | usenix | web-api | 5 | 0 | no | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | 0 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | 0 | no | unicli wanfang search |
+| web | web-api | 1 | 0 | no | unicli web read |
 | wikidata | web-api | 2 | 0 | no | unicli wikidata search<br>unicli wikidata entity |
 | wttr | web-api | 2 | 0 | no | unicli wttr current<br>unicli wttr forecast |
 | zlibrary | web-api | 2 | 0 | yes | unicli zlibrary search<br>unicli zlibrary info |
@@ -2908,9 +3010,19 @@ The catalog combines four sources.
 
 Discovery compiles each request once before it reads posting lists. The plan keeps the remaining task text together with entity, cardinality, site, operation family, operator, browser-negation, and other hard requirements.
 
-Exact site ids and maintained aliases resolve through hash indexes. Multi-word names resolve through bounded phrase matching. A precomputed symmetric-delete index proposes typo candidates, then bounded Damerau-Levenshtein distance accepts only one nearest provider. Ambiguous spellings add no site constraint.
+Exact site ids and maintained aliases resolve through hash indexes. Multi-word names resolve through bounded phrase matching. A precomputed symmetric-delete index proposes typo candidates, then bounded Damerau-Levenshtein distance accepts only one nearest provider. Catalog vocabulary remains ordinary query text, so a term such as `computer` keeps its meaning during typo resolution. Ambiguous spellings add no site constraint.
 
 The bilingual inverted index combines BM25 and TF-IDF. Entity, workflow, operation-family, and feasibility signals refine the lexical candidate set. Hard capability requirements remove incompatible commands before bounded top-k selection. Every result includes `ranking.lexical_score`, `ranking.semantic_score`, `ranking.prior`, and named `ranking.signals` so an agent can inspect the selection basis.
+
+Host-discovered macOS commands reuse the index derived from the current inventory snapshot. Inventory refresh, configuration changes, and explicit invalidation update the registry, affected compiled command keys, and derived index together. User-authored commands retain priority over host inventory in both runtime and manifest discovery. Resident CLI consumers and MCP share the inventory owner.
+
+## Evidence retrieval
+
+`retrieval search` selects registered read-only sources and dispatches them through the control kernel with bounded concurrency. Source metadata owns argument projection and result classification. Each result retains its source record, canonical URL, timestamps, and next-read command. Source failures include an exact retry command.
+
+Reciprocal rank fusion counts the best rank for each distinct source and canonical result. Repeated rows from one source contribute once. The requested relevance or timestamp ordering is applied before bounded top-k selection. Equal ordering keys retain their first-seen order. Partial failures remain attached to usable results. An all-source failure retains provider causes and retry routes; successful sources with no matches produce `empty_result`.
+
+The evidence reader follows redirects and records the original and final URLs. HTML cleanup selects one semantic content root for both Markdown and plain text. Turndown owns Markdown rendering, and `html-to-text` owns plain-text rendering so literal punctuation and code survive conversion. The evidence envelope owns output truncation and link resolution.
 
 ## Operation contract
 
@@ -2973,6 +3085,8 @@ State reads produce refs tied to a snapshot and target. Later actions resolve th
 
 `compute` routes actions to available providers on macOS, Windows, Linux, Electron, or an attached visual driver. Snapshot responses describe the selected provider and return refs for follow-up actions. Health commands report the setup supported by the current host.
 
+Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/guide/browser-desktop#native-coordinate-driver) describes platform setup and observation lifetimes.
+
 ## Result envelope
 
 Every normal command returns a v2 AgentEnvelope. The outer fields remain stable across interfaces.
@@ -2992,7 +3106,7 @@ Failed calls place their stable code, message, suggestion, and available repair 
 
 ## Repair
 
-Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs that are still being tested.
+Adapter failures can expose `adapter_path` and `step`. The agent updates that owned source and runs `unicli repair`, which invokes the original target as the verifier. User adapters provide a local path for repairs under evaluation.
 
 ## Harness evolution kernel
 
@@ -3071,7 +3185,7 @@ Each root CLI measurement starts a new process. Adapter fixture timing covers in
 
 <!-- BENCH:begin -->
 
-> Generated 2026-08-10 on Node v24.18.0 / darwin-arm64.
+> Generated 2026-10-10 on Node v26.11.1 / darwin-arm64.
 > Mode **fixture** (50 iterations per case).
 > Reproduce with `npm run bench` (local live mode) or `BENCH_FIXTURES_ONLY=1 npm run bench` (CI-deterministic fixture mode).
 
@@ -3079,27 +3193,27 @@ Each root CLI measurement starts a new process. Adapter fixture timing covers in
 
 | command boundary      | wall p50 | wall p95 | evidence class                         |
 | --------------------- | -------- | -------- | -------------------------------------- |
-| `unicli --version`    | 24 ms    | 26 ms    | new subprocess, constant metadata path |
-| `unicli --help`       | 24 ms    | 25 ms    | new subprocess, concise root help      |
-| `unicli list -f json` | 260 ms   | 282 ms   | new subprocess, manifest fast path     |
+| `unicli --version`    | 32 ms    | 34 ms    | new subprocess, constant metadata path |
+| `unicli --help`       | 30 ms    | 34 ms    | new subprocess, concise root help      |
+| `unicli list -f json` | 350 ms   | 526 ms   | new subprocess, manifest fast path     |
 
 ### Full catalog response size
 
 | metric                                | value  |
 | ------------------------------------- | ------ |
-| response tokens                       | 135751 |
-| response chars                        | 488703 |
-| distinct site labels in `list` output | 347    |
-| command rows in `list` output         | 1997   |
+| response tokens                       | 136826 |
+| response chars                        | 492572 |
+| distinct site labels in `list` output | 349    |
+| command rows in `list` output         | 2010   |
 
 ### Adapter call p50 and p95 response tokens
 
 | category  | command                                  | invocation tokens | response p50 tokens | response p95 tokens | wall p50 ms | wall p95 ms | mode    |
 | --------- | ---------------------------------------- | ----------------- | ------------------- | ------------------- | ----------- | ----------- | ------- |
-| news      | `unicli hackernews top --limit 5`        | 9                 | 404                 | 404                 | 0.003       | 0.009       | fixture |
-| social    | `unicli reddit hot --limit 5`            | 8                 | 415                 | 415                 | 0.005       | 0.007       | fixture |
-| social-cn | `unicli 36kr hot --limit 5`              | 7                 | 357                 | 357                 | 0.003       | 0.004       | fixture |
-| dev       | `unicli github-trending daily --limit 5` | 11                | 400                 | 400                 | 0.004       | 0.005       | fixture |
+| news      | `unicli hackernews top --limit 5`        | 9                 | 404                 | 404                 | 0.003       | 0.005       | fixture |
+| social    | `unicli reddit hot --limit 5`            | 8                 | 415                 | 415                 | 0.004       | 0.007       | fixture |
+| social-cn | `unicli 36kr hot --limit 5`              | 7                 | 357                 | 357                 | 0.003       | 0.003       | fixture |
+| dev       | `unicli github-trending daily --limit 5` | 11                | 400                 | 400                 | 0.004       | 0.011       | fixture |
 
 ### Public call budget
 
@@ -3121,6 +3235,49 @@ Each root CLI measurement starts a new process. Adapter fixture timing covers in
 
 The public response target for common list operations is 600 total tokens or less at `--limit 5`. Commands with larger results should expose a limit, pagination, or compact output.
 
+## Local ranking against strong baselines
+
+Measured on 2026-10-10 with Node 26.11.1 on an Apple M4 Pro. Every method receives the same 2,013 built-in and core command documents, including 2,010 discoverable documents. Host inventory and user overlays are disabled for all methods. The frozen comparison uses the complete `a3ccd598` source tree.
+
+```bash
+npm run build
+BENCH_RUNS=5 BENCH_COLD_RUNS=9 npm run bench:search
+```
+
+The historical set contains 617 positive and 26 negative queries. A separate 32-query set covers academic providers, model lookup, topical boundaries, and explicit sources, with four additional no-match queries. The 32 cases informed this iteration's fixes and remain a diagnostic set. Their post-fix score measures those cases; an unseen-test estimate requires a separate holdout.
+
+| Method                     | Historical Top-1 | Top-3   | Top-5   | MRR@5  | Diagnostic Top-1 | Resident p50 ms | Resident p95 ms |
+| -------------------------- | ---------------- | ------- | ------- | ------ | ---------------- | --------------- | --------------- |
+| Frozen Uni-CLI `a3ccd598`  | 482/617          | 557/617 | 577/617 | 0.8446 | 20/32            | 0.057           | 0.223           |
+| Current Uni-CLI            | 482/617          | 557/617 | 577/617 | 0.8446 | 26/32            | 0.053           | 0.199           |
+| BM25                       | 443/617          | 533/617 | 560/617 | 0.7913 | 19/32            | 0.020           | 0.085           |
+| TF-IDF cosine              | 454/617          | 544/617 | 566/617 | 0.8129 | 16/32            | 0.018           | 0.083           |
+| MiniSearch 7.2.0 BM25+     | 429/617          | 512/617 | 553/617 | 0.7678 | 15/32            | 0.043           | 0.174           |
+| MiniSearch BM25+ fuzzy 0.2 | 409/617          | 521/617 | 559/617 | 0.7581 | 13/32            | 0.152           | 0.450           |
+
+Resident samples interleave all methods over 3,395 queries per method. The full routers include query analysis, intent routing, scoring, top-five selection, and result shaping. Lexical baselines use the same frozen bilingual tokenization and alias expansion. BM25 uses `k1=1.2, b=0.75`; MiniSearch uses its shipped BM25+ defaults with exact matching and the documented fuzzy preset. Parameters remain fixed throughout the comparison.
+
+The current router preserves the historical results and resolves six source-versus-topic failures in the diagnostic set. Six diagnostic cases miss rank one, including one outside the top five. Raw misses and negative-query scores remain in `bench/search-baselines.results.json`. Score scales are method-specific. Pure lexical retrieval spends less time per query; the full router achieves higher Top-1 accuracy on these sets.
+
+### Separate cold boundary
+
+Nine fresh processes per full router include ESM import, index construction, and the first query. Baseline and current median process times are 84.396 ms and 82.326 ms. Median ready times are 50.470 ms and 49.725 ms. These samples exclude CLI argument parsing and host inventory. The cold CLI measurements above retain their own boundary. The report's single in-process build sample is descriptive; repeated cold samples provide the build comparison.
+
+## Live representation and provider measurements
+
+Measured on 2026-10-10 using `npm run bench:internet`. Byte counts refer to decoded UTF-8 bodies. Network compression, connection setup, origin caches, and remote load retain their own effects.
+
+| Source and request                           | Baseline body bytes  | Native body bytes  | Reduction | Samples                               |
+| -------------------------------------------- | -------------------- | ------------------ | --------- | ------------------------------------- |
+| Cloudflare Markdown-for-agents documentation | 175,685 HTML         | 16,408 Markdown    | 90.66%    | Three per representation, interleaved |
+| OpenRouter `gpt-5` model lookup, limit two   | 765,940 full catalog | 3,349 native query | 99.56%    | One per request path                  |
+
+Cloudflare total HTTP-plus-conversion medians were 219.557 ms for HTML and 193.453 ms for native Markdown. The first HTML request-and-conversion sample took 6,768.108 ms. The raw report keeps that sample. Native Markdown carries source metadata and content formatting that differ from local HTML extraction.
+
+OpenRouter returned 458 catalog records and two native-query records. Both paths selected the same two model IDs in this run. The recorded request times were 7,111.872 ms and 165.383 ms. One sample per path supports this payload observation. A general network speedup needs repeated, controlled measurements.
+
+The [Internet access guide](/guide/internet-access) describes the implemented route, cache, and recovery contracts. These measurements cover local discovery and selected HTTP endpoints. Hosted Exa and Context7 retrieval quality remains unmeasured by this suite.
+
 <!-- PRODUCT-SURFACE:begin -->
 
 ## Current product surface comparison
@@ -3129,16 +3286,16 @@ The comparison keeps each product inside its declared boundary. Catalog totals m
 
 | Product                                               | Source revision                                                                                                 | Declared surface                               | Current scale                                                           |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| Uni-CLI                                               | working tree on 2026-08-11                                                                                      | web, browser, desktop, system, and local tools | 337 sites and 1890 commands                                             |
-| [OpenCLI](https://github.com/jackwener/opencli)       | [a86d647](https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json) | website and browser adapter runtime            | 176 sites and 1331 commands                                             |
-| [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [39634a6](https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json)    | stateful harnesses and capability matrices     | 79 harnesses, 22 public entries, 5 matrices, and 62 matrix capabilities |
+| Uni-CLI                                               | working tree on 2026-10-10                                                                                      | web, browser, desktop, system, and local tools | 338 sites and 1892 commands                                             |
+| [OpenCLI](https://github.com/jackwener/opencli)       | [77af6bc](https://github.com/jackwener/opencli/blob/77af6bc433c1818a4abb1c8928e2a7fd0bbae376/cli-manifest.json) | website and browser adapter runtime            | 169 sites and 1215 commands                                             |
+| [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [34f5195](https://github.com/HKUDS/CLI-Anything/blob/34f519533bc175d2fe287ab8316b0dd99bb9cc43/registry.json)    | stateful harnesses and capability matrices     | 79 harnesses, 24 public entries, 5 matrices, and 62 matrix capabilities |
 
-The shared personal-content classifier omits generic identity commands such as `whoami`. Uni-CLI exposes more matching content commands. OpenCLI currently spans more matching sites.
+The shared personal-content classifier omits generic identity commands such as `whoami`. The table reports current counts with the same classifier. Coverage comparisons are observations; the maintenance gate checks executable tasks and catalog consistency.
 
 | Personal content surface | Uni-CLI | OpenCLI |
 | ------------------------ | ------- | ------- |
-| commands                 | 80      | 78      |
-| sites                    | 38      | 44      |
+| commands                 | 80      | 81      |
+| sites                    | 38      | 47      |
 
 ### Shipped discovery tasks
 
@@ -3166,7 +3323,7 @@ Uni-CLI completed 14/14 tasks at rank one. 14/14 top results included an invocat
 - Root discovery entry coverage 6/6
 - Generated catalog synchronization pass
 - OpenCLI pinned baseline integrity pass
-- Personal content command parity pass
+- Personal content command parity below the comparison baseline
 - Product surface gate pass
 
 Reproduce this section with `npm run bench:product-surface`.
@@ -3206,7 +3363,7 @@ Current release: v1.2.1 — Artemis · Wiseman.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1891<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1892<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
@@ -3297,7 +3454,7 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 v1.2.1 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
 
-The same catalog contains <span><!-- STATS:command_count -->1891<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
+The same catalog contains <span><!-- STATS:command_count -->1892<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
 ## How do I know which arguments a command accepts?
 

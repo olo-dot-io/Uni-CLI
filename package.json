@@ -171,7 +171,7 @@
     "truth:check": "tsx scripts/release-truth-check.ts",
     "build:agents": "tsx scripts/build-agents.ts",
     "test": "vitest run --project unit --maxWorkers=1 --reporter=dot",
-    "test:scenarios": "tsx tests/scenarios/discovery-routing.ts && tsx tests/scenarios/discovery-dynamic-cache.ts && tsx tests/scenarios/retrieval-lifecycle.ts && tsx tests/scenarios/cua-coordinate-lifecycle.ts && tsx tests/scenarios/cua-driver-install.ts",
+    "test:scenarios": "tsx tests/scenarios/discovery-routing.ts && tsx tests/scenarios/discovery-dynamic-cache.ts && tsx tests/scenarios/retrieval-lifecycle.ts && tsx tests/scenarios/cua-coordinate-lifecycle.ts && tsx tests/scenarios/cua-driver-install.ts && tsx tests/scenarios/internet-access.ts && tsx tests/scenarios/http-transport-lifecycle.ts && tsx tests/scenarios/academic-access.ts",
     "test:integration": "vitest run --project integration --maxWorkers=1 --reporter=dot",
     "test:adapter": "vitest run --project adapter",
     "test:perf": "vitest run --project perf",
@@ -230,7 +230,9 @@
     "bench:quick": "tsx bench/agent/report.ts",
     "bench:agent": "tsx bench/agent/sdk-runner.ts",
     "bench:gate": "node scripts/bench/check-ship-gate.js",
-    "sync:ref": "bash scripts/sync-ref.sh"
+    "sync:ref": "bash scripts/sync-ref.sh",
+    "bench:search": "tsx bench/search-baselines.ts",
+    "bench:internet": "tsx bench/internet-access.ts --output bench/internet-access.results.json"
   },
   "keywords": [
     "cli",

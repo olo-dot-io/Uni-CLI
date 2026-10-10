@@ -13,7 +13,11 @@
  * @since   2026-06-01
  */
 
-import { CATEGORY_ALIASES, SITE_CATEGORIES } from "./aliases.js";
+import {
+  ACTION_ALIASES,
+  CATEGORY_ALIASES,
+  SITE_CATEGORIES,
+} from "./aliases.js";
 import type { SearchIndex } from "./search.js";
 
 type SearchDocument = SearchIndex["documents"][number];
@@ -191,6 +195,8 @@ const SCHOLARLY_WORKFLOW_SITES = new Set(
   [...SCHOLARLY_WORKFLOW_COMMANDS].map((id) => id.slice(0, id.indexOf("/"))),
 );
 const SCHOLARLY_NON_BLOCKING_SITE_HINTS = new Set(["agents", "pdf"]);
+const SCHOLARLY_RESOURCE_REQUEST =
+  /\b(?:code|sources?|repositories|repository|repos?|datasets?|data|models?|spaces?|artifacts?|reviews?|peer|decisions?|rebuttals?|pdf|full[ -]?text|evidence|provenance|workflows?|availability|available|readable|readiness|reproduc\w*|replicat\w*|coverage|traces?|awards?)\b|代码|源码|数据|模型|审稿|评审|决定|全文|证据|溯源|工作流|可读性|复现|覆盖|奖项/u;
 
 export function resolveIntentFrame(
   input: IntentKernelInput,
@@ -266,14 +272,60 @@ export function appActionScorePrior(
   return APP_ACTION_SCORE_PRIOR;
 }
 
-export function intentBoost(
-  doc: SearchDocument,
+interface IntentBoostContext {
+  terms: ReadonlySet<string>;
+  recordedRun: boolean;
+  scholarly: boolean;
+  scholarlySearchSites?: ReadonlySet<string>;
+}
+
+export function prepareIntentBoost(
   terms: ReadonlySet<string>,
   siteHints: readonly string[],
   rawTerms: ReadonlySet<string>,
+  normalizedQuery: string,
+): IntentBoostContext {
+  const recordedRun = isRecordedRunIntent(rawTerms, siteHints);
+  const explicitNonScholarlySite = siteHints.some(
+    (site) =>
+      !SCHOLARLY_NON_BLOCKING_SITE_HINTS.has(site) &&
+      SITE_CATEGORIES.get(site) !== "scholarly",
+  );
+  const scholarly =
+    !recordedRun && !explicitNonScholarlySite && hasScholarlyIntent(terms);
+  const scholarlySites = siteHints.filter(
+    (site) => SITE_CATEGORIES.get(site) === "scholarly",
+  );
+  const scholarlyTask = normalizedQuery.split(
+    /\babout\b|\b(?:papers?|research|publications?|literature|articles?)\s+on\b|关于|有关/u,
+    1,
+  )[0];
+  const searchesExplicitProvider =
+    scholarlySites.length > 0 &&
+    scholarlyTask.length < normalizedQuery.length &&
+    [...rawTerms].some(
+      (term) =>
+        term === "search" || ACTION_ALIASES.get(term)?.includes("search"),
+    ) &&
+    // Resource requests keep their cross-source workflow; topic terms stay lexical.
+    !SCHOLARLY_RESOURCE_REQUEST.test(scholarlyTask);
+  return {
+    terms,
+    recordedRun,
+    scholarly,
+    ...(searchesExplicitProvider
+      ? { scholarlySearchSites: new Set(scholarlySites) }
+      : {}),
+  };
+}
+
+export function intentBoost(
+  doc: SearchDocument,
+  context: IntentBoostContext,
 ): number {
+  const { terms } = context;
   return (
-    architectureIntentBoost(doc, terms, siteHints, rawTerms) +
+    architectureIntentBoost(doc, terms, context.recordedRun) +
     acgCreatorIntentBoost(doc, terms) +
     acgMediaTrendIntentBoost(doc, terms) +
     weatherIntentBoost(doc, terms) +
@@ -282,7 +334,7 @@ export function intentBoost(
     authWorkflowIntentBoost(doc, terms) +
     unicliUpdateIntentBoost(doc, terms) +
     marxistsArchiveIntentBoost(doc, terms) +
-    scholarlyIntentBoost(doc, terms, siteHints, rawTerms)
+    scholarlyIntentBoost(doc, context)
   );
 }
 
@@ -494,8 +546,7 @@ function documentCategory(doc: SearchDocument): string {
 function architectureIntentBoost(
   doc: SearchDocument,
   terms: ReadonlySet<string>,
-  siteHints: readonly string[],
-  rawTerms: ReadonlySet<string>,
+  recordedRun: boolean,
 ): number {
   const browserAutomationCandidate =
     (doc.site === "browser" &&
@@ -518,7 +569,7 @@ function architectureIntentBoost(
     }
   }
 
-  if (isRecordedRunIntent(rawTerms, siteHints) && doc.site === "runs") {
+  if (recordedRun && doc.site === "runs") {
     return BOOST_RUN_TRACE_INTENT;
   }
   return 0;
@@ -863,20 +914,8 @@ function isScholarlySubject(
   return siteHints.some((site) => SITE_CATEGORIES.get(site) === "scholarly");
 }
 
-function scholarlyIntentBoost(
-  doc: SearchIndex["documents"][number],
-  terms: ReadonlySet<string>,
-  siteHints: readonly string[],
-  rawTerms: ReadonlySet<string>,
-): number {
-  if (
-    SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
-    (!SCHOLARLY_WORKFLOW_SITES.has(doc.site) ||
-      !SCHOLARLY_WORKFLOW_COMMANDS.has(`${doc.site}/${doc.command}`))
-  ) {
-    return 0;
-  }
-  const scholarlyIntent = hasAny(terms, [
+function hasScholarlyIntent(terms: ReadonlySet<string>): boolean {
+  return hasAny(terms, [
     "academic",
     "scholar",
     "scholarly",
@@ -960,14 +999,27 @@ function scholarlyIntentBoost(
     "clone",
     "run",
   ]);
-  if (!scholarlyIntent || isRecordedRunIntent(rawTerms, siteHints)) return 0;
+}
 
-  const explicitNonScholarlySite = siteHints.some(
-    (site) =>
-      !SCHOLARLY_NON_BLOCKING_SITE_HINTS.has(site) &&
-      SITE_CATEGORIES.get(site) !== "scholarly",
-  );
-  if (explicitNonScholarlySite) return 0;
+function scholarlyIntentBoost(
+  doc: SearchDocument,
+  context: IntentBoostContext,
+): number {
+  if (!context.scholarly) return 0;
+  if (
+    SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
+    (!SCHOLARLY_WORKFLOW_SITES.has(doc.site) ||
+      !SCHOLARLY_WORKFLOW_COMMANDS.has(`${doc.site}/${doc.command}`))
+  ) {
+    return 0;
+  }
+  if (
+    context.scholarlySearchSites &&
+    !context.scholarlySearchSites.has(doc.site)
+  ) {
+    return 0;
+  }
+  const { terms } = context;
 
   let boost = BOOST_SCHOLARLY_INTENT;
   boost += scholarlyVenueSourceBoost(doc, terms);

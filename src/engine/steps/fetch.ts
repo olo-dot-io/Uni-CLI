@@ -13,23 +13,23 @@
  * @since       2026-04-15
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
-import { setTimeout as delay } from "node:timers/promises";
 import { USER_AGENT } from "../../constants.js";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
-import { assertSafeRequestUrl, UnsafeRequestUrlError } from "../ssrf.js";
+import { assertSafeRequestUrl } from "../ssrf.js";
 import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { mapConcurrent } from "../download.js";
-import { describeNetworkFailure } from "../proxy.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 import {
-  fetchWithValidatedRedirects,
-  RedirectLimitError,
-} from "../validated-fetch.js";
+  fetchHttpResource,
+  isHtmlVerificationChallenge,
+  challengeRequiredError,
+} from "../http-response.js";
+import { writeFileTransactionally } from "../transactional-file.js";
 
 export interface FetchConfig {
   url: string;
@@ -60,12 +60,6 @@ export interface FetchConfig {
    * 12306's `c_url`). A closed key match, not an arbitrary expression.
    */
   rotate_on_field?: string;
-}
-
-export function normalizeFetchAttempts(retry: number | undefined): number {
-  const attempts = retry ?? 1;
-  if (!Number.isFinite(attempts)) return 1;
-  return Math.max(1, Math.floor(attempts));
 }
 
 export function resolveHeaderTemplates(
@@ -105,16 +99,17 @@ export async function stepFetch(
     const results = await mapConcurrent(items, concurrency, async (item) => {
       const itemCtx = { ...ctx, data: item };
       const itemUrl = evalTemplate(config.url, itemCtx);
-      const resolvedConfig = config.body
-        ? {
-            ...config,
-            body: resolveTemplateDeep(config.body, itemCtx),
-            headers: resolveHeaderTemplates(config.headers, itemCtx),
-          }
-        : {
-            ...config,
-            headers: resolveHeaderTemplates(config.headers, itemCtx),
-          };
+      const resolvedConfig =
+        config.body !== undefined
+          ? {
+              ...config,
+              body: resolveTemplateDeep(config.body, itemCtx),
+              headers: resolveHeaderTemplates(config.headers, itemCtx),
+            }
+          : {
+              ...config,
+              headers: resolveHeaderTemplates(config.headers, itemCtx),
+            };
       return fetchJson(itemUrl, resolvedConfig, {
         cookieHeader: ctx.cookieHeader,
         stepIndex,
@@ -134,13 +129,14 @@ export async function stepFetch(
     url += (url.includes("?") ? "&" : "?") + params.toString();
   }
 
-  const resolvedConfig = config.body
-    ? {
-        ...config,
-        body: resolveTemplateDeep(config.body, ctx),
-        headers: resolveHeaderTemplates(config.headers, ctx),
-      }
-    : { ...config, headers: resolveHeaderTemplates(config.headers, ctx) };
+  const resolvedConfig =
+    config.body !== undefined
+      ? {
+          ...config,
+          body: resolveTemplateDeep(config.body, ctx),
+          headers: resolveHeaderTemplates(config.headers, ctx),
+        }
+      : { ...config, headers: resolveHeaderTemplates(config.headers, ctx) };
 
   const data = await fetchJson(url, resolvedConfig, {
     cookieHeader: ctx.cookieHeader,
@@ -162,16 +158,17 @@ export function networkAccessForMethod(method = "GET"): "read" | "write" {
 
 const CACHE_DIR = join(homedir(), ".unicli", "cache");
 
-function fetchCacheKey(url: string, method: string): string {
+function fetchCacheKey(url: string, method: string, headers: Headers): string {
   return createHash("sha256")
-    .update(`${method}:${url}`)
+    .update(JSON.stringify([method, url, [...headers.entries()]]))
     .digest("hex")
     .slice(0, 16);
 }
 
 interface FetchCacheEntry {
-  schema_version: "fetch-cache.v1";
+  schema_version: "fetch-cache.v2";
   stored_at: number;
+  expires_at: number;
   requested_url: string;
   final_url: string;
   method: string;
@@ -182,8 +179,9 @@ function readFetchCache(
   url: string,
   method: string,
   ttlSeconds: number,
+  headers: Headers,
 ): FetchCacheEntry | null {
-  const key = fetchCacheKey(url, method);
+  const key = fetchCacheKey(url, method, headers);
   const filePath = join(CACHE_DIR, `${key}.json`);
   if (!existsSync(filePath)) return null;
   try {
@@ -191,10 +189,12 @@ function readFetchCache(
     const entry = JSON.parse(raw) as Partial<FetchCacheEntry>;
     const age = Date.now() - (entry.stored_at ?? Number.NaN);
     if (
-      entry.schema_version !== "fetch-cache.v1" ||
+      entry.schema_version !== "fetch-cache.v2" ||
       !Number.isSafeInteger(entry.stored_at) ||
       age < 0 ||
       age > ttlSeconds * 1000 ||
+      !Number.isSafeInteger(entry.expires_at) ||
+      Date.now() >= (entry.expires_at ?? 0) ||
       entry.requested_url !== url ||
       entry.method !== method ||
       typeof entry.final_url !== "string" ||
@@ -210,16 +210,19 @@ function readFetchCache(
 
 const MAX_CACHE_ENTRY_BYTES = 10 * 1024 * 1024;
 
-function writeFetchCache(
+async function writeFetchCache(
   url: string,
   finalUrl: string,
   method: string,
   data: unknown,
-): void {
+  headers: Headers,
+  ttlSeconds: number,
+): Promise<void> {
   try {
     const payload = JSON.stringify({
-      schema_version: "fetch-cache.v1",
+      schema_version: "fetch-cache.v2",
       stored_at: Date.now(),
+      expires_at: Date.now() + Math.floor(ttlSeconds * 1000),
       requested_url: url,
       final_url: finalUrl,
       method,
@@ -227,8 +230,12 @@ function writeFetchCache(
     } satisfies FetchCacheEntry);
     if (payload.length > MAX_CACHE_ENTRY_BYTES) return;
     mkdirSync(CACHE_DIR, { recursive: true });
-    const key = fetchCacheKey(url, method);
-    writeFileSync(join(CACHE_DIR, `${key}.json`), payload);
+    const key = fetchCacheKey(url, method, headers);
+    await writeFileTransactionally(
+      join(CACHE_DIR, `${key}.json`),
+      Buffer.from(payload),
+      { mode: 0o600 },
+    );
   } catch {
     /* cache write failure is non-fatal */
   }
@@ -252,8 +259,19 @@ async function fetchJson(
   options.validateRequest(url);
   signal?.throwIfAborted();
 
-  if (config.cache && config.cache > 0) {
-    const cached = readFetchCache(url, method, config.cache);
+  const headers = new Headers({
+    Accept: "application/json",
+    "User-Agent": USER_AGENT,
+  });
+  for (const [key, value] of Object.entries(config.headers ?? {}))
+    headers.set(key, value);
+  if (cookieHeader) headers.set("cookie", cookieHeader);
+  const cacheSeconds =
+    method === "GET" && Number.isFinite(config.cache)
+      ? Math.max(0, config.cache ?? 0)
+      : 0;
+  if (cacheSeconds > 0) {
+    const cached = readFetchCache(url, method, cacheSeconds, headers);
     if (cached !== null) {
       signal?.throwIfAborted();
       assertSafeRequestUrl(cached.final_url);
@@ -262,134 +280,77 @@ async function fetchJson(
       return cached.data;
     }
   }
-
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "User-Agent": USER_AGENT,
-    ...config.headers,
-  };
-
-  if (cookieHeader) {
-    headers["Cookie"] = cookieHeader;
-  }
-
   const init: RequestInit = { method, headers, signal };
-  if (config.body && method !== "GET") {
-    headers["Content-Type"] = "application/json";
+  if (config.body !== undefined && method !== "GET" && method !== "HEAD") {
+    if (!headers.has("content-type"))
+      headers.set("content-type", "application/json");
     init.body = JSON.stringify(config.body);
   }
-  const maxAttempts = normalizeFetchAttempts(config.retry);
-  const baseDelay = config.backoff ?? 1000;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    let resp: Response;
-    let finalUrl: string;
-    try {
-      ({ response: resp, finalUrl } = await fetchWithValidatedRedirects(
-        url,
-        init,
-        {
-          validateRequest: options.validateRequest,
-        },
-      ));
-    } catch (error) {
-      signal?.throwIfAborted();
-      if (
-        error instanceof PipelineError ||
-        error instanceof UnsafeRequestUrlError
-      ) {
+  const { response, finalUrl, data } = await fetchHttpResource(
+    url,
+    init,
+    {
+      ...config,
+      action: "fetch",
+      step: stepIndex,
+      validateRequest: options.validateRequest,
+    },
+    async (response, finalUrl) => {
+      let text: string;
+      try {
+        text = await response.text();
+      } catch (error) {
+        signal?.throwIfAborted();
         throw error;
       }
-      if (error instanceof RedirectLimitError) {
-        throw new PipelineError(error.message, {
-          step: stepIndex,
-          action: "fetch",
-          config: { url, method },
-          errorType: "http_error",
-          url,
-          suggestion: "Use a canonical API URL with a bounded redirect chain.",
-          retryable: false,
-          alternatives: [],
-        });
-      }
-      const isLastAttempt = attempt === maxAttempts;
-      if (!isLastAttempt) {
-        await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
-        continue;
-      }
-      throw new PipelineError(
-        `Network request failed for ${url}: ${describeNetworkFailure(error)}`,
-        {
-          step: stepIndex,
-          action: "fetch",
-          config: { url, method },
-          errorType: "network_error",
-          url,
-          suggestion: `Check proxy configuration and connectivity to ${new URL(url).origin}.`,
-          retryable: true,
-          alternatives: [],
-        },
-      );
-    }
-
-    if (resp.ok) {
-      const data = await resp.json();
       signal?.throwIfAborted();
-      if (config.cache && config.cache > 0) {
-        writeFetchCache(url, finalUrl, method, data);
+      if (
+        !/json/i.test(response.headers.get("content-type") ?? "") &&
+        isHtmlVerificationChallenge(text)
+      )
+        throw challengeRequiredError(url, "fetch", stepIndex, response.status);
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new PipelineError(
+          `Expected JSON from ${url}, received ${response.headers.get("content-type") ?? "untyped content"}.`,
+          {
+            step: stepIndex,
+            action: "fetch",
+            config: { url, method },
+            errorType: "invalid_content",
+            preserveErrorCode: true,
+            url,
+            statusCode: response.status,
+            retryable: false,
+            suggestion:
+              "Use the source's JSON API or read textual documents with unicli extract.",
+          },
+        );
       }
-      return data;
-    }
-
-    const isRetryable = resp.status === 429 || resp.status >= 500;
-    const isLastAttempt = attempt === maxAttempts;
-
-    if (isRetryable && !isLastAttempt) {
-      await delay(baseDelay * 2 ** (attempt - 1), undefined, { signal });
-      continue;
-    }
-
-    let preview = "";
-    try {
-      preview = (await resp.text()).slice(0, 200);
-    } catch {
-      /* ignore */
-    }
-    signal?.throwIfAborted();
-    const isRetryableStatus =
-      resp.status === 429 ||
-      resp.status === 500 ||
-      resp.status === 502 ||
-      resp.status === 503;
-    throw new PipelineError(
-      `HTTP ${resp.status} ${resp.statusText} from ${url}`,
-      {
-        step: stepIndex,
-        action: "fetch",
-        config: { url, method },
-        errorType: "http_error",
-        url,
-        statusCode: resp.status,
-        responsePreview: preview,
-        suggestion:
-          resp.status === 401
-            ? "The provider rejected the configured credentials. Refresh its declared header, cookie, or token configuration."
-            : resp.status === 402
-              ? "Add provider credits or quota before retrying this request."
-              : resp.status === 403
-                ? "The provider denied this request. Verify its declared credentials and account access."
-                : resp.status === 404
-                  ? "The API endpoint was not found. The URL path may have changed — check the target site for the current API."
-                  : resp.status === 429
-                    ? "Rate limited. Add a delay between requests or reduce the limit parameter."
-                    : `HTTP ${resp.status} error. Check if the API endpoint is still valid.`,
-        retryable: isRetryableStatus,
-        alternatives: [],
-      },
+      return { response, finalUrl, data };
+    },
+  );
+  if (cacheSeconds > 0) {
+    const policy = response.headers.get("cache-control") ?? "";
+    const age = Math.max(0, Number(response.headers.get("age") ?? 0));
+    const maxAge = /(?:^|,)\s*max-age\s*=\s*"?(\d+)/i.exec(policy)?.[1];
+    const ttl = Math.min(
+      cacheSeconds,
+      maxAge === undefined ? cacheSeconds : Math.max(0, Number(maxAge) - age),
     );
+    if (
+      ttl > 0 &&
+      Number.isFinite(ttl) &&
+      !/(?:^|,)\s*(?:no-store|no-cache|private)\b/i.test(policy) &&
+      response.headers.get("vary")?.trim() !== "*"
+    ) {
+      await writeFetchCache(url, finalUrl, method, data, headers, ttl);
+    }
   }
-
-  throw new Error("fetchJson: unreachable");
+  signal?.throwIfAborted();
+  return data;
 }
 
 registerStep("fetch", stepFetch as StepHandler);

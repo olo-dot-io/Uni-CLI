@@ -77,6 +77,7 @@ const rootSidebarGroups: SiteGroup[] = [
     link: "/guide/",
     items: [
       { text: "Find An Operation", link: "/guide/" },
+      { text: "Internet Access", link: "/guide/internet-access" },
       { text: "Authentication", link: "/guide/authentication" },
       { text: "Browser And Desktop", link: "/guide/browser-desktop" },
       { text: "Recipes", link: "/RECIPES" },
@@ -144,6 +145,7 @@ const zhSidebarGroups: SiteGroup[] = [
     link: "/guide/",
     items: [
       { text: "查找操作", link: "/guide/" },
+      { text: "互联网访问", link: "/guide/internet-access" },
       { text: "登录与认证", link: "/guide/authentication" },
       { text: "浏览器与桌面", link: "/guide/browser-desktop" },
       { text: "常用场景", link: "/RECIPES" },

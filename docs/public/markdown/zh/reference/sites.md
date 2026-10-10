@@ -19,7 +19,7 @@ unicli search "<意图>" --personalized
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：338 个站点，1891 条命令。
+这个目录来自适配器 manifest：338 个站点，1892 条命令。
 
 用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。
 
@@ -169,7 +169,6 @@ unicli search "<意图>" --personalized
 | opencode | bridge | 1 | 0 | 否 | unicli opencode version |
 | opencsg | web-api | 2 | 0 | 否 | unicli opencsg datasets<br>unicli opencsg models |
 | openharness | desktop | 2 | 0 | 否 | unicli openharness memory-read<br>unicli openharness skills-list |
-| openrouter | web-api | 2 | 0 | 否 | unicli openrouter models<br>unicli openrouter search |
 | packagist | web-api | 3 | 0 | 否 | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | 0 | 否 | unicli pandoc convert |
 | paperreview | web-api | 3 | 0 | 否 | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -225,7 +224,6 @@ unicli search "<意图>" --personalized
 | v2ex | web-api | 12 | 2 | 是 | unicli v2ex me<br>unicli v2ex notifications<br>unicli v2ex daily |
 | vercel | bridge | 1 | 0 | 否 | unicli vercel list |
 | vscode | desktop | 10 | 0 | 否 | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| web | web-api | 1 | 0 | 否 | unicli web read |
 | wechat-channels | web-api | 2 | 0 | 是 | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | 4 | 是 | unicli weibo feed<br>unicli weibo me<br>unicli weibo timeline |
 | weixin | browser | 6 | 0 | 是 | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
@@ -338,6 +336,7 @@ unicli search "<意图>" --personalized
 | openalex | web-api | 3 | 0 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | 0 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | 0 | 是 | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
+| openrouter | web-api | 3 | 0 | 否 | unicli openrouter models<br>unicli openrouter search<br>unicli openrouter model |
 | osv | web-api | 2 | 0 | 否 | unicli osv query<br>unicli osv vulnerability |
 | pacmpl | web-api | 3 | 0 | 否 | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | 0 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
@@ -360,6 +359,7 @@ unicli search "<意图>" --personalized
 | usenix | web-api | 5 | 0 | 否 | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | 0 | 否 | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | 0 | 否 | unicli wanfang search |
+| web | web-api | 1 | 0 | 否 | unicli web read |
 | wikidata | web-api | 2 | 0 | 否 | unicli wikidata search<br>unicli wikidata entity |
 | wttr | web-api | 2 | 0 | 否 | unicli wttr current<br>unicli wttr forecast |
 | zlibrary | web-api | 2 | 0 | 是 | unicli zlibrary search<br>unicli zlibrary info |

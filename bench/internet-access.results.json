@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-10-10T13:10:51.944Z",
+  "node_version": "v26.11.1",
+  "platform": "darwin-arm64",
+  "runs": 3,
+  "document_url": "https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/",
+  "measurement_boundary": "Sequential interleaved live HTTP plus local conversion; bytes count decoded UTF-8 bodies, not compressed wire traffic. OpenRouter compares full-catalog client filtering with current native search; source ordering may differ.",
+  "measurements": [
+    {
+      "run": 0,
+      "mode": "html-first",
+      "ok": true,
+      "content_type": "text/html",
+      "received_utf8_bytes": 175685,
+      "content_chars": 14055,
+      "network_ms": 6719.216542,
+      "total_ms": 6768.108292
+    },
+    {
+      "run": 0,
+      "mode": "native-markdown",
+      "ok": true,
+      "content_type": "text/markdown",
+      "received_utf8_bytes": 16408,
+      "content_chars": 16355,
+      "network_ms": 193.43654200000037,
+      "total_ms": 193.45258399999966
+    },
+    {
+      "run": 1,
+      "mode": "native-markdown",
+      "ok": true,
+      "content_type": "text/markdown",
+      "received_utf8_bytes": 16408,
+      "content_chars": 16355,
+      "network_ms": 189.51575000000048,
+      "total_ms": 189.54312500000015
+    },
+    {
+      "run": 1,
+      "mode": "html-first",
+      "ok": true,
+      "content_type": "text/html",
+      "received_utf8_bytes": 175685,
+      "content_chars": 14055,
+      "network_ms": 194.7507080000005,
+      "total_ms": 219.5565830000005
+    },
+    {
+      "run": 2,
+      "mode": "html-first",
+      "ok": true,
+      "content_type": "text/html",
+      "received_utf8_bytes": 175685,
+      "content_chars": 14055,
+      "network_ms": 184.7901670000001,
+      "total_ms": 208.56987500000014
+    },
+    {
+      "run": 2,
+      "mode": "native-markdown",
+      "ok": true,
+      "content_type": "text/markdown",
+      "received_utf8_bytes": 16408,
+      "content_chars": 16355,
+      "network_ms": 193.69791600000008,
+      "total_ms": 193.7245409999996
+    }
+  ],
+  "model_requests": [
+    {
+      "path": "/models",
+      "ok": true,
+      "returned_records": 458,
+      "selected_ids": [
+        "openai/gpt-5.6-luna-pro",
+        "openai/gpt-5.6-luna-pro:batch"
+      ],
+      "received_utf8_bytes": 765940,
+      "wall_ms": 7111.872166
+    },
+    {
+      "path": "/models?q=gpt-5&limit=2&offset=0&sort=newest",
+      "ok": true,
+      "returned_records": 2,
+      "selected_ids": [
+        "openai/gpt-5.6-luna-pro",
+        "openai/gpt-5.6-luna-pro:batch"
+      ],
+      "received_utf8_bytes": 3349,
+      "wall_ms": 165.38300000000163
+    }
+  ]
+}

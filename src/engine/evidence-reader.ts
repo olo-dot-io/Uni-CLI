@@ -31,7 +31,6 @@ import { PipelineError } from "./executor.js";
 import { renderHtmlContent } from "./html-to-markdown.js";
 import { buildInvocation, execute } from "./kernel/execute.js";
 import { fetchTextResource } from "./steps/fetch-text.js";
-import { isHtmlVerificationChallenge } from "./steps/html-to-md.js";
 
 export type EvidenceRepresentation = "markdown" | "text" | "html";
 export type EvidenceReader = "direct" | "jina" | "defuddle";
@@ -428,14 +427,6 @@ function directContent(input: {
   structuredData?: unknown;
 } {
   if (/^(?:text\/html|application\/xhtml\+xml)$/i.test(input.contentType)) {
-    if (isHtmlVerificationChallenge(input.text)) {
-      throw new EvidenceReadFailure({
-        code: "challenge_required",
-        message:
-          "The upstream returned a browser-verification challenge instead of document content.",
-        suggestion: `Complete verification for ${new URL(input.url).hostname} in a shared browser session or use a source-specific API.`,
-      });
-    }
     const { content, markdown } = renderHtmlContent(
       input.text,
       input.representation === "text" ? "text" : "markdown",
@@ -571,9 +562,11 @@ export async function readEvidenceDocument(
       { url: parsedUrl.toString(), method: "GET" },
       {
         Accept:
-          "text/html,application/xhtml+xml,application/json,application/xml,text/plain,text/markdown;q=0.9,*/*;q=0.1",
+          representation === "markdown"
+            ? "text/markdown,text/html;q=0.9,application/xhtml+xml;q=0.9,application/json;q=0.8,application/xml;q=0.8,text/plain;q=0.7,*/*;q=0.1"
+            : "text/html,application/xhtml+xml,application/json,application/xml,text/plain,text/markdown;q=0.9,*/*;q=0.1",
       },
-      -1,
+      0,
       { signal: boundedSignal(options.signal, DIRECT_READ_TIMEOUT_MS) },
     );
   } catch (error) {

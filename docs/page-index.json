@@ -106,6 +106,26 @@
       "breadcrumbs": []
     },
     {
+      "title": "Internet Access",
+      "description": "Discover a source, retrieve bounded evidence, and recover from source-side failures through the same command interface.",
+      "locale": "root",
+      "routePath": "/guide/internet-access",
+      "markdownPath": "/markdown/guide/internet-access.md",
+      "sourceLink": "/guide/internet-access",
+      "sourcePath": "docs/guide/internet-access.md",
+      "section": "Use Uni-CLI",
+      "parent": {
+        "text": "Use Uni-CLI",
+        "link": "/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "Use Uni-CLI",
+          "link": "/guide/"
+        }
+      ]
+    },
+    {
       "title": "Authentication",
       "description": "Set up site credentials, import a browser session, and diagnose login state.",
       "locale": "root",
@@ -584,6 +604,26 @@
       "section": "使用 Uni-CLI",
       "parent": null,
       "breadcrumbs": []
+    },
+    {
+      "title": "互联网访问",
+      "description": "从发现来源到读取证据，通过统一命令处理分页、缓存、验证页面和失败恢复。",
+      "locale": "zh",
+      "routePath": "/zh/guide/internet-access",
+      "markdownPath": "/markdown/zh/guide/internet-access.md",
+      "sourceLink": "/guide/internet-access",
+      "sourcePath": "docs/zh/guide/internet-access.md",
+      "section": "使用 Uni-CLI",
+      "parent": {
+        "text": "使用 Uni-CLI",
+        "link": "/zh/guide/"
+      },
+      "breadcrumbs": [
+        {
+          "text": "使用 Uni-CLI",
+          "link": "/zh/guide/"
+        }
+      ]
     },
     {
       "title": "登录与认证",

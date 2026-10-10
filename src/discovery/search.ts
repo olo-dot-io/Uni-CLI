@@ -24,6 +24,7 @@ import {
   appActionScorePrior,
   evaluateIntentFrame,
   intentBoost,
+  prepareIntentBoost,
   resolveIntentFrame,
 } from "./intent-ranking.js";
 import {
@@ -199,11 +200,7 @@ const K1 = 1.2;
 const B = 0.75;
 
 // ── Hybrid Scoring ──────────────────────────────────────────────────────────
-// StackOne benchmark (Feb 2026, 2700 test cases, 270 tools) found:
-//   Pure BM25 Top-1: 14%
-//   BM25+TF-IDF 20/80 blend Top-1: 21%
-//   Embedding Top-1: 38%
-// We use the 20/80 blend as the base, with domain-specific boosts on top.
+// Retain the established lexical score scale for routing and confidence.
 
 const ALPHA_BM25 = 0.2;
 const ALPHA_TFIDF = 0.8;
@@ -752,6 +749,12 @@ function searchIndex(
   }
 
   if (candidateSet.size === 0) return [];
+  const intentBoostContext = prepareIntentBoost(
+    queryTermSet,
+    effectiveTaskSiteHints,
+    rawTermSet,
+    taskIntentFrame.normalized,
+  );
 
   // Step 4: Score candidates using hybrid BM25 + TF-IDF
   const boundedLimit = Math.max(0, Math.floor(limit));
@@ -803,12 +806,12 @@ function searchIndex(
     }
     const intentDecision = evaluateIntentFrame(intentFrame, doc);
     if (intentDecision.blocked) continue;
-    const signals = new Set<string>();
+    const signals: string[] = [];
 
     // Hybrid base: alpha-blend BM25 and TF-IDF cosine similarity.
     // BM25 scores are unbounded; cosine is [0,1] and is scaled by a fixed
     // ×10 so the 20/80 blend keeps both regimes on comparable magnitudes
-    // (empirically tuned against the eval suite; NOT normalized per-query).
+    // across queries without per-query normalization.
     const bm25 = bm25Scores[idx]!;
     const normProduct = queryNorm * doc.tfidfNorm;
     const tfidf = normProduct === 0 ? 0 : tfidfDots[idx]! / normProduct;
@@ -818,15 +821,15 @@ function searchIndex(
     // Boost: exact site name match
     if (siteHints.includes(doc.site)) {
       score += BOOST_SITE_EXACT;
-      signals.add("site:exact-or-alias");
+      signals.push("site:exact-or-alias");
     }
     if (sitePhraseHints.includes(doc.site)) {
       score += BOOST_SITE_PHRASE;
-      signals.add("site:phrase");
+      signals.push("site:phrase");
     }
     if (fuzzySiteHints.includes(doc.site)) {
       score += BOOST_SITE_FUZZY;
-      signals.add("site:unique-typo");
+      signals.push("site:unique-typo");
     }
 
     // Boost: expanded query term hits the site or command name. The site
@@ -838,22 +841,18 @@ function searchIndex(
       normalizedQuery.length > 0 && normalizedQuery === doc.normalizedCommand;
     if (wholeQueryMatchesCommand) {
       score += BOOST_CMD_EXACT;
-      signals.add("command:exact");
+      signals.push("command:exact");
     }
-    let commandTokenMatched = false;
-    for (const qt of queryTerms) {
-      if (qt === doc.site) score += BOOST_SITE_ALIAS;
-      if (
-        !wholeQueryMatchesCommand &&
-        !commandTokenMatched &&
-        qt === doc.command
-      ) {
-        score += BOOST_CMD_TOKEN;
-        commandTokenMatched = true;
-        signals.add("command:token");
-      }
-      if (rawTokens.length === 1 && doc.command.includes(qt) && qt.length > 2) {
-        score += BOOST_CMD_PARTIAL;
+    if (queryTermSet.has(doc.site)) score += BOOST_SITE_ALIAS;
+    if (!wholeQueryMatchesCommand && queryTermSet.has(doc.command)) {
+      score += BOOST_CMD_TOKEN;
+      signals.push("command:token");
+    }
+    if (rawTokens.length === 1) {
+      for (const qt of queryTerms) {
+        if (qt.length > 2 && doc.command.includes(qt)) {
+          score += BOOST_CMD_PARTIAL;
+        }
       }
     }
 
@@ -864,7 +863,7 @@ function searchIndex(
       hasPhrase(doc.normalizedDescription, normalizedQuery)
     ) {
       score += BOOST_DESCRIPTION_PHRASE;
-      signals.add("description:phrase");
+      signals.push("description:phrase");
     }
     // Boost: category match
     if (categoryHints.includes(docCategory)) {
@@ -877,22 +876,17 @@ function searchIndex(
       score >= 10
     ) {
       score += BOOST_OPERATION_FAMILY;
-      signals.add("operation:match");
+      signals.push("operation:match");
     }
     if (
       doc.personalization &&
       personalizationFamilies.includes(doc.personalization)
     ) {
       score += BOOST_PERSONALIZATION_FAMILY;
-      signals.add(`personalization:${doc.personalization}`);
+      signals.push(`personalization:${doc.personalization}`);
     }
 
-    const domainIntentScore = intentBoost(
-      doc,
-      queryTermSet,
-      effectiveTaskSiteHints,
-      rawTermSet,
-    );
+    const domainIntentScore = intentBoost(doc, intentBoostContext);
     const entityIntentScore = intentEntityCommandBoost(
       taskIntentFrame,
       doc.site,
@@ -900,10 +894,10 @@ function searchIndex(
       effectiveTaskSiteHints,
     );
     score += domainIntentScore + entityIntentScore;
-    if (domainIntentScore !== 0) signals.add("intent:domain");
-    if (entityIntentScore !== 0) signals.add("intent:entity");
+    if (domainIntentScore !== 0) signals.push("intent:domain");
+    if (entityIntentScore !== 0) signals.push("intent:entity");
     score += intentDecision.boost;
-    if (intentDecision.boost !== 0) signals.add("intent:workflow");
+    if (intentDecision.boost !== 0) signals.push("intent:workflow");
     if (feasibilityDecision?.compatibility === "unknown") {
       score -= 24 + feasibilityDecision.uncertain_by.length * 4;
     } else if (
@@ -912,7 +906,7 @@ function searchIndex(
       feasibilityDecision.contract?.operator === options.requirements.operator
     ) {
       score += 16;
-      signals.add("constraint:operator");
+      signals.push("constraint:operator");
     }
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
     const prior = appActionScorePrior(doc, queryTermSet);
@@ -931,7 +925,7 @@ function searchIndex(
         lexical_score: roundScore(lexicalScore),
         semantic_score: roundScore(semanticScore),
         prior,
-        signals: [...signals],
+        signals,
       },
     });
     scoreOrdinal += 1;

@@ -15,26 +15,8 @@ import { registerStep, type StepHandler } from "../step-registry.js";
 import { PipelineError, type PipelineContext } from "../executor.js";
 import { htmlToMarkdown } from "../html-to-markdown.js";
 
-export function isHtmlVerificationChallenge(html: string): boolean {
-  const normalized = html.replaceAll(/\s+/g, " ").toLowerCase();
-  const title = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? "";
-  const heading = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1] ?? "";
-  const verificationHeading = /(?:verifying|checking) your browser/i.test(
-    `${title} ${heading}`,
-  );
-  const verificationInstructions =
-    /enable javascript and cookies|complete the check|security verification|performing security verification/.test(
-      normalized,
-    );
-  return (
-    (normalized.length <= 12_000 &&
-      verificationHeading &&
-      verificationInstructions) ||
-    (/just a moment/.test(normalized) &&
-      /enable javascript and cookies|complete the check/.test(normalized)) ||
-    /(?:cf-chl-|challenge-platform|cf-turnstile)/.test(normalized)
-  );
-}
+import { isHtmlVerificationChallenge } from "../http-response.js";
+export { isHtmlVerificationChallenge } from "../http-response.js";
 
 export function stepHtmlToMd(
   ctx: PipelineContext,

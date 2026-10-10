@@ -43,6 +43,12 @@ unicli upgrade
 
 Persistent non-interactive Agent installations update in a detached worker by default. Structured output reports progress through `meta.update.automatic_update`. Interactive terminals keep the Y/N choice, and `unicli upgrade --no-auto-update` switches a machine back to explicit approval.
 
+## Agent Internet Access
+
+The 2026-10-10 update adds native Markdown negotiation, source-aware scholarly routing, and shared HTTP retry and challenge handling. OpenRouter uses server-side model search and pagination.
+
+Read the [access guide](docs/guide/internet-access.md) and [reproducible benchmarks](docs/BENCHMARK.md) for behavior, measured gains, and source-side limits.
+
 ## Route By Task
 
 The catalog handles discovery and operation contracts. Execution then selects the strongest operator with the smallest effective scope. One provider runs; a failed path keeps its original cause and repair command.
@@ -97,10 +103,10 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 Static catalog
 
 - <!-- STATS:site_count -->338<!-- /STATS --> sites
-- <!-- STATS:command_count -->1891<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1892<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10389<!-- /STATS --> tests
+- <!-- STATS:test_count -->10374<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -114,7 +120,7 @@ Fixed core and host-discovered commands join at runtime.
 | finance | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | shopping | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | dev | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
-| ai | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
+| ai | 25 | 216 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | scholarly | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | patent | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | reference | 12 | 47 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb) |

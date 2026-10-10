@@ -11,7 +11,7 @@ description: 用自然语言搜索 Uni-CLI，查看命令参数，并获得结�
 unicli search "查看 Hacker News 热门文章"
 ```
 
-搜索结果会给出可以直接运行的命令：
+搜索结果会给出可以直接运行的命令。
 
 ```text
 hackernews top  Hacker News top stories
@@ -26,7 +26,7 @@ unicli hackernews top
 unicli describe hackernews top
 ```
 
-需要完整操作合同时，加上 `--full`：
+需要完整操作合同时，加上 `--full`。
 
 ```bash
 unicli describe hackernews top --full -f json
@@ -49,3 +49,5 @@ unicli search "通过 API 读取" --operator structured-api
 ```
 
 也可以在[操作目录](/zh/reference/sites)中按站点、命令或接口浏览。
+
+来源检索、原生 Markdown 与恢复操作见 [Agent 互联网访问](./internet-access)。

@@ -1,8 +1,8 @@
 {
   "source": "unicli@1.2.1",
-  "generated": "2026-08-21T08:11:13.128Z",
+  "generated": "2026-10-10T13:17:46.467Z",
   "total_sites": 338,
-  "total_commands": 1891,
+  "total_commands": 1892,
   "adapters": [
     {
       "site": "12306",
@@ -21549,9 +21549,9 @@
           "description": "Fetch a public URL through Ollama Cloud web_fetch",
           "when_to_use": "Fetch a public URL through Ollama Cloud web_fetch",
           "command": "unicli ollama-cloud fetch",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
+          "auth": true,
+          "auth_requirement": "required",
+          "strategy": "environment",
           "browser": false,
           "columns": ["title", "url", "content", "links"],
           "args": [
@@ -21983,63 +21983,6 @@
           "strategy": "public",
           "browser": false,
           "columns": ["name"]
-        }
-      ]
-    },
-    {
-      "site": "openrouter",
-      "type": "web-api",
-      "domain": "openrouter.ai",
-      "auth": false,
-      "strategy": "public",
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "models",
-          "description": "List all available AI models on OpenRouter",
-          "when_to_use": "List all available AI models on OpenRouter",
-          "command": "unicli openrouter models",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
-          "browser": false,
-          "columns": ["id", "name", "context_length", "pricing_prompt"],
-          "args": [
-            {
-              "name": "limit",
-              "type": "str",
-              "required": false,
-              "positional": false
-            }
-          ]
-        },
-        {
-          "name": "search",
-          "description": "Search OpenRouter AI models",
-          "when_to_use": "When you need to search openrouter for a specific query.",
-          "command": "unicli openrouter search",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
-          "browser": false,
-          "columns": [
-            "id",
-            "name",
-            "context",
-            "prompt_price",
-            "completion_price",
-            "url"
-          ],
-          "args": [
-            {
-              "name": "query",
-              "type": "str",
-              "required": false,
-              "positional": true,
-              "description": "Search query (model name, provider)"
-            }
-          ]
         }
       ]
     },
@@ -22592,9 +22535,10 @@
           "description": "Get Pexels curated photos",
           "when_to_use": "Get Pexels curated photos",
           "command": "unicli pexels curated",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup pexels",
+          "strategy": "header",
           "browser": false,
           "columns": ["id", "photographer", "alt", "url"],
           "args": [
@@ -30517,36 +30461,6 @@
               "required": false,
               "positional": false,
               "description": "Comma-separated modifiers such as meta,shift"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "site": "web",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "read",
-          "description": "Read any webpage and convert to Markdown",
-          "when_to_use": "Read any webpage and convert to Markdown",
-          "command": "unicli web read",
-          "auth": false,
-          "auth_requirement": "none",
-          "strategy": "public",
-          "browser": false,
-          "columns": [],
-          "args": [
-            {
-              "name": "url",
-              "type": "str",
-              "required": true,
-              "positional": true,
-              "description": "URL of the webpage to read"
             }
           ]
         }
@@ -41248,6 +41162,13 @@
               "required": false,
               "positional": false,
               "description": "Max results"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset"
             }
           ]
         },
@@ -41278,7 +41199,7 @@
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "dblp record key"
+              "description": "Canonical dblp record key or record URL"
             }
           ]
         },
@@ -41306,6 +41227,13 @@
               "required": false,
               "positional": false,
               "description": "Max venues"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset"
             }
           ]
         },
@@ -41350,7 +41278,14 @@
               "type": "int",
               "required": false,
               "positional": false,
-              "description": "Max publications"
+              "description": "Max publications, ordered by year descending then record key"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset"
             }
           ]
         }
@@ -49249,6 +49184,13 @@
               "required": false,
               "positional": false,
               "description": "Max results"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset in paper search results"
             }
           ]
         },
@@ -49282,7 +49224,7 @@
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "OpenReview note id"
+              "description": "OpenReview note id or forum URL"
             }
           ]
         },
@@ -49394,7 +49336,7 @@
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "OpenReview profile id"
+              "description": "OpenReview profile id or profile URL"
             },
             {
               "name": "limit",
@@ -49402,6 +49344,13 @@
               "required": false,
               "positional": false,
               "description": "Max submissions"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Pagination offset"
             }
           ]
         },
@@ -49490,6 +49439,162 @@
               "required": false,
               "positional": false,
               "description": "Per-row text truncation length"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "openrouter",
+      "type": "web-api",
+      "domain": "openrouter.ai",
+      "auth": false,
+      "strategy": "public",
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "models",
+          "description": "List available AI models on OpenRouter",
+          "when_to_use": "List available AI models on OpenRouter",
+          "command": "unicli openrouter models",
+          "auth": false,
+          "auth_requirement": "none",
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "context_length",
+            "pricing_prompt",
+            "pricing_completion",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Search by model name or provider/model slug"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum models per page"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of matching models to skip"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Server-side model ordering; omission preserves the upstream order"
+            },
+            {
+              "name": "fresh",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Bypass the local public-model response cache"
+            }
+          ]
+        },
+        {
+          "name": "search",
+          "description": "Search OpenRouter AI models",
+          "when_to_use": "When you need to search openrouter for a specific query.",
+          "command": "unicli openrouter search",
+          "auth": false,
+          "auth_requirement": "none",
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "context_length",
+            "pricing_prompt",
+            "pricing_completion",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "query",
+              "type": "str",
+              "required": false,
+              "positional": true,
+              "description": "Search by model name or provider/model slug"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Maximum models per page"
+            },
+            {
+              "name": "offset",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of matching models to skip"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Server-side model ordering; omission preserves the upstream order"
+            },
+            {
+              "name": "fresh",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Bypass the local public-model response cache"
+            }
+          ]
+        },
+        {
+          "name": "model",
+          "description": "Get full metadata for an OpenRouter model or model alias",
+          "when_to_use": "Get full metadata for an OpenRouter model or model alias",
+          "command": "unicli openrouter model",
+          "auth": false,
+          "auth_requirement": "none",
+          "strategy": "public",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "description",
+            "context_length",
+            "pricing",
+            "supported_parameters",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "id",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Provider/model slug, including an optional variant suffix"
+            },
+            {
+              "name": "fresh",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Bypass the local public-model response cache"
             }
           ]
         }
@@ -52340,6 +52445,36 @@
               "type": "int",
               "required": false,
               "positional": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "web",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read any webpage and convert to Markdown",
+          "when_to_use": "Read any webpage and convert to Markdown",
+          "command": "unicli web read",
+          "auth": false,
+          "auth_requirement": "none",
+          "strategy": "public",
+          "browser": false,
+          "columns": [],
+          "args": [
+            {
+              "name": "url",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "URL of the webpage to read"
             }
           ]
         }

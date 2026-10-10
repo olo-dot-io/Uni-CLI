@@ -113,7 +113,7 @@ State reads produce refs tied to a snapshot and target. Later actions resolve th
 
 `compute` routes actions to available providers on macOS, Windows, Linux, Electron, or an attached visual driver. Snapshot responses describe the selected provider and return refs for follow-up actions. Health commands report the setup supported by the current host.
 
-Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/operate/compute) describes platform setup and observation lifetimes.
+Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/guide/browser-desktop#native-coordinate-driver) describes platform setup and observation lifetimes.
 
 ## Result envelope
 

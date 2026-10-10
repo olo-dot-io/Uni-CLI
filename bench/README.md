@@ -68,3 +68,13 @@ generated reports.
 - `fixtures/*.json` contains committed response captures.
 - `results.json` contains the last full report. It can remain committed because the
   file is tiny and helpful in PR reviews, so we commit it).
+
+## Ranking and current Internet access
+
+Run `npm run bench:search` after a build. It compares the frozen `a3ccd598` router, the current router, BM25, TF-IDF, and exact and fuzzy MiniSearch BM25+ on one live command catalog. The report separates 617 historical positive queries, 26 historical negative queries, and 32 task-derived cases. Cases used to diagnose this iteration remain a diagnostic set. Their post-fix score is not an unseen-test estimate.
+
+`bench/search-baselines.results.json` includes accuracy, MRR, per-query failures, resident latency, and separate cold-process boundaries. `BENCH_RUNS` and `BENCH_COLD_RUNS` control the recorded sample counts.
+
+Run `npm run bench:internet` for interleaved live HTML and native Markdown requests plus OpenRouter full-catalog and native-query response sizes. `BENCH_RUNS` defaults to three. `bench/internet-access.results.json` keeps every sample, failures, decoded UTF-8 body bytes, and the HTTP plus conversion boundary. Connection setup, remote caches, and network conditions remain part of the live samples.
+
+Product-surface coverage counts are comparative observations. The maintenance gate checks executable discovery tasks, required invocation metadata, and generated catalog consistency. An upstream project adding a command changes the comparison. Local behavior retains its own correctness criteria.

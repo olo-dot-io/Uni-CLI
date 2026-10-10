@@ -35,7 +35,7 @@ apply the same scan manually to chat replies.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1891<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1892<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 

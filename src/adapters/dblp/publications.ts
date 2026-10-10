@@ -1,19 +1,25 @@
 /**
  * @owner       src::adapters::dblp::publications
  * @does        Registers DBLP publication, paper, author, and venue commands for computer-science bibliography discovery.
- * @needs       dblp public JSON/XML APIs, conservative XML field extraction, bounded result limits, src/registry.ts
+ * @needs       dblp public JSON/XML APIs, cheerio XML parsing, bounded fetch, and the command registry
  * @feeds       src/commands/scholar.ts via scholar.search, scholar.get, scholar.pdf, scholar.author, and scholar.venue
  * @breaks      DBLP API envelope drift, record-key parsing drift, or missing normalized ids makes CS bibliography rows invisible to the scholar meta-command.
  * @invariants  DBLP `key` is the source-local scholarly id and is mirrored as `dblp_key`; DOI remains a separate cross-source dedupe key.
  * @side-effects HTTPS egress to dblp.org only
- * @perf        O(limit) JSON/XML mapping after one DBLP API request per command
+ * @perf        Search maps one bounded page; author records require one XML fetch and O(N log N) chronological ordering
  * @concurrency safe
  * @test        src/adapters/dblp/publications.test.ts; live smoke via `unicli dblp search <query>` and `unicli scholar doctor --sources dblp --live`
  * @stability   experimental
  * @since       2026-05-19
  */
 
+import { load } from "cheerio";
 import { cli, Strategy } from "../../registry.js";
+import { PipelineError } from "../../engine/executor.js";
+import {
+  fetchTextResource,
+  type TextResource,
+} from "../../engine/steps/fetch-text.js";
 
 const DBLP_ORIGIN = "https://dblp.org";
 const DBLP_TIMEOUT_MS = 15_000;
@@ -45,7 +51,7 @@ interface DblpHit {
 interface DblpSearchBody {
   result?: {
     status?: { "@code"?: unknown; text?: unknown };
-    hits?: { hit?: DblpHit[] | DblpHit };
+    hits?: { hit?: DblpHit[] | DblpHit; "@total"?: unknown };
   };
 }
 
@@ -113,7 +119,10 @@ export function requireDblpLimit(
 }
 
 export function requireRecordKey(value: unknown): string {
-  const key = String(value ?? "").trim();
+  const raw = String(value ?? "").trim();
+  const key = raw
+    .replace(/^https?:\/\/dblp\.org\/rec\//i, "")
+    .replace(/\.(?:html|xml)$/, "");
   if (!key) {
     throw dblpError(
       "invalid_input",
@@ -132,7 +141,10 @@ export function requireRecordKey(value: unknown): string {
 }
 
 export function requirePid(value: unknown): string {
-  const pid = String(value ?? "").trim();
+  const pid = String(value ?? "")
+    .trim()
+    .replace(/^https?:\/\/dblp\.org\/pid\//i, "")
+    .replace(/\.(?:html|xml)$/, "");
   if (!PID_RE.test(pid)) {
     throw dblpError(
       "invalid_input",
@@ -144,18 +156,21 @@ export function requirePid(value: unknown): string {
 }
 
 export function decodeXmlEntities(value: unknown): string {
-  return String(value ?? "")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex: string) =>
-      String.fromCodePoint(Number.parseInt(hex, 16)),
-    )
-    .replace(/&#(\d+);/g, (_m, dec: string) =>
-      String.fromCodePoint(Number.parseInt(dec, 10)),
+  return load(String(value ?? ""), { xml: true })
+    .root()
+    .text();
+}
+
+function requireDblpOffset(value: unknown): number {
+  const offset = value === undefined ? 0 : Number(value);
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    throw dblpError(
+      "invalid_input",
+      "offset must be a non-negative integer.",
+      "Use offset 0 for the first page.",
     );
+  }
+  return offset;
 }
 
 function stripTrailingDot(value: string): string {
@@ -222,6 +237,20 @@ function hitList(body: DblpSearchBody, label: string): DblpHit[] {
   return Array.isArray(hits) ? hits : hits ? [hits] : [];
 }
 
+function searchPagination(
+  body: DblpSearchBody,
+  offset: number,
+  count: number,
+): Record<string, unknown> {
+  const total = Number(body.result?.hits?.["@total"] ?? Number.NaN);
+  return Number.isSafeInteger(total) && total >= 0
+    ? {
+        total_count: total,
+        next_offset: offset + count < total ? offset + count : null,
+      }
+    : {};
+}
+
 export function mapPublicationHit(
   hit: DblpHit,
   rank: number,
@@ -269,199 +298,167 @@ export function mapVenueHit(
   };
 }
 
-export function extractFirst(xml: string, tag: string): string {
-  const match = xml.match(
-    new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`),
-  );
-  return match ? match[1] : "";
-}
-
-export function extractAll(xml: string, tag: string): string[] {
-  const out: string[] = [];
-  const re = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, "g");
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(xml)) !== null) out.push(match[1]);
-  return out;
-}
-
-export function extractRecordKey(xml: string): string {
-  const match = xml.match(
-    /<(?:article|inproceedings|incollection|proceedings|book|phdthesis|mastersthesis)\b[^>]*\bkey="([^"]+)"/,
-  );
-  return match ? match[1] : "";
-}
-
-function extractRecordType(xml: string): string {
-  const match = xml.match(
-    /<(article|inproceedings|incollection|proceedings|book|phdthesis|mastersthesis)\b/,
-  );
-  if (!match) return "";
-  switch (match[1]) {
-    case "inproceedings":
-      return "conf";
-    case "article":
-      return "journal";
-    case "incollection":
-      return "incollection";
-    case "proceedings":
-      return "editorship";
-    default:
-      return match[1];
-  }
-}
-
-function extractOpenAccessUrl(xml: string): string {
-  const oa = xml.match(/<ee\b[^>]*type=["']oa["'][^>]*>([\s\S]*?)<\/ee>/);
-  if (oa) return stringField(decodeXmlEntities(oa[1]));
-  const any = xml.match(/<ee\b[^>]*>([\s\S]*?)<\/ee>/);
-  return any ? stringField(decodeXmlEntities(any[1])) : "";
-}
+const RECORD_SELECTOR =
+  "article,inproceedings,incollection,proceedings,book,phdthesis,mastersthesis,data,www";
 
 export function mapRecordXml(xml: string): Record<string, unknown> {
-  const key = extractRecordKey(xml);
-  const type = extractRecordType(xml);
-  const venue =
-    type === "conf"
-      ? decodeXmlEntities(extractFirst(xml, "booktitle"))
-      : decodeXmlEntities(extractFirst(xml, "journal"));
-  const ee = extractAll(xml, "ee")
-    .map(decodeXmlEntities)
-    .find((value) => /(?:doi\.org\/|^10\.)/i.test(value));
-  const doi = ee ? ee.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "") : "";
-  const openAccessUrl = extractOpenAccessUrl(xml);
+  const $ = load(xml, { xml: true });
+  const record = $(RECORD_SELECTOR).first();
+  const key = record.attr("key") ?? "";
+  const tag = record.prop("tagName")?.toLowerCase() ?? "";
+  const type =
+    tag === "inproceedings"
+      ? "conf"
+      : tag === "article"
+        ? "journal"
+        : tag === "proceedings"
+          ? "editorship"
+          : tag;
+  const text = (name: string): string =>
+    record.find(name).first().text().trim();
+  const electronicEditions = record
+    .find("ee")
+    .map((_index, ee) => $(ee).text().trim())
+    .get();
+  const doi =
+    electronicEditions
+      .find((value) => /(?:doi\.org\/|^10\.)/i.test(value))
+      ?.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "") ?? "";
+  const openAccessUrl = record.find('ee[type="oa"]').first().text().trim();
   const dblpUrl = key ? `${DBLP_ORIGIN}/rec/${key}.html` : "";
+  const sourceUrl = openAccessUrl || electronicEditions[0] || dblpUrl;
+  const authorPids = record
+    .find("author[pid]")
+    .map((_index, author) => $(author).attr("pid") ?? "")
+    .get()
+    .filter(Boolean);
   return {
     id: key,
     key,
     dblp_key: key,
     type,
-    title: stripTrailingDot(decodeXmlEntities(extractFirst(xml, "title"))),
-    authors: extractAll(xml, "author")
-      .map((author) => trimAuthorHomonym(decodeXmlEntities(author)))
+    title: stripTrailingDot(text("title")),
+    authors: record
+      .find("author")
+      .map((_index, author) => trimAuthorHomonym($(author).text()))
+      .get()
       .filter(Boolean)
       .join(", "),
-    venue,
-    year: decodeXmlEntities(extractFirst(xml, "year")),
-    pages: decodeXmlEntities(extractFirst(xml, "pages")),
+    ...(authorPids.length ? { author_pids: authorPids } : {}),
+    venue: text("booktitle") || text("journal"),
+    year: text("year"),
+    pages: text("pages"),
     doi: doi.startsWith("10.") ? doi : "",
     open_access_url: openAccessUrl,
-    source_url: openAccessUrl || dblpUrl,
+    source_url: sourceUrl,
     landing_url: dblpUrl,
     dblp_url: dblpUrl,
-    url: openAccessUrl || dblpUrl,
+    url: sourceUrl,
   };
 }
 
-export function splitAuthorRecords(xml: string): string[] {
-  const records: string[] = [];
-  const re = /<r>\s*([\s\S]*?)\s*<\/r>/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(xml)) !== null) {
-    const record = match[1];
-    if (!record.startsWith("<crossref")) records.push(record);
-  }
-  return records;
+export function splitAuthorRecords(
+  xml: string,
+  offset = 0,
+  limit = Infinity,
+): string[] {
+  const $ = load(xml, { xml: true });
+  const records = $("r")
+    .map((_index, entry) => {
+      const record = $(entry).find(RECORD_SELECTOR).first();
+      return record.length
+        ? {
+            record,
+            year: Number(record.find("year").first().text()),
+            key: record.attr("key") ?? "",
+          }
+        : null;
+    })
+    .get();
+  return records
+    .sort(
+      (left, right) =>
+        right.year - left.year || left.key.localeCompare(right.key),
+    )
+    .slice(offset, offset + limit)
+    .map(({ record }) => $.xml(record));
 }
 
 function extractPidFromAuthorHit(hit: DblpHit): string {
   const url = stringField(hit.info?.url);
-  const match = url.match(/\/pid\/([^/]+(?:\/[^/]+)+)$/);
-  return match ? match[1] : "";
+  const match = url.match(/\/pid\/(.+?)(?:\.(?:html|xml))?$/);
+  return match ? requirePid(match[1]) : "";
 }
 
 export async function fetchDblp(
   path: string,
   label: string,
   accept: string,
-): Promise<Response> {
-  const failure = (
-    code: string,
-    message: string,
-    suggestion: string,
-    retryable: boolean,
-  ): Error =>
-    Object.assign(new Error(message), {
-      code,
-      suggestion,
-      retryable,
-      alternatives: [
-        "unicli scholar search <query> --sources openalex,crossref",
-      ],
-    });
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const response = await fetch(`${DBLP_ORIGIN}${path}`, {
-        headers: {
-          "User-Agent":
-            "unicli-dblp/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
-          Accept: accept,
-        },
-        signal: AbortSignal.timeout(DBLP_TIMEOUT_MS),
-      });
-      if (response.status >= 500 && attempt === 0) {
-        await response.body?.cancel();
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        continue;
-      }
-      if (response.status === 404) {
-        throw failure(
-          "empty_result",
-          `${label} returned no result.`,
-          "Verify the DBLP key, PID, venue, or query.",
-          false,
-        );
-      }
-      if (response.status === 429) {
-        throw failure(
-          "rate_limited",
-          `${label} returned HTTP 429.`,
-          "Retry after the DBLP rate-limit window or select another source.",
-          true,
-        );
-      }
-      if (!response.ok) {
-        throw failure(
-          "upstream_error",
-          `${label} returned HTTP ${response.status}.`,
-          "Retry after DBLP is reachable and healthy.",
-          response.status >= 500,
-        );
-      }
-      return response;
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.name === "TimeoutError" || error.name === "AbortError")
-      ) {
-        throw failure(
+  signal?: AbortSignal,
+): Promise<TextResource> {
+  const timeout = AbortSignal.timeout(DBLP_TIMEOUT_MS);
+  try {
+    return await fetchTextResource(
+      `${DBLP_ORIGIN}${path}`,
+      { url: `${DBLP_ORIGIN}${path}`, retry: 2, backoff: 250 },
+      {
+        "User-Agent": "unicli-dblp/1.0 (https://github.com/olo-dot-io/Uni-CLI)",
+        Accept: accept,
+      },
+      0,
+      { signal: signal ? AbortSignal.any([signal, timeout]) : timeout },
+    );
+  } catch (error) {
+    signal?.throwIfAborted();
+    if (timeout.aborted) {
+      throw Object.assign(
+        dblpError(
           "timeout",
           `${label} timed out after ${DBLP_TIMEOUT_MS} ms.`,
           "Retry later or select another scholarly source.",
-          true,
-        );
-      }
-      throw error;
+        ),
+        { retryable: true },
+      );
     }
+    if (error instanceof PipelineError && error.detail.statusCode === 404) {
+      throw dblpEmptyResult(`${label} returned no result.`);
+    }
+    throw error;
   }
-  throw failure(
-    "upstream_error",
-    `${label} exhausted its DBLP retry.`,
-    "Retry after DBLP is reachable and healthy.",
-    true,
-  );
 }
 
 async function fetchDblpJson(
   path: string,
   label: string,
+  signal?: AbortSignal,
 ): Promise<DblpSearchBody> {
-  return (
-    await fetchDblp(path, label, "application/json")
-  ).json() as Promise<DblpSearchBody>;
+  const response = await fetchDblp(path, label, "application/json", signal);
+  let body: DblpSearchBody;
+  try {
+    body = JSON.parse(response.text) as DblpSearchBody;
+  } catch {
+    throw dblpError(
+      "upstream_error",
+      `${label} returned invalid JSON.`,
+      "Retry after DBLP returns its JSON API response.",
+    );
+  }
+  if (!body?.result?.hits) {
+    throw dblpError(
+      "upstream_error",
+      `${label} returned an incomplete search envelope.`,
+      "Retry after DBLP returns its documented search response.",
+    );
+  }
+  return body;
 }
 
-async function fetchDblpXml(path: string, label: string): Promise<string> {
-  return (await fetchDblp(path, label, "application/xml")).text();
+async function fetchDblpXml(
+  path: string,
+  label: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  return (await fetchDblp(path, label, "application/xml", signal)).text;
 }
 
 cli({
@@ -479,6 +476,12 @@ cli({
       description: "Publication search query",
     },
     { name: "limit", type: "int", default: 20, description: "Max results" },
+    {
+      name: "offset",
+      type: "int",
+      default: 0,
+      description: "Pagination offset",
+    },
   ],
   columns: [
     "rank",
@@ -492,20 +495,23 @@ cli({
     "url",
   ],
   capabilities: ["http.fetch", "scholar.search"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
+    const offset = requireDblpOffset(kwargs.offset);
     const body = await fetchDblpJson(
-      `/search/publ/api?q=${encodeURIComponent(query)}&format=json&h=${limit}`,
+      `/search/publ/api?q=${encodeURIComponent(query)}&format=json&h=${limit}&f=${offset}`,
       "dblp search",
+      context.signal,
     );
     const rows = hitList(body, "dblp search")
       .slice(0, limit)
-      .map((hit, index) => mapPublicationHit(hit, index + 1));
+      .map((hit, index) => mapPublicationHit(hit, offset + index + 1));
     if (rows.length === 0) {
       throw dblpEmptyResult(`No dblp publications matched "${query}".`);
     }
-    return rows;
+    const pagination = searchPagination(body, offset, rows.length);
+    return rows.map((row) => ({ ...row, ...pagination }));
   },
 });
 
@@ -521,7 +527,7 @@ cli({
       type: "str",
       required: true,
       positional: true,
-      description: "dblp record key",
+      description: "Canonical dblp record key or record URL",
     },
   ],
   columns: [
@@ -537,11 +543,12 @@ cli({
     "dblp_url",
   ],
   capabilities: ["http.fetch", "scholar.get", "scholar.pdf"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const key = requireRecordKey(kwargs.key);
     const xml = await fetchDblpXml(
       `/rec/${encodeURI(key)}.xml`,
       `dblp paper ${key}`,
+      context.signal,
     );
     const row = mapRecordXml(xml);
     if (!row.key && !row.title) {
@@ -566,23 +573,32 @@ cli({
       description: "Venue name or acronym",
     },
     { name: "limit", type: "int", default: 20, description: "Max venues" },
+    {
+      name: "offset",
+      type: "int",
+      default: 0,
+      description: "Pagination offset",
+    },
   ],
   columns: ["rank", "acronym", "venue", "type", "url"],
   capabilities: ["http.fetch", "scholar.venue"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
+    const offset = requireDblpOffset(kwargs.offset);
     const body = await fetchDblpJson(
-      `/search/venue/api?q=${encodeURIComponent(query)}&format=json&h=${limit}`,
+      `/search/venue/api?q=${encodeURIComponent(query)}&format=json&h=${limit}&f=${offset}`,
       "dblp venue",
+      context.signal,
     );
     const rows = hitList(body, "dblp venue")
       .slice(0, limit)
-      .map((hit, index) => mapVenueHit(hit, index + 1));
+      .map((hit, index) => mapVenueHit(hit, offset + index + 1));
     if (rows.length === 0) {
       throw dblpEmptyResult(`No dblp venues matched "${query}".`);
     }
-    return rows;
+    const pagination = searchPagination(body, offset, rows.length);
+    return rows.map((row) => ({ ...row, ...pagination }));
   },
 });
 
@@ -604,7 +620,14 @@ cli({
       name: "limit",
       type: "int",
       default: 20,
-      description: "Max publications",
+      description:
+        "Max publications, ordered by year descending then record key",
+    },
+    {
+      name: "offset",
+      type: "int",
+      default: 0,
+      description: "Pagination offset",
     },
   ],
   columns: [
@@ -620,49 +643,60 @@ cli({
     "url",
   ],
   capabilities: ["http.fetch", "scholar.author", "scholar.search"],
-  func: async (_page, kwargs) => {
+  func: async (_page, kwargs, context) => {
     const limit = requireDblpLimit(kwargs.limit, 20, 200);
+    const offset = requireDblpOffset(kwargs.offset);
     let pid = kwargs.pid ? requirePid(kwargs.pid) : "";
     if (!pid) {
       const author = requireDblpQuery(kwargs.author, "author");
       const body = await fetchDblpJson(
         `/search/author/api?q=${encodeURIComponent(author)}&format=json&h=20`,
         "dblp author search",
+        context.signal,
       );
       const hits = hitList(body, "dblp author search");
       if (hits.length === 0) {
         throw dblpEmptyResult(`No dblp author matched "${author}".`);
       }
-      pid = extractPidFromAuthorHit(hits[0]);
+      const exact = hits.filter(
+        (hit) =>
+          decodeXmlEntities(hit.info?.author).toLocaleLowerCase() ===
+          author.toLocaleLowerCase(),
+      );
+      const candidates = exact.length > 0 ? exact : hits;
+      if (candidates.length > 1) {
+        throw dblpError(
+          "invalid_input",
+          `Several DBLP authors match "${author}".`,
+          "Select the intended author with --pid.",
+          candidates
+            .map(
+              (hit) =>
+                `unicli dblp author --pid ${extractPidFromAuthorHit(hit)}`,
+            )
+            .filter((command) => !command.endsWith(" ")),
+        );
+      }
+      pid = extractPidFromAuthorHit(candidates[0]);
       if (!pid) {
         throw dblpEmptyResult(
           `dblp author search returned no PID for "${author}".`,
         );
       }
     }
-    const xml = await fetchDblpXml(`/pid/${pid}.xml`, `dblp pid ${pid}`);
-    const records = splitAuthorRecords(xml);
-    if (records.length === 0) {
+    const xml = await fetchDblpXml(
+      `/pid/${pid}.xml`,
+      `dblp pid ${pid}`,
+      context.signal,
+    );
+    const records = splitAuthorRecords(xml, offset, limit);
+    if (records.length === 0 && offset === 0) {
       throw dblpEmptyResult(`dblp PID ${pid} has no publications.`);
     }
-    return records.slice(0, limit).map((record, index) => {
-      const row = mapRecordXml(`<root>${record}</root>`);
-      return {
-        id: row.id || row.key || extractRecordKey(record),
-        rank: index + 1,
-        key: row.key || extractRecordKey(record),
-        dblp_key: row.dblp_key || row.key || extractRecordKey(record),
-        title: row.title,
-        authors: row.authors,
-        venue: row.venue,
-        year: row.year,
-        type: row.type,
-        doi: row.doi,
-        pid,
-        source_url: row.source_url,
-        landing_url: row.landing_url,
-        url: row.open_access_url || row.dblp_url,
-      };
-    });
+    return records.map((record, index) => ({
+      ...mapRecordXml(record),
+      rank: offset + index + 1,
+      pid,
+    }));
   },
 });

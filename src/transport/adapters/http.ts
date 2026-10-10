@@ -1,7 +1,7 @@
 /**
  * @owner       src::transport::adapters::http
  * @does        Exposes cancellation-linearized JSON/text HTTP requests and transactional download through the uniform transport envelope contract.
- * @needs       canonical proxy-aware fetch, SSRF guard, core envelopes, transport types, download engine
+ * @needs       canonical bounded text fetch, pipeline error taxonomy, core envelopes, transport types, download engine
  * @feeds       transport bus and public `@zenalexa/unicli/transport/http` export
  * @breaks      Treating post-dispatch write cancellation as retryable can replay an accepted HTTP mutation; dropped signals allow late network/file work.
  * @invariants  Safe reads cancel exactly; unsafe methods rejected by cancellation after dispatch are outcome-ambiguous; authoritative responses win late cancellation; downloads publish atomically.
@@ -15,8 +15,13 @@
 
 import { USER_AGENT } from "../../constants.js";
 import { err, exitCodeFor, ok } from "../../core/envelope.js";
-import { assertSafeRequestUrl } from "../../engine/executor.js";
-import { fetchWithProxy } from "../../engine/proxy.js";
+import { PipelineError } from "../../engine/executor.js";
+import {
+  assertSafeRequestUrl,
+  UnsafeRequestUrlError,
+} from "../../engine/ssrf.js";
+import { fetchTextResource } from "../../engine/steps/fetch-text.js";
+import { mapErrorToExitCode } from "../../output/error-map.js";
 import type { Envelope } from "../../core/envelope.js";
 import {
   confirmedEffectVerdict,
@@ -136,9 +141,9 @@ export class HttpTransport implements TransportAdapter {
   ): Promise<ActionResult<T>> {
     switch (req.kind) {
       case "fetch":
-        return this.doFetchJson<T>(req.params as FetchParams, signal);
       case "fetch_text":
-        return (await this.doFetchText(
+        return (await this.doFetch(
+          req.kind,
           req.params as FetchParams,
           signal,
         )) as ActionResult<T>;
@@ -175,47 +180,36 @@ export class HttpTransport implements TransportAdapter {
     extra?: Record<string, string>,
     accept?: string,
   ): Record<string, string> {
-    const headers: Record<string, string> = {
+    const headers = new Headers({
       "User-Agent": USER_AGENT,
       ...(accept ? { Accept: accept } : {}),
-      ...extra,
-    };
-    if (this.ctx?.cookieHeader) headers["Cookie"] = this.ctx.cookieHeader;
-    return headers;
+    });
+    for (const [name, value] of Object.entries(extra ?? {})) {
+      headers.set(name, value);
+    }
+    if (this.ctx?.cookieHeader) headers.set("Cookie", this.ctx.cookieHeader);
+    return Object.fromEntries(headers);
   }
 
-  private async doFetchJson<T>(
+  private async doFetch(
+    action: "fetch" | "fetch_text",
     p: FetchParams,
     signal?: AbortSignal,
-  ): Promise<Envelope<T>> {
+  ): Promise<Envelope<unknown>> {
     const url = typeof p.url === "string" ? p.url : undefined;
     if (!url) {
       return err({
         transport: "http",
         step: 0,
-        action: "fetch",
+        action,
         reason: "missing required param `url`",
-        suggestion: "pass params.url to the fetch action",
+        suggestion: `pass params.url to the ${action} action`,
         retryable: false,
         exit_code: exitCodeFor("usage_error"),
       });
     }
-    try {
-      assertSafeRequestUrl(url);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return err({
-        transport: "http",
-        step: 0,
-        action: "fetch",
-        reason: msg,
-        suggestion:
-          "remove loopback/metadata hosts or set UNICLI_ALLOW_LOCAL=1 for local development",
-        retryable: false,
-        exit_code: exitCodeFor("config_error"),
-      });
-    }
-    const method = typeof p.method === "string" ? p.method : "GET";
+    const method =
+      typeof p.method === "string" ? p.method.toUpperCase() : "GET";
     const params =
       p.params && typeof p.params === "object"
         ? (p.params as Record<string, unknown>)
@@ -224,156 +218,52 @@ export class HttpTransport implements TransportAdapter {
       p.headers && typeof p.headers === "object"
         ? (p.headers as Record<string, string>)
         : undefined;
-    const headers = this.buildHeaders(extraHeaders, "application/json");
-
-    const init: Record<string, unknown> = {
-      method,
-      headers,
-      ...(signal ? { signal } : {}),
-    };
-    if (p.body !== undefined && method !== "GET") {
-      headers["Content-Type"] = "application/json";
-      init.body = JSON.stringify(p.body);
-    }
-
+    const headers = this.buildHeaders(
+      extraHeaders,
+      action === "fetch" ? "application/json" : undefined,
+    );
     try {
-      const resp = await fetchWithProxy(
-        this.buildUrl(url, params),
-        init as RequestInit,
+      const requestUrl = this.buildUrl(url, params);
+      const resource = await fetchTextResource(
+        requestUrl,
+        { url: requestUrl, method, body: p.body },
+        headers,
+        0,
+        { signal },
       );
-      if (!resp.ok) {
-        let preview = "";
-        if (!signal?.aborted) {
-          try {
-            preview = (await resp.text()).slice(0, 200);
-          } catch (error) {
-            preview = `response preview unavailable: ${error instanceof Error ? error.message : String(error)}`;
-          }
-        }
-        this.lastBodyPreview = preview;
-        const retryable =
-          resp.status === 429 ||
-          resp.status === 500 ||
-          resp.status === 502 ||
-          resp.status === 503;
+      this.lastBodyPreview = resource.text.slice(0, 200);
+      const data =
+        action === "fetch" ? JSON.parse(resource.text) : resource.text;
+      return ok(data, authoritativeHttpEffect(method, resource.status, url));
+    } catch (error) {
+      if (isOperationOutcomeAmbiguousError(error)) throw error;
+      signal?.throwIfAborted();
+      if (error instanceof PipelineError) {
+        this.lastBodyPreview = error.detail.responsePreview ?? "";
         return err({
           transport: "http",
           step: 0,
-          action: "fetch",
-          reason: `HTTP ${resp.status} ${resp.statusText} from ${url}`,
-          suggestion:
-            resp.status === 401 || resp.status === 403
-              ? `authentication required — run \`unicli auth setup <site>\``
-              : resp.status === 404
-                ? `endpoint not found — check the URL path`
-                : `HTTP ${resp.status} — inspect the response or retry later`,
-          retryable,
-          exit_code:
-            resp.status === 401 || resp.status === 403
-              ? exitCodeFor("auth_required")
-              : retryable
-                ? exitCodeFor("temp_failure")
-                : exitCodeFor("service_unavailable"),
+          action,
+          reason: error.message,
+          suggestion: error.detail.suggestion,
+          retryable: error.detail.retryable,
+          exit_code: mapErrorToExitCode(error),
         });
       }
-      const data = (await resp.json()) as T;
-      try {
-        this.lastBodyPreview = JSON.stringify(data).slice(0, 200);
-      } catch {
-        this.lastBodyPreview = "";
-      }
-      return ok(data, authoritativeHttpEffect(method, resp.status, url));
-    } catch (e) {
-      signal?.throwIfAborted();
-      const msg = e instanceof Error ? e.message : String(e);
-      const transient =
-        /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET|socket hang up/i.test(msg);
       return err({
         transport: "http",
         step: 0,
-        action: "fetch",
-        reason: msg,
-        suggestion: transient
-          ? "transient network error — retry with backoff"
-          : "inspect the URL, DNS, or TLS configuration",
-        retryable: transient,
-        exit_code: transient
-          ? exitCodeFor("temp_failure")
-          : exitCodeFor("generic_error"),
-      });
-    }
-  }
-
-  private async doFetchText(
-    p: FetchParams,
-    signal?: AbortSignal,
-  ): Promise<Envelope<string>> {
-    const url = typeof p.url === "string" ? p.url : undefined;
-    if (!url) {
-      return err({
-        transport: "http",
-        step: 0,
-        action: "fetch_text",
-        reason: "missing required param `url`",
-        suggestion: "pass params.url to the fetch_text action",
-        retryable: false,
-        exit_code: exitCodeFor("usage_error"),
-      });
-    }
-    try {
-      assertSafeRequestUrl(url);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return err({
-        transport: "http",
-        step: 0,
-        action: "fetch_text",
-        reason: msg,
+        action,
+        reason: error instanceof Error ? error.message : String(error),
         suggestion:
-          "remove loopback/metadata hosts or set UNICLI_ALLOW_LOCAL=1 for local development",
+          error instanceof UnsafeRequestUrlError
+            ? "remove loopback/metadata hosts or set UNICLI_ALLOW_LOCAL=1 for local development"
+            : "inspect the response content and requested representation",
         retryable: false,
-        exit_code: exitCodeFor("config_error"),
-      });
-    }
-    const method = typeof p.method === "string" ? p.method : "GET";
-    const extraHeaders =
-      p.headers && typeof p.headers === "object"
-        ? (p.headers as Record<string, string>)
-        : undefined;
-    try {
-      const resp = await fetchWithProxy(url, {
-        method,
-        headers: this.buildHeaders(extraHeaders),
-        ...(signal ? { signal } : {}),
-      });
-      if (!resp.ok) {
-        return err({
-          transport: "http",
-          step: 0,
-          action: "fetch_text",
-          reason: `HTTP ${resp.status} ${resp.statusText} from ${url}`,
-          suggestion: `check if the URL is still valid: ${url}`,
-          retryable:
-            resp.status === 429 ||
-            resp.status === 500 ||
-            resp.status === 502 ||
-            resp.status === 503,
-          exit_code: exitCodeFor("service_unavailable"),
-        });
-      }
-      const text = await resp.text();
-      this.lastBodyPreview = text.slice(0, 200);
-      return ok(text);
-    } catch (e) {
-      signal?.throwIfAborted();
-      const msg = e instanceof Error ? e.message : String(e);
-      return err({
-        transport: "http",
-        step: 0,
-        action: "fetch_text",
-        reason: msg,
-        suggestion: "inspect the URL or the network configuration",
-        retryable: /timeout|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i.test(msg),
+        exit_code:
+          error instanceof UnsafeRequestUrlError
+            ? exitCodeFor("config_error")
+            : mapErrorToExitCode(error),
       });
     }
   }

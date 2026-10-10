@@ -26,10 +26,10 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 ## 当前目录
 
 - <span><!-- STATS:site_count -->338<!-- /STATS --></span> 个静态 adapter site
-- <span><!-- STATS:command_count -->1891<!-- /STATS --></span> 条注册 adapter command
-- <span><!-- STATS:adapter_count_yaml -->1009<!-- /STATS --></span> 个 schema-v2 YAML adapter
+- <span><!-- STATS:command_count -->1892<!-- /STATS --></span> 条注册 adapter command
+- <span><!-- STATS:adapter_count_yaml -->1006<!-- /STATS --></span> 个 schema-v2 YAML adapter
 - <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action
-- <span><!-- STATS:test_count -->10392<!-- /STATS --></span> 个 test
+- <span><!-- STATS:test_count -->10374<!-- /STATS --></span> 个 test
 
 完整 p50、p95、运行环境和生成时间见[英文报告](/BENCHMARK)。
 
@@ -42,6 +42,49 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 
 常见 list operation 的公开目标是在 `--limit 5` 时保持 600 total tokens 或更少。更大的 command result 应提供 limit、pagination 或 compact output。
 
+## 本地排序与强基线
+
+本次测量日期为 2026-10-10，使用 Apple M4 Pro 和 Node 26.11.1。所有方法共用 2,013 条内置与核心命令文档，其中 2,010 条可发现。主机动态目录和用户覆盖配置统一关闭。旧版本对照使用完整的 `a3ccd598` 源码。
+
+```bash
+npm run build
+BENCH_RUNS=5 BENCH_COLD_RUNS=9 npm run bench:search
+```
+
+历史数据包含 617 条正例和 26 条负例。另有 32 条任务查询，覆盖学术来源、模型查找、主题边界和明确指定来源，并附 4 条无匹配查询。32 条任务查询参与了本轮问题定位，属于诊断集。修复后的分数反映这组场景，未知查询的表现需要单独保留的测试集验证。
+
+| 方法                       | 历史 Top-1 | Top-3   | Top-5   | MRR@5  | 诊断 Top-1 | 常驻 p50 ms | 常驻 p95 ms |
+| -------------------------- | ---------- | ------- | ------- | ------ | ---------- | ----------- | ----------- |
+| 旧版 Uni-CLI `a3ccd598`    | 482/617    | 557/617 | 577/617 | 0.8446 | 20/32      | 0.057       | 0.223       |
+| 当前 Uni-CLI               | 482/617    | 557/617 | 577/617 | 0.8446 | 26/32      | 0.053       | 0.199       |
+| BM25                       | 443/617    | 533/617 | 560/617 | 0.7913 | 19/32      | 0.020       | 0.085       |
+| TF-IDF cosine              | 454/617    | 544/617 | 566/617 | 0.8129 | 16/32      | 0.018       | 0.083       |
+| MiniSearch 7.2.0 BM25+     | 429/617    | 512/617 | 553/617 | 0.7678 | 15/32      | 0.043       | 0.174       |
+| MiniSearch BM25+ fuzzy 0.2 | 409/617    | 521/617 | 559/617 | 0.7581 | 13/32      | 0.152       | 0.450       |
+
+各方法交错执行，每个方法测量 3,395 次查询。完整路由包含查询分析、意图判断、评分、前五项选择和结果整理。词法基线共用冻结的双语分词和别名扩展。BM25 使用 `k1=1.2, b=0.75`，MiniSearch 使用当前版本的 BM25+ 默认参数，分别测量精确匹配和官方文档中的模糊匹配配置。比较期间参数保持固定。
+
+当前路由保留历史结果，修复诊断集中的 6 个来源与主题混淆问题。诊断集仍有 6 项未排首位，其中 1 项未进入前五。完整失败记录和负例原始分数保存在 `bench/search-baselines.results.json`。不同方法的分数尺度各自独立。纯词法检索的单次耗时更低，完整路由在这两组查询中的首位准确率更高。
+
+### 独立冷启动范围
+
+两个完整路由分别启动 9 个新进程，包含 ESM 导入、索引构建和首条查询。旧版与当前版的进程耗时中位数分别为 84.396 ms 和 82.326 ms，就绪时间中位数分别为 50.470 ms 和 49.725 ms。这里省略 CLI 参数解析与主机目录发现，完整 CLI 冷启动使用英文报告中的独立数据。报告内的单次进程内构建采样仅记录观测，构建比较使用重复冷进程样本。
+
+## 真实内容表示与站点请求
+
+2026-10-10 运行 `npm run bench:internet`。字节数表示解码后的 UTF-8 正文。网络压缩、连接建立、来源缓存与远端负载分别影响实际请求成本。
+
+| 来源与请求                             | 原路径正文字节   | 原生路径正文字节 | 减少比例 | 样本                    |
+| -------------------------------------- | ---------------- | ---------------- | -------- | ----------------------- |
+| Cloudflare Markdown-for-agents 文档    | 175,685 HTML     | 16,408 Markdown  | 90.66%   | 每种表示 3 次，交错执行 |
+| OpenRouter `gpt-5` 模型查询，限制 2 条 | 765,940 完整目录 | 3,349 原生查询   | 99.56%   | 每条路径 1 次           |
+
+Cloudflare 请求加正文转换的中位耗时为 HTML 219.557 ms、原生 Markdown 193.453 ms。首个 HTML 请求与转换样本耗时 6,768.108 ms，原始报告保留该样本。原生 Markdown 包含来源元数据，其内容格式与本地 HTML 提取存在差异。
+
+OpenRouter 完整目录返回 458 条，原生查询返回 2 条，两条路径在本次运行中选出相同的模型 ID。记录的请求耗时为 7,111.872 ms 和 165.383 ms。每条路径的一次样本支持当前正文大小比较，一般性的网络加速结论需要重复控制测量。
+
+[互联网访问指南](/zh/guide/internet-access) 说明当前路由、缓存与恢复契约。这组测量覆盖本地命令发现和选定 HTTP 端点，Exa 与 Context7 的托管检索质量尚未纳入实测。
+
 <!-- PRODUCT-SURFACE:begin -->
 
 ## 当前产品能力对照
@@ -50,16 +93,16 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 
 | 产品                                                  | 源码版本                                                                                                        | 公开范围                           | 当前规模                                              |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------- |
-| Uni-CLI                                               | 2026-08-11 工作区                                                                                               | 网站、浏览器、桌面、系统和本地工具 | 337 个网站，1890 条命令                               |
-| [OpenCLI](https://github.com/jackwener/opencli)       | [a86d647](https://github.com/jackwener/opencli/blob/a86d64705c526dc710f790e66cfcabf6ecf786b9/cli-manifest.json) | 网站和浏览器 adapter runtime       | 176 个网站，1331 条命令                               |
-| [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [39634a6](https://github.com/HKUDS/CLI-Anything/blob/39634a640cf20bc603b4faae4d31069c44821a9a/registry.json)    | 有状态 harness 和能力矩阵          | 79 个 harness，22 个公开入口，5 个矩阵，62 项矩阵能力 |
+| Uni-CLI                                               | 2026-10-10 工作区                                                                                               | 网站、浏览器、桌面、系统和本地工具 | 338 个网站，1892 条命令                               |
+| [OpenCLI](https://github.com/jackwener/opencli)       | [77af6bc](https://github.com/jackwener/opencli/blob/77af6bc433c1818a4abb1c8928e2a7fd0bbae376/cli-manifest.json) | 网站和浏览器 adapter runtime       | 169 个网站，1215 条命令                               |
+| [CLI-Anything](https://github.com/HKUDS/CLI-Anything) | [34f5195](https://github.com/HKUDS/CLI-Anything/blob/34f519533bc175d2fe287ab8316b0dd99bb9cc43/registry.json)    | 有状态 harness 和能力矩阵          | 79 个 harness，24 个公开入口，5 个矩阵，62 项矩阵能力 |
 
-统一的个人内容分类会略过 `whoami` 这类身份查询。Uni-CLI 的个人内容命令数量更多，OpenCLI 覆盖的网站数量更多。
+统一的个人内容分类会略过 `whoami` 这类身份查询。表格使用同一分类器报告当前数量。覆盖数量作为比较结果保留，维护检查验证实际任务和目录一致性。
 
 | 个人内容范围 | Uni-CLI | OpenCLI |
 | ------------ | ------- | ------- |
-| 命令         | 80      | 78      |
-| 网站         | 38      | 44      |
+| 命令         | 80      | 81      |
+| 网站         | 38      | 47      |
 
 ### 已发布发现任务
 
@@ -87,7 +130,7 @@ Uni-CLI 有 14/14 个任务排在首位。14/14 个首位结果同时带有运�
 - 根命令发现入口 6/6
 - 生成目录同步 通过
 - OpenCLI 固定基准完整性 通过
-- 个人内容命令对等检查 通过
+- 个人内容命令数量比较 低于对照数量
 - 产品能力检查 通过
 
 运行 `npm run bench:product-surface` 可以重新生成本节。

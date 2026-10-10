@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-21T08:11:13.128Z",
+  "generated": "2026-10-10T13:17:46.467Z",
   "total_sites": 338,
-  "total_commands": 1891,
+  "total_commands": 1892,
   "sites": [
     {
       "site": "12306",
@@ -8199,8 +8199,8 @@
           "name": "fetch",
           "description": "Fetch a public URL through Ollama Cloud web_fetch",
           "command": "unicli ollama-cloud fetch",
-          "auth": false,
-          "auth_requirement": "none",
+          "auth": true,
+          "auth_requirement": "required",
           "browser": false
         },
         {
@@ -8393,34 +8393,6 @@
           "name": "skills-list",
           "description": "List skills installed in the local OpenHarness (~/.openharness/skills)",
           "command": "unicli openharness skills-list",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
-        }
-      ]
-    },
-    {
-      "site": "openrouter",
-      "type": "web-api",
-      "domain": "openrouter.ai",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "models",
-          "description": "List all available AI models on OpenRouter",
-          "command": "unicli openrouter models",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
-        },
-        {
-          "name": "search",
-          "description": "Search OpenRouter AI models",
-          "command": "unicli openrouter search",
           "auth": false,
           "auth_requirement": "none",
           "browser": false
@@ -8657,8 +8629,9 @@
           "name": "curated",
           "description": "Get Pexels curated photos",
           "command": "unicli pexels curated",
-          "auth": false,
-          "auth_requirement": "none",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup pexels",
           "browser": false
         },
         {
@@ -11773,25 +11746,6 @@
           "auth": false,
           "auth_requirement": "none",
           "browser": true
-        }
-      ]
-    },
-    {
-      "site": "web",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "read",
-          "description": "Read any webpage and convert to Markdown",
-          "command": "unicli web read",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
         }
       ]
     },
@@ -18886,6 +18840,42 @@
       ]
     },
     {
+      "site": "openrouter",
+      "type": "web-api",
+      "domain": "openrouter.ai",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "models",
+          "description": "List available AI models on OpenRouter",
+          "command": "unicli openrouter models",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
+        },
+        {
+          "name": "search",
+          "description": "Search OpenRouter AI models",
+          "command": "unicli openrouter search",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
+        },
+        {
+          "name": "model",
+          "description": "Get full metadata for an OpenRouter model or model alias",
+          "command": "unicli openrouter model",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
+        }
+      ]
+    },
+    {
       "site": "osv",
       "type": "web-api",
       "domain": "osv.dev",
@@ -19719,6 +19709,25 @@
           "auth": false,
           "auth_requirement": "none",
           "browser": true
+        }
+      ]
+    },
+    {
+      "site": "web",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read any webpage and convert to Markdown",
+          "command": "unicli web read",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
         }
       ]
     },

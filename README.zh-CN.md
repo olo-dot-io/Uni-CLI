@@ -43,6 +43,12 @@ unicli upgrade
 
 持久化安装由非交互 Agent 使用时，Uni-CLI 默认在后台更新。结构化结果通过 `meta.update.automatic_update` 报告进度。交互式终端继续使用 Y/N，`unicli upgrade --no-auto-update` 可以把当前机器改回明确确认。
 
+## Agent 互联网访问
+
+2026-10-10 更新加入原生 Markdown 协商、保留显式学术来源的排序，以及共享 HTTP 重试和验证页处理。OpenRouter 使用服务端模型搜索与分页。
+
+行为、实测结果与来源限制见[访问指南](docs/zh/guide/internet-access.md)和[可复现基准](docs/zh/BENCHMARK.md)。
+
 ## 按任务选择路径
 
 Operation 目录负责发现和合同。执行阶段再选择结构最强、范围最小的 operator。每次只运行一个 provider；路径失败后保留原始原因和修复命令。
@@ -97,10 +103,10 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 静态目录
 
 - <!-- STATS:site_count -->338<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1891<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> 个 adapters
+- <!-- STATS:command_count -->1892<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10389<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10374<!-- /STATS --> 个测试
 
 Fixed core 和 host-discovered commands 会在运行时加入。
 
@@ -114,7 +120,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 | 财经 | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | 购物 | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | 开发 | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
-| AI | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
+| AI | 25 | 216 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | 学术 | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | 专利 | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | 知识 | 12 | 47 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb) |
@@ -225,7 +231,7 @@ run → read error.adapter_path → patch the owned step → save override → v
 unicli repair <site> <command>
 ```
 
-`repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
+`repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，成功条件为目标返回 `ok: true` 且 exit code 为 `0`。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
 
 对于重复出现的 failure，`evolve adapter` 会分开保存 proposal evidence、validation 和 held-out case。Agent 提交一份隔离的 YAML candidate 和可证伪预测。Uni-CLI 对 baseline 与 candidate 进行成对评估，记录预测遗漏与回退，并且只在 promotion gate 通过后安装 user override。
 
@@ -268,7 +274,7 @@ columns: [title, url]
 
 ## 信任边界
 
-- Live browser cookie 默认只留在进程内存；只有用户明确执行 `auth import` 或 `browser cookies` 时才持久化。
+- Live browser cookie 默认保存在进程内存。用户明确执行 `auth import` 或 `browser cookies` 时，命令会持久化 cookie。
 - Browser automation 使用 `~/.unicli/` 下的 Uni-CLI-owned profile。Chrome 136+ 不支持在默认 user-data directory 上开启 remote debugging。
 - `unicli browser doctor --json` 返回当前可用的 delivery path 和精确修复命令，不会启动 browser provider。
 - Permission rules 会在 browser、file、clipboard、subprocess 或 desktop side effects 前授权。显式错误的 policy 会 fail closed。

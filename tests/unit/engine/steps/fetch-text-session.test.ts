@@ -171,9 +171,11 @@ describe("fetch_text capture_cookies", () => {
         },
       });
 
-      expect(calls[0]?.init.headers).toMatchObject({
-        Authorization: "Bearer unit-text-token",
-        "X-Query": "markdown",
+      expect(
+        Object.fromEntries(new Headers(calls[0]?.init.headers)),
+      ).toMatchObject({
+        authorization: "Bearer unit-text-token",
+        "x-query": "markdown",
       });
     } finally {
       if (previousToken === undefined) {

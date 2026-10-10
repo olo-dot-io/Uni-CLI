@@ -125,19 +125,20 @@ export class SiteResolver {
     if (compact.length < MIN_FUZZY_TOKEN_LENGTH || !ASCII_WORD.test(compact)) {
       return;
     }
+    // Canonical, hyphenated, and phrase aliases can share one fuzzy identity.
+    if (
+      this.deletionIndex
+        .get(compact)
+        ?.some((entry) => entry.term === compact && entry.site === site)
+    ) {
+      return;
+    }
     this.maxFuzzyTermLength = Math.max(this.maxFuzzyTermLength, compact.length);
     const entry = { term: compact, site };
     for (const deletion of generateDeletes(compact, MAX_EDIT_DISTANCE)) {
       const entries = this.deletionIndex.get(deletion);
       if (entries) {
-        if (
-          !entries.some(
-            (candidate) =>
-              candidate.term === entry.term && candidate.site === entry.site,
-          )
-        ) {
-          entries.push(entry);
-        }
+        entries.push(entry);
       } else {
         this.deletionIndex.set(deletion, [entry]);
       }

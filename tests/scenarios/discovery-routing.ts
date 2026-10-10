@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { readManifest } from "../../src/fast-path/manifest.js";
 import { manifestSearchDocuments } from "../../src/fast-path/handlers/discovery.js";
 import {
@@ -9,6 +10,26 @@ process.env.UNICLI_DYNAMIC_MACOS = "0";
 
 const documents = manifestSearchDocuments(readManifest());
 const failures: string[] = [];
+const independentIntents = JSON.parse(
+  readFileSync(
+    new URL("../../bench/fixtures/search-intents.json", import.meta.url),
+    "utf8",
+  ),
+) as { cases: Array<{ query: string; accepted: string[]; group: string }> };
+const scopedSearchCases = independentIntents.cases.filter(
+  (entry) =>
+    entry.group === "topic-boundary" ||
+    (entry.group === "scholarly-provider" &&
+      /search|find|搜索/i.test(entry.query)),
+);
+for (const entry of scopedSearchCases) {
+  const [result] = searchDocuments(documents, entry.query, 5);
+  if (!result || !entry.accepted.includes(`${result.site}/${result.command}`)) {
+    failures.push(
+      `${entry.query} ranked a different provider or workflow before the requested search`,
+    );
+  }
+}
 const naturalLanguageQueries = [
   "agent search computer use recent memes and discussion",
   "toggle volume",
@@ -114,6 +135,47 @@ const domainQueries = [
     commands: ["scholar/reproduce"],
     limit: 1,
   },
+  {
+    query: "read peer reviews and decision for openreview paper",
+    commands: ["scholar/reviews"],
+    limit: 1,
+  },
+  {
+    query:
+      "link official best paper announcement to OpenReview reviews and PDF",
+    commands: ["scholar/trace"],
+    limit: 1,
+  },
+  {
+    query: "find code for an arxiv paper",
+    commands: ["scholar/code"],
+    limit: 1,
+  },
+  {
+    query: "search datasets for an OpenReview paper",
+    commands: ["scholar/datasets"],
+    limit: 3,
+  },
+  {
+    query: "find OpenReview peer reviews and decision",
+    commands: ["scholar/reviews"],
+    limit: 1,
+  },
+  {
+    query: "search on OpenReview for peer reviews and decision",
+    commands: ["scholar/reviews"],
+    limit: 1,
+  },
+  {
+    query: "search on arxiv for code for this paper",
+    commands: ["scholar/code"],
+    limit: 1,
+  },
+  {
+    query: "find data for an arxiv paper",
+    commands: ["scholar/datasets"],
+    limit: 1,
+  },
 ];
 for (const { query, commands, limit } of domainQueries) {
   const results = searchDocuments(documents, query, limit);
@@ -169,6 +231,7 @@ console.log(
       scenarios:
         naturalLanguageQueries.length +
         recentDiscussionQueries.length +
+        scopedSearchCases.length +
         11 +
         domainQueries.length,
       failures,

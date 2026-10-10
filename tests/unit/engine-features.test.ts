@@ -11,6 +11,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { USER_AGENT } from "../../src/constants.js";
 import { runPipeline } from "../../src/engine/executor.js";
 import { htmlToMarkdown } from "../../src/engine/html-to-markdown.js";
 import { isHtmlVerificationChallenge } from "../../src/engine/steps/html-to-md.js";
@@ -25,7 +26,16 @@ let requestCounts: Record<string, number> = {};
 
 function fetchCachePath(url: string, method = "GET"): string {
   const key = createHash("sha256")
-    .update(`${method}:${url}`)
+    .update(
+      JSON.stringify([
+        method,
+        url,
+        [
+          ["accept", "application/json"],
+          ["user-agent", USER_AGENT],
+        ],
+      ]),
+    )
     .digest("hex")
     .slice(0, 16);
   return join(homedir(), ".unicli", "cache", `${key}.json`);
@@ -41,8 +51,9 @@ function writeFetchCacheEntry(
   writeFileSync(
     cachePath,
     JSON.stringify({
-      schema_version: "fetch-cache.v1",
+      schema_version: "fetch-cache.v2",
       stored_at: Date.now(),
+      expires_at: Date.now() + 60_000,
       requested_url: url,
       final_url: finalUrl,
       method: "GET",
