@@ -53,7 +53,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.3.0 · Artemis · Rubins.
+Latest: v1.3.0 · Artemis · Rubins.
 
 ## Agent Index
 

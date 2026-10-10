@@ -53,7 +53,7 @@ unicli hackernews top --limit 5 -f json
 
 ## 当前版本
 
-本地版本：v1.3.0 · Artemis · Rubins。
+当前 latest：v1.3.0 · Artemis · Rubins。
 
 ## Agent 索引
 
