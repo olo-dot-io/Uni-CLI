@@ -21,6 +21,7 @@ import {
   type EvidenceRepresentation,
 } from "../engine/evidence-reader.js";
 import { errorToAgentFields, errorTypeToCode } from "../output/error-map.js";
+import { withCredentialRecovery } from "../engine/request-credentials.js";
 import { printErrorEnvelope } from "../output/error-writer.js";
 import type {
   AgentContext,
@@ -127,14 +128,18 @@ export function registerExtractCommand(program: Command): void {
       }
 
       try {
-        const document = await readEvidenceDocument(url, {
-          maxChars,
-          maxLinks,
-          representation,
-          reader,
-          firstPage,
-          lastPage,
-        });
+        const document = await withCredentialRecovery(
+          program.opts().authRetry as boolean | undefined,
+          () =>
+            readEvidenceDocument(url, {
+              maxChars,
+              maxLinks,
+              representation,
+              reader,
+              firstPage,
+              lastPage,
+            }),
+        );
         const ctx: AgentContext = {
           command: "core.extract",
           duration_ms: Date.now() - startedAt,

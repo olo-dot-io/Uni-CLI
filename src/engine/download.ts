@@ -15,13 +15,19 @@
 
 import { execFile } from "node:child_process";
 import { createWriteStream, mkdirSync, statSync } from "node:fs";
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, open, stat, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import { publishFileTransactionally } from "./transactional-file.js";
-import { fetchWithValidatedRedirects } from "./validated-fetch.js";
+import { PipelineError } from "./executor.js";
+import {
+  fetchHttpResource,
+  isHtmlVerificationChallenge,
+  challengeRequiredError,
+} from "./http-response.js";
+import { acquireRequestCookieHeader } from "./request-credentials.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -35,12 +41,17 @@ export interface DownloadResult {
   size?: number;
   error?: string;
   duration?: number;
+  code?: string;
+  statusCode?: number;
+  contentType?: string;
+  finalUrl?: string;
 }
 
 export interface HttpDownloadOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   validateRequest?: (url: string) => void;
+  maxBytes?: number;
 }
 
 function isHttpDownloadOptions(
@@ -57,7 +68,8 @@ function isHttpDownloadOptions(
         (typeof candidate.signal === "object" &&
           candidate.signal !== null &&
           "aborted" in candidate.signal))) ||
-    typeof candidate.validateRequest === "function"
+    typeof candidate.validateRequest === "function" ||
+    typeof candidate.maxBytes === "number"
   );
 }
 
@@ -147,55 +159,207 @@ export async function httpDownload(
   legacySignal?: AbortSignal,
 ): Promise<DownloadResult> {
   const options = normalizeHttpDownloadOptions(optionsOrHeaders, legacySignal);
+  if (
+    options.maxBytes !== undefined &&
+    (!Number.isSafeInteger(options.maxBytes) || options.maxBytes < 1)
+  )
+    throw new TypeError("maxBytes must be a positive safe integer");
   const t0 = Date.now();
   const { signal } = options;
+  const headers = new Headers(options.headers);
+  const explicitCredentials =
+    headers.has("cookie") || headers.has("authorization");
+  const usedCookies = new Set<string>();
+  let credentialOrigin: string | undefined;
+  let requestUrl = url;
+  const failure = (message: string, code: string) =>
+    new PipelineError(message, {
+      action: "download",
+      step: -1,
+      config: { url: requestUrl },
+      url: requestUrl,
+      errorType: code,
+      preserveErrorCode: true,
+      retryable: false,
+      suggestion:
+        "Check the resource, byte limit, and output path, then retry the download.",
+    });
   try {
     signal?.throwIfAborted();
     await mkdir(dirname(destPath), { recursive: true });
-
-    const { response: res } = await fetchWithValidatedRedirects(
-      url,
-      {
-        headers: options.headers,
-        ...(signal ? { signal } : {}),
-      },
-      { validateRequest: options.validateRequest },
-    );
-    signal?.throwIfAborted();
-    if (!res.ok) {
-      return {
-        status: "failed",
-        error: `HTTP ${res.status} ${res.statusText}`,
-      };
-    }
-    if (!res.body) {
-      return { status: "failed", error: "Response body is null" };
-    }
-
-    await publishFileTransactionally(
-      destPath,
-      async (temporaryPath) => {
-        const ws = createWriteStream(temporaryPath, { flags: "wx" });
-        const readable = Readable.fromWeb(
-          res.body as Parameters<typeof Readable.fromWeb>[0],
+    for (let attempt = 0; ; attempt++) {
+      try {
+        let contentType = "";
+        await publishFileTransactionally(
+          destPath,
+          async (temporaryPath) => {
+            await fetchHttpResource(
+              requestUrl,
+              { headers, signal },
+              {
+                action: "fetch",
+                step: -1,
+                retry: 2,
+                validateRequest: options.validateRequest,
+              },
+              async (res, finalUrl) => {
+                requestUrl = finalUrl;
+                contentType =
+                  res.headers
+                    .get("content-type")
+                    ?.split(";", 1)[0]
+                    .trim()
+                    .toLowerCase() ?? "";
+                if (!res.body)
+                  throw failure("Response body is null", "empty_result");
+                if (
+                  options.maxBytes !== undefined &&
+                  Number(res.headers.get("content-length")) > options.maxBytes
+                ) {
+                  await res.body.cancel();
+                  throw failure(
+                    `Resource exceeds ${options.maxBytes} bytes`,
+                    "response_too_large",
+                  );
+                }
+                try {
+                  const ws = createWriteStream(temporaryPath, { flags: "wx" });
+                  const readable = Readable.fromWeb(
+                    res.body as Parameters<typeof Readable.fromWeb>[0],
+                  );
+                  if (options.maxBytes === undefined) {
+                    await pipeline(readable, ws, signal ? { signal } : {});
+                  } else {
+                    let bytes = 0;
+                    const limit = new Transform({
+                      transform(chunk: Buffer, _encoding, callback) {
+                        bytes += chunk.byteLength;
+                        callback(
+                          bytes > options.maxBytes!
+                            ? failure(
+                                `Resource exceeds ${options.maxBytes} bytes`,
+                                "response_too_large",
+                              )
+                            : null,
+                          chunk,
+                        );
+                      },
+                    });
+                    await pipeline(
+                      readable,
+                      limit,
+                      ws,
+                      signal ? { signal } : {},
+                    );
+                  }
+                  if (
+                    /^(?:text\/html|application\/xhtml\+xml|text\/plain)$/.test(
+                      contentType,
+                    )
+                  ) {
+                    const file = await open(temporaryPath, "r");
+                    try {
+                      const prefix = Buffer.alloc(64 * 1024);
+                      const { bytesRead } = await file.read(
+                        prefix,
+                        0,
+                        prefix.length,
+                        0,
+                      );
+                      if (
+                        isHtmlVerificationChallenge(
+                          prefix.subarray(0, bytesRead).toString("utf8"),
+                        )
+                      )
+                        throw challengeRequiredError(
+                          finalUrl,
+                          "download",
+                          -1,
+                          res.status,
+                        );
+                    } finally {
+                      await file.close();
+                    }
+                  }
+                } catch (error) {
+                  try {
+                    await unlink(temporaryPath);
+                  } catch (cleanupError) {
+                    if (
+                      (cleanupError as NodeJS.ErrnoException).code !== "ENOENT"
+                    )
+                      throw failure(
+                        `Cannot remove incomplete download: ${String(cleanupError)}`,
+                        "download_failed",
+                      );
+                  }
+                  signal?.throwIfAborted();
+                  const ioError = error as NodeJS.ErrnoException;
+                  if (
+                    ioError?.path ||
+                    ["write", "open", "close"].includes(ioError?.syscall ?? "")
+                  )
+                    throw failure(
+                      error instanceof Error ? error.message : String(error),
+                      ioError.code ?? "download_failed",
+                    );
+                  throw error;
+                }
+              },
+            );
+          },
+          { signal },
         );
-        await pipeline(readable, ws, signal ? { signal } : {});
-      },
-      { signal },
-    );
-
-    const { size } = await stat(destPath);
-    return {
-      status: "success",
-      path: destPath,
-      size,
-      duration: Date.now() - t0,
-    };
+        const { size } = await stat(destPath);
+        return {
+          status: "success",
+          path: destPath,
+          size,
+          duration: Date.now() - t0,
+          contentType,
+          finalUrl: requestUrl,
+        };
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (!(error instanceof PipelineError)) throw error;
+        if (error.detail.url) requestUrl = error.detail.url;
+        if (
+          !explicitCredentials &&
+          attempt < 2 &&
+          (error.detail.statusCode === 401 ||
+            error.detail.statusCode === 403 ||
+            error.detail.errorType === "challenge_required")
+        ) {
+          const cookie = await acquireRequestCookieHeader(requestUrl, {
+            fresh:
+              attempt === 1 && credentialOrigin === new URL(requestUrl).origin,
+            signal,
+          });
+          const identity = `${new URL(requestUrl).origin}\n${cookie}`;
+          if (cookie && !usedCookies.has(identity)) {
+            usedCookies.add(identity);
+            credentialOrigin = new URL(requestUrl).origin;
+            headers.set("cookie", cookie);
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
   } catch (err) {
     signal?.throwIfAborted();
     return {
       status: "failed",
       error: err instanceof Error ? err.message : String(err),
+      code:
+        err instanceof PipelineError
+          ? (err.detail.errorType ?? "download_failed")
+          : typeof (err as { code?: unknown })?.code === "string"
+            ? (err as { code: string }).code
+            : "download_failed",
+      ...(err instanceof PipelineError && err.detail.statusCode !== undefined
+        ? { statusCode: err.detail.statusCode }
+        : {}),
     };
   }
 }
@@ -298,17 +462,29 @@ export async function mapConcurrent<T, R>(
   concurrency: number,
   fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new RangeError("concurrency must be a positive integer");
+  }
   if (items.length === 0) return [];
 
   const results: R[] = [];
   results.length = items.length;
   let nextIndex = 0;
+  let failed = false;
+  let failure: unknown;
 
   async function worker(): Promise<void> {
-    while (true) {
+    while (!failed) {
       const index = nextIndex++;
       if (index >= items.length) break;
-      results[index] = await fn(items[index], index);
+      try {
+        results[index] = await fn(items[index], index);
+      } catch (error) {
+        if (!failed) {
+          failed = true;
+          failure = error;
+        }
+      }
     }
   }
 
@@ -317,6 +493,7 @@ export async function mapConcurrent<T, R>(
     worker,
   );
   await Promise.all(workers);
+  if (failed) throw failure;
 
   return results;
 }

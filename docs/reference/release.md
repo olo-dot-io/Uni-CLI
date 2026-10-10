@@ -1,10 +1,9 @@
 # Release
 
 This page is the public release policy and operator reference for Uni-CLI.
-Releases are maintainer-gated. There is no promised calendar cadence: the version
-line depends on community feedback, development substance, verification results,
-and the maintainer's call on whether the next shipment is patch, minor, major,
-or no release yet.
+The maintainer chooses the release timing and version from community feedback,
+the scope of the changes, and verification results. The same decision
+determines whether development continues or a patch, minor, or major ships.
 
 ## Authority
 
@@ -22,8 +21,8 @@ If the maintainer has not explicitly asked to release, development stays under
 
 ## Versioning
 
-Uni-CLI follows semver. The `0.400.0` line is an epoch-scale minor release:
-it replaces per-command browser ownership with one shared runtime and adds a
+Uni-CLI follows semver. The `0.400.0` line is an epoch-scale minor release.
+It replaces per-command browser ownership with one shared runtime and adds a
 generic Agent browser-control surface. The direct `0.4.0` spelling is not
 used because it sorts below the already published `0.227.1`; `0.400.0`
 preserves monotonic upgrades.
@@ -61,19 +60,18 @@ two views from that same source.
   structured data for Agents and other tooling.
 
 The generated English and Chinese pages stay out of the editing path. Historical
-claims are corrected in `CHANGELOG.md`, then regenerated with `npm run
-docs:prepare`. This keeps the repository record, documentation site, Agent
+claims are corrected in `CHANGELOG.md`, then regenerated with `npm run docs:prepare`. This keeps the repository record, documentation site, Agent
 assets, GitHub Releases, and npm versions tied to one version identity.
 
 ## Changesets
 
-Every PR that touches production source should add one changeset:
+Every PR that touches production source should add one changeset.
 
 ```bash
 npm run changeset
 ```
 
-The release candidate workflow runs:
+The release candidate workflow runs.
 
 ```bash
 npx changeset version
@@ -81,7 +79,7 @@ npm run verify
 ```
 
 The repository also verifies that source changes did not slip through without a
-changeset:
+changeset.
 
 ```bash
 npm run verify:changesets
@@ -89,15 +87,15 @@ npm run verify:changesets
 
 ## Release Labels
 
-Every tagged release must carry a final spaceflight label:
+Every tagged release must carry a final spaceflight label.
 
 ```text
 Program · Astronaut
 ```
 
-Examples: `Vostok · Gagarin`, `Mercury · Glenn`, `Apollo · Lovell`.
+Examples include `Vostok · Gagarin`, `Mercury · Glenn`, `Apollo · Lovell`.
 
-Current program map:
+Current program map.
 
 | Version range | Program |
 | ------------- | ------- |
@@ -106,16 +104,16 @@ Current program map:
 | `0.216+`      | Apollo  |
 | `1.x`         | Artemis |
 
-Rules:
+Rules.
 
 - Development notes may say `Astronaut TBD`.
 - Release headings, README footers, tags, and GitHub Releases must never use
   `TBD`, `TODO`, `Unreleased`, or `Next`.
 - The release label must be chosen before `npm run release`, `npm version`,
   tagging, npm publish, or GitHub Release creation.
-- Use the exact middle-dot separator: `Program · Astronaut`.
+- Use the exact middle-dot separator in `Program · Astronaut`.
 
-Automation enforces this:
+Automation enforces this.
 
 ```bash
 RELEASE_CODENAME="Vostok · Gagarin" npm run release
@@ -126,14 +124,14 @@ For the 0.400 line, the release label format is unchanged. Its final published
 release label is `Apollo · Duke`.
 
 The 1.x line starts with `Artemis · Glover`. Version `1.0.0` establishes the
-stable operation-first compatibility contract: discovery declares one feasible
+stable operation-first compatibility contract. Discovery declares one feasible
 provider and its substrate before execution; targets, effects, evidence, errors,
 and recovery remain machine-readable across CLI and MCP boundaries. Future 1.x
 releases preserve those public contracts unless semver requires another major.
 
 Candidate delivery uses the default `local` status, so generated docs cannot
 turn an unobserved npm or GitHub Release event into a publication claim. Only
-after both public endpoints are verified should metadata move to `published`:
+after both public endpoints are verified should metadata move to `published`.
 
 ```bash
 npx tsx scripts/release.ts --codename "Artemis · Glover" --status published
@@ -144,7 +142,7 @@ asset, complete release-gate, and exact public-version probes.
 
 ## Substantive Commits
 
-Release automation filters out bot-only dependency and CI maintenance commits:
+Release automation filters out bot-only dependency and CI maintenance commits.
 
 - `chore(deps)`
 - `chore(deps-dev)`
@@ -152,7 +150,7 @@ Release automation filters out bot-only dependency and CI maintenance commits:
 - `build(deps)`
 - `build(deps-dev)`
 
-Everything else counts as substantive: `feat`, `fix`, `refactor`, `perf`,
+The substantive categories include `feat`, `fix`, `refactor`, `perf`,
 `docs`, `test`, `build`, `style`, `revert`, and untyped commits. The filter is
 intentionally generous because silently skipping real work is worse than
 requiring a maintainer decision.
@@ -162,11 +160,11 @@ requiring a maintainer decision.
 The publish workflow publishes `@zenalexa/unicli` from
 `.github/workflows/release.yml` when a `v*` tag is pushed. Local machines should
 not be treated as the npm publishing authority. A local `npm whoami` failure is
-not a release blocker if the candidate commit and tag can be pushed to GitHub:
-the real publish step runs in GitHub Actions through Trusted Publishers or the
+not a release blocker if the candidate commit and tag can be pushed to GitHub.
+The real publish step runs in GitHub Actions through Trusted Publishers or the
 `NPM_TOKEN` fallback in the `npm-publish` environment.
 
-Release authority is scoped to the publish job:
+Release authority is scoped to the publish job.
 
 - `contents: write` creates the GitHub Release.
 - `id-token: write` enables npm Trusted Publishers and provenance.
@@ -178,7 +176,7 @@ the semver prerelease prefix, for example `0.216.0-beta.2` publishes with
 
 ## Trusted Publishers
 
-npm Trusted Publishers should be configured with this exact tuple:
+npm Trusted Publishers should be configured with this exact tuple.
 
 | Field                           | Value         |
 | ------------------------------- | ------------- |
@@ -187,19 +185,19 @@ npm Trusted Publishers should be configured with this exact tuple:
 | Workflow filename               | `release.yml` |
 | Environment name                | `npm-publish` |
 
-The package owner configures this once at:
+The package owner configures this once at.
 
 ```text
 https://www.npmjs.com/package/@zenalexa/unicli
 ```
 
 After two successful OIDC publishes, delete the fallback `NPM_TOKEN` from the
-`npm-publish` GitHub environment. A broken binding should then fail fast with a
-401 instead of silently falling back to a long-lived token.
+`npm-publish` GitHub environment. A broken binding then returns a
+401 and requires repair of the OIDC configuration.
 
 ## Manual Release
 
-To ship a release:
+To ship a release.
 
 1. Confirm the intended version bump and release label.
 2. Confirm `codex/macos-dynamic-actions` is merged to `main` with
@@ -218,7 +216,7 @@ To ship a release:
    Release.
 
 If the tag already exists and the push event did not run or was cancelled,
-re-run the same publish path instead of publishing locally:
+re-run the same GitHub publish path.
 
 ```bash
 gh workflow run release.yml --ref main -f tag=vX.Y.Z
@@ -231,8 +229,8 @@ publish from the wrong branch head.
 
 ## Local Auth Failure SOP
 
-Use this branch when the maintainer-approved release is ready but the local npm
-or GitHub session is unreliable:
+Use this branch when a maintainer-approved release encounters an unreliable local npm
+or GitHub session.
 
 1. Treat `npm publish --dry-run` as the local npm check. Do not run a real local
    `npm publish`.
@@ -241,7 +239,7 @@ or GitHub session is unreliable:
    session is not used by the release workflow.
 4. If `gh auth status` is healthy, push `main` and `vX.Y.Z`, or dispatch
    `release.yml` for an existing tag.
-5. If `gh` is unhealthy but `git push` still works, push the tag with Git and
+5. If `gh` is unhealthy and `git push` works, push the tag with Git and
    use the GitHub Actions web UI to monitor or re-run **Release**.
 6. If neither `gh` nor `git push` works, stop after local verification and hand
    off the exact commit SHA, tag name, dry-run shasum, and failed auth command.
@@ -249,7 +247,7 @@ or GitHub session is unreliable:
 
 ## Cancel A Release
 
-Before npm publish completes:
+Before npm publish completes.
 
 ```bash
 git tag -d vX.Y.Z
@@ -260,7 +258,7 @@ git push origin main
 
 Then cancel the in-flight `release.yml` run from the Actions UI.
 
-After npm publish completes, prefer deprecation over unpublish:
+After npm publish completes, prefer deprecation over unpublish.
 
 ```bash
 npm deprecate @zenalexa/unicli@X.Y.Z "see vX.Y.Z+1 for fix"
@@ -273,7 +271,7 @@ Then ship `vX.Y.Z+1` with the fix and document the reason in `CHANGELOG.md`.
 Open a tracking issue when release automation blocks a maintainer-approved
 release candidate.
 
-Include:
+Include.
 
 - failing workflow link;
 - intended version and release label;

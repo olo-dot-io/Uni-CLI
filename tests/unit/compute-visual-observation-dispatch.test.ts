@@ -158,7 +158,7 @@ describe("compute visual-observation dispatch", () => {
     expect(driver.calls).toEqual([]);
   });
 
-  it("binds driver session and transforms image pixels into action coordinates", async () => {
+  it("binds driver session and leaves image-to-native scaling to the driver", async () => {
     const bus = createTransportBus();
     const driver = new ObservationTransport("cua-driver");
     bus.register(driver);
@@ -210,7 +210,7 @@ describe("compute visual-observation dispatch", () => {
     expect(click.ok).toBe(true);
     expect(driver.calls.at(-1)).toMatchObject({
       kind: "cua_click",
-      params: { x: 50, y: 25, session: "agent-1" },
+      params: { x: 100, y: 50, session: "agent-1" },
     });
   });
 

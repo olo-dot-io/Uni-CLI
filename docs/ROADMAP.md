@@ -5,11 +5,11 @@ description: Shipped foundations and the next engineering priorities for Uni-CLI
 
 # Roadmap
 
-Current release: v1.2.1 — Artemis · Wiseman.
+Current release: v1.3.0 — Artemis · Rubins.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1891<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1893<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 
@@ -47,7 +47,7 @@ The authoring loop is moving toward shorter scaffolds, reusable site notes, focu
 
 ### Compact discovery
 
-Search, deferred MCP tools, and generated agent indexes are being tuned so a large catalog stays useful while loading only the schemas relevant to the task.
+Search, deferred MCP tools, and generated agent indexes select the commands and schemas relevant to each task.
 
 ## Later
 

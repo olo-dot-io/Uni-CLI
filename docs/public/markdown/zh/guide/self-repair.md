@@ -7,7 +7,7 @@
 - 栏目: 使用 Uni-CLI
 - 上级: 使用 Uni-CLI (/zh/guide/)
 
-真实软件会变化。Uni-CLI 可以把一次失败定位到 adapter 源文件，并给出可重复运行的验证命令。
+操作失效时，先根据错误定位适配器源文件，再运行可重复的验证命令。Uni-CLI 保留原参数和失败步骤，便于将修复限定在对应实现中。
 
 ## 读取 envelope
 
@@ -17,7 +17,7 @@
 unicli <site> <command> [args] -f json
 ```
 
-Adapter failure 可能包含以下字段。
+适配器错误可能包含以下字段。
 
 ```json
 {
@@ -32,7 +32,7 @@ Adapter failure 可能包含以下字段。
 }
 ```
 
-`adapter_path` 指向对应源文件，`step` 指向产生失败的 pipeline action。
+`adapter_path` 指向对应源文件，`step` 指向产生失败的流水线动作。
 
 ## 预览验证
 
@@ -40,7 +40,7 @@ Adapter failure 可能包含以下字段。
 unicli repair <site> <command> --dry-run
 ```
 
-带参数的命令可以传入原 argv。
+命令带有参数时，将原命令的参数列表作为 JSON 传入。
 
 ```bash
 unicli repair <site> <command> \
@@ -48,19 +48,19 @@ unicli repair <site> <command> \
   --dry-run
 ```
 
-预览会显示 adapter path、命令、参数、超时和工作目录。
+预览会显示适配器路径、命令、参数、超时和工作目录。
 
 ## 更新对应实现
 
-查看命名的 adapter，以及上游响应或页面状态。常见变化包括以下情况。
+查看错误指出的适配器，以及上游响应或页面状态。常见变化包括以下情况。
 
-- endpoint 或 response field 发生变化
-- selector 更新
-- header 或 cookie 发生变化
+- 请求端点或响应字段发生变化
+- 页面选择器更新
+- 请求头或 cookie 发生变化
 - 外部 CLI 调整输出
-- 桌面权限或 provider 需要配置
+- 桌面权限或驱动需要配置
 
-更新 adapter 或对应 runtime component。行为稳定后，加入一个聚焦的 regression check。
+更新适配器或负责该行为的运行时组件。行为稳定后，加入覆盖实际失败路径的回归场景。
 
 ## 运行 verifier
 
@@ -69,11 +69,11 @@ unicli repair <site> <command> \
   --target-args '["query","--limit","2"]'
 ```
 
-验证成功时，原操作返回 exit code 0 和成功 envelope。
+验证成功时，原操作返回退出码 0 和成功响应。
 
 ## 本机修复
 
-适合单台机器或仍在测试的修复可以放到 `~/.unicli/adapters/<site>/`。User adapter 对相同 site 和 command 拥有更高加载优先级。
+适合单台机器或仍在测试的修复可以放到 `~/.unicli/adapters/<site>/`。站点和命令名称相同时，用户适配器的加载优先级高于包内版本。
 
 ## Quarantined adapter
 
@@ -83,11 +83,11 @@ unicli repair <site> <command> \
 unicli repair --quarantined
 ```
 
-源文件更新且目标 verifier 成功后，维护者可以把 adapter 放回常规测试集合。
+源文件更新且目标验证成功后，维护者可以将适配器恢复到常规测试集合。
 
 ## 把重复 repair 接入 evolution
 
-一次成功 replay 不足以支持持久 override 时，可以创建 evolution session。Proposal evidence、validation case 和 held-out case 需要保持分离。
+准备长期保留修复时，可以创建演进会话，分别保存修改依据、验证用例和保留测试用例，比较修复前后的行为。
 
 ```bash
 unicli --record <site> <command> [args]
@@ -104,7 +104,7 @@ unicli -f json evolve adapter <site> <command> \
   --promote
 ```
 
-这条直接路径在一次调用中创建 session、提炼 proposal run、执行隔离的 baseline 与 candidate overlay、评估预测、应用 promotion gate，并安装 override。Proposal evidence 保留 trace reference 和脱敏 failure summary，不包含 replay 参数与 secret event field，并把提炼后的 trace content 标记为 untrusted。
+这条命令在一次调用中创建会话，整理提案记录，并执行隔离的基线与候选实现。评估通过晋级条件后，命令安装覆盖版本。修改依据保留执行轨迹引用和脱敏的失败摘要，排除重放参数与私密事件字段，并将提炼后的轨迹内容标记为不可信数据。
 
 ```bash
 unicli -f json evolve inspect
@@ -112,8 +112,8 @@ unicli -f json evolve verify <session-id> --promote
 unicli -f json evolve rollback <session-id>
 ```
 
-省略 `--candidate` 可以创建 draft。编辑返回的 `candidate.path` 后，再运行 `evolve verify`。Candidate 没有变化、validation 未严格提升、validation 出现 regression、held-out eval 为空或 held-out case 回退时，gate 都会保留 baseline。Promotion 写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复 promotion 前的 overlay；文件在 promotion 后被修改时，rollback 会停止并报告冲突。
+省略 `--candidate` 可以创建草稿。编辑返回的 `candidate.path` 后，再运行 `evolve verify`。候选实现没有变化、验证未严格提升、验证用例退化、保留测试为空或保留测试退化时，系统都会保留基线。晋级会写入 `~/.unicli/adapters/<site>/<command>.yaml`。`rollback` 恢复晋级前的覆盖版本；晋级后文件又被修改时，回滚会停止并报告冲突。
 
-每次 verification 都会追加一个 attempt directory，其中包含对应的 candidate、patch 和 report。Content hash 发生变化时，后续操作会停止。Agent 编辑 draft 并再次验证后，原有 rejected attempt 仍然保持完整。Verified draft 未变化时，`evolve verify <session-id> --promote` 会安装已有 attempt，不会重复运行 eval case。多个 promotion 或 rollback process 会按 session 串行执行。写入中断后的操作会从已准备的 promotion record 继续。
+每次验证都会新增一个尝试目录，保存对应的候选实现、补丁和报告。内容哈希变化时，后续操作会停止。Agent 编辑草稿并再次验证后，原有拒绝记录仍然完整保留。已验证的草稿没有变化时，`evolve verify <session-id> --promote` 直接安装已有合格版本，省去重复评估。多个晋级或回滚进程按会话串行执行。写入中断后，操作会从已准备的晋级记录继续。
 
-Read-only operation 默认可以进入 gate。全部 validation target 都位于预期的受控环境时，才能使用 `--allow-mutation-eval`。每个 mutating eval case 还必须声明要求 `confirmed` 的 `effectStatus` judge，单纯的进程成功无法推动 Candidate 晋级。Candidate 可以修复同一 origin 内的 endpoint path、selector、extraction expression 和已有 pipeline action config。Candidate 不能改变 operation identity、输入输出 contract、pipeline action topology、request method 与 header，或已有 subprocess invocation。替换 network origin 时，创建 session 的命令必须传入 `--allow-origin <origin>`。
+只读操作默认可接受评估。全部验证目标都位于预期的受控环境时，才能使用 `--allow-mutation-eval` 评估写操作。每个写操作用例还必须声明 `effectStatus` 判断条件，并要求结果为 `confirmed`。进程成功和效果确认共同构成晋级依据。候选实现可以修复同一来源内的端点路径、选择器、提取表达式和已有流水线动作配置。操作身份、输入输出契约、流水线动作结构、请求方法与请求头，以及已有子进程调用均保持固定。替换网络来源时，创建会话的命令必须传入 `--allow-origin <origin>`。

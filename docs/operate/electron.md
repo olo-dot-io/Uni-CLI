@@ -18,7 +18,7 @@ is absent, then stores the active target under the compute state directory. A
 later `compute eval`, snapshot, click, type, press, scroll, or wait command can
 reuse that saved target from a separate process.
 
-Use an explicit port when the app is already running with a custom CDP port:
+Use an explicit port when the app is already running with a custom CDP port.
 
 ```bash
 unicli compute attach --port 9333
@@ -26,7 +26,7 @@ unicli compute attach --port 9333
 
 ## Relaunch Safety
 
-Apps marked with `relaunchLosesSession: true` require explicit confirmation:
+Apps marked with `relaunchLosesSession: true` require explicit confirmation.
 
 ```bash
 unicli compute attach --app notion --confirm-relaunch
@@ -49,14 +49,14 @@ workspaces, or refresh unsaved UI state during relaunch.
 ## Manual Launch
 
 The registry handles launch for known apps. For manual debugging or a custom
-app, launch with a CDP port and then attach by port:
+app, launch with a CDP port and then attach by port.
 
 ```bash
 unicli compute launch Slack --debug-port 9241
 unicli compute attach --port 9241
 ```
 
-The equivalent host command on macOS is:
+The equivalent host command on macOS is.
 
 ```bash
 open -a "Slack" --args --remote-debugging-port=9241
@@ -68,7 +68,7 @@ On Linux or Windows, start the app executable with the same
 
 ## Adding an App
 
-Add a profile in `src/electron-apps.ts` with:
+Add a profile in `src/electron-apps.ts` with.
 
 - unique `port`
 - `processName`
@@ -78,7 +78,7 @@ Add a profile in `src/electron-apps.ts` with:
 - `contentHints`
 - `relaunchLosesSession: true` when relaunch can interrupt active user state
 
-Verify the change with:
+Verify the change with.
 
 ```bash
 npx vitest run --project unit tests/unit/electron-apps-table.test.ts

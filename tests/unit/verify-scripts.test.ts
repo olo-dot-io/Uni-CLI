@@ -20,7 +20,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "..", "..");
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 
 function rootScripts(): Record<string, string> {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
@@ -39,22 +38,16 @@ function rootPackage(): {
   };
 }
 
-function stripNodeDeprecationWarnings(stderr: string): string {
-  return stderr
-    .split(/\r?\n/)
-    .filter(
-      (line) =>
-        !line.includes("[DEP0205] DeprecationWarning") &&
-        !line.includes("Use `node --trace-deprecation ...`"),
-    )
-    .join("\n")
-    .trim();
-}
-
 function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
   const result = spawnSync(
-    npxBin,
-    ["tsx", "scripts/generate-catalog.ts", catalogPath, siteIndexPath],
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "scripts/generate-catalog.ts",
+      catalogPath,
+      siteIndexPath,
+    ],
     {
       cwd: ROOT,
       encoding: "utf8",
@@ -63,22 +56,26 @@ function runCatalogGenerator(catalogPath: string, siteIndexPath: string): void {
   );
 
   expect(result.status).toBe(0);
-  expect(stripNodeDeprecationWarnings(result.stderr)).toBe("");
+  expect(result.stderr).toBe("");
 }
 
 function runReleaseDryRun(): void {
-  const result = spawnSync(npxBin, ["tsx", "scripts/release.ts", "--dry-run"], {
-    cwd: ROOT,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      RELEASE_CODENAME: "Vostok · Gagarin",
+  const result = spawnSync(
+    process.execPath,
+    ["--import", "tsx", "scripts/release.ts", "--dry-run"],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        RELEASE_CODENAME: "Vostok · Gagarin",
+      },
+      timeout: 60_000,
     },
-    timeout: 60_000,
-  });
+  );
 
   expect(result.status, `${result.stderr}\n${result.stdout}`).toBe(0);
-  expect(stripNodeDeprecationWarnings(result.stderr)).toBe("");
+  expect(result.stderr).toBe("");
 }
 
 describe("verify scripts", () => {

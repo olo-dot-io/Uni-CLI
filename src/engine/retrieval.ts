@@ -1,12 +1,12 @@
 /**
  * @owner       src::engine::retrieval
- * @does        Discovers and executes read-only evidence-source commands through their domain-neutral retrieval metadata, then normalizes candidates without domain assumptions.
+ * @does        Discovers read-only evidence sources, normalizes candidates, and acquires selected resources through a resumable bounded download flow.
  * @needs       adapter registry, command contracts, argument resolver, kernel execution, bounded concurrency, and EvidenceDocument URL canonicalization
  * @feeds       generic retrieval commands and domain overlays such as AI search
  * @breaks      Inferring semantics from adapter names, bypassing outer capability scopes, or dropping source-specific raw records couples every domain to one orchestrator.
  * @invariants  Only read-only commands with valid retrieval metadata execute; semantic roles map only to declared arguments; source capabilities must be contained by the caller; cancellation retains caller identity; fused representatives come from the highest-ranked source while every outcome retains source identity and an exact retry command.
- * @side-effects Executes registered read-only source commands.
- * @perf        Request fan-out uses caller-bounded concurrency and per-source deadlines; candidate normalization is O(results).
+ * @side-effects Executes registered read-only source commands; acquisition writes selected originals, structured documents, and one atomic result file.
+ * @perf        Request fan-out uses bounded concurrency and per-source deadlines; fusion selects K from U distinct candidates in O(N + U log K) time, plus sorting the selected candidates' source refs; candidate and per-source score maps retain O(N) entries.
  * @concurrency Each request owns its arguments, timeout signal, results, and error.
  * @test        tests/unit/engine/retrieval.test.ts, tests/unit/commands/ai.test.ts
  * @stability   experimental
@@ -14,8 +14,11 @@
  */
 
 import { createHash } from "node:crypto";
+import { mkdir, readFile, stat } from "node:fs/promises";
+import { dirname, extname, join, resolve } from "node:path";
 
 import { buildCommandContract } from "../core/command-contract.js";
+import { boundedTopK } from "../core/bounded-top-k.js";
 import { commandRequiresAuth, getAllAdapters } from "../registry.js";
 import { isCommandDiscoverable } from "../core/command-availability.js";
 import type {
@@ -24,8 +27,26 @@ import type {
   RetrievalMetadata,
 } from "../types.js";
 import { resolveArgs } from "./args.js";
-import { mapConcurrent } from "./download.js";
+import {
+  httpDownload,
+  mapConcurrent,
+  type DownloadResult,
+} from "./download.js";
 import { canonicalizeUrl } from "./evidence-document.js";
+import { structureFetchedEvidence } from "./evidence-reader.js";
+import {
+  analyzeRetrievalQuery,
+  scoreRetrievalCandidate,
+} from "./retrieval-relevance.js";
+import { writeFileTransactionally } from "./transactional-file.js";
+import {
+  MAX_TEXT_RESOURCE_BYTES,
+  isTextualContentType,
+} from "./steps/fetch-text.js";
+import {
+  assertRuntimeNetworkAllowed,
+  assertRuntimePathAllowed,
+} from "./runtime-resource-guard.js";
 import { buildInvocation, execute } from "./kernel/execute.js";
 
 export interface RetrievalSource {
@@ -387,7 +408,7 @@ async function executeRequest(
         code: actionable.code ?? "retrieval_source_failed",
         message: error instanceof Error ? error.message : String(error),
         suggestion: actionable.suggestion ?? `Inspect or repair ${source.ref}.`,
-        retryable: false,
+        retryable: actionable.retryable ?? false,
         alternatives: [
           ...(actionable.alternatives ?? []),
           ...(retryCommand ? [retryCommand] : []),
@@ -446,10 +467,22 @@ function recordRows(results: readonly unknown[]): Record<string, unknown>[] {
 export function normalizeEvidenceCandidates(
   outcomes: readonly RetrievalOutcome[],
   limit: number,
+  options: { sort?: "relevance" | "latest" } = {},
 ): EvidenceCandidate[] {
-  type CandidateGroup = { candidate: EvidenceCandidate; score: number };
+  type CandidateGroup = {
+    candidate: EvidenceCandidate;
+    score: number;
+    order: number;
+    timestamp: number;
+  };
   const groups = new Map<string, CandidateGroup>();
+  const scoresBySource = new Map<string, Map<string, number>>();
   for (const outcome of outcomes) {
+    let sourceScores = scoresBySource.get(outcome.source.ref);
+    if (!sourceScores) {
+      sourceScores = new Map();
+      scoresBySource.set(outcome.source.ref, sourceScores);
+    }
     recordRows(outcome.results).forEach((raw, index) => {
       const url = canonicalizeUrl(
         stringField(raw, ["url", "html_url", "source_url", "pdf_url", "link"]),
@@ -465,6 +498,17 @@ export function normalizeEvidenceCandidates(
       const key =
         url || `${outcome.source.metadata.result_kind}:${title.toLowerCase()}`;
       const score = 1 / (60 + index + 1);
+      const previousScore = sourceScores.get(key) ?? 0;
+      if (score > previousScore) sourceScores.set(key, score);
+      const current = groups.get(key);
+      if (current) {
+        if (score > previousScore) {
+          current.score += score - previousScore;
+        }
+        if (previousScore === 0)
+          current.candidate.source_refs.push(outcome.source.ref);
+        if (index + 1 >= current.candidate.source_rank) return;
+      }
       const candidate: EvidenceCandidate = {
         id: createHash("sha256").update(key).digest("hex").slice(0, 24),
         title: title || url,
@@ -483,7 +527,7 @@ export function normalizeEvidenceCandidates(
         source_adapter: outcome.source.site,
         source_command: outcome.source.name,
         source_rank: index + 1,
-        source_refs: [outcome.source.ref],
+        source_refs: current?.candidate.source_refs ?? [outcome.source.ref],
         published_at: stringField(raw, [
           "published_at",
           "publishedAt",
@@ -501,30 +545,474 @@ export function normalizeEvidenceCandidates(
         rrf_score: 0,
         raw,
       };
-      const current = groups.get(key);
+      let timestamp = Number.NEGATIVE_INFINITY;
+      if (options.sort === "latest") {
+        const updatedAt = Date.parse(candidate.updated_at);
+        const publishedAt = Date.parse(candidate.published_at);
+        timestamp = Number.isFinite(updatedAt)
+          ? updatedAt
+          : Number.isFinite(publishedAt)
+            ? publishedAt
+            : Number.NEGATIVE_INFINITY;
+      }
       if (current) {
-        current.score += score;
-        const sourceRefs = [
-          ...new Set([...current.candidate.source_refs, outcome.source.ref]),
-        ].sort();
-        if (candidate.source_rank < current.candidate.source_rank) {
-          current.candidate = { ...candidate, source_refs: sourceRefs };
-        } else {
-          current.candidate.source_refs = sourceRefs;
-        }
+        current.candidate = candidate;
+        current.timestamp = timestamp;
         return;
       }
       groups.set(key, {
         score,
         candidate,
+        order: groups.size,
+        timestamp,
       });
     });
   }
-  return [...groups.values()]
-    .sort((left, right) => right.score - left.score)
-    .slice(0, limit)
-    .map(({ candidate, score }) => ({
-      ...candidate,
-      rrf_score: Number(score.toFixed(8)),
-    }));
+  return boundedTopK(
+    groups.values(),
+    limit,
+    (left, right) =>
+      (options.sort === "latest" ? right.timestamp - left.timestamp : 0) ||
+      right.score - left.score ||
+      left.order - right.order,
+  ).map(({ candidate, score }) => ({
+    ...candidate,
+    source_refs: candidate.source_refs.sort(),
+    rrf_score: Number(score.toFixed(8)),
+  }));
+}
+
+export interface AcquiredResource extends Omit<DownloadResult, "status"> {
+  id: string;
+  url: string;
+  source_urls: string[];
+  path: string;
+  status: DownloadResult["status"] | "pending" | "cancelled";
+  document_path?: string;
+  structure_error?: string;
+  retry_command: string;
+}
+
+export interface ResourceAcquisition {
+  schema_version: "resource-acquisition.v1";
+  query: string;
+  directory: string;
+  manifest_path: string;
+  candidates: readonly EvidenceCandidate[];
+  resources: AcquiredResource[];
+  source_errors: readonly RetrievalSourceError[];
+  max_resources: number;
+  selection_complete: boolean;
+  linked_resources_found: number;
+  linked_resources_selected: number;
+}
+
+const RESOURCE_EXTENSION =
+  /\.(?:pdf|zip|tar|gz|bz2|xz|7z|csv|tsv|jsonl?|parquet|xlsx?|docx?|pptx?|epub|txt|md|png|jpe?g|webp|svg|mp3|mp4|wav)$/i;
+
+function acquisitionUrl(value: unknown, base?: string): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(value.trim(), base);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/** Download selected search results and one bounded layer of their resource links. */
+export async function acquireEvidenceResources(
+  query: string,
+  candidates: readonly EvidenceCandidate[],
+  options: {
+    directory?: string;
+    resume?: string;
+    concurrency?: number;
+    maxResources?: number;
+    maxBytes?: number;
+    timeoutMs?: number;
+    refresh?: boolean;
+    sourceErrors?: readonly RetrievalSourceError[];
+    signal?: AbortSignal;
+  } = {},
+): Promise<ResourceAcquisition> {
+  const concurrency = options.concurrency ?? 3;
+  let maxResources = options.maxResources ?? 20;
+  const maxBytes = options.maxBytes ?? 50 * 1024 * 1024;
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  for (const [name, value, minimum, maximum] of [
+    ["concurrency", concurrency, 1, 8],
+    ["max_resources", maxResources, 0, 100],
+    ["max_bytes", maxBytes, 1, 1024 * 1024 * 1024],
+    ["timeout_ms", timeoutMs, 1, 300_000],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+      throw new RetrievalFailure({
+        code: "invalid_input",
+        message: `${name} must be an integer between ${minimum} and ${maximum}.`,
+        suggestion: `Set --${name.replaceAll("_", "-")} within that range.`,
+      });
+    }
+  }
+  options.signal?.throwIfAborted();
+  const directory = options.resume
+    ? dirname(resolve(options.resume))
+    : resolve(options.directory ?? "./downloads");
+  const manifestPath = options.resume
+    ? resolve(options.resume)
+    : join(directory, "results.json");
+  const context = {
+    args: { query, dir: directory },
+    vars: {},
+    data: null,
+    site: "retrieval",
+    command: "acquire",
+    canMutate: true,
+  };
+  const validatePath = (path: string) =>
+    assertRuntimePathAllowed(context, {
+      action: "download",
+      step: -1,
+      config: {},
+      path,
+      access: "write",
+    });
+  const validateRequest = (url: string) =>
+    assertRuntimeNetworkAllowed(context, {
+      action: "download",
+      step: -1,
+      config: {},
+      url,
+      access: "read",
+    });
+  validatePath(manifestPath);
+  let previous: Partial<ResourceAcquisition> = {};
+  try {
+    const stored: unknown = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (stored && typeof stored === "object" && !Array.isArray(stored))
+      previous = stored;
+  } catch (error) {
+    if (options.resume) {
+      throw new RetrievalFailure({
+        code: "invalid_input",
+        message: `Cannot resume acquisition from ${manifestPath}: ${error instanceof Error ? error.message : String(error)}`,
+        suggestion:
+          "Pass a readable results.json from retrieval acquire or start a new query.",
+      });
+    }
+    if (
+      (error as NodeJS.ErrnoException).code !== "ENOENT" &&
+      !(error instanceof SyntaxError)
+    )
+      throw error;
+  }
+  if (options.resume) {
+    if (
+      previous.schema_version !== "resource-acquisition.v1" ||
+      typeof previous.query !== "string" ||
+      !Array.isArray(previous.candidates) ||
+      !Array.isArray(previous.resources) ||
+      previous.resources.length === 0 ||
+      typeof previous.selection_complete !== "boolean" ||
+      !Number.isSafeInteger(previous.max_resources) ||
+      previous.max_resources! < 0 ||
+      previous.max_resources! > 100 ||
+      !previous.resources.every(
+        (resource) =>
+          resource &&
+          acquisitionUrl(resource.url) &&
+          Array.isArray(resource.source_urls) &&
+          resource.source_urls.every((url) => typeof url === "string"),
+      )
+    ) {
+      throw new RetrievalFailure({
+        code: "invalid_input",
+        message: `${manifestPath} does not contain a supported acquisition result.`,
+        suggestion:
+          "Resume from a complete resource-acquisition.v1 result or start a new query.",
+      });
+    }
+    query = previous.query;
+    candidates = previous.candidates;
+    maxResources = previous.max_resources!;
+  }
+  await mkdir(directory, { recursive: true });
+  const reusable = new Map(
+    previous.schema_version === "resource-acquisition.v1" &&
+      Array.isArray(previous.resources)
+      ? previous.resources
+          .filter((resource) => resource && typeof resource.url === "string")
+          .map((resource) => [canonicalizeUrl(resource.url), resource])
+      : [],
+  );
+  const result: ResourceAcquisition = {
+    schema_version: "resource-acquisition.v1",
+    query,
+    directory,
+    manifest_path: manifestPath,
+    candidates,
+    resources: [],
+    source_errors: options.resume
+      ? (previous.source_errors ?? [])
+      : (options.sourceErrors ?? []),
+    max_resources: maxResources,
+    selection_complete: options.resume ? previous.selection_complete! : false,
+    linked_resources_found: options.resume
+      ? (previous.linked_resources_found ?? 0)
+      : 0,
+    linked_resources_selected: options.resume
+      ? (previous.linked_resources_selected ?? 0)
+      : 0,
+  };
+  const known = new Map<string, AcquiredResource>();
+  const addResource = (url: string, sourceUrl: string): AcquiredResource => {
+    const key = canonicalizeUrl(url);
+    const existing = known.get(key);
+    if (existing) {
+      if (!existing.source_urls.includes(sourceUrl))
+        existing.source_urls.push(sourceUrl);
+      return existing;
+    }
+    const id = createHash("sha256").update(key).digest("hex").slice(0, 24);
+    const extension = extname(new URL(url).pathname)
+      .slice(0, 16)
+      .replace(/[^.a-z0-9]/gi, "");
+    const resource: AcquiredResource = {
+      id,
+      url,
+      source_urls: [sourceUrl],
+      path: join(directory, `${id}${extension || ".bin"}`),
+      status: "pending",
+      retry_command: `unicli retrieval acquire --resume ${shellQuote(manifestPath)} --max-bytes ${maxBytes} --timeout-ms ${timeoutMs}`,
+    };
+    known.set(key, resource);
+    result.resources.push(resource);
+    return resource;
+  };
+  const directUrl = acquisitionUrl(query);
+  const initialResources = directUrl
+    ? [{ url: directUrl, sourceUrl: directUrl }]
+    : candidates.flatMap((candidate) => {
+        const url =
+          acquisitionUrl(candidate?.raw?.download_url, candidate?.url) ??
+          acquisitionUrl(candidate?.raw?.pdf_url, candidate?.url) ??
+          acquisitionUrl(candidate?.url);
+        return url ? [{ url, sourceUrl: candidate.url || url }] : [];
+      });
+  const initialKeys = new Set(
+    initialResources.map((resource) => canonicalizeUrl(resource.url)),
+  );
+  if (options.resume)
+    for (const resource of previous.resources!) {
+      const restored = addResource(
+        resource.url,
+        resource.source_urls[0] ?? resource.url,
+      );
+      for (const sourceUrl of resource.source_urls)
+        if (!restored.source_urls.includes(sourceUrl))
+          restored.source_urls.push(sourceUrl);
+    }
+  else
+    for (const resource of initialResources)
+      addResource(resource.url, resource.sourceUrl);
+  if (result.resources.length === 0) {
+    throw new RetrievalFailure({
+      code: "empty_result",
+      message: "No selected result has an HTTP(S) resource URL.",
+      suggestion:
+        "Use a direct URL or choose retrieval sources that expose resource URLs.",
+    });
+  }
+  const linked = new Map<string, Array<{ text: string; url: string }>>();
+  let checkpoint = Promise.resolve();
+  const persist = () => {
+    checkpoint = checkpoint.then(() =>
+      writeFileTransactionally(
+        manifestPath,
+        Buffer.from(JSON.stringify(result, null, 2) + "\n"),
+      ),
+    );
+    return checkpoint;
+  };
+  const download = async (
+    resource: AcquiredResource,
+    discoverLinks: boolean,
+  ) => {
+    try {
+      options.signal?.throwIfAborted();
+      validatePath(resource.path);
+      validateRequest(resource.url);
+      const prior = reusable.get(canonicalizeUrl(resource.url));
+      let existingSize: number | undefined;
+      if (
+        !options.refresh &&
+        prior?.path === resource.path &&
+        !prior.structure_error &&
+        (prior.status === "success" || prior.status === "skipped")
+      ) {
+        try {
+          const info = await stat(resource.path);
+          if (
+            info.isFile() &&
+            info.size === prior.size &&
+            info.size <= maxBytes
+          )
+            existingSize = info.size;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+        }
+      }
+      if (existingSize !== undefined) {
+        Object.assign(resource, {
+          status: "skipped",
+          size: existingSize,
+          contentType: prior!.contentType,
+          finalUrl: prior!.finalUrl,
+        });
+      } else {
+        const outcome = await httpDownload(resource.url, resource.path, {
+          signal: boundedSignal(options.signal, timeoutMs),
+          maxBytes,
+          validateRequest,
+        });
+        Object.assign(resource, outcome);
+        if (outcome.status === "failed") return;
+      }
+      const contentType = resource.contentType ?? "";
+      const textual = isTextualContentType(contentType);
+      if (textual && (resource.size ?? 0) <= MAX_TEXT_RESOURCE_BYTES) {
+        try {
+          const document = structureFetchedEvidence({
+            sourceUrl: resource.url,
+            finalUrl: resource.finalUrl ?? resource.url,
+            text: await readFile(resource.path, "utf8"),
+            contentType,
+            status: 200,
+          });
+          const documentPath = join(directory, `${resource.id}.document.json`);
+          validatePath(documentPath);
+          await writeFileTransactionally(
+            documentPath,
+            Buffer.from(JSON.stringify(document, null, 2) + "\n"),
+            { signal: options.signal },
+          );
+          resource.document_path = documentPath;
+          if (discoverLinks)
+            linked.set(
+              resource.id,
+              document.links.filter(
+                (link) =>
+                  acquisitionUrl(link.url) !== undefined &&
+                  (RESOURCE_EXTENSION.test(new URL(link.url).pathname) ||
+                    /\bdownload\b|下载/i.test(link.text)),
+              ),
+            );
+        } catch (error) {
+          options.signal?.throwIfAborted();
+          resource.structure_error =
+            error instanceof Error ? error.message : String(error);
+        }
+      }
+    } catch (error) {
+      if (
+        options.signal?.aborted &&
+        (resource.status === "success" || resource.status === "skipped")
+      )
+        options.signal.throwIfAborted();
+      resource.status = options.signal?.aborted ? "cancelled" : "failed";
+      resource.code = options.signal?.aborted
+        ? "cancelled"
+        : error instanceof Error && error.name === "TimeoutError"
+          ? "timeout"
+          : typeof (error as { code?: unknown })?.code === "string"
+            ? (error as { code: string }).code
+            : "download_failed";
+      resource.error = error instanceof Error ? error.message : String(error);
+      options.signal?.throwIfAborted();
+    } finally {
+      await persist();
+    }
+  };
+  try {
+    await mapConcurrent([...result.resources], concurrency, (resource) =>
+      download(
+        resource,
+        !result.selection_complete &&
+          initialKeys.has(canonicalizeUrl(resource.url)),
+      ),
+    );
+    if (result.selection_complete) return result;
+    const analysis = analyzeRetrievalQuery(query);
+    const links = new Map<
+      string,
+      { url: string; sourceUrls: string[]; score: number; order: number }
+    >();
+    for (const resource of result.resources) {
+      const key = canonicalizeUrl(resource.url);
+      if (!initialKeys.has(key))
+        links.set(key, {
+          url: resource.url,
+          sourceUrls: resource.source_urls,
+          score: 0,
+          order: links.size,
+        });
+    }
+    for (const resource of result.resources)
+      for (const link of linked.get(resource.id) ?? []) {
+        const key = canonicalizeUrl(link.url);
+        if (initialKeys.has(key)) continue;
+        const existing = links.get(key);
+        if (existing) {
+          if (!existing.sourceUrls.includes(resource.url))
+            existing.sourceUrls.push(resource.url);
+        } else
+          links.set(key, {
+            url: link.url,
+            sourceUrls: [resource.url],
+            score: scoreRetrievalCandidate(analysis, {
+              title: link.text,
+              url: link.url,
+            }).score,
+            order: links.size,
+          });
+      }
+    result.linked_resources_found = links.size;
+    const selected = boundedTopK(
+      [...links.entries()]
+        .filter(([key]) => !known.has(key))
+        .map(([, link]) => link),
+      Math.max(0, maxResources - result.linked_resources_selected),
+      (left, right) => right.score - left.score || left.order - right.order,
+    );
+    const resources = selected.map((link) => {
+      const resource = addResource(link.url, link.sourceUrls[0]);
+      resource.source_urls = link.sourceUrls;
+      return resource;
+    });
+    result.linked_resources_selected += resources.length;
+    result.selection_complete =
+      result.linked_resources_selected >= maxResources ||
+      result.resources
+        .filter((resource) => initialKeys.has(canonicalizeUrl(resource.url)))
+        .every(
+          (resource) =>
+            (resource.status === "success" || resource.status === "skipped") &&
+            !resource.structure_error,
+        );
+    await persist();
+    await mapConcurrent(resources, concurrency, (resource) =>
+      download(resource, false),
+    );
+    return result;
+  } finally {
+    for (const resource of result.resources)
+      if (resource.status === "pending") {
+        resource.status = "cancelled";
+        resource.code = "cancelled";
+        resource.error = "Acquisition stopped before this resource completed.";
+      }
+    await persist();
+  }
 }

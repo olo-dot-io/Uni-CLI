@@ -48,6 +48,10 @@ pipeline:
       Accept: application/json
 ```
 
+`fetch` accepts JSON and `fetch_text` accepts bounded textual content. Both share validated redirects, response classification, and retry scheduling. `retry` counts total attempts. An upstream `Retry-After` value sets a minimum wait in seconds or HTTP-date form, and caller cancellation stops that wait. Interrupted successful read bodies use the remaining attempt budget. Accepted writes with interrupted bodies return `operation_outcome_ambiguous` for state reconciliation.
+
+`cache` is a GET-only freshness ceiling in seconds. Request headers partition the stored representation and credentials. Response `max-age` and `Age` further constrain freshness. `no-store`, `no-cache`, `private`, and `Vary: *` disable reuse. Writes publish atomically. `cache: 0` bypasses a stored response.
+
 ## Transform data
 
 | Action       | Purpose                                |
@@ -137,7 +141,7 @@ Common compute actions include `compute_snapshot`, `compute_find`, `compute_clic
 
 ## Registered actions
 
-The current registered action names are:
+The following names are registered actions.
 
 ```text
 append, assert, click, compute_apps, compute_assert, compute_cdp_attach,
@@ -154,7 +158,7 @@ sort, split_text, tap, to_entries, type, wait, websocket, write_temp
 
 ## Transport-native actions
 
-Transport adapters also expose macOS AX, Windows UIA, Linux AT-SPI, clipboard, application, and visual actions. Their names include:
+Transport adapters also expose macOS AX, Windows UIA, Linux AT-SPI, clipboard, application, and visual actions. The following names identify these actions.
 
 ```text
 applescript, ax_*, uia_*, atspi_*, clipboard_read, clipboard_write,
@@ -165,7 +169,7 @@ These actions execute through the selected transport provider and its capability
 
 ## Templates
 
-The most common values are:
+The following expressions access common values.
 
 | Expression          | Value                     |
 | ------------------- | ------------------------- |

@@ -1,14 +1,11 @@
 /**
  * @owner       src::engine::cookie-source
- * @does        Execute one immutable credential acquisition plan and surface
- *              its exact miss or failure without changing source identity.
+ * @does        Reuse persisted or selected-profile credentials and execute explicit single-source requests.
  * @needs       ./cookie-storage, ./chromium-cookies (lazy), ./cookie-extractor (lazy), ../browser/local-profiles (lazy)
  * @feeds       src::engine::cookies (loadCookies/loadCookiesWithCDP/acquireCookies
  *              projections), src::engine::executor (auth error detail)
- * @breaks      never throws from loadCookiesWithDiagnostics — failures become
- *              CookieLoadOutcome {status:"error", reasons}; readDiskCookies is total
- * @invariants  exactly one source is read per call; misses and errors never
- *              trigger a different credential authority.
+ * @breaks      Acquisition failures become CookieLoadOutcome errors; cancellation propagates to the invocation owner.
+ * @invariants  Automatic reads retain an explicit profile selection; explicit source requests never fall through to another source.
  * @side-effects disk reads tighten legacy permissions; default sources read browser DB / CDP into memory
  * @perf        disk O(file); browser reads one explicitly or unambiguously selected profile
  * @concurrency stateless; sources own their own IO
@@ -18,16 +15,25 @@
  */
 
 import { readDiskCookies, type DiskRead } from "./cookie-storage.js";
+import { currentBrowserInvocationScope } from "../browser/invocation-scope.js";
 export { cookieDir, readDiskCookies } from "./cookie-storage.js";
 export type { DiskRead } from "./cookie-storage.js";
 export type CookieSourceName = "disk" | "browser" | "cdp";
+export interface CookieAcquisitionOptions {
+  source?: CookieSourceName | "auto";
+  skipDisk?: boolean;
+  preferCdp?: boolean;
+  url?: string;
+  profileId?: string;
+  signal?: AbortSignal;
+}
 export interface CookieCredentialIdentity {
   profile_id: string;
   selection_source: "explicit" | "preferred";
 }
 
 export interface CookieAcquisitionPlan {
-  source: CookieSourceName;
+  source: CookieSourceName | "auto";
   site: string;
   domain: string;
   credential_identity: CookieCredentialIdentity;
@@ -74,8 +80,14 @@ export type BrowserAttempt =
  */
 export interface CookieSources {
   readDisk(site: string): DiskRead;
-  readBrowser(domain: string): Promise<BrowserAttempt>;
-  readCdp(domain: string): Promise<Record<string, string>>;
+  readBrowser(
+    domain: string,
+    opts?: CookieAcquisitionOptions,
+  ): Promise<BrowserAttempt>;
+  readCdp(
+    domain: string,
+    opts?: CookieAcquisitionOptions,
+  ): Promise<Record<string, string>>;
 }
 
 /** Resolve the cookie domain the same way the legacy loader did. */
@@ -85,7 +97,11 @@ export function resolveCookieDomain(site: string, domain?: string): string {
   return resolved;
 }
 
-async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
+async function defaultReadBrowser(
+  domain: string,
+  opts: CookieAcquisitionOptions = {},
+): Promise<BrowserAttempt> {
+  opts.signal?.throwIfAborted();
   let mod: typeof import("./chromium-cookies.js");
   let localProfiles: typeof import("../browser/local-profiles.js");
   try {
@@ -94,6 +110,7 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       import("../browser/local-profiles.js"),
     ]);
   } catch (err) {
+    opts.signal?.throwIfAborted();
     return {
       kind: "error",
       reasons: [
@@ -105,7 +122,13 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       ],
     };
   }
-  const selection = localProfiles.selectLocalBrowserIdentity();
+  opts.signal?.throwIfAborted();
+  const scope = currentBrowserInvocationScope();
+  const selection = localProfiles.selectLocalBrowserIdentity({
+    profileId:
+      opts.profileId ??
+      (scope?.provider === "managed" ? scope.profileId : undefined),
+  });
   if (selection.status === "ambiguous") {
     return {
       kind: "error",
@@ -118,7 +141,20 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       ],
     };
   }
-  if (selection.status === "unavailable") return { kind: "none" };
+  if (selection.status === "unavailable") {
+    return selection.requested_profile_id
+      ? {
+          kind: "error",
+          reasons: [
+            {
+              source: "browser",
+              code: "profile_unavailable",
+              detail: `Selected browser profile is unavailable: ${selection.requested_profile_id}`,
+            },
+          ],
+        }
+      : { kind: "none" };
+  }
   const profile = selection.profile;
   const browser = localProfiles.browserCookieIdForLocalProfile(profile);
   if (!browser) {
@@ -139,6 +175,7 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
       domain,
       profile: profile.profile_dir,
       userDataDir: profile.user_data_dir,
+      ...(opts.url ? { url: opts.url } : {}),
     });
     return Object.keys(record).length > 0
       ? {
@@ -166,9 +203,12 @@ async function defaultReadBrowser(domain: string): Promise<BrowserAttempt> {
   }
 }
 
-async function defaultReadCdp(domain: string): Promise<Record<string, string>> {
+async function defaultReadCdp(
+  domain: string,
+  opts: CookieAcquisitionOptions = {},
+): Promise<Record<string, string>> {
   const { extractCookiesViaCDP } = await import("./cookie-extractor.js");
-  return extractCookiesViaCDP(domain);
+  return extractCookiesViaCDP(domain, undefined, opts.url, opts.signal);
 }
 
 export const defaultCookieSources: CookieSources = {
@@ -178,22 +218,18 @@ export const defaultCookieSources: CookieSources = {
 };
 
 /**
- * Resolve a single credential source before acquisition. Legacy skip/prefer
- * flags map to one source for API compatibility; they never define an order.
+ * Automatic acquisition tries persisted cookies and the selected local profile.
+ * Explicit sources and legacy skip/prefer flags retain their single-source meaning.
  */
 export function resolveCookieAcquisitionPlan(
   site: string,
   domain?: string,
-  opts: {
-    source?: CookieSourceName;
-    skipDisk?: boolean;
-    preferCdp?: boolean;
-  } = {},
+  opts: CookieAcquisitionOptions = {},
 ): CookieAcquisitionPlan {
   const resolvedDomain = resolveCookieDomain(site, domain);
   const source =
     opts.source ??
-    (opts.preferCdp ? "cdp" : opts.skipDisk ? "browser" : "disk");
+    (opts.preferCdp ? "cdp" : opts.skipDisk ? "browser" : "auto");
   return {
     source,
     site,
@@ -214,16 +250,36 @@ export async function loadCookiesWithDiagnostics(
   site: string,
   domain?: string,
   sources: CookieSources = defaultCookieSources,
-  opts: {
-    source?: CookieSourceName;
-    skipDisk?: boolean;
-    preferCdp?: boolean;
-  } = {},
+  opts: CookieAcquisitionOptions = {},
 ): Promise<CookieLoadOutcome> {
+  opts.signal?.throwIfAborted();
   const plan = resolveCookieAcquisitionPlan(site, domain, opts);
+  if (plan.source === "auto") {
+    const disk = await loadCookiesWithDiagnostics(site, domain, sources, {
+      ...opts,
+      source: "disk",
+    });
+    if (disk.status === "loaded") return disk;
+    if (process.env.UNICLI_COOKIE_NO_BROWSER === "1") return disk;
+    const browser = await loadCookiesWithDiagnostics(site, domain, sources, {
+      ...opts,
+      source: "browser",
+    });
+    if (browser.status === "loaded") return browser;
+    const reasons = [disk, browser].flatMap((result) =>
+      result.status === "error" ? result.reasons : [],
+    );
+    return reasons.length > 0
+      ? { status: "error", reasons }
+      : { status: "absent" };
+  }
   if (plan.source === "disk") {
     const disk = sources.readDisk(site);
+    opts.signal?.throwIfAborted();
     if (disk.kind === "ok") {
+      if (!Object.values(disk.cookies).some((value) => value.length > 0)) {
+        return { status: "absent" };
+      }
       return {
         status: "loaded",
         source: "disk",
@@ -259,8 +315,12 @@ export async function loadCookiesWithDiagnostics(
         ],
       };
     }
-    const browser = await sources.readBrowser(plan.domain);
-    if (browser.kind === "ok" && Object.keys(browser.cookies).length > 0) {
+    const browser = await sources.readBrowser(plan.domain, opts);
+    opts.signal?.throwIfAborted();
+    if (
+      browser.kind === "ok" &&
+      Object.values(browser.cookies).some((value) => value.length > 0)
+    ) {
       return {
         status: "loaded",
         source: "browser",
@@ -275,8 +335,9 @@ export async function loadCookiesWithDiagnostics(
   }
 
   try {
-    const cdp = await sources.readCdp(plan.domain);
-    return Object.keys(cdp).length > 0
+    const cdp = await sources.readCdp(plan.domain, opts);
+    opts.signal?.throwIfAborted();
+    return Object.values(cdp).some((value) => value.length > 0)
       ? {
           status: "loaded",
           source: "cdp",
@@ -285,6 +346,7 @@ export async function loadCookiesWithDiagnostics(
         }
       : { status: "absent" };
   } catch (err) {
+    opts.signal?.throwIfAborted();
     return {
       status: "error",
       reasons: [
@@ -323,7 +385,10 @@ export function describeCookieFailure(
   if (has("keychain_denied")) {
     suggestion = `Chrome cookie decryption was denied by the macOS Keychain. Grant access when prompted, or run: unicli auth import ${site} --domain ${d}`;
   } else if (has("encryption_unsupported")) {
-    suggestion = `Chrome's app-bound encryption (v20) blocks direct cookie reads. Start Chrome via "unicli browser start" (CDP path), or run: unicli auth import ${site} --domain ${d}`;
+    suggestion = `Windows v20 cookies require the browser API. Connect the Uni-CLI extension in the intended Chrome profile, run unicli browser doctor --json, then explicitly import from that CDP/native session with unicli auth import ${site} --domain ${d} --cdp.`;
+  } else if (has("profile_ambiguous") || has("profile_unavailable")) {
+    suggestion =
+      "Run unicli browser profiles --json and set UNICLI_BROWSER_PROFILE_ID to the intended profile id, then retry.";
   } else if (has("corrupt_file")) {
     suggestion = `The saved cookie file is unreadable. Re-import: unicli auth import ${site} --domain ${d}`;
   } else {

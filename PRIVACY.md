@@ -1,8 +1,6 @@
 # Privacy
 
-Uni-CLI has no hosted telemetry, analytics, usage-tracking, or crash-reporting
-service. It is a local execution tool, but executing commands necessarily moves
-data across the boundaries selected by the command.
+Uni-CLI has no hosted telemetry, analytics, usage-tracking, or crash-reporting service. It is a local execution tool. Executing commands necessarily moves data across the boundaries selected by the command.
 
 ## Network activity
 
@@ -21,7 +19,7 @@ data across the boundaries selected by the command.
 
 ## Browser sessions and cookies
 
-Authenticated commands can obtain cookies from three local sources:
+Authenticated commands can obtain cookies from three local sources.
 
 1. an explicitly persisted file at `~/.unicli/cookies/<site>.json`;
 2. a supported local Chromium profile database; or
@@ -32,7 +30,7 @@ may be placed in a `Cookie` request header and sent to the target site declared
 by the adapter. Runtime browser/CDP acquisition and automatic auth refresh do
 **not** persist those values.
 
-Persistence is an explicit action:
+Persistence is an explicit action.
 
 ```bash
 unicli auth import <site>
@@ -52,8 +50,7 @@ values. Cookie files are classified as sensitive paths and must not be added to
 logs, prompts, commits, or issue reports.
 
 Delete explicit local persistence by removing the relevant file under
-`~/.unicli/cookies/`. The next authenticated command can still read the active
-local browser session into memory.
+`~/.unicli/cookies/`. The next authenticated command can read the selected local browser profile into memory.
 
 ## Other local data
 
@@ -62,44 +59,41 @@ receipts, downloads, screenshots, adapter overlays, approvals, or caches under
 `~/.unicli/` or a user-selected output path. Each command's dry run, help, or
 documentation describes its output boundary.
 
-Completed CLI invocations and adapter tool calls write bounded diagnostic
-events to UTC-day JSONL files under `~/.unicli/logs/events/`. These events use
-an allowlist of scalar operational metadata: Uni-CLI version, base source
+Completed CLI invocations and adapter tool calls write bounded diagnostic events
+to UTC-day JSONL files under `~/.unicli/logs/events/`. These events use an
+allowlist of scalar operational metadata including Uni-CLI version, base source
 revision, clean/dirty/package state and a content digest for dirty checkouts
 when available, command identity, transport, target surface, timing,
 exit/outcome, result size, and typed error/provider fields. They do not record
-command arguments, URLs, queries, content, cookies, credentials, raw output, or
-raw error messages or adapter filesystem paths. Newly created directories use
-mode `0700`, while a user-selected existing `UNICLI_LOG_ROOT` keeps its mode;
-event and lock files use mode `0600` on POSIX systems. Each UTC day is capped
-at 16 MiB and the retained store at 128 MiB; a full store reports a local-log
-error instead of growing or deleting in-window evidence. The default retention
-window is 30 days; set
-`UNICLI_LOG_RETENTION_DAYS` to an integer from 1 to 3650 to change it, or
-`UNICLI_LOG_ROOT` to move the directory. Set `UNICLI_NO_LOG=1` to disable new
-events. The legacy `UNICLI_NO_LEDGER=1` switch remains an equivalent opt-out.
+command arguments, URLs, queries, content, cookies, credentials, raw output, raw
+error messages, or adapter filesystem paths.
+
+Newly created directories use mode `0700`. A user-selected existing
+`UNICLI_LOG_ROOT` keeps its mode. Event and lock files use mode `0600` on POSIX
+systems.
+
+Each UTC day is capped at 16 MiB and the retained store at 128 MiB. A full store
+reports a local-log error and does not grow or delete in-window evidence. The
+default retention window is 30 days. Set `UNICLI_LOG_RETENTION_DAYS` to an
+integer from 1 to 3650 to change it, or `UNICLI_LOG_ROOT` to move the directory.
+Set `UNICLI_NO_LOG=1` to disable new events. The legacy `UNICLI_NO_LEDGER=1`
+switch remains an equivalent opt-out.
+
 `unicli usage report` reads these events together with the older
-`~/.unicli/usage.jsonl`; it reports corrupt rows instead of silently ignoring
+`~/.unicli/usage.jsonl`. It reports corrupt rows and does not silently ignore
 them.
 
 Events are terminal observations. `SIGKILL`, power loss, or host failure before
 completion cannot produce an event. A hard kill during the bounded store
 critical section can leave `.write.lock`; the next writer verifies its recorded
 PID is no longer alive and reclaims that exact lock before appending. Live or
-unverifiable owners are never stolen and still produce a typed lock timeout.
+unverifiable owners retain their lock and produce a typed lock timeout.
 
-Delete default diagnostic history by removing `~/.unicli/logs/events/` and the
-legacy `~/.unicli/usage.jsonl`. Opt-in run traces under `~/.unicli/runs/` are a
-different artifact: they can contain replay arguments and remain disabled
-unless `--record` or `UNICLI_RECORD_RUN=1` is set.
+Delete default diagnostic history by removing `~/.unicli/logs/events/` and the legacy `~/.unicli/usage.jsonl`. Opt-in run traces under `~/.unicli/runs/` are a different artifact. They can contain replay arguments and remain disabled unless `--record` or `UNICLI_RECORD_RUN=1` is set.
 
 ## Plugins and configured providers
 
-Third-party plugins, adapters, MCP servers, visual backends, and model providers
-run under their own data practices. Review their source and endpoint settings
-before sending confidential data. Uni-CLI does not add a second telemetry
-channel, but it cannot override the behavior of software the user installs or
-configures.
+Third-party plugins, adapters, MCP servers, visual backends, and model providers run under their own data practices. Review their source and endpoint settings before sending confidential data. Uni-CLI does not add a second telemetry channel. It cannot override the behavior of software the user installs or configures.
 
 ## Questions
 

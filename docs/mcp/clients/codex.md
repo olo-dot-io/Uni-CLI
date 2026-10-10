@@ -1,7 +1,7 @@
 # Codex Computer Use
 
 Codex desktop can already have its own `computer-use` plugin. To swap the MCP
-server name to Uni-CLI while keeping compatible tool names, configure:
+server name to Uni-CLI and keep compatible tool names, configure.
 
 ```toml
 # ~/.codex/mcp.toml
@@ -11,7 +11,7 @@ args = ["-y", "@zenalexa/unicli", "mcp", "serve", "--profile", "computer-use"]
 ```
 
 Existing prompts that call `computer-use.*` tools can keep the same prefix.
-Uni-CLI plans one provider before execution: macOS AX, Windows UIA, or Linux
+Uni-CLI plans one provider before execution. It uses macOS AX, Windows UIA, or Linux
 AT-SPI for native refs; CDP for exact browser/Electron targets; subprocess for
 app launch; and visual coordinates only when the request explicitly selects
 `via: visual`.

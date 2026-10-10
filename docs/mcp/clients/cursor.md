@@ -1,6 +1,6 @@
 # Cursor Computer Use
 
-Use a project-level `.cursor/mcp.json` or global `~/.cursor/mcp.json` entry:
+Use a project-level `.cursor/mcp.json` or global `~/.cursor/mcp.json` entry.
 
 ```jsonc
 {

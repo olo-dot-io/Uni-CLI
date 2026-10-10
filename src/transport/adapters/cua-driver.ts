@@ -7,11 +7,18 @@
  * @invariants  Each physical call selects the primary desktop through literal argv; the caller owns daemon lifecycle, routing, and mutation retries.
  * @side-effects Invokes an optional local cua-driver daemon through its one-shot CLI and may capture or mutate the foreground desktop.
  * @perf        One contained CLI process per call; provider latency dominates.
- * @concurrency Each call owns one child process; daemon session identity is caller-supplied and never stored globally.
+ * @concurrency Each call owns one child process; a capture retains its explicit or generated session label for the following coordinate action.
  * @test        tests/unit/transport/adapters/cua-driver.test.ts
  * @stability   experimental
  * @since       2026-07-30
  */
+
+import { randomUUID } from "node:crypto";
+
+import {
+  parseCuaDriverArgs,
+  resolveCuaDriverCommand,
+} from "../../compute/cua-driver-runtime.js";
 
 import {
   attachDefaultEffectVerdict,
@@ -105,11 +112,8 @@ export class CuaDriverTransport implements TransportAdapter {
 
   constructor(options: CuaDriverTransportOptions = {}) {
     this.env = options.env ?? process.env;
-    this.command =
-      options.command ??
-      this.env.UNICLI_CUA_DRIVER_COMMAND?.trim() ??
-      "cua-driver";
-    const parsedArgs = parseArgsPrefix(this.env.UNICLI_CUA_DRIVER_ARGS);
+    this.command = options.command ?? resolveCuaDriverCommand(this.env);
+    const parsedArgs = parseCuaDriverArgs(this.env.UNICLI_CUA_DRIVER_ARGS);
     this.argsPrefix =
       options.argsPrefix ?? (parsedArgs.ok ? parsedArgs.value : []);
     this.configurationError =
@@ -207,7 +211,7 @@ export class CuaDriverTransport implements TransportAdapter {
             ? `Cua Driver executable ${JSON.stringify(this.command)} is unavailable`
             : `Cua Driver call failed before a result was received: ${errorMessage(error)}`,
           suggestion: missing
-            ? "install Cua Driver or set UNICLI_CUA_DRIVER_COMMAND, then run `unicli doctor compute --providers --json`"
+            ? "run `unicli doctor compute --providers --install --json` or set UNICLI_CUA_DRIVER_COMMAND to an existing Cua Driver executable"
             : "inspect `cua-driver status` and the daemon logs",
           minimum_capability: `cua-driver.${req.kind}`,
           retryable: false,
@@ -320,6 +324,9 @@ export class CuaDriverTransport implements TransportAdapter {
       minimum_contract_version: CUA_DRIVER_CONTRACT_VERSION,
       tool: call.tool,
       ...validation.value,
+      ...(call.tool === "get_desktop_state"
+        ? { session: call.args.session }
+        : {}),
     } as T);
     if (canMutate && validation.effect === "postcondition") {
       envelope.effect_verdict = confirmedEffectVerdict(
@@ -392,6 +399,8 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
     case "cua_click": {
       const point = pointFrom(req.params, "x", "y");
       if (!point.ok) return invalid(req, point.reason);
+      const captureId = optionalString(req.params.captureId, "captureId");
+      if (!captureId.ok) return invalid(req, captureId.reason);
       const button =
         req.params.button === undefined ? "left" : req.params.button;
       if (button !== "left" && button !== "right" && button !== "middle") {
@@ -407,6 +416,7 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
             ...point.value,
             button,
             count: count.value,
+            ...(captureId.value ? { capture_id: captureId.value } : {}),
             target: CUA_DRIVER_DESKTOP_TARGET,
             delivery_mode: "foreground",
           }),
@@ -563,9 +573,14 @@ function prepareCuaCall(req: ActionRequest): CuaCallPreparation {
         ok: true,
         value: {
           tool: "get_desktop_state",
-          args: withSession(
-            path?.value ? { screenshot_out_file: path.value } : {},
-          ),
+          args: {
+            ...(path?.value ? { screenshot_out_file: path.value } : {}),
+            // Named sessions retain capture bindings across one-shot CLI processes.
+            session:
+              sessionResult.value && sessionResult.value !== "default"
+                ? sessionResult.value
+                : `unicli-${randomUUID()}`,
+          },
         },
       };
     }
@@ -880,30 +895,6 @@ function parseStructuredOutput(
       reason: `cua-driver output is not valid JSON: ${errorMessage(error)}`,
     };
   }
-}
-
-function parseArgsPrefix(
-  value: string | undefined,
-): { ok: true; value: readonly string[] } | { ok: false; reason: string } {
-  if (!value?.trim()) return { ok: true, value: [] };
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (
-      Array.isArray(parsed) &&
-      parsed.every((item) => typeof item === "string")
-    ) {
-      return { ok: true, value: parsed };
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      reason: `UNICLI_CUA_DRIVER_ARGS is invalid JSON: ${errorMessage(error)}`,
-    };
-  }
-  return {
-    ok: false,
-    reason: "UNICLI_CUA_DRIVER_ARGS must be a JSON array of strings",
-  };
 }
 
 function finiteNumber(value: unknown): number | undefined {

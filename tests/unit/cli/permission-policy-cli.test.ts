@@ -15,13 +15,13 @@ import { ExitCode } from "../../../src/types.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 const SRC_MAIN = join(REPO_ROOT, "src", "main.ts");
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 
 describe("CLI permission policy dispatch", () => {
   it("rejects invalid permission profile names instead of failing open", () => {
     const result = spawnSync(
-      npxBin,
+      process.execPath,
       [
+        "--import",
         "tsx",
         SRC_MAIN,
         "--permission-profile",
@@ -55,8 +55,9 @@ describe("CLI permission policy dispatch", () => {
 
   it("marks blocked desktop command envelopes as desktop surface", () => {
     const result = spawnSync(
-      npxBin,
+      process.execPath,
       [
+        "--import",
         "tsx",
         SRC_MAIN,
         "--permission-profile",
@@ -93,8 +94,9 @@ describe("CLI permission policy dispatch", () => {
 
   it("marks blocked generated Electron commands as desktop with TS adapter path", () => {
     const result = spawnSync(
-      npxBin,
+      process.execPath,
       [
+        "--import",
         "tsx",
         SRC_MAIN,
         "--permission-profile",
@@ -132,8 +134,9 @@ describe("CLI permission policy dispatch", () => {
 
   it("blocks AI chat ask prompts under locked profile", () => {
     const result = spawnSync(
-      npxBin,
+      process.execPath,
       [
+        "--import",
         "tsx",
         SRC_MAIN,
         "--permission-profile",
@@ -187,8 +190,9 @@ describe("CLI permission policy dispatch", () => {
       );
 
       const result = spawnSync(
-        npxBin,
+        process.execPath,
         [
+          "--import",
           "tsx",
           SRC_MAIN,
           "--yes",
@@ -233,8 +237,9 @@ describe("CLI permission policy dispatch", () => {
       writeFileSync(rulesPath, '{"schema_version":', "utf-8");
 
       const result = spawnSync(
-        npxBin,
+        process.execPath,
         [
+          "--import",
           "tsx",
           SRC_MAIN,
           "--dry-run",
@@ -290,8 +295,9 @@ describe("CLI permission policy dispatch", () => {
       });
 
       const result = spawnSync(
-        npxBin,
+        process.execPath,
         [
+          "--import",
           "tsx",
           SRC_MAIN,
           "--dry-run",

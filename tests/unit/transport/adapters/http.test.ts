@@ -30,6 +30,7 @@ function makeCtx(): TransportContext {
 describe("HttpTransport", () => {
   let originalFetch: typeof fetch;
 
+  // REASON: Fetch fixtures use native Response streams to exercise the owned reader without external network dependencies.
   beforeEach(() => {
     originalFetch = globalThis.fetch;
   });
@@ -62,14 +63,11 @@ describe("HttpTransport", () => {
   });
 
   it("returns ok envelope for successful fetch", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      json: async () => ({ hello: "world" }),
-      text: async () => '{"hello":"world"}',
-      headers: new Map([["content-type", "application/json"]]),
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"hello":"world"}', {
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());
@@ -88,13 +86,13 @@ describe("HttpTransport", () => {
   });
 
   it("confirms an authoritative HTTP 201 mutation response", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 201,
-      statusText: "Created",
-      json: async () => ({ id: "created-1" }),
-      headers: new Map(),
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"id":"created-1"}', {
+        status: 201,
+        statusText: "Created",
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());
@@ -115,13 +113,11 @@ describe("HttpTransport", () => {
   });
 
   it("keeps a generic HTTP 200 mutation response unverifiable", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      json: async () => ({ accepted: true }),
-      headers: new Map(),
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"accepted":true}', {
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());
@@ -141,12 +137,11 @@ describe("HttpTransport", () => {
   });
 
   it("returns err envelope for HTTP 404 (non-retryable)", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: "Not Found",
-      text: async () => "not found",
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("not found", { status: 404, statusText: "Not Found" }),
+      ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());
@@ -193,12 +188,11 @@ describe("HttpTransport", () => {
   });
 
   it("fetch_text returns raw text body", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      text: async () => "<rss>ok</rss>",
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response("<rss>ok</rss>", {
+        headers: { "content-type": "application/xml" },
+      }),
+    ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());
@@ -336,14 +330,11 @@ describe("HttpTransport", () => {
   });
 
   it("snapshot returns last response envelope as json", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      json: async () => ({ hello: "world" }),
-      text: async () => '{"hello":"world"}',
-      headers: new Map(),
-    }) as unknown as typeof fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('{"hello":"world"}', {
+        headers: { "content-type": "application/json" },
+      }),
+    ) as unknown as typeof fetch;
 
     const t = new HttpTransport();
     await t.open(makeCtx());

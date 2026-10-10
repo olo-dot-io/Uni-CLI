@@ -10,7 +10,6 @@ import { ExitCode } from "../../../src/types.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..", "..");
 const mainPath = join(repoRoot, "src", "main.ts");
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 
 describe("Commander parser error boundary", () => {
   it.each([
@@ -32,24 +31,28 @@ describe("Commander parser error boundary", () => {
       const root = mkdtempSync(join(tmpdir(), "unicli-commander-error-"));
       const logRoot = join(root, "events");
       try {
-        const result = spawnSync(npxBin, ["tsx", mainPath, ...argv], {
-          cwd: repoRoot,
-          encoding: "utf-8",
-          timeout: 30_000,
-          env: {
-            ...process.env,
-            HOME: root,
-            UNICLI_LOG_ROOT: logRoot,
-            UNICLI_NO_LOG: "",
-            UNICLI_NO_LEDGER: "",
-            UNICLI_OUTPUT: "json",
-            UNICLI_SKIP_UPDATE_CHECK: "1",
-            UNICLI_BUILD_REVISION: "a".repeat(40),
-            npm_config_update_notifier: "false",
-            NO_COLOR: "1",
-            FORCE_COLOR: "0",
+        const result = spawnSync(
+          process.execPath,
+          ["--import", "tsx", mainPath, ...argv],
+          {
+            cwd: repoRoot,
+            encoding: "utf-8",
+            timeout: 30_000,
+            env: {
+              ...process.env,
+              HOME: root,
+              UNICLI_LOG_ROOT: logRoot,
+              UNICLI_NO_LOG: "",
+              UNICLI_NO_LEDGER: "",
+              UNICLI_OUTPUT: "json",
+              UNICLI_SKIP_UPDATE_CHECK: "1",
+              UNICLI_BUILD_REVISION: "a".repeat(40),
+              npm_config_update_notifier: "false",
+              NO_COLOR: "1",
+              FORCE_COLOR: "0",
+            },
           },
-        });
+        );
 
         expect(result.status).toBe(ExitCode.USAGE_ERROR);
         expect(result.stdout).toBe("");

@@ -19,20 +19,20 @@ npm run docs:build
 
 ## Adapter 目录
 
-生成 manifest：
+生成 manifest。
 
 ```bash
 npm run build:manifest
 ```
 
-检查 YAML/TypeScript adapter：
+检查 YAML/TypeScript adapter。
 
 ```bash
 npm run lint:adapters
 npm run lint:schema-v2
 ```
 
-运行 adapter 测试：
+运行 adapter 测试。
 
 ```bash
 npm run test:adapter
@@ -40,13 +40,13 @@ npm run test:adapter
 
 ## 统计
 
-刷新 README、AGENTS.md 和 stats：
+刷新 README、AGENTS.md 和 stats。
 
 ```bash
 npm run stats
 ```
 
-检查统计标记是否同步：
+检查统计标记是否同步。
 
 ```bash
 npm run stats:check
@@ -54,7 +54,7 @@ npm run stats:check
 
 ## 文档
 
-生成 agent markdown assets 并构建站点：
+生成 agent markdown assets 并构建站点。
 
 ```bash
 npm run docs:build
@@ -66,7 +66,7 @@ npm run docs:build
 
 仓库内置 skills 放在 `skills/<name>/SKILL.md`。加载顺序是仓库 skills、`$HOME/.unicli/skills`、XDG data 目录。声明 `depends-on` 的 skill 会先加载依赖。
 
-核心 `unicli` skill 依赖 `talk-normal`。写文档、UI 文案、README 或 agent-facing 文本前，先加载这套简洁写作规则。
+核心 `unicli` skill 依赖 `human-writing`。撰写文档、界面文案、README 或面向 Agent 的说明前，先加载其中的写作规则。
 
 ## Conformance
 
@@ -74,7 +74,7 @@ npm run docs:build
 npm run conformance
 ```
 
-它会扫描 adapter 的结构化合同。失败时先看报告，再修 adapter 或 schema。
+该命令扫描 adapter 的结构化契约。检查失败时先查看报告，再修复 adapter 或 schema。
 
 ## 完整门禁
 
@@ -82,4 +82,4 @@ npm run conformance
 npm run verify
 ```
 
-发布或合并前至少跑这条。它比单项检查慢，但能覆盖格式、类型、lint、manifest、测试、统计、conformance 和 exports。
+发布或合并前运行完整检查，覆盖格式、类型、lint、manifest、测试、统计、契约一致性与导出检查。

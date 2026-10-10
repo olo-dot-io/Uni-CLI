@@ -11,20 +11,20 @@
 
 ## 读取公开网站
 
-先找命令：
+先找命令。
 
 ```bash
 unicli search "查看 Hacker News 热门文章"
 ```
 
-查看参数，再读取五条结果：
+查看参数，再读取五条结果。
 
 ```bash
 unicli describe hackernews top
 unicli hackernews top --limit 5 -f json
 ```
 
-用 `jq` 选择需要的字段：
+用 `jq` 选择需要的字段。
 
 ```bash
 unicli hackernews top --limit 5 -f json |
@@ -33,13 +33,13 @@ unicli hackernews top --limit 5 -f json |
 
 ## 搜索并阅读论文
 
-搜索 arXiv：
+搜索 arXiv。
 
 ```bash
 unicli arxiv search "agent computer interfaces" --limit 5 --sort submittedDate -f json
 ```
 
-选中 ID 后下载 PDF，并读取开头几页：
+选中 ID 后下载 PDF，并读取开头几页。
 
 ```bash
 unicli arxiv download 1706.03762 --output ./papers -f json
@@ -64,7 +64,7 @@ unicli auth check <site>
 
 ## 操作浏览器页面
 
-读取浏览器状态，启动 provider，再查看页面：
+读取浏览器状态，启动 provider，再查看页面。
 
 ```bash
 unicli browser doctor --json
@@ -73,14 +73,14 @@ unicli browser open https://example.com
 unicli browser state -f json
 ```
 
-使用 `browser state` 返回的 ref：
+使用 `browser state` 返回的 ref。
 
 ```bash
 unicli browser click <ref>
 unicli browser type <ref> "搜索内容"
 ```
 
-需要视觉确认时保存截图：
+需要视觉确认时保存截图。
 
 ```bash
 unicli browser screenshot ./page.png
@@ -88,7 +88,7 @@ unicli browser screenshot ./page.png
 
 ## 归档 OpenReview venue
 
-先查看参数，再启动可续传归档：
+先查看参数，再启动可续传归档。
 
 ```bash
 unicli describe openreview conference
@@ -101,7 +101,7 @@ unicli openreview conference <venue-group-or-url> \
 
 ## 预览写操作
 
-用 `describe` 查看 effect 和参数，`--dry-run` 会显示解析后的计划：
+用 `describe` 查看 effect 和参数，`--dry-run` 会显示解析后的计划。
 
 ```bash
 unicli describe <site> <command> --full -f json

@@ -39,7 +39,7 @@ interface CommentsResponse {
 
 /** Fetch video aid from bvid using the view API (not WBI-signed). */
 async function resolveAid(bvid: string): Promise<number> {
-  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
+  const cookies = await loadCookiesWithCDP("bilibili", "api.bilibili.com");
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",

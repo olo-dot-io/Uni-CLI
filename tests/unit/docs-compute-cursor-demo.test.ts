@@ -58,8 +58,8 @@ describe("docs compute cursor demo", () => {
     expect(docs).toContain("overlay/linux-gtk");
     expect(docs).toContain("unicli -f json compute click @e13 --overlay");
     expect(docs).toContain("visual_action.post_capture");
-    expect(docs).toContain("Chrome extension");
-    expect(docs).toContain("cannot cover arbitrary macOS apps");
+    expect(docs).toContain("browser extension overlay");
+    expect(docs).toContain("remains confined to browser pages");
     expect(docs).toContain("Accessibility and Screen Recording");
   });
 });

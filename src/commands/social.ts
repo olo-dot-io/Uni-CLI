@@ -23,11 +23,6 @@ import {
   SOCIAL_CAPABILITY_ORDER,
 } from "../social/capabilities.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
-import { refreshCookiesFromBrowser } from "../engine/cookies.js";
-import {
-  annotateAuthRetryFailure,
-  shouldRefreshAuthError,
-} from "../output/auth-guidance.js";
 
 export const HIGHLIGHTED_SOCIAL_SITES = [
   "xiaohongshu",
@@ -290,45 +285,13 @@ export function registerSocialCommand(program: Command): void {
             args: buildSocialCommentArgs(site, command, target, opts),
             source: "internal",
           },
-          { approved: true },
+          {
+            approved: true,
+            authRetry: program.opts().authRetry as boolean | undefined,
+          },
         );
         if (!inv) throw new Error(`Unknown command: ${site}.${commandName}`);
-        const result = await execute(inv);
-        let finalResult = result;
-        const rootOpts = program.opts() as { authRetry?: boolean };
-        if (
-          rootOpts.authRetry === true &&
-          shouldRefreshAuthError(result.error?.code)
-        ) {
-          const refresh = await refreshCookiesFromBrowser(
-            site,
-            command.domain ?? adapter.domain,
-            { preferCdp: result.error?.code === "challenge_required" },
-          );
-          if (refresh.ok) {
-            const retryInvocation = buildInvocation(
-              "cli",
-              site,
-              commandName,
-              inv.bag,
-              {
-                approved: true,
-                cookieInvocationOverride: refresh.invocation_override,
-              },
-            );
-            if (!retryInvocation) {
-              throw new Error(
-                `adapter ${site}.${commandName} disappeared before auth retry`,
-              );
-            }
-            process.stderr.write(
-              `[auth] refreshed ${refresh.cookieCount} cookie(s) from ${refresh.source}; retrying ${site}.${commandName}\n`,
-            );
-            finalResult = await execute(retryInvocation);
-          } else {
-            annotateAuthRetryFailure(finalResult, refresh.suggestion, site);
-          }
-        }
+        const finalResult = await execute(inv);
         if (finalResult.error) {
           process.stderr.write(
             format([], command.columns, fmt, finalResult.envelope),

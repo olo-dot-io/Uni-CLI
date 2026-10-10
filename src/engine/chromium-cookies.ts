@@ -24,6 +24,11 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import {
+  chromeExpiresToUnixSeconds,
+  cookieMatchesRequest,
+  cookieValuesForUrl,
+} from "./cookie-scope.js";
 
 import {
   ChromiumCookieError,
@@ -148,7 +153,10 @@ function userDataRoot(browser: BrowserId, platform: Platform): string {
  * (e.g. "Default", "Profile 1") that contain a Cookies file, sorted by
  * Cookies-file mtime descending (most-recently-active first).
  */
-export function listProfiles(browser: BrowserId): string[] {
+export function listProfiles(
+  browser: BrowserId,
+  userDataDir?: string,
+): string[] {
   let platform: Platform;
   try {
     platform = currentPlatform();
@@ -157,7 +165,7 @@ export function listProfiles(browser: BrowserId): string[] {
   }
   const spec = BROWSERS[browser];
   if (!spec.paths[platform]) return [];
-  const root = userDataRoot(browser, platform);
+  const root = userDataDir ?? userDataRoot(browser, platform);
   if (!existsSync(root)) return [];
   let entries: string[];
   try {
@@ -228,7 +236,7 @@ export function resolveCookieDb(
         : `Install ${browser} or pass --browser <other>.`,
     );
   }
-  const chosen = profile ?? listProfiles(browser)[0];
+  const chosen = profile ?? listProfiles(browser, root)[0];
   if (!chosen) {
     throw new ChromiumCookieError(
       "no_profile",
@@ -260,7 +268,12 @@ function sqliteBinary(): string {
 function snapshotDb(srcDb: string): { dbPath: string; cleanup: () => void } {
   const tmp = mkdtempSync(join(tmpdir(), "unicli-cookies-"));
   const dst = join(tmp, "Cookies");
-  copyFileSync(srcDb, dst);
+  try {
+    copyFileSync(srcDb, dst);
+  } catch (error) {
+    rmSync(tmp, { recursive: true, force: true });
+    throw error;
+  }
   for (const suffix of ["-wal", "-shm", "-journal"]) {
     const sibling = `${srcDb}${suffix}`;
     if (existsSync(sibling)) {
@@ -297,8 +310,7 @@ export interface RawCookieRow {
 }
 
 /**
- * Read cookie rows for a domain. Filters via host_key suffix so
- * `.example.com`, `example.com`, and `sub.example.com` all match.
+ * Read host-only cookies for the exact host and domain cookies for its suffixes.
  *
  * Implementation: shell-out to `sqlite3` reading from stdin. Zero npm deps,
  * zero native compile — `sqlite3` ships with macOS and is widely available
@@ -306,6 +318,7 @@ export interface RawCookieRow {
  * `UNICLI_SQLITE_BIN` to override).
  */
 function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
+  domain = domain.toLowerCase().replace(/^\./, "");
   if (!/^[a-zA-Z0-9.-]+$/.test(domain)) {
     throw new ChromiumCookieError(
       "sqlite_failed",
@@ -313,43 +326,32 @@ function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
       "Domain must contain only letters, digits, dots, and hyphens.",
     );
   }
-  // Per RFC 6265, a cookie set on `.bilibili.com` is sent to `api.bilibili.com`.
-  // So when an adapter declares `api.bilibili.com`, we must also accept rows
-  // whose host_key is the parent `bilibili.com` (with or without leading dot).
-  // Walk every ≥2-segment suffix; exclude bare TLD to avoid pulling unrelated
-  // domains. PSL edge cases (`co.uk`) are tolerable: matching `.co.uk` would
-  // be overbroad but in practice the cookies DB never stores such entries.
+  // Chromium has already enforced public-suffix rules when storing domain cookies.
   const parts = domain.split(".");
   const candidates: string[] = [];
   for (let i = 0; i <= parts.length - 2; i++) {
     candidates.push(parts.slice(i).join("."));
   }
-  const clauses = candidates
-    .flatMap((d) => {
-      const safe = d.replace(/'/g, "''");
-      return [`host_key = '${safe}'`, `host_key = '.${safe}'`];
-    })
-    .join(" OR ");
+  const clauses = [
+    `host_key = '${domain}'`,
+    ...candidates.map((candidate) => `host_key = '.${candidate}'`),
+  ].join(" OR ");
   const sql = [
     ".mode list",
     ".separator |",
     ".headers off",
-    `SELECT host_key, name, hex(encrypted_value), value, path, expires_utc, is_secure, is_httponly, is_persistent, has_expires
+    `SELECT hex(host_key), hex(name), hex(encrypted_value), hex(value), hex(path), expires_utc, is_secure, is_httponly, is_persistent, has_expires
        FROM cookies
        WHERE ${clauses};`,
   ].join("\n");
 
   let stdout: string;
   try {
-    stdout = execFileSync(
-      sqliteBinary(),
-      ["-readonly", "-bail", `file:${dbPath}?mode=ro&immutable=1`],
-      {
-        input: sql + "\n.quit\n",
-        encoding: "utf8",
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
+    stdout = execFileSync(sqliteBinary(), ["-readonly", "-bail", dbPath], {
+      input: sql + "\n.quit\n",
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
   } catch (err) {
     throw new ChromiumCookieError(
       "sqlite_failed",
@@ -376,11 +378,11 @@ function readRowsForDomain(dbPath: string, domain: string): RawCookieRow[] {
       hasExpires,
     ] = parts;
     rows.push({
-      host,
-      name,
+      host: Buffer.from(host, "hex").toString("utf8"),
+      name: Buffer.from(name, "hex").toString("utf8"),
       encrypted: Buffer.from(hex, "hex"),
-      plain,
-      path,
+      plain: Buffer.from(plain, "hex").toString("utf8"),
+      path: Buffer.from(path, "hex").toString("utf8"),
       expires: Number(expires) || 0,
       isSecure: Number(isSecure) || 0,
       isHttpOnly: Number(isHttpOnly) || 0,
@@ -405,17 +407,46 @@ export function readCookies(opts: ReadOptions): CookieRow[] {
     platform,
     userDataRoot: root,
   } = resolveCookieDb(opts.browser, opts.profile, opts.userDataDir);
-  const secret = getEncryptionSecret(
-    opts.browser,
-    platform,
-    KEYSTORE_SPECS[opts.browser],
-    root,
-  );
-  const key = deriveKey(secret, platform);
-
   const snap = snapshotDb(dbPath);
   try {
-    const rows = readRowsForDomain(snap.dbPath, opts.domain);
+    const now = Date.now() / 1000;
+    const request = opts.url ? new URL(opts.url) : undefined;
+    const rows = readRowsForDomain(snap.dbPath, opts.domain).filter(
+      (row) =>
+        (!row.hasExpires || chromeExpiresToUnixSeconds(row.expires) > now) &&
+        (!request ||
+          cookieMatchesRequest(
+            {
+              name: row.name,
+              value: "",
+              domain: row.host,
+              path: row.path,
+              secure: row.isSecure === 1,
+            },
+            request,
+            now,
+          )),
+    );
+    if (!rows.some((row) => row.encrypted.length > 0)) {
+      return decodeCookieRows(rows, () => "");
+    }
+    if (
+      platform === "win32" &&
+      rows.some((row) => row.encrypted.subarray(0, 3).toString() === "v20")
+    ) {
+      throw new ChromiumCookieError(
+        "encryption_unsupported",
+        "The selected profile uses Windows app-bound cookie encryption (v20)",
+        "Read these cookies through the selected browser's native connection or verified CDP session.",
+      );
+    }
+    const secret = getEncryptionSecret(
+      opts.browser,
+      platform,
+      KEYSTORE_SPECS[opts.browser],
+      root,
+    );
+    const key = deriveKey(secret, platform);
     return decodeCookieRows(rows, (enc) => decryptValue(enc, key, platform));
   } finally {
     snap.cleanup();
@@ -490,14 +521,25 @@ export function decodeCookieRows(
 /**
  * Convenience: read cookies for a domain and flatten to a name→value record,
  * matching the shape that engine/cookies.ts already passes to fetch headers.
- * Last-write-wins on duplicate names (later host_key entries override earlier).
+ * URL-scoped selection prefers the most specific path for duplicate names.
  */
 export function readCookiesAsRecord(opts: ReadOptions): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const c of readCookies(opts)) {
-    out[c.name] = c.value;
+  const rows = readCookies(opts);
+  if (!opts.url) {
+    return Object.fromEntries(
+      rows.map((cookie) => [cookie.name, cookie.value]),
+    );
   }
-  return out;
+  return cookieValuesForUrl(
+    rows.map((cookie) => ({
+      ...cookie,
+      domain: cookie.host,
+      expires: cookie.hasExpires
+        ? chromeExpiresToUnixSeconds(cookie.expires)
+        : undefined,
+    })),
+    opts.url,
+  );
 }
 
 /** All known browser ids in priority order for auto-discovery. */

@@ -236,6 +236,20 @@ function closeServer(server: Server, path: string): Promise<void> {
 }
 
 function kernelLockProvider(): KernelLockProvider {
+  if (process.platform === "darwin" && !existsSync("/usr/bin/lockf")) {
+    // Older macOS releases expose flock through system Perl and retain the parent's inherited descriptor.
+    return {
+      executable: "/usr/bin/perl",
+      args: [
+        "-MFcntl=:flock",
+        "-MErrno=EAGAIN,EWOULDBLOCK",
+        "-e",
+        'open(my $lock, ">&=", 3) or do { print STDERR "open inherited lock: $!\\n"; exit 74 }; ' +
+          'flock($lock, LOCK_EX | LOCK_NB) or do { exit 75 if $! == EAGAIN || $! == EWOULDBLOCK; print STDERR "flock: $!\\n"; exit 74 };',
+      ],
+      contentionExitCode: 75,
+    };
+  }
   if (process.platform === "darwin" || process.platform.endsWith("bsd")) {
     return {
       executable: "/usr/bin/lockf",

@@ -1,8 +1,7 @@
 # Maintenance Tools
 
-This page groups the small maintenance surfaces that used to be split across
-separate docs pages. Use it when verifying agent context quality, adapter
-regressions, or generated skill exports.
+Use these commands to check agent context, run adapter regressions, and generate
+skill exports. Each command reports the part of the repository it examines.
 
 ## Context Lint
 
@@ -11,13 +10,13 @@ context such as `AGENTS.md`, local skills, workflows, and docs. It catches
 stale paths, missing verification instructions, and weak operational context
 before an agent relies on it.
 
-Resolution order:
+Resolution order.
 
 1. `agent-lint` on `PATH`.
 2. A vendored local build, when present.
 3. Soft skip with a warning. The script does not fetch from the network.
 
-Commands:
+Commands.
 
 ```bash
 npm run lint:context
@@ -33,7 +32,7 @@ exits 0.
 `unicli eval` runs YAML-defined regression suites against adapters and reports
 `SCORE=N/M`. User-local evals live under `~/.unicli/evals/`.
 
-Commands:
+Commands.
 
 ```bash
 unicli eval list
@@ -43,7 +42,7 @@ unicli eval ci --since 7d
 unicli eval run smoke/hackernews --json
 ```
 
-Eval file shape:
+Eval file shape.
 
 ```yaml
 name: hackernews-smoke
@@ -58,7 +57,7 @@ cases:
       - { type: nonEmpty }
 ```
 
-Judges:
+Judges.
 
 | Type             | Fields                        | Passes when                                |
 | ---------------- | ----------------------------- | ------------------------------------------ |
@@ -68,7 +67,7 @@ Judges:
 | `contains`       | `field?: "json.path", value:` | The resolved value contains the substring. |
 | `arrayMinLength` | `path?: "json.path", min:`    | The resolved value is an array of `min`+.  |
 
-Field paths use dotted syntax with array subscripts:
+Field paths use dotted syntax with array subscripts.
 
 ```text
 data.items[0].title
@@ -81,7 +80,7 @@ results[3].author
 command. Use it when an agent runtime can ingest local skills more cheaply than
 it can call discovery for every task.
 
-Commands:
+Commands.
 
 ```bash
 unicli skills export
@@ -92,7 +91,7 @@ unicli skills catalog
 unicli skills catalog --out /tmp/catalog.json
 ```
 
-Generated skill shape:
+Generated skill shape.
 
 ````markdown
 ---
@@ -128,5 +127,5 @@ skills first, then `$HOME/.unicli/skills`, then the XDG data directory. When a
 skill declares `depends-on`, dependency resolution loads those skills before the
 requesting skill.
 
-The core `unicli` skill depends on `talk-normal`, so documentation and
-user-facing copy should load the concise writing rules before drafting text.
+The core `unicli` skill depends on `human-writing`. Load its writing rules
+before drafting documentation or user-facing copy.

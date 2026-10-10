@@ -1,7 +1,7 @@
 /**
  * Compile step — converts adapter manifests into immutable `CompiledCommand`
- * entries keyed by `${site}.${cmd}`. Called once at loader boot; every
- * subsequent invocation looks up O(1).
+ * entries keyed by `${site}.${cmd}`. Loader boot compiles the registry;
+ * dynamic discovery updates individual keys. Invocations look up O(1).
  *
  * Built on ajv 2020-12 strict mode + format-assertion so adapter schemas
  * fail closed. `x-unicli` extension keywords are stripped before handing to
@@ -69,9 +69,18 @@ export function getCompiled(
   return compiledCache.get(`${site}.${cmd}`);
 }
 
-/** Internal — used by execute() for lazy cache fill on isolated unit tests. */
-export function setCompiled(key: string, compiled: CompiledCommand): void {
-  compiledCache.set(key, compiled);
+/** Compile changed command keys before publishing their cache updates. */
+export function updateCompiledCommands(
+  updates: ReadonlyMap<string, AdapterCommand | undefined>,
+): void {
+  const compiledUpdates = new Map<string, CompiledCommand | undefined>();
+  for (const [key, command] of updates) {
+    compiledUpdates.set(key, command ? compileCommand(command) : undefined);
+  }
+  for (const [key, compiled] of compiledUpdates) {
+    if (compiled) compiledCache.set(key, compiled);
+    else compiledCache.delete(key);
+  }
 }
 
 /** Test hook — clear the cache between independent test files. */

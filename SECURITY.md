@@ -4,8 +4,8 @@
 
 | Version              | Support                 |
 | -------------------- | ----------------------- |
-| Latest published 0.x | Security fixes          |
-| Older 0.x releases   | Upgrade to latest first |
+| Latest published 1.x | Security fixes          |
+| Earlier releases     | Upgrade to latest first |
 
 ## Reporting a vulnerability
 
@@ -74,6 +74,6 @@ manually here.
 
 The pull-request/mainline matrix runs the full Linux gate on Node 22 and a
 build/unit compatibility gate plus `npm audit --omit=dev --audit-level=moderate`
-on Node 24. The release workflow repeats the production audit before packing or
+on Node 24 and Node 26. The release workflow repeats the production audit before packing or
 publishing. `npm run truth:check` verifies those workflow and documentation
 contracts from repository state.

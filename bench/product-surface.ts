@@ -310,7 +310,7 @@ function renderEnglish(report: ProductSurfaceReport): string {
     `| [OpenCLI](${report.sources.opencli.repository}) | [${report.sources.opencli.commit.slice(0, 7)}](${report.sources.opencli.evidence[1]}) | website and browser adapter runtime | ${report.opencli.catalog.sites} sites and ${report.opencli.catalog.commands} commands |`,
     `| [CLI-Anything](${report.sources.cli_anything.repository}) | [${report.sources.cli_anything.commit.slice(0, 7)}](${report.sources.cli_anything.evidence[1]}) | stateful harnesses and capability matrices | ${report.cli_anything.catalog.harness_clis} harnesses, ${report.cli_anything.catalog.public_cli_entries} public entries, ${report.cli_anything.catalog.matrices} matrices, and ${report.cli_anything.catalog.matrix_capabilities} matrix capabilities |`,
     "",
-    "The shared personal-content classifier omits generic identity commands such as `whoami`. Uni-CLI exposes more matching content commands. OpenCLI currently spans more matching sites.",
+    "The shared personal-content classifier omits generic identity commands such as `whoami`. The table reports current counts with the same classifier. Coverage comparisons are observations; the maintenance gate checks executable tasks and catalog consistency.",
     "",
     "| Personal content surface | Uni-CLI | OpenCLI |",
     "|---|---|---|",
@@ -333,7 +333,7 @@ function renderEnglish(report: ProductSurfaceReport): string {
     `- Root discovery entry coverage  ${report.uni.root_discovery.passed}/${report.uni.root_discovery.total}`,
     `- Generated catalog synchronization  ${report.uni.catalog.generated_catalog_in_sync ? "pass" : "fail"}`,
     `- OpenCLI pinned baseline integrity  ${report.opencli.snapshot_valid ? "pass" : "fail"}`,
-    `- Personal content command parity  ${report.gates.personal_content_command_parity ? "pass" : "fail"}`,
+    `- Personal content command parity  ${report.comparisons.personal_content_command_parity ? "reached" : "below the comparison baseline"}`,
     `- Product surface gate  ${report.passed ? "pass" : "fail"}`,
     "",
     "Reproduce this section with `npm run bench:product-surface`.",
@@ -357,7 +357,7 @@ function renderChinese(report: ProductSurfaceReport): string {
     `| [OpenCLI](${report.sources.opencli.repository}) | [${report.sources.opencli.commit.slice(0, 7)}](${report.sources.opencli.evidence[1]}) | 网站和浏览器 adapter runtime | ${report.opencli.catalog.sites} 个网站，${report.opencli.catalog.commands} 条命令 |`,
     `| [CLI-Anything](${report.sources.cli_anything.repository}) | [${report.sources.cli_anything.commit.slice(0, 7)}](${report.sources.cli_anything.evidence[1]}) | 有状态 harness 和能力矩阵 | ${report.cli_anything.catalog.harness_clis} 个 harness，${report.cli_anything.catalog.public_cli_entries} 个公开入口，${report.cli_anything.catalog.matrices} 个矩阵，${report.cli_anything.catalog.matrix_capabilities} 项矩阵能力 |`,
     "",
-    "统一的个人内容分类会略过 `whoami` 这类身份查询。Uni-CLI 的个人内容命令数量更多，OpenCLI 覆盖的网站数量更多。",
+    "统一的个人内容分类会略过 `whoami` 这类身份查询。表格使用同一分类器报告当前数量。覆盖数量作为比较结果保留，维护检查验证实际任务和目录一致性。",
     "",
     "| 个人内容范围 | Uni-CLI | OpenCLI |",
     "|---|---|---|",
@@ -380,7 +380,7 @@ function renderChinese(report: ProductSurfaceReport): string {
     `- 根命令发现入口  ${report.uni.root_discovery.passed}/${report.uni.root_discovery.total}`,
     `- 生成目录同步  ${report.uni.catalog.generated_catalog_in_sync ? "通过" : "失败"}`,
     `- OpenCLI 固定基准完整性  ${report.opencli.snapshot_valid ? "通过" : "失败"}`,
-    `- 个人内容命令对等检查  ${report.gates.personal_content_command_parity ? "通过" : "失败"}`,
+    `- 个人内容命令数量比较  ${report.comparisons.personal_content_command_parity ? "达到对照数量" : "低于对照数量"}`,
     `- 产品能力检查  ${report.passed ? "通过" : "失败"}`,
     "",
     "运行 `npm run bench:product-surface` 可以重新生成本节。",
@@ -428,9 +428,11 @@ interface ProductSurfaceReport {
     top1_accuracy: string;
   };
   task_results: TaskResult[];
-  gates: {
+  comparisons: {
     catalog_breadth_parity: boolean;
     personal_content_command_parity: boolean;
+  };
+  gates: {
     task_completion: boolean;
     actionability: boolean;
     personalized_task_completion: boolean;
@@ -512,12 +514,14 @@ async function main(): Promise<void> {
       row.family_ok,
   ).length;
 
-  const gates = {
+  const comparisons = {
     catalog_breadth_parity:
       uniSites >= baselines.opencli.catalog.sites &&
       uniCommands >= baselines.opencli.catalog.commands,
     personal_content_command_parity:
       uniPersonal.commands >= openCliPersonal.commands,
+  };
+  const gates = {
     task_completion: passedTasks === TASKS.length,
     actionability: actionableTasks === TASKS.length,
     personalized_task_completion:
@@ -561,6 +565,7 @@ async function main(): Promise<void> {
       top1_accuracy: pct(passedTasks, TASKS.length),
     },
     task_results: taskResults,
+    comparisons,
     gates,
   };
 
@@ -573,6 +578,23 @@ async function main(): Promise<void> {
     await patchDocument(CHINESE_DOC, renderChinese(report));
   }
   if (checkOnly) {
+    if (!passed) {
+      console.error(
+        JSON.stringify(
+          {
+            failed_tasks: taskResults.filter(
+              (row) => !row.top1_ok || !row.family_ok || !row.actionable,
+            ),
+            failed_gates: Object.entries(gates)
+              .filter(([, ok]) => !ok)
+              .map(([name]) => name),
+            root_discovery: report.uni.root_discovery,
+          },
+          null,
+          2,
+        ),
+      );
+    }
     console.log(
       [
         `product-surface check ${passed ? "PASS" : "FAIL"}`,

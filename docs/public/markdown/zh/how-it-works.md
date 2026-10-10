@@ -7,7 +7,7 @@
 - 栏目: 上手
 - 上级: 上手 (/zh/)
 
-Uni-CLI 为网站、浏览器、桌面 App、本地工具、文件和协议服务提供统一命令模型。每次调用都经过四个步骤。运行时查找操作并查看合同，通过声明的接口运行，随后返回结构化结果。
+Uni-CLI 为网站、浏览器、桌面应用、本地工具、文件和协议服务提供统一命令模型。每次调用先查找操作并查看契约，通过声明的接口执行，最后返回结构化结果。
 
 ## 1. 在本地查找操作
 
@@ -15,7 +15,7 @@ Uni-CLI 为网站、浏览器、桌面 App、本地工具、文件和协议服�
 unicli search "查看 Hacker News 热门文章"
 ```
 
-搜索在已安装目录中完成。运行时只编译一次任务，解析精确或带拼写误差的 provider 名称，再对中英文命令描述排序。Effect、operator、target surface、category 和 platform 过滤会在检索阶段移除不兼容命令。每条结果都带有具名排序信号。Discovery 不会执行外部操作。
+搜索在已安装的命令目录中完成。运行时只编译一次任务，识别准确名称及带有拼写误差的提供方名称，再对中英文命令描述排序。检索时按操作效果、执行接口、目标范围、分类和平台过滤不兼容命令。结果包含具名排序信号，便于理解选择依据。命令发现过程只读取本地目录。
 
 ## 2. 操作会说明自己的参数
 
@@ -23,25 +23,25 @@ unicli search "查看 Hacker News 热门文章"
 unicli describe hackernews top
 ```
 
-操作合同包含以下字段。
+操作契约包含以下字段。
 
 - 参数和默认值
 - 登录要求
-- 目标 surface 与 execution operator
-- effect 与 interaction impact
-- adapter 源文件和修复入口
+- 目标范围与执行接口
+- 操作效果与交互影响
+- 适配器源文件和修复入口
 
-Agent 可以在打开浏览器、启动桌面 provider 或访问服务前准备好调用。
+Agent 可以在打开浏览器、启动桌面驱动或访问服务前准备好参数。
 
 ## 3. 通过声明的接口执行
 
-一条操作可以使用 structured API、browser protocol、native CLI、browser semantics、desktop accessibility、visual control 或 local runtime。目录通过 `operator` 和 `minimum_capability` 记录选择。
+操作可以通过结构化 API、浏览器协议、原生 CLI、网页元素、桌面无障碍接口、视觉控制或本地运行时执行。目录通过 `operator` 和 `minimum_capability` 记录所用接口及最低能力要求。
 
 ```bash
 unicli hackernews top --limit 5 -f json
 ```
 
-参数可以来自 Shell flag、stdin JSON 或 args file。运行时会先验证参数，再取得目标接口。
+参数可以来自 Shell 选项、标准输入中的 JSON 或参数文件。运行时先验证参数，再连接目标接口。
 
 ## 4. 每次调用都返回 envelope
 
@@ -64,18 +64,18 @@ unicli hackernews top --limit 5 -f json
 
 ## 软件发生变化时
 
-adapter failure 可以指出源文件和失败步骤。更新 adapter 后，`repair` 会重新运行原命令完成验证。
+适配器错误可以指出源文件和失败步骤。更新适配器后，运行 `repair` 重新执行原命令，验证修复结果。
 
 ```bash
 unicli repair <site> <command> --dry-run
 unicli repair <site> <command>
 ```
 
-`~/.unicli/adapters/` 中的用户 adapter 可在本地开发时覆盖 packaged adapter。
+本地开发时，`~/.unicli/adapters/` 中的用户适配器可以覆盖包内适配器。
 
 ## 同类失败重复发生时
 
-Evolution session 会把选定的失败 run 整理成私有 evidence packet 和一个隔离的 YAML candidate。Uni-CLI 通过公开 CLI 分别执行 baseline 与 candidate，保持 validation case 和 held-out case 分离，并记录每次接受或拒绝的 attempt。
+演进会话把选定的失败记录整理成私有证据包，并使用隔离的 YAML 候选实现。Uni-CLI 通过公开 CLI 分别执行基线和候选实现，分开保存验证用例与保留测试用例，并记录每次接受或拒绝的尝试。
 
 ```bash
 unicli evolve adapter <site> <command> \
@@ -86,11 +86,11 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-Promotion 要求 validation 严格提升且 held-out 没有回退。安装后的 override 保留精确 rollback artifact。Agent 提出修改，Uni-CLI 负责执行证据和 promotion 决策。
+候选实现晋级需要验证结果严格提升，并保持保留测试的表现。安装后的覆盖版本保留完整回滚文件。Agent 提出修改，Uni-CLI 负责执行验证并判断是否晋级。
 
 ## CLI、MCP 与 ACP
 
-CLI 提供完整命令面，适合进程型 Agent、管道、文件和 CI。MCP 把 Uni-CLI 接入 tool server 客户端。ACP 提供 agent-client server。三种入口使用同一操作目录。
+CLI 提供完整命令，适合能启动进程的 Agent，以及管道、文件和 CI 工作流。MCP 面向使用工具服务的客户端，ACP 提供 Agent Client Protocol 服务。三种入口使用同一操作目录。
 
 ## 继续阅读
 

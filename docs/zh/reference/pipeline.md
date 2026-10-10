@@ -46,6 +46,10 @@ pipeline:
       Accept: application/json
 ```
 
+`fetch` 接收 JSON，`fetch_text` 接收有大小限制的文本。两者共用重定向验证、响应分类和重试调度。`retry` 表示总尝试次数。上游 `Retry-After` 以秒数或 HTTP 日期设定最短等待时间，调用方取消会结束等待。读取成功响应时发生中断，会使用剩余尝试次数重试。写入已被接受后发生响应中断，会返回 `operation_outcome_ambiguous`，调用方需要先核对资源当前状态。
+
+`cache` 是 GET 请求的新鲜度上限，单位为秒。请求头用于区分内容表示和凭据，响应中的 `max-age` 和 `Age` 进一步限制有效期。`no-store`、`no-cache`、`private` 和 `Vary: *` 禁用复用，文件写入采用原子替换。`cache: 0` 跳过已有缓存。
+
 ## 数据转换
 
 | Action       | 用途                             |
@@ -123,7 +127,7 @@ pipeline:
 | `write_temp` | 为后续 action 创建临时文件                                                 |
 | `compute_*`  | 通过 compute 路由 snapshot、input、screenshot、assertion 和 session action |
 
-常用 compute action 包括 `compute_snapshot`、`compute_find`、`compute_click`、`compute_type`、`compute_press`、`compute_scroll`、`compute_screenshot`、`compute_assert`、`compute_session_start`、`compute_session_state` 和 `compute_session_end`。
+常用桌面操作包括 `compute_snapshot`、`compute_find`、`compute_click`、`compute_type`、`compute_press`、`compute_scroll`、`compute_screenshot`、`compute_assert`、`compute_session_start`、`compute_session_state` 和 `compute_session_end`。
 
 ```yaml
 - exec:
@@ -135,7 +139,7 @@ pipeline:
 
 ## Registered actions
 
-当前 registered action 名称：
+以下列出已注册的动作名称。
 
 ```text
 append, assert, click, compute_apps, compute_assert, compute_cdp_attach,
@@ -152,14 +156,14 @@ sort, split_text, tap, to_entries, type, wait, websocket, write_temp
 
 ## Transport-native actions
 
-Transport adapter 还提供 macOS AX、Windows UIA、Linux AT-SPI、clipboard、application 与 visual action：
+传输适配器还提供 macOS AX、Windows UIA、Linux AT-SPI，以及剪贴板、应用和视觉操作，名称如下。
 
 ```text
 applescript, ax_*, uia_*, atspi_*, clipboard_read, clipboard_write,
 focus_window, launch_app, visual_*
 ```
 
-这些 action 通过选中的 transport provider 与 capability row 执行。`src/engine/step-surface.ts` 会从 step registry 和 transport handler table 推导完整列表。
+这些动作通过选中的传输提供方及其能力记录执行。`src/engine/step-surface.ts` 从步骤注册表和传输处理器表生成完整列表。
 
 ## 模板
 
@@ -170,4 +174,4 @@ focus_window, launch_app, visual_*
 | `${{ index }}`      | 当前列表 index |
 | `${{ env.NAME }}`   | 环境变量       |
 
-Step schema 与实现在 `src/engine/steps/` 中。修改 pipeline 后运行 `npm run lint:adapters`。
+步骤 Schema 和实现在 `src/engine/steps/` 中。修改流水线后，运行 `npm run lint:adapters`。

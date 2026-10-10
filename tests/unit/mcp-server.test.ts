@@ -118,17 +118,9 @@ describe("MCP server — smart default mode", () => {
 
   beforeAll(async () => {
     // Default mode (no flags) registers 4 tools: unicli_run, unicli_list, unicli_search, unicli_explore
-    // `spawn("npx", …)` fails with ENOENT on Windows because the real
-    // binary is `npx.cmd`; use the platform-appropriate name so the CI
-    // matrix green-lights Windows too.
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    proc = spawn(npxBin, ["tsx", SERVER_PATH], {
+    proc = spawn(process.execPath, ["--import", "tsx", SERVER_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: join(__dirname, "..", ".."),
-      // Node 16+ rejects spawning `.cmd` / `.bat` files without a shell
-      // for security reasons (CVE-2024-27980). The tsx binary has no
-      // special-char args, so `shell: true` is safe here.
-      shell: process.platform === "win32",
     });
 
     // Wait for server to start (stderr message)
@@ -377,12 +369,14 @@ describe("MCP server — computer-use profile", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    proc = spawn(npxBin, ["tsx", SERVER_PATH, "--profile", "computer-use"], {
-      stdio: ["pipe", "pipe", "pipe"],
-      cwd: join(__dirname, "..", ".."),
-      shell: process.platform === "win32",
-    });
+    proc = spawn(
+      process.execPath,
+      ["--import", "tsx", SERVER_PATH, "--profile", "computer-use"],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: join(__dirname, "..", ".."),
+      },
+    );
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
@@ -531,12 +525,14 @@ describe("MCP server — deferred profile", () => {
   let proc: ChildProcess;
 
   beforeAll(async () => {
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    proc = spawn(npxBin, ["tsx", SERVER_PATH, "--profile", "deferred"], {
-      stdio: ["pipe", "pipe", "pipe"],
-      cwd: join(__dirname, "..", ".."),
-      shell: process.platform === "win32",
-    });
+    proc = spawn(
+      process.execPath,
+      ["--import", "tsx", SERVER_PATH, "--profile", "deferred"],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: join(__dirname, "..", ".."),
+      },
+    );
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
@@ -577,11 +573,9 @@ describe("MCP server — stdio shutdown", () => {
   it(
     "exits cleanly without synthesizing cancellation when stdin closes",
     async () => {
-      const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-      const proc = spawn(npxBin, ["tsx", SERVER_PATH], {
+      const proc = spawn(process.execPath, ["--import", "tsx", SERVER_PATH], {
         stdio: ["pipe", "pipe", "pipe"],
         cwd: join(__dirname, "..", ".."),
-        shell: process.platform === "win32",
       });
 
       const stdout: Buffer[] = [];

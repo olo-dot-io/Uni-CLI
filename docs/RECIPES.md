@@ -48,7 +48,7 @@ Run `unicli describe arxiv download` if the downloaded filename differs from the
 
 ## Set up a signed-in site
 
-Start with the operation. The error envelope will identify missing authentication.
+Start with the operation. The error envelope identifies missing authentication.
 
 ```bash
 unicli <site> <command> -f json
@@ -149,4 +149,4 @@ unicli describe <site> <command> --full -f json
 unicli <site> <command> [args] --dry-run -f json
 ```
 
-For commands covered by the local permission policy, Uni-CLI will return the exact approval step with the planned arguments.
+For commands covered by the local permission policy, Uni-CLI returns the exact approval step with the planned arguments.

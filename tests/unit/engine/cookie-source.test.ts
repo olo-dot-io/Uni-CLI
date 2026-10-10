@@ -139,6 +139,7 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
           throw new Error("ECONNREFUSED 9222");
         },
       }),
+      { source: "disk" },
     );
     expect(out.status).toBe("error");
     if (out.status !== "error") throw new Error("unreachable");
@@ -158,6 +159,7 @@ describe("loadCookiesWithDiagnostics — surfaces the real cause, never silent n
           return { kind: "ok", cookies: { b: "2" } };
         },
       }),
+      { source: "disk" },
     );
     expect(out).toEqual({
       status: "error",

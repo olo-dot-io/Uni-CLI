@@ -26,6 +26,7 @@ import {
   readDiskCookies,
   resolveCookieDomain,
   type CookieCredentialIdentity,
+  type CookieAcquisitionOptions,
   type CookieLoadOutcome,
   type CookieSources,
 } from "./cookie-source.js";
@@ -117,8 +118,13 @@ export function validateCookies(
 ): { valid: boolean; missing: string[] } {
   const cookies = loadCookies(site);
   if (!cookies) return { valid: false, missing: requiredKeys };
-  const missing = requiredKeys.filter((k) => !(k in cookies));
-  return { valid: missing.length === 0, missing };
+  const missing = requiredKeys.filter((k) => !cookies[k]);
+  return {
+    valid:
+      missing.length === 0 &&
+      Object.values(cookies).some((value) => value.length > 0),
+    missing,
+  };
 }
 
 /** Get the cookie directory path (for display in auth commands). */
@@ -127,18 +133,16 @@ export function getCookieDir(): string {
 }
 
 /**
- * Execute one source-bound cookie acquisition plan. Normal invocation reads
- * persisted site credentials; refresh explicitly selects browser or CDP.
+ * Reuse persisted credentials, then the selected browser profile. Explicit
+ * sources and invocation overrides retain their chosen credential authority.
  */
 export async function acquireCookies(
   site: string,
   domain?: string,
-  opts: {
-    skipDisk?: boolean;
-    preferCdp?: boolean;
-  } = {},
+  opts: CookieAcquisitionOptions = {},
   sources: CookieSources = defaultCookieSources,
 ): Promise<CookieLoadOutcome> {
+  opts.signal?.throwIfAborted();
   const invocationCredential = invocationCookieStorage.getStore();
   if (
     invocationCredential?.site === site &&
@@ -157,13 +161,14 @@ export async function acquireCookies(
 }
 
 /**
- * Load persisted cookies. A miss does not change credential authority.
+ * Load usable credentials through the shared acquisition policy.
  */
 export async function loadCookiesWithCDP(
   site: string,
   domain?: string,
+  opts: CookieAcquisitionOptions = {},
 ): Promise<Record<string, string> | null> {
-  const outcome = await acquireCookies(site, domain);
+  const outcome = await acquireCookies(site, domain, opts);
   return outcome.status === "loaded" ? outcome.cookies : null;
 }
 
@@ -194,9 +199,13 @@ export type CookieRefreshResult =
 export async function refreshCookiesFromBrowser(
   site: string,
   domain?: string,
-  opts: { preferCdp?: boolean } = {},
+  opts: Pick<
+    CookieAcquisitionOptions,
+    "preferCdp" | "url" | "profileId" | "signal"
+  > = {},
   sources: CookieSources = defaultCookieSources,
 ): Promise<CookieRefreshResult> {
+  opts.signal?.throwIfAborted();
   if (!/^[a-zA-Z0-9._-]+$/.test(site)) {
     return {
       ok: false,
@@ -211,6 +220,9 @@ export async function refreshCookiesFromBrowser(
   const outcome = await loadCookiesWithDiagnostics(site, domain, sources, {
     skipDisk: true,
     preferCdp: opts.preferCdp,
+    ...(opts.url ? { url: opts.url } : {}),
+    ...(opts.profileId ? { profileId: opts.profileId } : {}),
+    ...(opts.signal ? { signal: opts.signal } : {}),
   });
 
   if (outcome.status === "loaded") {

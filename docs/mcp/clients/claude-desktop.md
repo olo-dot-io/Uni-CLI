@@ -44,7 +44,7 @@ requires the desktop accessibility bus to be available.
 
 ## Verify
 
-Run this outside Claude first:
+Run this outside Claude first.
 
 ```bash
 npx -y @zenalexa/unicli mcp serve --profile computer-use

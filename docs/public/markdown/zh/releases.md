@@ -15,6 +15,7 @@
 
 | 版本                | 日期       | 代号                          | 完整差异                                                                  |
 | ------------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------- |
+| [v1.3.0](#v130)     | 2026-10-10 | Artemis · Rubins              | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.1...v1.3.0)     |
 | [v1.2.1](#v121)     | 2026-08-21 | Artemis · Wiseman             | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.0...v1.2.1)     |
 | [v1.2.0](#v120)     | 2026-08-11 | Artemis · Hansen              | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.1.1...v1.2.0)     |
 | [v1.1.1](#v111)     | 2026-08-10 | Artemis · Koch                | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.0.4...v1.1.1)     |
@@ -80,6 +81,56 @@
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                           |
+
+<a id="v130"></a>
+
+## v1.3.0 · 2026-10-10 · Artemis · Rubins
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.3.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.3.0) · [与上一版本比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.1...v1.3.0)
+
+### Minor Changes
+
+- Add `retrieval acquire` to discover resources, download assets, and save structured documents through one bounded workflow. Reuse source ranking, deduplicate URLs, publish completed files atomically, and retain per-resource recovery details.
+
+  Reuse site credentials from persisted records and the selected browser profile. Refresh declared HTTP cookies once after a read-only command reports authentication failure. CLI, MCP, ACP, and hub calls share this recovery path; `--no-auth-retry` disables automatic credential recovery. Direct document reads and downloads acquire credentials only after the source rejects an anonymous request.
+
+  Read browser login updates from SQLite WAL snapshots, apply request domain, path, expiry, and transport scope, and expose explicit native-browser cookie acquisition on Windows. Preserve invocation-local credentials across concurrent agents.
+
+  Revise the English and Chinese guides around discovery, authentication, acquisition, computer control, and recovery. Add cross-platform lifecycle scenarios for credential reuse and resource acquisition.
+
+### Patch Changes
+
+- Build the documentation with VitePress 2.0.0-alpha.20 and Vite 8, removing the older development-server dependency chain. The documentation toolchain is pinned to this preview release.
+
+- a3ccd59: Update direct dependencies and development toolchains. Remove unused JavaScript and Rust dependencies and configure npm 12 dependency install scripts.
+
+  Keep ordinary catalog vocabulary out of site typo correction, improve recent community research routing, and reuse dynamic command indexes for each inventory snapshot.
+
+  Apply retrieval ordering before limiting results, count each source once during rank fusion, and retain provider failure causes. Render plain-text evidence with html-to-text to preserve literal punctuation and code.
+
+  Use Cua Driver capture identities and named sessions for screenshot-coordinate actions. Keep native scaling in the driver and add its official installation path to compute diagnostics.
+
+- efde6f4: Update dependencies and toolchains, preserve callable adapter ownership during catalog registration, and read Windows control values through the native value pattern.
+
+  Consume Cua Driver portable contract 0.8.0 action targets and evidence, and isolate fixture Git environments during hooks.
+
+  Require the configured Ollama Cloud environment credential before dispatching fetch.
+
+  Discover external CLI executables through the platform PATH and file permissions.
+
+  Select the TypeScript 7 CLI from its package entry and retain the TypeScript 6 compiler API.
+
+  Release terminal MCP task capacity before publishing its committed state to requests and subscriptions.
+
+- 9634121: Negotiate native Markdown for document reads and use the same reader for web read and extract. Preserve format-aware validation, bounded content, and source recovery errors.
+
+  Share HTTP retry ownership across JSON, text, and transport requests. Honor server retry windows, release failed bodies, classify verification pages, and reconcile accepted writes after interrupted responses. Partition atomic GET caches by request headers and honor origin freshness.
+
+  Use OpenRouter server-side model search, pagination, and single-model details. Improve DBLP pagination and author records. Use OpenReview paper search and command-scoped credentials so authenticated retry observes refreshed sessions.
+
+  Reduce repeated ranking work and preserve explicit scholarly search sources. Add reproducible BM25, TF-IDF, MiniSearch, and full-router comparisons alongside live response-size measurements.
+
+- 9316f93: Declare header authentication for Pexels curated photos so discovery and health probes use the API credential contract.
 
 <a id="v121"></a>
 

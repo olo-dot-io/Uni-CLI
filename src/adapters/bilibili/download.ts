@@ -51,7 +51,7 @@ interface PlayurlResponse {
 
 /** Build authenticated headers for Bilibili API calls. */
 async function buildHeaders(): Promise<Record<string, string>> {
-  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
+  const cookies = await loadCookiesWithCDP("bilibili", "api.bilibili.com");
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",

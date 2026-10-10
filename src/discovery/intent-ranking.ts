@@ -13,7 +13,11 @@
  * @since   2026-06-01
  */
 
-import { SITE_CATEGORIES } from "./aliases.js";
+import {
+  ACTION_ALIASES,
+  CATEGORY_ALIASES,
+  SITE_CATEGORIES,
+} from "./aliases.js";
 import type { SearchIndex } from "./search.js";
 
 type SearchDocument = SearchIndex["documents"][number];
@@ -84,8 +88,7 @@ const AUDIO_SECONDARY_PENALTY = new Map<string, number>([
 
 const MEDIA_PLAYBACK_TRIGGER =
   /(^|\s)(play|listen)\b|我想听|想听|听一下|收听|播放|放一下/u;
-const MEDIA_SEARCH_TRIGGER =
-  /\b(search|find|lookup|query)\b|搜索|查找|查询|检索/u;
+const SEARCH_TRIGGER = /\b(search|find|lookup|query)\b|搜索|查找|查询|检索/u;
 const MEDIA_STATUS_TRIGGER =
   /\b(now\s+playing|currently\s+playing|status)\b|正在播放/u;
 const NON_AUDIO_PLAY_HINT =
@@ -111,6 +114,10 @@ const LOCAL_CHANGE_CONTEXT_TRIGGER =
   /\b(?:git\s+status|working\s+(?:tree|copy)|local\s+(?:file|files|repository|repo|workspace)|uncommitted|staged)\b|(?:工作区|本地文件|本地仓库|未提交|已暂存)/u;
 const DISCUSSION_SYNTHESIS_TRIGGER =
   /\b(?:summarize|summary|overview|synthesize)\b.{0,96}\b(?:people|community|users|developers)\b.{0,64}\b(?:say|saying|think|discuss|discussing|reaction|reactions|opinion|opinions)\b/u;
+const DISCUSSION_TOPIC_TRIGGER =
+  /\b(?:discussions?|reactions?|opinions?|memes?)\b|讨论|热议|看法|舆论/u;
+const RECENT_DISCUSSION_CONTEXT_TRIGGER =
+  /\b(?:recent|latest|current|newest|trending)\b|最近|近期|最新|当前/u;
 const CJK_CURRENT_CHANGE_TRIGGER =
   /(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新).{0,48}(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动)|(?:改了什么|什么变化|哪些变化|更新了什么|新增了什么|变更|改动).{0,48}(?:最新|最近|当前|本次|上次|新版本|版本|发布|更新)/u;
 const CJK_DISCUSSION_SYNTHESIS_TRIGGER =
@@ -188,6 +195,8 @@ const SCHOLARLY_WORKFLOW_SITES = new Set(
   [...SCHOLARLY_WORKFLOW_COMMANDS].map((id) => id.slice(0, id.indexOf("/"))),
 );
 const SCHOLARLY_NON_BLOCKING_SITE_HINTS = new Set(["agents", "pdf"]);
+const SCHOLARLY_RESOURCE_REQUEST =
+  /\b(?:code|sources?|repositories|repository|repos?|datasets?|data|models?|spaces?|artifacts?|reviews?|peer|decisions?|rebuttals?|pdf|full[ -]?text|evidence|provenance|workflows?|availability|available|readable|readiness|reproduc\w*|replicat\w*|coverage|traces?|awards?)\b|代码|源码|数据|模型|审稿|评审|决定|全文|证据|溯源|工作流|可读性|复现|覆盖|奖项/u;
 
 export function resolveIntentFrame(
   input: IntentKernelInput,
@@ -263,13 +272,60 @@ export function appActionScorePrior(
   return APP_ACTION_SCORE_PRIOR;
 }
 
-export function intentBoost(
-  doc: SearchDocument,
+interface IntentBoostContext {
+  terms: ReadonlySet<string>;
+  recordedRun: boolean;
+  scholarly: boolean;
+  scholarlySearchSites?: ReadonlySet<string>;
+}
+
+export function prepareIntentBoost(
   terms: ReadonlySet<string>,
   siteHints: readonly string[],
+  rawTerms: ReadonlySet<string>,
+  normalizedQuery: string,
+): IntentBoostContext {
+  const recordedRun = isRecordedRunIntent(rawTerms, siteHints);
+  const explicitNonScholarlySite = siteHints.some(
+    (site) =>
+      !SCHOLARLY_NON_BLOCKING_SITE_HINTS.has(site) &&
+      SITE_CATEGORIES.get(site) !== "scholarly",
+  );
+  const scholarly =
+    !recordedRun && !explicitNonScholarlySite && hasScholarlyIntent(terms);
+  const scholarlySites = siteHints.filter(
+    (site) => SITE_CATEGORIES.get(site) === "scholarly",
+  );
+  const scholarlyTask = normalizedQuery.split(
+    /\babout\b|\b(?:papers?|research|publications?|literature|articles?)\s+on\b|关于|有关/u,
+    1,
+  )[0];
+  const searchesExplicitProvider =
+    scholarlySites.length > 0 &&
+    scholarlyTask.length < normalizedQuery.length &&
+    [...rawTerms].some(
+      (term) =>
+        term === "search" || ACTION_ALIASES.get(term)?.includes("search"),
+    ) &&
+    // Resource requests keep their cross-source workflow; topic terms stay lexical.
+    !SCHOLARLY_RESOURCE_REQUEST.test(scholarlyTask);
+  return {
+    terms,
+    recordedRun,
+    scholarly,
+    ...(searchesExplicitProvider
+      ? { scholarlySearchSites: new Set(scholarlySites) }
+      : {}),
+  };
+}
+
+export function intentBoost(
+  doc: SearchDocument,
+  context: IntentBoostContext,
 ): number {
+  const { terms } = context;
   return (
-    architectureIntentBoost(doc, terms) +
+    architectureIntentBoost(doc, terms, context.recordedRun) +
     acgCreatorIntentBoost(doc, terms) +
     acgMediaTrendIntentBoost(doc, terms) +
     weatherIntentBoost(doc, terms) +
@@ -278,7 +334,7 @@ export function intentBoost(
     authWorkflowIntentBoost(doc, terms) +
     unicliUpdateIntentBoost(doc, terms) +
     marxistsArchiveIntentBoost(doc, terms) +
-    scholarlyIntentBoost(doc, terms, siteHints)
+    scholarlyIntentBoost(doc, context)
   );
 }
 
@@ -362,7 +418,7 @@ function isAudioPlaybackIntent(
   siteHints: Set<string>,
 ): boolean {
   if (MEDIA_STATUS_TRIGGER.test(normalizedQuery)) return false;
-  if (MEDIA_SEARCH_TRIGGER.test(normalizedQuery) && !hasPlaybackVerb(terms)) {
+  if (SEARCH_TRIGGER.test(normalizedQuery) && !hasPlaybackVerb(terms)) {
     return false;
   }
   if (NON_AUDIO_PLAY_HINT.test(normalizedQuery)) return false;
@@ -448,6 +504,9 @@ function isOpenWebResearchIntent(
     (CURRENT_CHANGE_QUESTION_TRIGGER.test(normalizedQuery) &&
       CURRENT_CHANGE_CONTEXT_TRIGGER.test(normalizedQuery)) ||
     DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery) ||
+    (SEARCH_TRIGGER.test(normalizedQuery) &&
+      RECENT_DISCUSSION_CONTEXT_TRIGGER.test(normalizedQuery) &&
+      DISCUSSION_TOPIC_TRIGGER.test(normalizedQuery)) ||
     CJK_CURRENT_CHANGE_TRIGGER.test(normalizedQuery) ||
     CJK_DISCUSSION_SYNTHESIS_TRIGGER.test(normalizedQuery)
   );
@@ -487,6 +546,7 @@ function documentCategory(doc: SearchDocument): string {
 function architectureIntentBoost(
   doc: SearchDocument,
   terms: ReadonlySet<string>,
+  recordedRun: boolean,
 ): number {
   const browserAutomationCandidate =
     (doc.site === "browser" &&
@@ -509,9 +569,20 @@ function architectureIntentBoost(
     }
   }
 
-  const runTraceIntent =
-    (hasAny(terms, ["run", "runs"]) &&
-      hasAny(terms, [
+  if (recordedRun && doc.site === "runs") {
+    return BOOST_RUN_TRACE_INTENT;
+  }
+  return 0;
+}
+
+function isRecordedRunIntent(
+  rawTerms: ReadonlySet<string>,
+  siteHints: readonly string[],
+): boolean {
+  if (isScholarlySubject(rawTerms, siteHints)) return false;
+  return (
+    (hasAny(rawTerms, ["run", "runs"]) &&
+      hasAny(rawTerms, [
         "trace",
         "traces",
         "recorded",
@@ -519,11 +590,8 @@ function architectureIntentBoost(
         "replay",
         "probe",
       ])) ||
-    (terms.has("trace") && hasAny(terms, ["evidence", "audit", "lease"]));
-  if (runTraceIntent && doc.site === "runs") {
-    return BOOST_RUN_TRACE_INTENT;
-  }
-  return 0;
+    (rawTerms.has("trace") && hasAny(rawTerms, ["evidence", "audit", "lease"]))
+  );
 }
 
 function acgCreatorIntentBoost(
@@ -836,19 +904,18 @@ function marxistsArchiveIntentBoost(
   return 0;
 }
 
-function scholarlyIntentBoost(
-  doc: SearchIndex["documents"][number],
-  terms: ReadonlySet<string>,
+function isScholarlySubject(
+  rawTerms: ReadonlySet<string>,
   siteHints: readonly string[],
-): number {
-  if (
-    SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
-    (!SCHOLARLY_WORKFLOW_SITES.has(doc.site) ||
-      !SCHOLARLY_WORKFLOW_COMMANDS.has(`${doc.site}/${doc.command}`))
-  ) {
-    return 0;
+): boolean {
+  for (const term of rawTerms) {
+    if (CATEGORY_ALIASES.get(term) === "scholarly") return true;
   }
-  const scholarlyIntent = hasAny(terms, [
+  return siteHints.some((site) => SITE_CATEGORIES.get(site) === "scholarly");
+}
+
+function hasScholarlyIntent(terms: ReadonlySet<string>): boolean {
+  return hasAny(terms, [
     "academic",
     "scholar",
     "scholarly",
@@ -932,14 +999,27 @@ function scholarlyIntentBoost(
     "clone",
     "run",
   ]);
-  if (!scholarlyIntent) return 0;
+}
 
-  const explicitNonScholarlySite = siteHints.some(
-    (site) =>
-      !SCHOLARLY_NON_BLOCKING_SITE_HINTS.has(site) &&
-      SITE_CATEGORIES.get(site) !== "scholarly",
-  );
-  if (explicitNonScholarlySite) return 0;
+function scholarlyIntentBoost(
+  doc: SearchDocument,
+  context: IntentBoostContext,
+): number {
+  if (!context.scholarly) return 0;
+  if (
+    SITE_CATEGORIES.get(doc.site) !== "scholarly" &&
+    (!SCHOLARLY_WORKFLOW_SITES.has(doc.site) ||
+      !SCHOLARLY_WORKFLOW_COMMANDS.has(`${doc.site}/${doc.command}`))
+  ) {
+    return 0;
+  }
+  if (
+    context.scholarlySearchSites &&
+    !context.scholarlySearchSites.has(doc.site)
+  ) {
+    return 0;
+  }
+  const { terms } = context;
 
   let boost = BOOST_SCHOLARLY_INTENT;
   boost += scholarlyVenueSourceBoost(doc, terms);

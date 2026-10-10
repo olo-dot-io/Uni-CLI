@@ -26,7 +26,7 @@
   <img src="docs/public/site-preview.webp" alt="Uni-CLI 绿色天文台首页，支持一键复制 npm 命令与 Agent 指令" width="100%">
 </p>
 
-Uni-CLI 将意图转换为选定的 operation 和结构化结果，覆盖 Web、浏览器、桌面、本地工具与 MCP。
+Uni-CLI 为使用者和 Agent 提供统一命令接口，覆盖网站、浏览器、桌面应用、本地工具与 MCP。描述任务、检查选中的操作，再运行命令，获取结构化数据或可执行的错误建议。
 
 ```bash
 npm install -g @zenalexa/unicli
@@ -43,9 +43,15 @@ unicli upgrade
 
 持久化安装由非交互 Agent 使用时，Uni-CLI 默认在后台更新。结构化结果通过 `meta.update.automatic_update` 报告进度。交互式终端继续使用 Y/N，`unicli upgrade --no-auto-update` 可以把当前机器改回明确确认。
 
+## Agent 互联网访问
+
+先找到来源，再搜索记录，并在网站支持时直接读取原生 Markdown。学术检索保留明确指定的来源，HTTP 响应提供重试和验证说明。OpenRouter 的模型搜索与分页由服务端完成。
+
+行为、实测结果与来源限制见[访问指南](docs/zh/guide/internet-access.md)和[可复现基准](docs/zh/BENCHMARK.md)。
+
 ## 按任务选择路径
 
-Operation 目录负责发现和合同。执行阶段再选择结构最强、范围最小的 operator。每次只运行一个 provider；路径失败后保留原始原因和修复命令。
+操作目录说明可用命令及其参数。执行时使用声明的接口，并把动作限定在目标范围内。每次调用运行一个提供方，失败结果保留原始原因和修复命令。
 
 | 任务边界                 | Execution operator  | 原因                                     |
 | ------------------------ | ------------------- | ---------------------------------------- |
@@ -63,9 +69,9 @@ unicli browser doctor --json             # 检查浏览器 delivery 状态
 unicli repair reddit saved               # 验证受支持的漂移路径
 ```
 
-## Operation 合同
+## 操作契约
 
-公开模型保持紧凑。
+每条操作说明接受什么参数、在哪里执行，以及可能改变什么。传入参数或批准执行前，先查看这些信息。
 
 ```text
 intent → candidate operations → explicit selection → policy → substrate → receipt
@@ -81,9 +87,9 @@ intent → candidate operations → explicit selection → policy → substrate 
 | Repair   | Owned drift path 给出源文件、失败边界和有界验证命令                  |
 | Evolve   | Recorded failure 生成隔离 candidate，通过成对和 held-out eval 后晋级 |
 
-Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都可以独立选择。
+Uni-CLI 负责接口运行时。模型、规划器、Agent 执行循环和沙箱均可独立选择。
 
-## 能力表面
+## 支持的操作范围
 
 | Surface   | 当前 Runtime                                                                     |
 | --------- | -------------------------------------------------------------------------------- |
@@ -97,12 +103,12 @@ Uni-CLI 提供 interface runtime。模型、planner、Agent loop 和 sandbox 都
 静态目录
 
 - <!-- STATS:site_count -->338<!-- /STATS --> 个站点
-- <!-- STATS:command_count -->1891<!-- /STATS --> 条注册命令
-- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> 个 adapters
+- <!-- STATS:command_count -->1893<!-- /STATS --> 条注册命令
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10389<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10374<!-- /STATS --> 个测试
 
-Fixed core 和 host-discovered commands 会在运行时加入。
+固定核心命令和本机发现的命令会在运行时加入。
 
 <!-- BEGIN README_SITE_GRID -->
 <!-- prettier-ignore -->
@@ -114,7 +120,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 | 财经 | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | 购物 | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | 开发 | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
-| AI | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
+| AI | 25 | 216 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | 学术 | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | 专利 | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | 知识 | 12 | 47 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb) |
@@ -125,7 +131,7 @@ Fixed core 和 host-discovered commands 会在运行时加入。
 | 桌面 | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
 | 游戏 | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
 | 工具 | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
-| 其他 | 72 | 123 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| 其他 | 72 | 124 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
 | 旅行 | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
 
 <!-- END README_SITE_GRID -->
@@ -143,9 +149,7 @@ unicli --auth-retry openreview conference "ICML.cc/2026/Conference" --rpm 20 -f 
 unicli extract https://example.com --max-chars 1200
 ```
 
-管道输出默认使用 Markdown。后续步骤需要稳定机器格式时，可以选择 `-f json`、`yaml`、`csv` 或 `compact`。
-[OpenReview 归档指南](https://olo-dot-io.github.io/Uni-CLI/zh/guide/openreview-archive)
-说明如何使用登录态建立可续传的会议和跨年度研究归档。
+管道输出默认使用 Markdown。后续步骤需要稳定机器格式时，可以选择 `-f json`、`yaml`、`csv` 或 `compact`。[OpenReview 归档指南](https://olo-dot-io.github.io/Uni-CLI/zh/guide/openreview-archive) 说明如何使用登录态建立可续传的会议和跨年度研究归档。
 
 ### MCP
 
@@ -166,7 +170,7 @@ unicli extract https://example.com --max-chars 1200
 npx -y @zenalexa/unicli mcp serve
 ```
 
-默认 profile 暴露 4 个 meta-tools。Host 需要 tool-level discovery 时，可以使用 deferred 或 expanded profile。运行 `unicli mcp health -f json` 检查当前投影。
+默认配置提供 4 个元工具。客户端需要逐个发现工具时，可以使用 deferred 或 expanded 配置。运行 `unicli mcp health -f json` 查看当前暴露的工具。
 
 ### 本地计算机
 
@@ -177,7 +181,7 @@ unicli compute find --app Calculator --role AXButton --title "7"
 unicli compute click --ref <ref-from-find>
 ```
 
-桌面动作优先使用 accessibility references。Visual route 需要明确选择 backend，不会充当隐藏 fallback。
+桌面操作优先使用无障碍元素引用。像素操作需要明确选择已配置的后端，常规操作失败时不会自动切换到像素控制。
 
 ## 能解释自身的结果
 
@@ -213,9 +217,9 @@ error:
 
 Exit code 区分成功、空结果、依赖不可用、临时失败、认证和配置问题。详见 [输出和 exit code 参考](docs/reference/exit-codes.md)。
 
-## 在 Owned Boundary 修复漂移
+## 定位并修复失效操作
 
-Adapter 保持 Agent 可读，并支持本地替换。
+根据错误中的源文件路径查看失效操作。开发修复时，可以用本地适配器覆盖包内版本。
 
 ```text
 run → read error.adapter_path → patch the owned step → save override → verify once
@@ -225,9 +229,9 @@ run → read error.adapter_path → patch the owned step → save override → v
 unicli repair <site> <command>
 ```
 
-`repair` 不编辑源文件或 Git 状态。它通过有界子进程重新运行原始命令，只有目标返回 `ok: true` 且 exit code 为 `0` 时才成功。`~/.unicli/adapters/` 中的本地 override 可以跨 npm 更新保留。
+`repair` 通过有时限的子进程重新运行原命令，验证成功的条件是目标返回 `ok: true` 且退出码为 `0`。源文件和 Git 状态保持原样。`~/.unicli/adapters/` 中的本地覆盖版本会在 npm 更新后保留。
 
-对于重复出现的 failure，`evolve adapter` 会分开保存 proposal evidence、validation 和 held-out case。Agent 提交一份隔离的 YAML candidate 和可证伪预测。Uni-CLI 对 baseline 与 candidate 进行成对评估，记录预测遗漏与回退，并且只在 promotion gate 通过后安装 user override。
+同类失败重复出现时，使用 `evolve adapter` 分开保存修改依据、验证用例和保留测试用例。Agent 提交一份隔离的 YAML 候选实现及可证伪的预测。Uni-CLI 成对评估基线与候选实现，记录预测遗漏和退化，通过晋级条件后才安装用户覆盖版本。
 
 ```bash
 unicli evolve adapter <site> <command> \
@@ -241,11 +245,11 @@ unicli evolve adapter <site> <command> \
   --promote
 ```
 
-省略 `--candidate` 时，命令会创建可编辑 draft。每次 verification 都会把 candidate snapshot、patch 和 report 保存为经过 hash 校验的独立 attempt。Candidate 未变化时，`evolve verify --promote` 会复用最新 eligible attempt。Promotion 与 rollback 可以在写入中断后继续，并会串行处理多个 Agent process 的竞争操作。`evolve inspect` 返回完整 attempt history 和损坏的 session，`evolve rollback` 精确恢复晋级前的 overlay。
+省略 `--candidate` 时，命令会创建可编辑草稿。每次验证都会把候选快照、补丁和报告保存为经过哈希校验的独立记录。候选实现未变化时，`evolve verify --promote` 复用最新的合格记录。晋级与回滚可以在写入中断后继续，多个 Agent 进程的竞争操作会串行执行。`evolve inspect` 返回完整尝试历史并报告损坏的会话，`evolve rollback` 精确恢复晋级前的覆盖版本。
 
-第一版 evolution scope 会固定 operation identity、输入输出 contract、pipeline action topology、request method 与 header，以及已有 subprocess invocation。同一 origin 内的 endpoint 与 extraction repair 仍可编辑。替换 network origin 时，创建 session 的命令必须显式传入 `--allow-origin <origin>`。
+演进范围固定操作身份、输入输出契约、流水线动作结构、请求方法和请求头，以及已有子进程调用。可以修改同一来源内的端点和内容提取逻辑。替换网络来源时，创建会话的命令必须显式传入 `--allow-origin <origin>`。
 
-下面是一份最小 YAML adapter。
+下面是一份最小 YAML 适配器。
 
 ```yaml
 site: example
@@ -268,14 +272,14 @@ columns: [title, url]
 
 ## 信任边界
 
-- Live browser cookie 默认只留在进程内存；只有用户明确执行 `auth import` 或 `browser cookies` 时才持久化。
-- Browser automation 使用 `~/.unicli/` 下的 Uni-CLI-owned profile。Chrome 136+ 不支持在默认 user-data directory 上开启 remote debugging。
-- `unicli browser doctor --json` 返回当前可用的 delivery path 和精确修复命令，不会启动 browser provider。
-- Permission rules 会在 browser、file、clipboard、subprocess 或 desktop side effects 前授权。显式错误的 policy 会 fail closed。
-- Visual route 需要真实配置的 backend。Provider 缺失时返回 structured error。
-- Invocation diagnostics 排除参数、内容、URL、credentials 和 raw errors；`UNICLI_NO_LOG=1` 可以关闭新增事件。
+- 浏览器 cookie 默认保存在进程内存，`auth import` 和 `browser cookies` 提供显式持久化入口。
+- 浏览器自动化使用 `~/.unicli/` 下由 Uni-CLI 管理的配置。Chrome 136+ 要求远程调试使用独立用户数据目录。
+- `unicli browser doctor --json` 返回可用的连接路径和修复命令，检查过程保持只读。
+- 浏览器、文件、剪贴板、子进程和桌面操作在产生副作用前检查权限。格式错误的显式策略会中止授权。
+- 视觉操作需要已配置的后端，缺少服务时返回结构化错误。
+- 调用诊断只保留运行元数据，参数、内容、URL、凭据和原始错误排除在外。`UNICLI_NO_LOG=1` 可以关闭新增事件。
 
-完整行为和存储路径见 [信任、认证和边界](docs/zh/guide/trust.md)。
+凭据选择、存储路径和失败恢复见[登录与认证](docs/zh/guide/authentication.md)，浏览器可见性与桌面控制见[浏览器与桌面](docs/zh/guide/browser-desktop.md)。
 
 ## 开发
 
@@ -287,11 +291,11 @@ npm test
 npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 ```
 
-需要 Node.js 22.19 或更高版本。Adapter 和 engine 约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+需要 Node.js 22.19 或更高版本。适配器和引擎的开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 全部已发布版本见[生成的版本记录](docs/zh/releases.md)。Agent 可以通过 `docs/public/release-history.json` 读取同一份结构化数据。
 
-<p align="center"><sub>v1.2.1 — Artemis · Wiseman</sub></p>
+<p align="center"><sub>v1.3.0 — Artemis · Rubins</sub></p>
 
 ## License
 

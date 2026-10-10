@@ -1,7 +1,7 @@
 /**
  * @owner       src::engine::html-to-markdown
- * @does        Converts upstream HTML into content-focused Markdown while removing non-content DOM branches.
- * @needs       cheerio and turndown
+ * @does        Converts upstream HTML into content-focused Markdown and plain text while removing non-content DOM branches.
+ * @needs       cheerio, turndown, and html-to-text
  * @feeds       pipeline html_to_md step and one-shot extract command
  * @breaks      Leaking navigation, executable branches, or framework serialization placeholders pollutes Agent context and hides the document body.
  * @invariants  Conversion is deterministic for one HTML string, prefers semantic content roots, removes framework serialization placeholders, and never executes markup.
@@ -15,6 +15,9 @@
 
 import TurndownService from "turndown";
 import { load, type CheerioAPI } from "cheerio";
+import { compile } from "html-to-text";
+
+let textConverter: ReturnType<typeof compile> | undefined;
 
 const NON_CONTENT_SELECTORS = [
   "script",
@@ -63,7 +66,10 @@ function contentRoot($: CheerioAPI) {
   return $("body").first();
 }
 
-export function htmlToMarkdown(html: string): string {
+export function renderHtmlContent(
+  html: string,
+  format: "markdown" | "text" = "markdown",
+): { content: string; markdown: string } {
   const $ = load(html);
   const title = $("head title").first().text().replace(/\s+/g, " ").trim();
   const hasSerializedObjectPlaceholder = $("body")
@@ -115,5 +121,29 @@ export function htmlToMarkdown(html: string): string {
   ) {
     markdown = `# ${title}\n\n${markdown}`.trim();
   }
-  return markdown;
+  if (format === "markdown") return { content: markdown, markdown };
+
+  textConverter ??= compile({
+    wordwrap: false,
+    limits: { maxInputLength: Infinity },
+    selectors: [
+      { selector: "a", options: { ignoreHref: true } },
+      ...["h1", "h2", "h3", "h4", "h5", "h6"].map((selector) => ({
+        selector,
+        options: { uppercase: false },
+      })),
+    ],
+  });
+  let content = textConverter(contentHtml).trim();
+  if (
+    title &&
+    !content.toLocaleLowerCase().includes(title.toLocaleLowerCase())
+  ) {
+    content = `${title}\n\n${content}`.trim();
+  }
+  return { content, markdown };
+}
+
+export function htmlToMarkdown(html: string): string {
+  return renderHtmlContent(html).markdown;
 }

@@ -65,7 +65,7 @@ The namespace before a command, such as `hackernews` in `unicli hackernews top`.
 
 ## Strategy
 
-The connection method declared by a web adapter: `public`, `cookie`, `header`, `intercept`, or `ui`.
+The connection method declared by a web adapter, chosen from `public`, `cookie`, `header`, `intercept`, or `ui`.
 
 ## User adapter
 

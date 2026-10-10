@@ -28,10 +28,14 @@ import {
 } from "./evidence-document.js";
 import { resolveArgs } from "./args.js";
 import { PipelineError } from "./executor.js";
-import { htmlToMarkdown } from "./html-to-markdown.js";
+import { renderHtmlContent } from "./html-to-markdown.js";
+import {
+  challengeRequiredError,
+  isHtmlVerificationChallenge,
+} from "./http-response.js";
 import { buildInvocation, execute } from "./kernel/execute.js";
 import { fetchTextResource } from "./steps/fetch-text.js";
-import { isHtmlVerificationChallenge } from "./steps/html-to-md.js";
+import { acquireRequestCookieHeader } from "./request-credentials.js";
 
 export type EvidenceRepresentation = "markdown" | "text" | "html";
 export type EvidenceReader = "direct" | "jina" | "defuddle";
@@ -416,16 +420,6 @@ async function readProviderMarkdown(
   });
 }
 
-function plainTextFromHtml(html: string): string {
-  return htmlToMarkdown(html)
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/!\[([^\]]*)]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
-    .replace(/[*_~`>|]/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 function directContent(input: {
   text: string;
   contentType: string;
@@ -438,15 +432,10 @@ function directContent(input: {
   structuredData?: unknown;
 } {
   if (/^(?:text\/html|application\/xhtml\+xml)$/i.test(input.contentType)) {
-    if (isHtmlVerificationChallenge(input.text)) {
-      throw new EvidenceReadFailure({
-        code: "challenge_required",
-        message:
-          "The upstream returned a browser-verification challenge instead of document content.",
-        suggestion: `Complete verification for ${new URL(input.url).hostname} in a shared browser session or use a source-specific API.`,
-      });
-    }
-    const markdown = htmlToMarkdown(input.text);
+    const { content, markdown } = renderHtmlContent(
+      input.text,
+      input.representation === "text" ? "text" : "markdown",
+    );
     if (isDynamicDocumentShell(input.text, markdown)) {
       throw new EvidenceReadFailure({
         code: "dynamic_content_required",
@@ -463,12 +452,7 @@ function directContent(input: {
       });
     }
     return {
-      content:
-        input.representation === "html"
-          ? input.text
-          : input.representation === "text"
-            ? plainTextFromHtml(input.text)
-            : markdown,
+      content: input.representation === "html" ? input.text : content,
       outline: markdown,
       contentFormat: input.representation,
     };
@@ -576,49 +560,101 @@ export async function readEvidenceDocument(
     return readProviderMarkdown(parsedUrl, reader, common);
   }
 
-  let resource;
-  try {
-    resource = await fetchTextResource(
-      parsedUrl.toString(),
-      { url: parsedUrl.toString(), method: "GET" },
-      {
-        Accept:
-          "text/html,application/xhtml+xml,application/json,application/xml,text/plain,text/markdown;q=0.9,*/*;q=0.1",
-      },
-      -1,
-      { signal: boundedSignal(options.signal, DIRECT_READ_TIMEOUT_MS) },
-    );
-  } catch (error) {
-    if (
-      error instanceof PipelineError &&
-      error.detail.errorType === "unsupported_content_type" &&
-      /application\/pdf/i.test(error.message)
-    ) {
-      return readPdf(parsedUrl, common);
+  const signal = boundedSignal(options.signal, DIRECT_READ_TIMEOUT_MS);
+  let requestUrl = parsedUrl.toString();
+  const headers: Record<string, string> = {
+    Accept:
+      representation === "markdown"
+        ? "text/markdown,text/html;q=0.9,application/xhtml+xml;q=0.9,application/json;q=0.8,application/xml;q=0.8,text/plain;q=0.7,*/*;q=0.1"
+        : "text/html,application/xhtml+xml,application/json,application/xml,text/plain,text/markdown;q=0.9,*/*;q=0.1",
+  };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const resource = await fetchTextResource(
+        requestUrl,
+        { url: requestUrl, method: "GET" },
+        headers,
+        0,
+        { signal },
+      );
+      return structureFetchedEvidence(
+        { sourceUrl: parsedUrl.toString(), ...resource },
+        { maxChars, maxLinks, representation },
+      );
+    } catch (error) {
+      signal.throwIfAborted();
+      if (!(error instanceof PipelineError)) throw error;
+      if (
+        error.detail.errorType === "unsupported_content_type" &&
+        /application\/pdf/i.test(error.message)
+      )
+        return readPdf(parsedUrl, common);
+      if (
+        attempt >= 2 ||
+        (error.detail.statusCode !== 401 &&
+          error.detail.statusCode !== 403 &&
+          error.detail.errorType !== "challenge_required")
+      )
+        throw error;
+      const credentialUrl = error.detail.url ?? requestUrl;
+      const sameOrigin =
+        new URL(credentialUrl).origin === new URL(requestUrl).origin;
+      const cookie = await acquireRequestCookieHeader(credentialUrl, {
+        fresh: attempt > 0 && sameOrigin,
+        signal,
+      });
+      if (!cookie || (sameOrigin && cookie === headers.Cookie)) throw error;
+      headers.Cookie = cookie;
+      requestUrl = credentialUrl;
     }
-    throw error;
   }
+}
 
+export function structureFetchedEvidence(
+  input: {
+    sourceUrl: string;
+    finalUrl: string;
+    text: string;
+    contentType: string;
+    status: number;
+  },
+  options: Pick<
+    ReadEvidenceOptions,
+    "maxChars" | "maxLinks" | "representation"
+  > = {},
+): EvidenceDocument {
+  const contentType = input.contentType.split(";", 1)[0].trim() || "text/plain";
+  if (
+    /^(?:text\/html|application\/xhtml\+xml|text\/plain)$/i.test(contentType) &&
+    isHtmlVerificationChallenge(input.text)
+  ) {
+    throw challengeRequiredError(input.finalUrl, "fetch_text", 0, input.status);
+  }
   const rendered = directContent({
-    text: resource.text,
-    contentType: resource.contentType || "text/plain",
-    representation,
-    url: resource.finalUrl,
+    text: input.text,
+    contentType,
+    representation: options.representation ?? "markdown",
+    url: input.finalUrl,
   });
   return structureEvidenceDocument({
-    sourceUrl: parsedUrl.toString(),
-    finalUrl: resource.finalUrl,
+    sourceUrl: input.sourceUrl,
+    finalUrl: input.finalUrl,
     content: rendered.content,
     outline: rendered.outline,
-    contentType: resource.contentType || "text/plain",
+    contentType,
     contentFormat: rendered.contentFormat,
     sourceAdapter: "web",
     sourceCommand: "read",
     reader: "direct",
     retrievedAt: new Date().toISOString(),
-    maxChars,
-    maxLinks,
-    httpStatus: resource.status,
+    maxChars: positiveInteger(
+      options.maxChars,
+      100_000,
+      1_000_000,
+      "max_chars",
+    ),
+    maxLinks: positiveInteger(options.maxLinks, 100, 1_000, "max_links"),
+    httpStatus: input.status,
     structuredData: rendered.structuredData,
   });
 }

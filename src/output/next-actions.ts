@@ -190,6 +190,9 @@ export function defaultErrorNextActions(
 
   const isAuthenticationFailure =
     errCode === "auth_required" || errCode === "not_authenticated";
+  const consumesCookies =
+    auth === undefined ||
+    auth.setupCommand?.startsWith("unicli auth setup ") === true;
   const exactAuthCommands = Array.from(
     new Set(
       [auth?.setupCommand, ...(auth?.alternatives ?? [])].filter(
@@ -206,7 +209,7 @@ export function defaultErrorNextActions(
           "Authenticate at the command's declared credential boundary",
       })),
     );
-  } else if (isAuthenticationFailure) {
+  } else if (isAuthenticationFailure && consumesCookies) {
     actions.push({
       command: authImportCommand(site, domain),
       description:
@@ -214,9 +217,26 @@ export function defaultErrorNextActions(
     });
   }
 
+  if (errCode === "challenge_required" && !consumesCookies) {
+    actions.push(
+      ...exactAuthCommands.map((command) => ({
+        command,
+        description: "Use the recovery path reported by the source",
+      })),
+    );
+    if (domain) {
+      actions.push({
+        command: `unicli browser open ${authLoginUrl(site, domain)}`,
+        description: "Inspect the source in a browser session",
+      });
+    }
+    return uniqueActions(actions);
+  }
+
   if (
-    (isAuthenticationFailure && exactAuthCommands.length === 0) ||
-    errCode === "challenge_required"
+    consumesCookies &&
+    ((isAuthenticationFailure && exactAuthCommands.length === 0) ||
+      errCode === "challenge_required")
   ) {
     actions.push({
       command: `unicli browser open ${authLoginUrl(site, domain)}`,

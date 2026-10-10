@@ -34,7 +34,7 @@ async function fetchWbiKeys(): Promise<string> {
   const now = Date.now();
   if (cachedMixinKey && now - cachedAt < CACHE_TTL) return cachedMixinKey;
 
-  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
+  const cookies = await loadCookiesWithCDP("bilibili", "api.bilibili.com");
   const headers: Record<string, string> = { "User-Agent": USER_AGENT };
   if (cookies) headers["Cookie"] = formatCookieHeader(cookies);
 
@@ -79,7 +79,7 @@ export async function wbiFetch(
   const query = await signWbi(params);
   const url = `${baseUrl}?${query}`;
 
-  const cookies = await loadCookiesWithCDP("bilibili", "bilibili.com");
+  const cookies = await loadCookiesWithCDP("bilibili", "api.bilibili.com");
   const headers: Record<string, string> = {
     "User-Agent": USER_AGENT,
     Accept: "application/json",

@@ -9,25 +9,27 @@ Uni-CLI groups browser and desktop actions under stable command families. Start 
 
 ## Browser sessions
 
-Check the local setup:
+Check the local setup.
 
 ```bash
 unicli browser doctor --json
 ```
 
-Start a hidden managed browser:
+Start a hidden managed browser.
 
 ```bash
 unicli browser start
 ```
 
-Use an existing Chrome session in the background:
+Use an existing Chrome session in the background.
 
 ```bash
 unicli browser --background start
 ```
 
-Open a page and inspect its accessible state:
+The mode applies to the current CLI invocation. Include `--background` on each follow-up command to keep using the existing Chrome provider. The following unqualified commands use the default hidden managed browser.
+
+Open a page and inspect its accessible state.
 
 ```bash
 unicli browser open https://example.com
@@ -43,19 +45,19 @@ unicli browser type <ref> "search text"
 
 ## Desktop applications
 
-Search by the result you want:
+Search by the result you want.
 
 ```bash
 unicli search "inspect a desktop application" --surface desktop
 ```
 
-Read compute health before the first desktop session:
+Read compute health before the first desktop session.
 
 ```bash
-unicli doctor compute -f json
+unicli doctor compute --json
 ```
 
-Take a snapshot, then act on a returned ref:
+Take a snapshot, then act on a returned ref.
 
 ```bash
 unicli compute snapshot --app "Calculator" -f json
@@ -63,6 +65,19 @@ unicli compute click <ref> --app "Calculator" -f json
 ```
 
 Available providers depend on the operating system and installed accessibility services. The health response lists the active provider and the setup action for each unavailable provider.
+
+## Native coordinate driver
+
+Cua Driver provides the explicit `--via driver` path for pixel-based desktop actions. Run the provider probe to install a missing driver through its official installer and report macOS Accessibility and Screen Recording permissions.
+
+```bash
+unicli doctor compute --providers --install --json
+unicli compute screenshot --via driver -f json
+```
+
+Inspect the screenshot, choose the target in its pixel coordinates, and pass `.data.observation.ref` to `compute point-click <x> <y> --observation <ref> --via driver`. Each observation expires after 30 seconds and permits one coordinate action. Capture a new screenshot after the visible target changes or the driver restarts.
+
+Uni-CLI forwards the capture identity, driver session, and screenshot coordinates to Cua Driver. The driver applies Retina scaling and the coordinate transform for size-capped captures. Use coordinates from the returned image without applying an additional display-scale adjustment. Missing permissions and provider failures return structured recovery information with the next setup action.
 
 ## Choose the smallest useful interface
 

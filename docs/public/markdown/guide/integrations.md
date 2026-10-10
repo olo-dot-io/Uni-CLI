@@ -18,7 +18,7 @@ npm install -g @zenalexa/unicli
 unicli search "list the latest Hacker News stories" -f json
 ```
 
-Give the agent this short instruction:
+Give the agent this short instruction.
 
 ```text
 Use unicli search "<intent>" before operating a website, app, or local tool.
@@ -41,13 +41,13 @@ unicli lark native-message-search "release" -f json
 unicli bluesky native-resolve bsky.app -f json
 ```
 
-Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API, while Slack's hosted MCP remains an external OAuth service.
+Use `unicli ext list --tag social -f json` to inspect provider ownership, native surface, installation state, and scope. Reddit Devvit and the Slack CLI are marked as application-development tools so agents do not route workspace or community content requests through them. Slack content commands use the official Web API. Slack's hosted MCP remains an external OAuth service.
 
 Expanded MCP exposes the same typed `native-*` commands to MCP clients.
 
 ## MCP
 
-Start the server with `npx`:
+Start the server with `npx`.
 
 ```json
 {
@@ -60,13 +60,13 @@ Start the server with `npx`:
 }
 ```
 
-The equivalent terminal command is:
+The equivalent terminal command is.
 
 ```bash
 npx -y @zenalexa/unicli mcp serve
 ```
 
-Check the tools exposed by the selected profile:
+Check the tools exposed by the selected profile.
 
 ```bash
 unicli mcp health -f json
@@ -76,13 +76,13 @@ The default profile keeps discovery compact. Use `--expanded` when the client ne
 
 ## ACP
 
-Start the Agent Client Protocol server:
+Start the Agent Client Protocol server.
 
 ```bash
 unicli acp serve
 ```
 
-Inspect available options with:
+Inspect available options with.
 
 ```bash
 unicli help acp
@@ -90,7 +90,7 @@ unicli help acp
 
 ## Authentication
 
-Run authentication setup in the same user account and environment as the agent host:
+Run authentication setup in the same user account and environment as the agent host.
 
 ```bash
 unicli auth setup <site>
@@ -102,13 +102,13 @@ See [Authentication](/guide/authentication) for stored credentials and live brow
 
 ## Verify the connection
 
-Ask the client to perform a read-only call:
+Ask the client to perform a read-only call.
 
 ```text
 Use Uni-CLI to list the top three Hacker News stories and return JSON.
 ```
 
-The expected command is:
+The expected command is.
 
 ```bash
 unicli hackernews top --limit 3 -f json

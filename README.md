@@ -26,7 +26,7 @@
   <img src="docs/public/site-preview.webp" alt="Uni-CLI green observatory hero with one-click npm and agent prompt copy" width="100%">
 </p>
 
-Uni-CLI turns intent into a selected operation and a structured receipt across web, browser, desktop, local, and MCP surfaces.
+Uni-CLI gives people and agents one command interface for websites, browsers, desktop applications, local tools, and MCP. Describe a task, inspect the selected operation, and run it to receive structured data or an actionable error.
 
 ```bash
 npm install -g @zenalexa/unicli
@@ -43,9 +43,15 @@ unicli upgrade
 
 Persistent non-interactive Agent installations update in a detached worker by default. Structured output reports progress through `meta.update.automatic_update`. Interactive terminals keep the Y/N choice, and `unicli upgrade --no-auto-update` switches a machine back to explicit approval.
 
+## Agent Internet Access
+
+Find a source, search its records, and read native Markdown when the site provides it. Scholarly searches retain the requested source. HTTP responses carry retry and verification instructions. OpenRouter searches and paginates models on the server.
+
+Read the [access guide](docs/guide/internet-access.md) and [reproducible benchmarks](docs/BENCHMARK.md) for behavior, measured gains, and source-side limits.
+
 ## Route By Task
 
-The catalog handles discovery and operation contracts. Execution then selects the strongest operator with the smallest effective scope. One provider runs; a failed path keeps its original cause and repair command.
+The catalog identifies available operations and their arguments. Execution uses the declared interface and limits the action to its target. Each call runs one provider; a failure retains its original cause and repair command.
 
 | Task boundary                          | Execution operator  | Why                                                                 |
 | -------------------------------------- | ------------------- | ------------------------------------------------------------------- |
@@ -65,7 +71,7 @@ unicli repair reddit saved                 # verify a supported drift path
 
 ## The Operation Contract
 
-The public model stays compact.
+Each operation describes what it accepts, where it runs, and what it can change. Inspect that contract before sending arguments or granting approval.
 
 ```text
 intent → candidate operations → explicit selection → policy → substrate → receipt
@@ -97,10 +103,10 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 Static catalog
 
 - <!-- STATS:site_count -->338<!-- /STATS --> sites
-- <!-- STATS:command_count -->1891<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1893<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10389<!-- /STATS --> tests
+- <!-- STATS:test_count -->10374<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -114,7 +120,7 @@ Fixed core and host-discovered commands join at runtime.
 | finance | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |
 | shopping | 13 | 47 | [amazon](https://olo-dot-io.github.io/Uni-CLI/reference/sites#amazon), [jd](https://olo-dot-io.github.io/Uni-CLI/reference/sites#jd), [taobao](https://olo-dot-io.github.io/Uni-CLI/reference/sites#taobao), [1688](https://olo-dot-io.github.io/Uni-CLI/reference/sites#1688) |
 | dev | 37 | 185 | [codex](https://olo-dot-io.github.io/Uni-CLI/reference/sites#codex), [cursor](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cursor), [gh](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gh), [stackoverflow](https://olo-dot-io.github.io/Uni-CLI/reference/sites#stackoverflow) |
-| ai | 25 | 215 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
+| ai | 25 | 216 | [chatgpt](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatgpt), [antigravity](https://olo-dot-io.github.io/Uni-CLI/reference/sites#antigravity), [chatwise](https://olo-dot-io.github.io/Uni-CLI/reference/sites#chatwise), [notebooklm](https://olo-dot-io.github.io/Uni-CLI/reference/sites#notebooklm) |
 | scholarly | 30 | 105 | [openreview](https://olo-dot-io.github.io/Uni-CLI/reference/sites#openreview), [zotero](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zotero), [pubmed](https://olo-dot-io.github.io/Uni-CLI/reference/sites#pubmed), [arxiv](https://olo-dot-io.github.io/Uni-CLI/reference/sites#arxiv) |
 | patent | 17 | 42 | [epo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#epo), [espacenet](https://olo-dot-io.github.io/Uni-CLI/reference/sites#espacenet), [cipo](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cipo), [cnipa](https://olo-dot-io.github.io/Uni-CLI/reference/sites#cnipa) |
 | reference | 12 | 47 | [marxists-cn](https://olo-dot-io.github.io/Uni-CLI/reference/sites#marxists-cn), [anilist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#anilist), [bangumi](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bangumi), [imdb](https://olo-dot-io.github.io/Uni-CLI/reference/sites#imdb) |
@@ -125,7 +131,7 @@ Fixed core and host-discovered commands join at runtime.
 | desktop | 25 | 201 | [macos](https://olo-dot-io.github.io/Uni-CLI/reference/sites#macos), [freecad](https://olo-dot-io.github.io/Uni-CLI/reference/sites#freecad), [blender](https://olo-dot-io.github.io/Uni-CLI/reference/sites#blender), [gimp](https://olo-dot-io.github.io/Uni-CLI/reference/sites#gimp) |
 | games | 1 | 7 | [steam](https://olo-dot-io.github.io/Uni-CLI/reference/sites#steam) |
 | utility | 7 | 29 | [linear](https://olo-dot-io.github.io/Uni-CLI/reference/sites#linear), [bitwarden](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bitwarden), [todoist](https://olo-dot-io.github.io/Uni-CLI/reference/sites#todoist), [qweather](https://olo-dot-io.github.io/Uni-CLI/reference/sites#qweather) |
-| other | 72 | 123 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
+| other | 72 | 124 | [slay-the-spire-ii](https://olo-dot-io.github.io/Uni-CLI/reference/sites#slay-the-spire-ii), [xiaoe](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xiaoe), [archive](https://olo-dot-io.github.io/Uni-CLI/reference/sites#archive), [ke](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ke) |
 | travel | 1 | 4 | [ctrip](https://olo-dot-io.github.io/Uni-CLI/reference/sites#ctrip) |
 
 <!-- END README_SITE_GRID -->
@@ -143,9 +149,7 @@ unicli --auth-retry openreview conference "ICML.cc/2026/Conference" --rpm 20 -f 
 unicli extract https://example.com --max-chars 1200
 ```
 
-Piped output defaults to Markdown. Use `-f json`, `yaml`, `csv`, or `compact` when the next step needs a stable machine format.
-The [OpenReview archive guide](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive)
-covers authenticated, resumable conference and multi-year research archives.
+Piped output defaults to Markdown. Use `-f json`, `yaml`, `csv`, or `compact` when the next step needs a stable machine format. The [OpenReview archive guide](https://olo-dot-io.github.io/Uni-CLI/guide/openreview-archive) covers authenticated, resumable conference and multi-year research archives.
 
 ### MCP
 
@@ -215,7 +219,7 @@ Exit codes distinguish success, empty results, unavailable dependencies, tempora
 
 ## Repair Drift At The Owned Boundary
 
-Adapters stay agent-readable and locally replaceable.
+Use the source path in an adapter error to inspect the failed operation. A local adapter can replace the packaged version during repair development.
 
 ```text
 run → read error.adapter_path → patch the owned step → save override → verify once
@@ -275,7 +279,7 @@ Read the [adapter format](docs/ADAPTER-FORMAT.md), [pipeline reference](docs/ref
 - Visual routes require a real configured backend. Missing providers return a structured error.
 - Invocation diagnostics exclude arguments, content, URLs, credentials, and raw errors; users can disable new events with `UNICLI_NO_LOG=1`.
 
-The detailed behavior and storage paths live in [Trust, Auth, and Limits](docs/guide/trust.md).
+Credential selection, storage paths, and recovery are explained in [Authentication](docs/guide/authentication.md). Browser visibility and desktop control are covered in [Browser and Desktop](docs/guide/browser-desktop.md).
 
 ## Development
 
@@ -291,7 +295,7 @@ Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adap
 
 Browse every published version on the [generated release history](docs/releases.md). The same data is available to Agents through `docs/public/release-history.json`.
 
-<p align="center"><sub>v1.2.1 — Artemis · Wiseman</sub></p>
+<p align="center"><sub>v1.3.0 — Artemis · Rubins</sub></p>
 
 ## License
 

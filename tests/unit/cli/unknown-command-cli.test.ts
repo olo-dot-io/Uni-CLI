@@ -10,7 +10,6 @@ import { ExitCode } from "../../../src/types.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..", "..");
 const mainPath = join(repoRoot, "src", "main.ts");
-const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 
 describe("unknown CLI command boundary", () => {
   it("emits a structured generic error without persisting the user token", () => {
@@ -19,8 +18,8 @@ describe("unknown CLI command boundary", () => {
     const secret = "TOPSECRET-CLI-COMMAND-54ae70";
     try {
       const result = spawnSync(
-        npxBin,
-        ["tsx", mainPath, "-f", "json", secret],
+        process.execPath,
+        ["--import", "tsx", mainPath, "-f", "json", secret],
         {
           cwd: repoRoot,
           encoding: "utf-8",

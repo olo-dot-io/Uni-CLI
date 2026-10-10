@@ -131,7 +131,11 @@ export async function createCli(): Promise<Command> {
     )
     .option(
       "--auth-retry",
-      "on auth_required/challenge_required, refresh from its selected browser source and retry once",
+      "refresh declared site credentials and retry once after a confirmed auth failure",
+    )
+    .option(
+      "--no-auth-retry",
+      "disable automatic credential recovery for read commands",
     )
     .option(
       "--record",

@@ -5,7 +5,7 @@ description: Uni-CLI 的发现、执行、认证、浏览器、修复和协议�
 
 # CLI 命令
 
-根命令按发现、执行、恢复和控制面组织。
+根命令按查找操作、执行任务、失败恢复和界面控制组织。
 
 ## 发现
 
@@ -35,7 +35,20 @@ unicli <site> <command> [options]
 -f compact
 ```
 
-`--dry-run` 会预览参数解析和选中的 pipeline。
+`--dry-run` 预览解析后的参数和选中的流水线。
+
+## 互联网资料
+
+`retrieval search` 返回排序后的来源记录，`extract` 把单个 URL 读取为有界证据文档，`retrieval acquire` 将选中的资料保存到本地，包括原件和结构化文本。
+
+```bash
+unicli retrieval search "graph databases" --sources dblp,arxiv --limit 5 -f json
+unicli extract https://example.com --max-chars 12000 -f json
+unicli retrieval acquire "graph databases" --limit 5 --dir ./research -f json
+unicli retrieval acquire --resume ./research/results.json -f json
+```
+
+`--max-resources` 限制额外文件链接，`--max-bytes` 限制单个原件大小，`--refresh true` 重新获取已完成资源。结果字段、部分失败与恢复行为见[Agent 互联网访问](../guide/internet-access)。
 
 ## 更新
 
@@ -50,7 +63,7 @@ unicli <site> <command> [options]
 | `unicli upgrade --no-auto-update`            | 要求明确确认             |
 | `unicli upgrade --package-manager <manager>` | 指定 npm、pnpm 或 Bun    |
 
-Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
+Agent 更新信息和安装规则见[更新 Uni-CLI](../guide/upgrading)。
 
 ## 登录与认证
 
@@ -61,6 +74,8 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli auth check <site>`                   | 验证已保存凭据             |
 | `unicli auth list`                           | 列出已配置站点             |
 | `unicli doctor cookies`                      | 诊断浏览器 cookie 读取     |
+
+通过 `auth import <site> --profile-id <id>` 选择本地身份。`auth check` 检查本地凭据文件，原站点命令确认远端是否接受凭据。声明 cookie 的 HTTP 只读命令在认证失败后可以刷新一次，`--no-auth-retry` 关闭恢复。配置优先级、Windows 连接导入和浏览器回合恢复见[登录与认证](../guide/authentication)。
 
 ## 浏览器
 
@@ -74,13 +89,13 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli browser state -f json`      | 读取 accessible page state             |
 | `unicli browser screenshot <path>`  | 截取当前页面                           |
 
-完整 action 见 `unicli help browser`。
+完整动作列表见 `unicli help browser`。
 
 ## 桌面
 
 | 命令                                            | 用途              |
 | ----------------------------------------------- | ----------------- |
-| `unicli doctor compute -f json`                 | 检查桌面 provider |
+| `unicli doctor compute --json`                  | 检查桌面 provider |
 | `unicli compute snapshot --app <name>`          | 读取应用 snapshot |
 | `unicli compute click <ref> --app <name>`       | 激活元素          |
 | `unicli compute type <ref> <text> --app <name>` | 输入文字          |
@@ -95,7 +110,7 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli dev <path>`                        | 开发时重新加载 adapter |
 | `unicli test <site>`                       | 运行 adapter 检查      |
 
-## Run evidence 与 evolution
+## 执行记录与适配器演进
 
 | 命令                                                               | 用途                                          |
 | ------------------------------------------------------------------ | --------------------------------------------- |
@@ -107,7 +122,7 @@ Agent metadata 和安装边界见[更新 Uni-CLI](../guide/upgrading)。
 | `unicli evolve inspect [session_id]`                               | 列出 session 或检查一个 session               |
 | `unicli evolve rollback <session_id>`                              | 恢复 promotion 前的精确 user overlay          |
 
-Proposal run 只为 Agent 提供 evidence，不能同时充当 validation 或 held-out run。发生变化的 candidate 必须声明可证伪 hypothesis 和预期修复项。Candidate 还需要在没有 regression 的情况下提升 validation，保持 held-out behavior，并保留 baseline operation contract。每个经过 review 的替换 network origin 都需要在创建 session 时通过 `--allow-origin <origin>` 声明。调用方只有显式传入 `--allow-mutation-eval` 才能评估 mutating operation。
+用于提出修改的执行记录只提供修改依据，与验证记录和保留测试记录分开。候选实现发生变化时，必须声明可证伪的假设和预期修复项。候选实现需要提升验证结果，保持已有用例及保留测试的行为，并保留基线操作契约。每个经过审查的替换网络来源都需要在创建会话时通过 `--allow-origin <origin>` 声明。评估可能改变外部状态的操作还需要显式传入 `--allow-mutation-eval`。
 
 ## Plugin
 

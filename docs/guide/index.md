@@ -11,7 +11,7 @@ Describe the result you want. Uni-CLI searches its local catalog and returns the
 unicli search "top Hacker News stories"
 ```
 
-A result includes a command you can run directly:
+A result includes a command you can run directly.
 
 ```text
 hackernews top  Hacker News top stories
@@ -51,3 +51,5 @@ unicli search "read through an API" --operator structured-api
 ```
 
 See the [operation catalog](/reference/sites) to browse by site, command, or interface.
+
+For source search, native Markdown, and recovery, continue with [Internet access for agents](./internet-access).

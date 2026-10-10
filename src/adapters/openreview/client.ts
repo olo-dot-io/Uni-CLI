@@ -25,6 +25,10 @@ import {
   loadCookiesWithCDP,
 } from "../../engine/cookies.js";
 import { publishFileTransactionally } from "../../engine/transactional-file.js";
+import { retryAfterMilliseconds } from "../../engine/http-response.js";
+import { fetchWithProxy } from "../../engine/proxy.js";
+
+export { retryAfterMilliseconds };
 
 export type OpenReviewApiVersion = 1 | 2;
 
@@ -160,20 +164,6 @@ export function openReviewChallengeUrl(body: string): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-export function retryAfterMilliseconds(
-  value: string | null,
-  now = Date.now(),
-): number | undefined {
-  const raw = value?.trim();
-  if (!raw) return undefined;
-  const seconds = Number(raw);
-  if (Number.isFinite(seconds) && seconds >= 0) {
-    return Math.ceil(seconds * 1000);
-  }
-  const timestamp = Date.parse(raw);
-  return Number.isFinite(timestamp) ? Math.max(0, timestamp - now) : undefined;
 }
 
 export function readOpenReviewContent(
@@ -375,7 +365,7 @@ export class OpenReviewHttpClient {
       "openreview request timeout",
       300_000,
     );
-    this.fetcher = options.fetcher ?? fetch;
+    this.fetcher = options.fetcher ?? fetchWithProxy;
     this.sleep = options.sleep ?? delay;
     this.random = options.random ?? Math.random;
     this.cookieLoader =

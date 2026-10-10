@@ -65,7 +65,7 @@ beforeEach(async () => {
       name: "auth_token",
       value: "secret",
       path: "/",
-      expires: 13_433_616_000_000_000,
+      expires: (Date.now() / 1000 + 86_400 + 11_644_473_600) * 1_000_000,
       secure: true,
       httpOnly: true,
       persistent: true,

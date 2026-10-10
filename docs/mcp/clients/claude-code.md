@@ -1,13 +1,13 @@
 # Claude Code Computer Use
 
-Register Uni-CLI as the `computer-use` MCP server for Claude Code:
+Register Uni-CLI as the `computer-use` MCP server for Claude Code.
 
 ```bash
 claude mcp add computer-use \
   -- npx -y @zenalexa/unicli mcp serve --profile computer-use
 ```
 
-The profile exposes 32 bounded computer-control tools:
+The profile exposes 32 bounded computer-control tools.
 `computer-use.apps`, `computer-use.windows`, `computer-use.capture`,
 `computer-use.snapshot`, `computer-use.find`, `computer-use.click`,
 `computer-use.type`, `computer-use.press`, `computer-use.scroll`,
@@ -33,7 +33,7 @@ newer snapshot.
 ## Permissions
 
 On macOS, grant Accessibility to the terminal or app that launches Claude Code.
-Grant Screen Recording if you want screenshot capture. Windows and Linux use
+Grant Screen Recording for screenshot capture. Windows and Linux use
 the UIA and AT-SPI sidecars respectively.
 
 ## Verify

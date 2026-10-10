@@ -13,12 +13,13 @@
  * @since       2026-04-03
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import type { PipelineContext } from "../executor.js";
 import { evalTemplate } from "../template.js";
+import { writeFileTransactionally } from "../transactional-file.js";
 import { assertSafeRequestUrl } from "../ssrf.js";
 import {
   assertRuntimeNetworkAllowed,
@@ -105,7 +106,9 @@ export async function stepDownload(
     let result: DownloadResult;
     if (config.type === "document" && config.content) {
       const content = evalTemplate(config.content, itemCtx);
-      writeFileSync(destPath, content, "utf-8");
+      await writeFileTransactionally(destPath, Buffer.from(content), {
+        signal: ctx.signal,
+      });
       const info = await stat(destPath);
       result = {
         status: "success",

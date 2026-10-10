@@ -1,6 +1,5 @@
 /* Appica UI-inspired public surface, adapted for VitePress/Vue.
  * Token source: appica-dev/appica-ui@26de9b1e02d2fb48694ae52d2371b1bbd71ee9d6
- * Text layout: @chenglou/pretext@0.0.6, pinned in package.json.
  */
 
 @font-face {
@@ -643,7 +642,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
   display: inline-block;
   margin-bottom: 8px;
   color: var(--appica-foreground-muted) !important;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 580;
   letter-spacing: 0.04em;
   text-decoration: none !important;
@@ -661,7 +660,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
 
 .agent-breadcrumbs li {
   color: var(--appica-foreground-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .agent-breadcrumbs li + li::before {
@@ -694,7 +693,7 @@ body .VPLocalSearchBox .search-keyboard-shortcuts kbd {
   padding: 0 16px;
   border: 0;
   border-radius: var(--appica-radius-sm);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 560;
   text-decoration: none !important;
   cursor: pointer;
@@ -890,7 +889,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-home-nav-links a {
   padding: 10px 11px;
   color: var(--home-forest) !important;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 590;
   text-decoration: none !important;
 }
@@ -1007,7 +1006,7 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: 999px;
   background: var(--home-sage);
   color: var(--home-forest-deep);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 630;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -1022,10 +1021,10 @@ body:has(.uni-docs-home) .VPNav {
   max-width: 9.75ch;
   margin: 24px 0 0;
   color: var(--home-ivory);
-  font-size: clamp(50px, 5.15vw, 72px);
+  font-size: clamp(40px, 4vw, 48px);
   font-weight: 650;
-  letter-spacing: -0.06em;
-  line-height: 0.98;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   text-wrap: balance;
 }
 
@@ -1101,7 +1100,7 @@ body:has(.uni-docs-home) .VPNav {
   background: transparent;
   color: color-mix(in oklch, var(--home-ivory) 58%, transparent);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 620;
   cursor: pointer;
 }
@@ -1150,7 +1149,7 @@ body:has(.uni-docs-home) .VPNav {
   overflow: hidden;
   color: var(--home-ivory) !important;
   font-family: "Geist Variable", sans-serif;
-  font-size: 13.5px;
+  font-size: 14px;
   font-variant-ligatures: none;
   font-weight: 520;
   line-height: 1.4;
@@ -1177,7 +1176,7 @@ body:has(.uni-docs-home) .VPNav {
   background: var(--home-ivory);
   color: var(--home-forest-deep);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -1233,7 +1232,7 @@ body:has(.uni-docs-home) .VPNav {
   gap: 18px;
   margin: 0;
   color: color-mix(in oklch, var(--home-ivory) 74%, transparent);
-  font-size: 11px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
   font-weight: 560;
   letter-spacing: 0.08em;
@@ -1322,7 +1321,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-receipt-candidates > span,
 .uni-receipt-result > span {
   color: var(--home-viridian);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   letter-spacing: 0.04em;
 }
@@ -1342,7 +1341,7 @@ body:has(.uni-docs-home) .VPNav {
   margin-top: 38px;
   overflow-wrap: anywhere;
   color: var(--home-viridian);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -1373,7 +1372,7 @@ body:has(.uni-docs-home) .VPNav {
   min-width: 0;
   overflow: hidden;
   color: var(--home-forest-deep);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 630;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1382,7 +1381,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-receipt-candidates code {
   grid-column: 1;
   color: var(--home-viridian);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .uni-receipt-candidates b {
@@ -1393,7 +1392,7 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: 999px;
   background: var(--home-sage);
   color: var(--home-forest);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   text-transform: uppercase;
 }
@@ -1425,7 +1424,7 @@ body:has(.uni-docs-home) .VPNav {
   margin: 0;
   overflow: hidden;
   color: var(--home-viridian);
-  font-size: 12px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1440,7 +1439,7 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: var(--home-radius-control);
   background: color-mix(in oklch, var(--home-sage) 58%, var(--home-ivory));
   color: var(--home-forest);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -1520,7 +1519,7 @@ body:has(.uni-docs-home) .VPNav {
     var(--home-ivory) 78%,
     var(--home-moss)
   ) !important;
-  font-size: 11px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1555,7 +1554,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-stat-list dt {
   margin-top: 5px;
   color: var(--home-viridian);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .uni-entry-list {
@@ -2196,7 +2195,7 @@ body:has(.uni-docs-home) .VPNav {
 .vp-doc .uni-orbit-card-copy span {
   margin: 0;
   color: color-mix(in oklch, var(--home-ivory) 72%, var(--home-moss));
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 610;
   letter-spacing: 0.07em;
 }
@@ -2246,7 +2245,7 @@ body:has(.uni-docs-home) .VPNav {
   background: transparent;
   color: color-mix(in oklch, var(--home-ivory) 52%, transparent);
   font: inherit;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 640;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -2323,7 +2322,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-version-meta dd {
   margin: 0;
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .uni-version-meta dd {
@@ -2346,7 +2345,7 @@ body:has(.uni-docs-home) .VPNav {
   border-radius: 10px;
   background: var(--appica-background-muted);
   color: var(--appica-foreground-emphasis) !important;
-  font-size: 12px;
+  font-size: 14px;
   text-decoration: none !important;
 }
 
@@ -2363,7 +2362,7 @@ body:has(.uni-docs-home) .VPNav {
   padding: 14px;
   border-radius: 10px;
   background: var(--appica-background-subtle);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* Generated catalog */
@@ -2645,7 +2644,7 @@ body:has(.uni-docs-home) .VPNav {
 .uni-surface span,
 .uni-surface small {
   color: var(--appica-foreground-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .uni-surface-grid {
@@ -2689,7 +2688,7 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .uni-hero-copy h1 {
-    font-size: clamp(46px, 7vw, 62px);
+    font-size: clamp(40px, 5vw, 48px);
   }
 
   .uni-operation-receipt {
@@ -2734,7 +2733,7 @@ body:has(.uni-docs-home) .VPNav {
 
   .uni-hero-copy h1 {
     max-width: 12ch;
-    font-size: clamp(42px, 11vw, 54px);
+    font-size: clamp(36px, 9vw, 40px);
   }
 
   .vp-doc .uni-hero-plate {
@@ -2835,7 +2834,7 @@ body:has(.uni-docs-home) .VPNav {
 
   .vp-doc .uni-install-command code {
     overflow: visible;
-    font-size: 13px;
+    font-size: 14px;
     overflow-wrap: anywhere;
     text-overflow: clip;
     white-space: normal;
@@ -3356,7 +3355,7 @@ body:has(.uni-docs-home) .VPNav {
   }
 
   .vp-doc .uni-atlas-selector code {
-    font-size: 10px;
+    font-size: 14px;
   }
 
   .uni-launch-panel {

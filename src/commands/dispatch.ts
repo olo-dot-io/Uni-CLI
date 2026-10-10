@@ -6,7 +6,7 @@
  * @breaks      Bypassing the shared kernel or emitting raw failures breaks CLI/MCP/ACP parity and local invocation evidence.
  * @invariants  Kernel owns adapter execution; this module owns only CLI parsing, quarantine/dry-run gates, rendering, projection, and final exit.
  * @side-effects Registers commands, may refresh browser cookies, writes stdout/stderr, and terminates adapter CLI processes.
- * @perf        Registers once per loaded adapter command; each invocation performs one kernel call plus optional auth retry.
+ * @perf        Registers once per loaded adapter command; each invocation performs one kernel call.
  * @concurrency One Commander action per CLI process; shared browser/kernel components own their own concurrency.
  * @test        tests/unit/commands/dispatch.test.ts and tests/unit/cli/*
  * @stability   stable
@@ -50,11 +50,6 @@ import {
   ProjectionError,
 } from "../output/projection.js";
 import { ExitCode } from "../types.js";
-import { refreshCookiesFromBrowser } from "../engine/cookies.js";
-import {
-  annotateAuthRetryFailure,
-  shouldRefreshAuthError,
-} from "../output/auth-guidance.js";
 import type { AdapterArg, OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
 import { isCommandDiscoverable } from "../core/command-availability.js";
@@ -281,6 +276,7 @@ export function registerAdapterDispatch(program: Command): void {
             permissionProfile: rootOpts.permissionProfile,
             approved: rootOpts.yes === true,
             rememberApproval: rootOpts.rememberApproval === true,
+            authRetry: rootOpts.authRetry,
             operationRole: "direct",
           },
         );
@@ -365,45 +361,7 @@ export function registerAdapterDispatch(program: Command): void {
               })
             : execute(invocation);
 
-        let result = await runInvocation(inv);
-        if (
-          rootOpts.authRetry === true &&
-          shouldRefreshAuthError(result.error?.code)
-        ) {
-          const refresh = await refreshCookiesFromBrowser(
-            adapter.name,
-            cmd.domain ?? adapter.domain,
-            { preferCdp: result.error?.code === "challenge_required" },
-          );
-          if (refresh.ok) {
-            const retryInvocation = buildInvocation(
-              "cli",
-              adapter.name,
-              cmdName,
-              inv.bag,
-              {
-                permissionProfile: rootOpts.permissionProfile,
-                approved: rootOpts.yes === true,
-                rememberApproval: rootOpts.rememberApproval === true,
-                operationRole: "direct",
-                cookieInvocationOverride: refresh.invocation_override,
-              },
-            );
-            if (!retryInvocation) {
-              throw new Error(
-                `adapter ${adapter.name}.${cmdName} disappeared before auth retry`,
-              );
-            }
-            process.stderr.write(
-              chalk.yellow(
-                `[auth] refreshed ${refresh.cookieCount} cookie(s) from ${refresh.source}; retrying ${adapter.name}.${cmdName}\n`,
-              ),
-            );
-            result = await runInvocation(retryInvocation);
-          } else {
-            annotateAuthRetryFailure(result, refresh.suggestion, adapter.name);
-          }
-        }
+        const result = await runInvocation(inv);
 
         // Surface harden warnings the same way the pre-R2 path did —
         // yellow `[harden] …` lines on stderr, above any output envelope.

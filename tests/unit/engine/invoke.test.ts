@@ -75,6 +75,7 @@ function mkAdapter(overrides?: Partial<AdapterManifest>): AdapterManifest {
       },
       authfail: {
         name: "authfail",
+        auth_requirement: "optional",
         adapterArgs: [],
         func: async () => {
           throw new Error('No cookies found for "inv-site".');
@@ -511,7 +512,7 @@ describe("execute (end-to-end)", () => {
     expect(cmds.every((c) => !c.includes("--cursor"))).toBe(true);
   });
 
-  it("auth failures return terminal-ready import and retry next_actions", async () => {
+  it("declared cookie failures return the exact setup next_action", async () => {
     const inv = buildInvocation("cli", "inv-site", "authfail", {
       args: {},
       source: "shell",
@@ -522,11 +523,10 @@ describe("execute (end-to-end)", () => {
       "unicli --auth-retry inv-site authfail",
     );
     const cmds = (res.envelope.next_actions ?? []).map((a) => a.command);
-    expect(cmds).toContain("unicli auth import inv-site --domain inv-site.com");
-    expect(cmds).toContain("unicli browser open https://inv-site.com");
-    expect(cmds).toContain(
-      "unicli --auth-retry inv-site authfail --args-file <path.json>",
-    );
+    expect(cmds).toEqual([
+      "unicli describe inv-site authfail",
+      "unicli auth setup inv-site",
+    ]);
   });
 
   it("rejects an invalid bag.args with a structured error matching the schema", async () => {

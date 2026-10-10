@@ -506,6 +506,7 @@ export function manifestSearchDocuments(
         site,
         command: command.name,
         description: command.description ?? "",
+        ...(command.source_tier ? { source_tier: command.source_tier } : {}),
         category: info.category,
         auth,
         ...(authSetup ? { auth_setup: authSetup } : {}),

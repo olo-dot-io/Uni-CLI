@@ -7,7 +7,7 @@
 - 栏目: 参考
 - 上级: 参考 (/zh/reference/)
 
-这个页面由 `docs/site-index.json` 生成，展示 Uni-CLI 当前能发现和运行的网站、桌面工具、服务和外部 CLI 操作。可以按接口、个人内容或认证要求筛选。展开网站以后可以查看全部命令，每条命令都带有对应的 `unicli describe` 用法。
+本页面由 `docs/site-index.json` 生成，展示 Uni-CLI 当前支持发现与运行的网站、桌面工具、服务和外部 CLI 操作。用户可按接口、个人内容或认证要求筛选。展开网站后可查看全部命令，每条命令均附带对应的 `unicli describe` 用法。
 
 命令行提供相同的常用入口。
 
@@ -19,7 +19,7 @@ unicli search "<意图>" --personalized
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：338 个站点，1891 条命令。
+这个目录来自适配器 manifest：338 个站点，1893 条命令。
 
 用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。
 
@@ -169,7 +169,6 @@ unicli search "<意图>" --personalized
 | opencode | bridge | 1 | 0 | 否 | unicli opencode version |
 | opencsg | web-api | 2 | 0 | 否 | unicli opencsg datasets<br>unicli opencsg models |
 | openharness | desktop | 2 | 0 | 否 | unicli openharness memory-read<br>unicli openharness skills-list |
-| openrouter | web-api | 2 | 0 | 否 | unicli openrouter models<br>unicli openrouter search |
 | packagist | web-api | 3 | 0 | 否 | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | 0 | 否 | unicli pandoc convert |
 | paperreview | web-api | 3 | 0 | 否 | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -225,7 +224,6 @@ unicli search "<意图>" --personalized
 | v2ex | web-api | 12 | 2 | 是 | unicli v2ex me<br>unicli v2ex notifications<br>unicli v2ex daily |
 | vercel | bridge | 1 | 0 | 否 | unicli vercel list |
 | vscode | desktop | 10 | 0 | 否 | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| web | web-api | 1 | 0 | 否 | unicli web read |
 | wechat-channels | web-api | 2 | 0 | 是 | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | 4 | 是 | unicli weibo feed<br>unicli weibo me<br>unicli weibo timeline |
 | weixin | browser | 6 | 0 | 是 | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
@@ -338,6 +336,7 @@ unicli search "<意图>" --personalized
 | openalex | web-api | 3 | 0 | 否 | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | 0 | 否 | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | 0 | 是 | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
+| openrouter | web-api | 3 | 0 | 否 | unicli openrouter models<br>unicli openrouter search<br>unicli openrouter model |
 | osv | web-api | 2 | 0 | 否 | unicli osv query<br>unicli osv vulnerability |
 | pacmpl | web-api | 3 | 0 | 否 | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | 0 | 否 | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
@@ -346,7 +345,7 @@ unicli search "<意图>" --personalized
 | qwen | web-api | 8 | 1 | 是 | unicli qwen history<br>unicli qwen ask<br>unicli qwen read |
 | rednote | web-api | 7 | 2 | 是 | unicli rednote feed<br>unicli rednote notifications<br>unicli rednote note |
 | rest-countries | web-api | 2 | 0 | 否 | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | 0 | 否 | unicli retrieval search<br>unicli retrieval sources |
+| retrieval | web-api | 3 | 0 | 否 | unicli retrieval search<br>unicli retrieval acquire<br>unicli retrieval sources |
 | rfc | web-api | 1 | 0 | 否 | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | 0 | 否 | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | 0 | 否 | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
@@ -360,16 +359,17 @@ unicli search "<意图>" --personalized
 | usenix | web-api | 5 | 0 | 否 | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | 0 | 否 | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | 0 | 否 | unicli wanfang search |
+| web | web-api | 1 | 0 | 否 | unicli web read |
 | wikidata | web-api | 2 | 0 | 否 | unicli wikidata search<br>unicli wikidata entity |
 | wttr | web-api | 2 | 0 | 否 | unicli wttr current<br>unicli wttr forecast |
 | zlibrary | web-api | 2 | 0 | 是 | unicli zlibrary search<br>unicli zlibrary info |
 
 ## 怎么读这个目录
 
-- **Web API** 优先走 HTTP、Cookie、公开端点或轻量请求。
+- **Web API** 优先使用 HTTP、Cookie、公开端点或轻量请求。
 - **浏览器** 需要真实页面、CDP、截图、点击、输入或网络拦截。
 - **桌面** 调用本机应用或本地子进程。
-- **桥接** 复用已经安装的外部 CLI。
+- **桥接** 复用已安装的外部 CLI。
 - **服务** 使用本地或云端服务接口。
 
-目录里的命令名保持英文，因为它们就是实际 CLI 操作名。中文页只翻译解释文字，不改 operation contract。
+目录中的命令名称保持英文，与实际 CLI 操作名一致。每条中文说明对应相同的操作契约。

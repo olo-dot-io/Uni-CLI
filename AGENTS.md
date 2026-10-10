@@ -35,7 +35,7 @@ apply the same scan manually to chat replies.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1891<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1893<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -92,8 +92,9 @@ Uni-CLI is adapter-heavy; patch-rot is the failure mode that kills us fastest.
 
 ## Installation and rebuildable state
 
-`package.json` owns Node 22.19 or newer and npm 11.21. `.nvmrc` owns the
-Node 26.10.0 development runtime. `rust-toolchain.toml` owns Rust 1.98.1.
+`package.json` requires Node 22.19 or newer for production and npm 12.2.0 for
+development. `.nvmrc` owns the Node 26.11.1 development runtime.
+`rust-toolchain.toml` owns Rust 1.99.0.
 Toolchain settings come from the owning project.
 
 - Package manager install is the one idempotent convergence path for absent,
@@ -142,4 +143,4 @@ allowlist change requires a one-line `// REASON:` in the patterns array.
 
 ## Version
 
-1.2.1 — Artemis · Wiseman
+1.3.0 — Artemis · Rubins

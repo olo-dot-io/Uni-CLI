@@ -5,11 +5,11 @@ Uni-CLI gives AI agents one command model for searching and operating websites, 
 ## Operation Snapshot
 
 - Static adapter sites: 338
-- Registered adapter commands: 1891
+- Registered adapter commands: 1893
 - Runtime scope: fixed core and host-discovered commands are additional
-- Adapters: 1268 (1009 YAML + 259 TypeScript)
+- Adapters: 1267 (1006 YAML + 261 TypeScript)
 - Built-in actions: 113 (58 registered + 55 transport-native)
-- Tests: 10392
+- Tests: 10374
 
 ## Agent Contract
 
@@ -33,6 +33,7 @@ Every public page below has a clean Markdown companion. Fetch Markdown first; fe
 ## Use Uni-CLI
 
 - [Find An Operation](https://olo-dot-io.github.io/Uni-CLI/guide/) — Search Uni-CLI by intent, inspect the matching command, and run it with structured output. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide.md
+- [Internet Access](https://olo-dot-io.github.io/Uni-CLI/guide/internet-access) — Discover a source, retrieve bounded evidence, and recover from source-side failures through the same command interface. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/internet-access.md
 - [Authentication](https://olo-dot-io.github.io/Uni-CLI/guide/authentication) — Set up site credentials, import a browser session, and diagnose login state. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/authentication.md
 - [Browser And Desktop](https://olo-dot-io.github.io/Uni-CLI/guide/browser-desktop) — Choose a browser session, inspect page state, and control desktop applications through Uni-CLI. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/guide/browser-desktop.md
 - [Recipes](https://olo-dot-io.github.io/Uni-CLI/RECIPES) — Short, copyable Uni-CLI workflows for web data, research papers, authenticated sites, and browser sessions. Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/RECIPES.md

@@ -7,7 +7,7 @@
 - 栏目: 扩展
 - 上级: 扩展 (/zh/guide/adapters)
 
-Plugin 可以组合 portable Agent Skill、Uni-CLI adapter 和 runtime extension。安装后的 plugin 位于 `~/.unicli/plugins/`，并在启动时加入 runtime catalog。
+插件可以组合可移植的 Agent Skill、Uni-CLI 适配器和运行时扩展。安装后的插件位于 `~/.unicli/plugins/`，启动时加入操作目录。
 
 ## 创建 plugin
 
@@ -16,7 +16,7 @@ unicli plugin create astronomy
 cd unicli-plugin-astronomy
 ```
 
-Scaffold 包含以下文件。
+生成的项目包含以下文件。
 
 ```text
 unicli-plugin-astronomy/
@@ -32,7 +32,7 @@ unicli-plugin-astronomy/
 
 ## Portable manifest
 
-`plugin.json` 遵循 [Agent Plugins 1.0](https://agent-plugins.org/specification)。Uni-CLI 会验证 closed manifest，发现 `skills/` 下的直接子目录，并把每个有效 Skill 投影为 operation catalog 中的 `agent-plugin.<plugin-name>.<skill-name>`。Portable Skill 始终按 instruction 加载，即使 frontmatter 含有 Uni-CLI `pipeline` 字段也不会执行。
+`plugin.json` 遵循 [Agent Plugins 1.0](https://agent-plugins.org/specification)，只接受规范声明的字段。Uni-CLI 从 `skills/` 的直接子目录发现 Skill，并将每个有效 Skill 加入操作目录，名称为 `agent-plugin.<plugin-name>.<skill-name>`。可移植 Skill 作为指令加载，其中的 Uni-CLI `pipeline` 字段不会被执行。
 
 ```json
 {
@@ -48,18 +48,18 @@ unicli-plugin-astronomy/
 }
 ```
 
-安装前可以检查本地 package，安装后也可以按名称检查。
+安装前可以检查本地包，安装后可以按名称检查。
 
 ```bash
 unicli plugin inspect ./unicli-plugin-astronomy -f json
 unicli plugin inspect astronomy -f json
 ```
 
-可选的根目录 `mcp.json` 会作为 client config 接受检查。Uni-CLI 报告支持的 server descriptor type，不会将其投影为 operation，也不会启动或连接这些 server。安装 package 的 client 负责 MCP execution 与 permission behavior。MCP config 无效时，其他有效 Skill 仍可加载。
+可选的根目录 `mcp.json` 作为客户端配置接受检查。Uni-CLI 报告支持的服务描述类型；这些服务由安装插件的客户端负责启动、连接和权限管理，保持在 Uni-CLI 操作目录之外。MCP 配置无效时，其他有效 Skill 仍可加载。
 
 ## Uni-CLI runtime manifest
 
-`unicli-plugin.json` 声明 native adapter、custom pipeline step 和可选 JavaScript entry point。
+`unicli-plugin.json` 声明原生适配器、自定义流水线步骤和可选的 JavaScript 入口。
 
 ```json
 {
@@ -73,11 +73,11 @@ unicli plugin inspect astronomy -f json
 }
 ```
 
-`adapters`、`steps` 和 `main` 都是 plugin 目录中的路径。按 package 实际内容填写。`plugin.json` 出现 fatal error 时，该 package 的 client-specific runtime 也不会加载。
+`adapters`、`steps` 和 `main` 都是插件目录中的路径，按包内实际内容填写。`plugin.json` 出现致命错误时，该包面向客户端的运行时扩展也会停止加载。
 
 ## 添加 adapter
 
-Plugin YAML 与 packaged adapter 使用同一 schema。
+插件 YAML 与包内适配器使用同一 Schema。
 
 ```yaml
 site: observatory
@@ -114,7 +114,7 @@ schema_version: v2
 
 ## 添加 pipeline step
 
-从 `@zenalexa/unicli/engine/registry` 导入 public step registry，然后在 plugin entry point 注册。
+从 `@zenalexa/unicli/engine/registry` 导入公开步骤注册表，再在插件入口中注册步骤。
 
 ```typescript
 import { registerStep } from "@zenalexa/unicli/engine/registry";
@@ -124,7 +124,7 @@ registerStep("astronomy_normalize", (ctx, config) => {
 });
 ```
 
-用下面的命令查看已加载的 custom step。
+用下面的命令查看已加载的自定义步骤。
 
 ```bash
 unicli plugin steps
@@ -132,7 +132,7 @@ unicli plugin steps
 
 ## Public package imports
 
-Uni-CLI 为 registry、errors、types、output、engine、transport、browser helper、protocol schema 和 download 发布 versioned subpath。下面的 import 使用这组公开入口。
+Uni-CLI 为注册表、错误、类型、输出、引擎、传输、浏览器辅助函数、协议 Schema 和下载功能提供带版本约定的包子路径。下面的导入使用这些公开入口。
 
 ```typescript
 import { cli } from "@zenalexa/unicli/registry";
@@ -142,11 +142,11 @@ import { registerStep } from "@zenalexa/unicli/engine/registry";
 import { getTransportBus } from "@zenalexa/unicli/transport";
 ```
 
-使用 package export 可以让 import 跟随支持的 public surface。
+通过包导出导入功能，避免依赖内部构建目录。
 
 ## Broker 管理的浏览器调用
 
-需要浏览器的 plugin 共享 Uni-CLI 的机器级 Browser Runtime Broker。Broker 负责浏览器进程、端口、runtime 复用、登录分区和 target 串行化；plugin 为每次调用提供 Agent 身份和 provider 策略。
+需要浏览器的插件共享本机 Browser Runtime Broker。Broker 管理浏览器进程、端口、运行时复用、登录分区和目标的串行访问。插件为每次调用提供 Agent 身份和浏览器选择策略。
 
 ```typescript
 import {
@@ -177,7 +177,7 @@ const snapshot = await runBrowserInvocation(scope, async () => {
 });
 ```
 
-Managed provider 使用 `managed` 与 `hidden`；已有 Chrome 使用 `chrome` 与 `background` 或 `foreground`；远程 provider 使用 `remote` 与 `hidden`。`probeBrowserRuntimeBroker()` 读取当前状态，`ensureBrowserRuntimeBroker()` 启动无窗口控制面，第一次 page command 会启动选中的 provider。
+托管浏览器使用 `managed` 与 `hidden`，已有 Chrome 使用 `chrome` 与 `background` 或 `foreground`，远程浏览器使用 `remote` 与 `hidden`。`probeBrowserRuntimeBroker()` 读取当前状态，`ensureBrowserRuntimeBroker()` 启动无窗口协调服务。第一次页面命令会启动选中的浏览器。
 
 ## 安装与管理
 
@@ -189,7 +189,7 @@ unicli plugin update astronomy
 unicli plugin uninstall astronomy
 ```
 
-安装后检查新目录项。
+安装后检查新加入的命令。
 
 ```bash
 unicli search "search observatory objects"
@@ -198,8 +198,8 @@ unicli describe observatory objects
 
 ## 发布前检查
 
-- 设置 semantic version 与 Uni-CLI compatibility range。
-- 每条 adapter 都有面向用户的 description 和当前 schema-v2 metadata。
-- 凭据放在 Uni-CLI auth storage 或 host environment。
-- 通过 public import 测试 custom step 和 adapter behavior。
+- 设置语义化版本和 Uni-CLI 兼容版本范围。
+- 每条适配器都提供面向用户的描述及 schema-v2 元数据。
+- 凭据使用 Uni-CLI 认证存储或主机环境变量。
+- 通过公开导入路径验证自定义步骤和适配器行为。
 - README 说明安装、命令、认证和一个可运行示例。

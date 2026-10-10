@@ -6,7 +6,7 @@
  * @breaks      Invalid targets, browser/keychain failures, corrupt storage, and missing cookies emit semantic errors.
  * @invariants  Only `auth import` persists browser cookies; values never appear in output or logs.
  * @side-effects Explicit import writes plaintext JSON with owner-only permissions; audit/check read local state.
- * @perf        Import stops on the first browser hit; audit is bounded by --limit.
+ * @perf        Import reads one selected profile; audit is bounded by --limit.
  * @concurrency Commands are single-process and storage replacement is atomic.
  * @test        tests/unit/commands/auth.test.ts, tests/unit/cookie-storage.test.ts
  * @stability   public
@@ -19,6 +19,15 @@ import { readdirSync, existsSync } from "node:fs";
 import { join, basename } from "node:path";
 import { commandStrategy, getAllAdapters } from "../registry.js";
 import { getCookieDir } from "../engine/cookies.js";
+import {
+  describeCookieFailure,
+  loadCookiesWithDiagnostics,
+  resolveCookieDomain,
+} from "../engine/cookie-source.js";
+import {
+  detectLocalBrowserProfiles,
+  selectBrowserIdentityFromProfiles,
+} from "../browser/local-profiles.js";
 import {
   BROWSER_IDS,
   ChromiumCookieError,
@@ -91,6 +100,9 @@ export function registerAuthCommands(program: Command): void {
         file_mode: process.platform === "win32" ? null : "0600",
         strategy: siteStrategy,
         required_cookies: required,
+        acquisition: "auto",
+        profile_selection:
+          "UNICLI_BROWSER_PROFILE_ID or the only discovered profile",
         template,
       };
 
@@ -100,6 +112,11 @@ export function registerAuthCommands(program: Command): void {
       // Human-oriented summary → stderr (Scene-6 pattern)
       console.error(
         chalk.dim(`\n  Template keys: ${Object.keys(template).join(", ")}`),
+      );
+      console.error(
+        chalk.dim(
+          "  Sign in to the site in your selected browser profile, then retry the command.",
+        ),
       );
       console.error(
         chalk.dim(`  Explicit local persistence: unicli auth import ${site}`),
@@ -121,17 +138,34 @@ export function registerAuthCommands(program: Command): void {
     )
     .option(
       "-b, --browser <id>",
-      `Browser to read from (${BROWSER_IDS.join("|")}); default: auto-detect`,
+      `Browser to read from (${BROWSER_IDS.join("|")}); default: selected local profile`,
     )
-    .option("-p, --profile <name>", "Browser profile (default: most-recent)")
+    .option(
+      "-p, --profile <name>",
+      "Browser profile directory (default: only available profile)",
+    )
+    .option(
+      "--profile-id <id>",
+      "Local browser identity from browser profiles --json",
+    )
+    .option(
+      "--cdp",
+      "Import from the explicitly selected CDP/native browser session",
+    )
     .option(
       "-d, --domain <domain>",
-      "Cookie domain (default: derived from site name)",
+      "Cookie domain (default: adapter metadata)",
     )
     .action(
-      (
+      async (
         site: string,
-        opts: { browser?: string; profile?: string; domain?: string },
+        opts: {
+          browser?: string;
+          profile?: string;
+          profileId?: string;
+          domain?: string;
+          cdp?: boolean;
+        },
       ) => {
         const startedAt = Date.now();
         const ctx = makeCtx("auth.import", startedAt);
@@ -151,8 +185,17 @@ export function registerAuthCommands(program: Command): void {
           process.exit(ExitCode.USAGE_ERROR);
         }
 
-        let domain = opts.domain ?? site.replace(/_/g, ".");
-        if (!domain.includes(".")) domain = `${domain}.com`;
+        const adapter = getAllAdapters().find(
+          (candidate) => candidate.name === site,
+        );
+        const domain = resolveCookieDomain(
+          site,
+          opts.domain ??
+            adapter?.domain ??
+            Object.values(adapter?.commands ?? {}).find(
+              (command) => command.domain,
+            )?.domain,
+        );
         if (!/^[a-zA-Z0-9.-]+$/.test(domain)) {
           ctx.error = {
             code: "invalid_input",
@@ -162,21 +205,6 @@ export function registerAuthCommands(program: Command): void {
           };
           console.error(format(null, undefined, fmt, ctx));
           process.exit(ExitCode.USAGE_ERROR);
-        }
-
-        const browsers: BrowserId[] = opts.browser
-          ? [opts.browser as BrowserId]
-          : detectInstalledBrowsers();
-
-        if (browsers.length === 0) {
-          ctx.error = {
-            code: "auth_required",
-            message: "No supported Chromium browser found locally",
-            suggestion: `Install one of: ${BROWSER_IDS.join(", ")}.`,
-            retryable: false,
-          };
-          console.error(format(null, undefined, fmt, ctx));
-          process.exit(ExitCode.AUTH_REQUIRED);
         }
 
         if (
@@ -193,72 +221,139 @@ export function registerAuthCommands(program: Command): void {
           process.exit(ExitCode.USAGE_ERROR);
         }
 
-        let lastError: ChromiumCookieError | undefined;
-        for (const browser of browsers) {
-          try {
-            const cookies = readCookiesAsRecord({
-              browser,
-              domain,
-              profile: opts.profile,
-            });
-            if (Object.keys(cookies).length === 0) {
-              lastError = new ChromiumCookieError(
-                "no_profile",
-                `${browser}: no cookies for domain ${domain}`,
-                `Sign into https://${domain} in ${browser}, then re-run.`,
-              );
-              continue;
-            }
-            const filePath = saveCookiesToDisk(site, cookies);
+        if (
+          (opts.cdp && (opts.browser || opts.profile || opts.profileId)) ||
+          (opts.profileId && (opts.browser || opts.profile))
+        ) {
+          ctx.error = {
+            code: "invalid_input",
+            message:
+              "Choose one credential identity through --cdp, --profile-id, or --browser/--profile",
+            suggestion:
+              "Run unicli browser profiles --json to select a local identity.",
+            retryable: false,
+          };
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.USAGE_ERROR);
+        }
 
-            const data = {
+        let cookies: Record<string, string>;
+        let profile = opts.profileId;
+        let browser = opts.browser ?? (opts.cdp ? "cdp" : "selected-profile");
+        try {
+          if (opts.browser) {
+            const profiles = listProfiles(opts.browser as BrowserId);
+            profile =
+              opts.profile ?? (profiles.length === 1 ? profiles[0] : undefined);
+            if (!profile) {
+              throw new ChromiumCookieError(
+                "no_profile",
+                `${opts.browser} has ${profiles.length} available profiles`,
+                `Choose one with --profile <name>. Available profiles: ${profiles.join(", ") || "none"}.`,
+              );
+            }
+            cookies = readCookiesAsRecord({
+              browser: opts.browser as BrowserId,
+              domain,
+              profile,
+            });
+          } else {
+            if (opts.profile) {
+              const selection = selectBrowserIdentityFromProfiles(
+                detectLocalBrowserProfiles().filter(
+                  (candidate) => candidate.profile_dir === opts.profile,
+                ),
+                process.env.UNICLI_BROWSER_PROFILE_ID,
+              );
+              if (selection.status !== "selected") {
+                throw new ChromiumCookieError(
+                  "no_profile",
+                  `Profile directory ${opts.profile} does not identify one local browser`,
+                  "Run unicli browser profiles --json and pass --profile-id <id>.",
+                );
+              }
+              profile = selection.profile.id;
+            }
+            const outcome = await loadCookiesWithDiagnostics(
+              site,
+              domain,
+              undefined,
+              {
+                source: opts.cdp ? "cdp" : "browser",
+                ...(profile ? { profileId: profile } : {}),
+              },
+            );
+            if (outcome.status !== "loaded") {
+              const failure = describeCookieFailure(outcome, site, domain);
+              throw new ChromiumCookieError(
+                "no_profile",
+                failure.message,
+                failure.suggestion,
+              );
+            }
+            cookies = outcome.cookies;
+            profile = outcome.credential_identity?.profile_id;
+            browser = outcome.source;
+          }
+          if (!Object.values(cookies).some((value) => value.length > 0)) {
+            throw new ChromiumCookieError(
+              "no_profile",
+              `No usable cookies for ${domain} in the selected profile`,
+              `Sign in to https://${domain} in that profile, then retry.`,
+            );
+          }
+        } catch (error) {
+          ctx.error = {
+            code: "auth_required",
+            message: error instanceof Error ? error.message : String(error),
+            suggestion:
+              error instanceof ChromiumCookieError
+                ? error.suggestion
+                : "Run unicli browser doctor --json.",
+            retryable: false,
+          };
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.AUTH_REQUIRED);
+        }
+
+        let filePath: string;
+        try {
+          filePath = saveCookiesToDisk(site, cookies);
+        } catch (error) {
+          ctx.error = {
+            code: "permission_denied",
+            message: `Could not persist cookies for ${site}: ${error instanceof Error ? error.message : String(error)}`,
+            suggestion: `Check ownership and permissions for ${getCookieDir()}, then retry.`,
+            retryable: false,
+          };
+          console.error(format(null, undefined, fmt, ctx));
+          process.exit(ExitCode.CONFIG_ERROR);
+        }
+        ctx.duration_ms = Date.now() - startedAt;
+        console.log(
+          format(
+            {
               site,
               browser,
               domain,
-              profile: opts.profile ?? "auto",
+              profile,
               cookie_count: Object.keys(cookies).length,
               cookies: Object.keys(cookies),
               file: filePath,
               storage_format: "plaintext-json",
               directory_mode: process.platform === "win32" ? null : "0700",
               file_mode: process.platform === "win32" ? null : "0600",
-            };
-            ctx.duration_ms = Date.now() - startedAt;
-            console.log(format(data, undefined, fmt, ctx));
-            console.error(
-              chalk.green(
-                `  ✓ ${browser} → ${site}: ${Object.keys(cookies).length} cookie(s) saved to ${filePath}`,
-              ),
-            );
-            return;
-          } catch (err) {
-            if (err instanceof ChromiumCookieError) {
-              lastError = err;
-              continue;
-            }
-            ctx.error = {
-              code: "permission_denied",
-              message: `Could not securely persist cookies for ${site}: ${err instanceof Error ? err.message : String(err)}`,
-              suggestion: `Check ownership and permissions for ${getCookieDir()}, then rerun the explicit import.`,
-              retryable: false,
-            };
-            console.error(format(null, undefined, fmt, ctx));
-            process.exit(ExitCode.CONFIG_ERROR);
-          }
-        }
-
-        ctx.error = {
-          code: "auth_required",
-          message:
-            lastError?.message ??
-            `Could not read cookies for ${domain} from any installed browser.`,
-          suggestion:
-            lastError?.suggestion ??
-            `Try: unicli auth import ${site} --browser <other> --profile <name>`,
-          retryable: false,
-        };
-        console.error(format(null, undefined, fmt, ctx));
-        process.exit(ExitCode.AUTH_REQUIRED);
+            },
+            undefined,
+            fmt,
+            ctx,
+          ),
+        );
+        console.error(
+          chalk.green(
+            `  Saved ${Object.keys(cookies).length} cookie(s) for ${site} to ${filePath}`,
+          ),
+        );
       },
     );
 
@@ -311,13 +406,18 @@ export function registerAuthCommands(program: Command): void {
       const cookies = stored.cookies;
       const keys = Object.keys(cookies);
       const required = adapter.authCookies ?? [];
-      const missing = required.filter((key) => !(key in cookies));
-      const valid = missing.length === 0;
+      const missing = required.filter((key) => !cookies[key]);
+      const valid =
+        missing.length === 0 &&
+        Object.values(cookies).some((value) => value.length > 0);
 
       if (!valid) {
         ctx.error = {
           code: "auth_required",
-          message: `Missing required cookies: ${missing.join(", ")}`,
+          message:
+            missing.length > 0
+              ? `Missing required cookies: ${missing.join(", ")}`
+              : "The cookie file contains no usable credentials",
           suggestion: `Run: unicli auth setup ${site}`,
           retryable: false,
         };

@@ -1,6 +1,6 @@
 # Gemini CLI Computer Use
 
-Add Uni-CLI's `computer-use` MCP profile to Gemini CLI settings:
+Add Uni-CLI's `computer-use` MCP profile to Gemini CLI settings.
 
 ```jsonc
 // ~/.gemini/settings.json

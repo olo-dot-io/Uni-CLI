@@ -1,0 +1,181 @@
+{
+  "description": "Provider and task contracts prepared before candidate ranking changes. Topical terms must remain searchable without changing the requested provider or operation.",
+  "cases": [
+    {
+      "query": "DBLP search papers about workflow provenance",
+      "accepted": ["dblp/search"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "find DBLP publications about reproducibility",
+      "accepted": ["dblp/search"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "在 DBLP 搜索可复现性论文",
+      "accepted": ["dblp/search"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "DBLP author publications Leslie Lamport",
+      "accepted": ["dblp/author"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "查看 DBLP 作者的全部论文",
+      "accepted": ["dblp/author"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "DBLP venue registry SIGMOD",
+      "accepted": ["dblp/venue"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "查询 DBLP 会议名称",
+      "accepted": ["dblp/venue"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "DBLP paper record canonical key",
+      "accepted": ["dblp/paper"],
+      "group": "scholarly-provider"
+    },
+    {
+      "query": "OpenRouter search models with long context",
+      "accepted": ["openrouter/search"],
+      "group": "model-provider"
+    },
+    {
+      "query": "OpenRouter find models for code generation",
+      "accepted": ["openrouter/search"],
+      "group": "model-provider"
+    },
+    {
+      "query": "在 OpenRouter 搜索推理模型",
+      "accepted": ["openrouter/search"],
+      "group": "model-provider"
+    },
+    {
+      "query": "OpenRouter list models and pricing",
+      "accepted": ["openrouter/models"],
+      "group": "model-provider"
+    },
+    {
+      "query": "查看 OpenRouter 模型价格列表",
+      "accepted": ["openrouter/models"],
+      "group": "model-provider"
+    },
+    {
+      "query": "arxiv search papers about installation environments",
+      "accepted": ["arxiv/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "arxiv search papers about evidence classification",
+      "accepted": ["arxiv/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "search OpenReview papers about code datasets",
+      "accepted": ["openreview/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "semantic scholar search papers about model safety",
+      "accepted": ["semantic-scholar/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "crossref search research on reproducibility",
+      "accepted": ["crossref/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "在 arxiv 搜索关于证据分类的论文",
+      "accepted": ["arxiv/search"],
+      "group": "topic-boundary"
+    },
+    {
+      "query": "search papers on machine learning",
+      "accepted": [
+        "scholar/search",
+        "arxiv/search",
+        "semantic-scholar/search",
+        "google-scholar/search"
+      ],
+      "group": "generic-intent"
+    },
+    {
+      "query": "查找机器学习论文",
+      "accepted": [
+        "scholar/search",
+        "arxiv/search",
+        "semantic-scholar/search",
+        "google-scholar/search"
+      ],
+      "group": "generic-intent"
+    },
+    {
+      "query": "verify scholarly evidence provenance",
+      "accepted": ["scholar/evidence"],
+      "group": "generic-intent"
+    },
+    {
+      "query": "reproduce paper experiment from source repository",
+      "accepted": ["scholar/reproduce"],
+      "group": "generic-intent"
+    },
+    {
+      "query": "inspect recorded run trace browser lease evidence",
+      "accepted": ["runs/show", "runs/list", "runs/probe"],
+      "group": "generic-intent"
+    },
+    {
+      "query": "distill failed run traces into evolution evidence",
+      "accepted": ["runs/distill"],
+      "group": "generic-intent"
+    },
+    {
+      "query": "twitter search posts about research reproducibility",
+      "accepted": ["twitter/search"],
+      "group": "explicit-provider"
+    },
+    {
+      "query": "reddit search discussions about model safety",
+      "accepted": ["reddit/search"],
+      "group": "explicit-provider"
+    },
+    {
+      "query": "github search issues about browser automation",
+      "accepted": ["gh/search-issues"],
+      "group": "explicit-provider"
+    },
+    {
+      "query": "twiter search distributed systems",
+      "accepted": ["twitter/search"],
+      "group": "typo"
+    },
+    {
+      "query": "搜索小红书美食",
+      "accepted": ["xiaohongshu/search"],
+      "group": "explicit-provider"
+    },
+    {
+      "query": "play a song on spotify",
+      "accepted": ["spotify/play-track"],
+      "group": "generic-intent"
+    },
+    {
+      "query": "find recent community reactions to TypeScript",
+      "accepted": ["retrieval/search"],
+      "group": "generic-intent"
+    }
+  ],
+  "no_match": [
+    "zqvpxmn78641",
+    "__zzqvv778899__",
+    "????！！！",
+    "０９８７６５４３２１"
+  ]
+}

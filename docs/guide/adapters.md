@@ -5,7 +5,7 @@ description: Add a site or tool to Uni-CLI with a YAML adapter and test it local
 
 # Create an adapter
 
-An adapter turns a useful action into a searchable Uni-CLI operation. YAML is the default format: it keeps metadata, arguments, and pipeline steps together in one file.
+An adapter turns a useful action into a searchable Uni-CLI operation. YAML is the default format. It keeps metadata, arguments, and pipeline steps together in one file.
 
 ## Create the file
 
@@ -17,7 +17,7 @@ The generated file lives under `src/adapters/example/search.yaml`. Use `-o` to c
 
 ## Describe the operation
 
-A small public HTTP adapter can look like this:
+A small public HTTP adapter can look like this.
 
 ```yaml
 site: hackernews
@@ -115,4 +115,4 @@ When the behavior is durable, add the smallest adjacent test or fixture that exe
 
 TypeScript adapters are useful for SDKs, streaming protocols, stateful services, and control flow that maps poorly to a YAML pipeline. They register the same operation metadata and return the same envelope shape.
 
-The [Adapter format](/ADAPTER-FORMAT#typescript-escape-hatch) page contains the TypeScript contract.
+The [Adapter format](/ADAPTER-FORMAT#typescript-adapters) page contains the TypeScript contract.

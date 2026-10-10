@@ -12,17 +12,15 @@
 //! @since       2026-05-30 (capture/rotation added)
 
 import { USER_AGENT } from "../../constants.js";
-import { setTimeout as delay } from "node:timers/promises";
 import { registerStep, type StepHandler } from "../step-registry.js";
 import { type PipelineContext, PipelineError } from "../executor.js";
-import { UnsafeRequestUrlError } from "../ssrf.js";
-import { evalTemplate } from "../template.js";
-import { describeNetworkFailure } from "../proxy.js";
+import { evalTemplate, resolveTemplateDeep } from "../template.js";
 import { assertRuntimeNetworkAllowed } from "../runtime-resource-guard.js";
 import {
-  fetchWithValidatedRedirects,
-  RedirectLimitError,
-} from "../validated-fetch.js";
+  fetchHttpResource,
+  isHtmlVerificationChallenge,
+  challengeRequiredError,
+} from "../http-response.js";
 import {
   parseSetCookiePairs,
   mergeCookieHeader,
@@ -30,7 +28,6 @@ import {
 } from "../cookie-capture.js";
 import {
   networkAccessForMethod,
-  normalizeFetchAttempts,
   resolveHeaderTemplates,
   type FetchConfig,
 } from "./fetch.js";
@@ -54,6 +51,10 @@ export const MAX_TEXT_RESOURCE_BYTES = 5_000_000;
 
 const TEXTUAL_CONTENT_TYPE =
   /^(?:text\/|application\/(?:json|xml|xhtml\+xml|javascript|x-javascript|graphql|yaml|x-yaml|toml|x-toml|ndjson|x-ndjson|json-seq|csv|markdown|sql|x-www-form-urlencoded|[a-z0-9.+-]+\+(?:json|xml))$)/i;
+
+export function isTextualContentType(contentType: string): boolean {
+  return TEXTUAL_CONTENT_TYPE.test(contentType.split(";", 1)[0].trim());
+}
 
 const BINARY_SIGNATURES: ReadonlyArray<{
   bytes: readonly number[];
@@ -187,27 +188,7 @@ function withParams(
   return url + (url.includes("?") ? "&" : "?") + params.toString();
 }
 
-function httpFailureSuggestion(response: Response, requestUrl: string): string {
-  if (response.status === 429) {
-    const retryAfter = response.headers.get("retry-after")?.trim();
-    const window = retryAfter
-      ? `the upstream Retry-After window (${retryAfter})`
-      : "the upstream retry window";
-    return `Wait for ${window}, then retry the same request: ${requestUrl}`;
-  }
-  if (response.status === 401 || response.status === 403) {
-    return `Authenticate at the source's declared credential boundary, then retry: ${requestUrl}`;
-  }
-  if (response.status === 404 || response.status === 410) {
-    return `Check whether the canonical source URL moved or was removed: ${requestUrl}`;
-  }
-  if (response.status >= 500) {
-    return `The upstream service failed; retry after its recovery window: ${requestUrl}`;
-  }
-  return `Inspect the HTTP ${response.status} response and request contract for: ${requestUrl}`;
-}
-
-/** One request with the existing retry/backoff/error contract. */
+/** Read a validated, bounded textual response through the shared HTTP owner. */
 export async function fetchTextResource(
   requestUrl: string,
   config: FetchConfig,
@@ -215,132 +196,75 @@ export async function fetchTextResource(
   stepIndex: number,
   options: FetchTextResourceOptions = {},
 ): Promise<TextResource> {
-  const method = config.method ?? "GET";
+  const method = (config.method ?? "GET").toUpperCase();
+  const requestHeaders = new Headers(headers);
   const fetchInit: RequestInit = {
     method,
-    headers,
-    ...(options.signal ? { signal: options.signal } : {}),
+    headers: requestHeaders,
+    signal: options.signal,
   };
-
-  const maxAttempts = normalizeFetchAttempts(config.retry);
-  const baseDelay = config.backoff ?? 1000;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const { response: resp, finalUrl } = await fetchWithValidatedRedirects(
-        requestUrl,
-        fetchInit,
-        { validateRequest: options.validateRequest },
-      );
-      if (resp.ok) {
-        const contentType = (resp.headers.get("content-type") ?? "")
-          .split(";", 1)[0]
-          .trim();
-        if (contentType && !TEXTUAL_CONTENT_TYPE.test(contentType)) {
-          await resp.body?.cancel();
-          throw unsupportedContentTypeError(requestUrl, contentType, stepIndex);
-        }
-        const bytes = await readBoundedBody(resp, requestUrl, stepIndex);
-        const inferredBinaryType = binarySignature(bytes);
-        if (inferredBinaryType) {
-          throw unsupportedContentTypeError(
-            requestUrl,
-            `${inferredBinaryType} (magic bytes)`,
-            stepIndex,
-          );
-        }
-        const text = new TextDecoder().decode(bytes);
-        const getSetCookie = (
-          resp.headers as Headers & { getSetCookie?: () => string[] }
-        ).getSetCookie;
-        const setCookieLines =
-          typeof getSetCookie === "function"
-            ? getSetCookie.call(resp.headers)
-            : [];
-        return {
-          text,
-          finalUrl,
-          contentType,
-          status: resp.status,
-          setCookieLines,
-        };
-      }
-
-      const retryable =
-        resp.status === 429 ||
-        resp.status === 500 ||
-        resp.status === 502 ||
-        resp.status === 503;
-      const isLastAttempt = attempt === maxAttempts;
-      if (retryable && !isLastAttempt) {
-        await delay(baseDelay * 2 ** (attempt - 1), undefined, {
-          signal: options.signal,
-        });
-        continue;
-      }
-
-      throw new PipelineError(
-        `HTTP ${resp.status} ${resp.statusText} from ${requestUrl}`,
-        {
-          step: stepIndex,
-          action: "fetch_text",
-          config: { url: requestUrl, method },
-          errorType: "http_error",
-          url: requestUrl,
-          statusCode: resp.status,
-          suggestion: httpFailureSuggestion(resp, requestUrl),
-          retryable,
-          alternatives:
-            resp.status === 401 || resp.status === 403
-              ? ["unicli auth setup <site>"]
-              : [],
-        },
-      );
-    } catch (err) {
-      options.signal?.throwIfAborted();
-      const isLastAttempt = attempt === maxAttempts;
-      if (
-        err instanceof PipelineError ||
-        err instanceof UnsafeRequestUrlError
-      ) {
-        throw err;
-      }
-      if (err instanceof RedirectLimitError) {
-        throw new PipelineError(err.message, {
-          step: stepIndex,
-          action: "fetch_text",
-          config: { url: requestUrl },
-          errorType: "http_error",
-          url: requestUrl,
-          suggestion:
-            "Use a canonical source URL with a bounded redirect chain.",
-          retryable: false,
-          alternatives: [],
-        });
-      }
-      if (isLastAttempt) {
-        const message = describeNetworkFailure(err);
-        throw new PipelineError(
-          `fetch_text failed for ${requestUrl}: ${message}`,
-          {
-            step: stepIndex,
-            action: "fetch_text",
-            config: { url: requestUrl, method },
-            errorType: "network_error",
-            url: requestUrl,
-            suggestion: `Network fetch failed. Retry or check connectivity to: ${requestUrl}`,
-            retryable: true,
-            alternatives: [],
-          },
-        );
-      }
-      await delay(baseDelay * 2 ** (attempt - 1), undefined, {
-        signal: options.signal,
-      });
-    }
+  if (config.body !== undefined && method !== "GET" && method !== "HEAD") {
+    if (!requestHeaders.has("content-type"))
+      requestHeaders.set("content-type", "application/json");
+    fetchInit.body = JSON.stringify(config.body);
   }
-
-  throw new Error("fetch_text: unreachable");
+  return fetchHttpResource(
+    requestUrl,
+    fetchInit,
+    {
+      ...config,
+      step: stepIndex,
+      action: "fetch_text",
+      validateRequest: options.validateRequest,
+    },
+    async (resp, finalUrl) => {
+      const contentType = (resp.headers.get("content-type") ?? "")
+        .split(";", 1)[0]
+        .trim();
+      if (contentType && !isTextualContentType(contentType)) {
+        await resp.body?.cancel();
+        throw unsupportedContentTypeError(requestUrl, contentType, stepIndex);
+      }
+      let bytes: Uint8Array;
+      try {
+        bytes = await readBoundedBody(resp, requestUrl, stepIndex);
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        throw error;
+      }
+      options.signal?.throwIfAborted();
+      const inferredBinaryType = binarySignature(bytes);
+      if (inferredBinaryType)
+        throw unsupportedContentTypeError(
+          requestUrl,
+          `${inferredBinaryType} (magic bytes)`,
+          stepIndex,
+        );
+      const text = new TextDecoder().decode(bytes);
+      if (
+        (/html/i.test(contentType) ||
+          !contentType ||
+          contentType === "text/plain") &&
+        isHtmlVerificationChallenge(text)
+      )
+        throw challengeRequiredError(
+          finalUrl,
+          "fetch_text",
+          stepIndex,
+          resp.status,
+        );
+      return {
+        text,
+        finalUrl,
+        contentType,
+        status: resp.status,
+        setCookieLines:
+          typeof resp.headers.getSetCookie === "function"
+            ? resp.headers.getSetCookie()
+            : [],
+      };
+    },
+  );
 }
 
 /** Does the parsed body carry the rotation signal field? */
@@ -387,7 +311,7 @@ export async function stepFetchText(
     if (cookieHeader) headers["Cookie"] = cookieHeader;
     const result = await fetchTextResource(
       requestUrl,
-      config,
+      { ...config, body: resolveTemplateDeep(config.body, ctx) },
       headers,
       stepIndex,
       {

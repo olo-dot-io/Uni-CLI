@@ -5,7 +5,7 @@
  * @feeds   src/commands/search.ts, src/mcp/handler.ts, src/fast-path/handlers/discovery.ts
  * @breaks  Returns an empty result set when the registry/manifest has no matching commands.
  * @invariants Runtime search uses the live registry; generated search-index artifacts are not a source of truth.
- * @side-effects Caches an in-memory index by command-document signature; reads dynamic macOS data only when enabled.
+ * @side-effects Refreshes runtime macOS commands from their inventory snapshot and caches indexes by registry version and inventory identity.
  * @perf    Cold index build is O(commands * terms); warm retrieval is O(postings + feasible candidates * log(limit)) through a bounded min-heap.
  * @concurrency Module cache is process-local and rebuilt synchronously inside a search call.
  * @test    tests/unit/search.test.ts, tests/unit/search-eval.test.ts, tests/unit/commands/search.test.ts
@@ -24,6 +24,7 @@ import {
   appActionScorePrior,
   evaluateIntentFrame,
   intentBoost,
+  prepareIntentBoost,
   resolveIntentFrame,
 } from "./intent-ranking.js";
 import {
@@ -31,12 +32,14 @@ import {
   discoverMacosDynamicData,
   dynamicMacosDiscoveryEnabled,
   invalidateMacosDynamicCache,
+  registerMacosDynamicCommands,
+  type MacosDynamicData,
 } from "./macos-dynamic.js";
 import {
   coreDiscoveryCategory,
   listCoreDiscoveryCommands,
 } from "./core-catalog.js";
-import { getRegistryVersion, listCommands } from "../registry.js";
+import { getAdapter, getRegistryVersion, listCommands } from "../registry.js";
 import {
   commandFeasibilityProfile,
   evaluateCommandFeasibility,
@@ -61,6 +64,7 @@ import {
 } from "./personalization.js";
 import type {
   AdapterArg,
+  AdapterCommand,
   CommandAvailability,
   OperationFamily,
 } from "../types.js";
@@ -110,6 +114,7 @@ export interface CommandSearchDocument {
   personalization?: PersonalizationFamily;
   usage?: string;
   availability?: CommandAvailability;
+  source_tier?: AdapterCommand["source_tier"];
 }
 
 /** One document in the search corpus: a single adapter command. */
@@ -182,6 +187,9 @@ export interface SearchIndex {
   siteLookup: Set<string>;
   /** Immutable exact, phrase, alias, and bounded-typo site resolver. */
   siteResolver: SiteResolver;
+  /** User-owned macOS commands replace dynamic inventory entries. */
+  macosUserCommands: ReadonlySet<string>;
+  macosUserCommandsKey: string;
 }
 
 // ── BM25 Parameters ─────────────────────────────────────────────────────────
@@ -192,11 +200,7 @@ const K1 = 1.2;
 const B = 0.75;
 
 // ── Hybrid Scoring ──────────────────────────────────────────────────────────
-// StackOne benchmark (Feb 2026, 2700 test cases, 270 tools) found:
-//   Pure BM25 Top-1: 14%
-//   BM25+TF-IDF 20/80 blend Top-1: 21%
-//   Embedding Top-1: 38%
-// We use the 20/80 blend as the base, with domain-specific boosts on top.
+// Retain the established lexical score scale for routing and confidence.
 
 const ALPHA_BM25 = 0.2;
 const ALPHA_TFIDF = 0.8;
@@ -236,6 +240,11 @@ const PROVIDER_DIVERSITY_ACTION_TERMS = new Set([
 
 let cachedIndex: SearchIndex | null = null;
 let cachedRegistryVersion = -1;
+let cachedDynamicIndex: {
+  inventory: MacosDynamicData;
+  userCommandsKey: string;
+  index: SearchIndex;
+} | null = null;
 const DOCUMENT_TOKEN_CACHE_LIMIT = 8192;
 type TokenizedDocument = Pick<
   Document,
@@ -272,6 +281,8 @@ export function runtimeSearchDocuments(): CommandSearchDocument[] {
       site: command.site,
       command: command.command,
       description: command.description,
+      source_tier: getAdapter(command.site)?.commands[command.command]
+        ?.source_tier,
       category: command.category,
       auth: command.authRequirement,
       ...(command.authSetup ? { auth_setup: command.authSetup } : {}),
@@ -306,6 +317,7 @@ export function buildIndexFromDocuments(
   searchDocuments: readonly CommandSearchDocument[],
 ): SearchIndex {
   const documents: Document[] = [];
+  const macosUserCommands = new Set<string>();
   const siteSet = new Set<string>();
   const siteTerms = new Map<string, string[]>();
   const postings = new Map<string, number[]>();
@@ -313,6 +325,9 @@ export function buildIndexFromDocuments(
   let totalTermCount = 0;
 
   for (const doc of searchDocuments) {
+    if (doc.site === "macos" && doc.source_tier === "user") {
+      macosUserCommands.add(doc.command);
+    }
     siteSet.add(doc.site);
     const tokenCacheKey = documentTokenCacheKey(doc);
     let tokenized = documentTokenCache.get(tokenCacheKey);
@@ -415,6 +430,8 @@ export function buildIndexFromDocuments(
     N,
     siteLookup,
     siteResolver,
+    macosUserCommands,
+    macosUserCommandsKey: JSON.stringify([...macosUserCommands].sort()),
   };
 }
 
@@ -452,13 +469,9 @@ export function searchDocuments(
   limit = 5,
   options: SearchOptions = {},
 ): SearchResult[] {
-  const staticResults = searchIndex(
-    buildIndexFromDocuments(documents),
-    query,
-    limit,
-    options,
-  );
-  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
+  const index = buildIndexFromDocuments(documents);
+  const staticResults = searchIndex(index, query, limit, options);
+  const dynamicResults = searchDynamicMacosIndex(index, query, limit, options);
 
   return mergeSearchResults(staticResults, dynamicResults, limit);
 }
@@ -580,8 +593,10 @@ export function search(
   limit = 5,
   options: SearchOptions = {},
 ): SearchResult[] {
-  const staticResults = searchIndex(loadIndex(), query, limit, options);
-  const dynamicResults = searchDynamicMacosIndex(query, limit, options);
+  registerMacosDynamicCommands();
+  const index = loadIndex();
+  const staticResults = searchIndex(index, query, limit, options);
+  const dynamicResults = searchDynamicMacosIndex(index, query, limit, options);
 
   return mergeSearchResults(staticResults, dynamicResults, limit);
 }
@@ -608,6 +623,7 @@ function mergeSearchResults(
 }
 
 function searchDynamicMacosIndex(
+  catalog: SearchIndex,
   query: string,
   limit: number,
   options: SearchOptions,
@@ -615,22 +631,29 @@ function searchDynamicMacosIndex(
   if (!dynamicMacosDiscoveryEnabled()) return [];
   if (options.category && options.category !== "desktop") return [];
 
-  const docs = buildMacosDynamicSearchDocuments(discoverMacosDynamicData());
-  if (docs.length === 0) return [];
+  const inventory = discoverMacosDynamicData();
+  if (
+    cachedDynamicIndex?.inventory !== inventory ||
+    cachedDynamicIndex.userCommandsKey !== catalog.macosUserCommandsKey
+  ) {
+    const docs = buildMacosDynamicSearchDocuments(inventory).filter(
+      (doc) => !catalog.macosUserCommands.has(doc.command),
+    );
+    cachedDynamicIndex = {
+      inventory,
+      userCommandsKey: catalog.macosUserCommandsKey,
+      index: buildIndexFromDocuments(
+        docs.map((doc) => ({
+          site: doc.site,
+          command: doc.command,
+          description: doc.description,
+          category: "desktop",
+        })),
+      ),
+    };
+  }
 
-  return searchIndex(
-    buildIndexFromDocuments(
-      docs.map((doc) => ({
-        site: doc.site,
-        command: doc.command,
-        description: doc.description,
-        category: "desktop",
-      })),
-    ),
-    query,
-    limit,
-    options,
-  );
+  return searchIndex(cachedDynamicIndex.index, query, limit, options);
 }
 
 function searchIndex(
@@ -643,8 +666,13 @@ function searchIndex(
 
   // Step 1: Tokenize
   const rawTokens = tokenizeQuery(query);
+  const rawTermSet = new Set(rawTokens.map((term) => term.toLowerCase()));
   const normalizedQuery = normalizeSitePhrase(query);
-  const siteResolution = index.siteResolver.resolve(query, rawTokens);
+  const siteResolution = index.siteResolver.resolve(
+    query,
+    rawTokens,
+    index.postings,
+  );
 
   // Step 2: Expand via aliases
   const expandedTerms: string[] = [];
@@ -721,6 +749,12 @@ function searchIndex(
   }
 
   if (candidateSet.size === 0) return [];
+  const intentBoostContext = prepareIntentBoost(
+    queryTermSet,
+    effectiveTaskSiteHints,
+    rawTermSet,
+    taskIntentFrame.normalized,
+  );
 
   // Step 4: Score candidates using hybrid BM25 + TF-IDF
   const boundedLimit = Math.max(0, Math.floor(limit));
@@ -772,12 +806,12 @@ function searchIndex(
     }
     const intentDecision = evaluateIntentFrame(intentFrame, doc);
     if (intentDecision.blocked) continue;
-    const signals = new Set<string>();
+    const signals: string[] = [];
 
     // Hybrid base: alpha-blend BM25 and TF-IDF cosine similarity.
     // BM25 scores are unbounded; cosine is [0,1] and is scaled by a fixed
     // ×10 so the 20/80 blend keeps both regimes on comparable magnitudes
-    // (empirically tuned against the eval suite; NOT normalized per-query).
+    // across queries without per-query normalization.
     const bm25 = bm25Scores[idx]!;
     const normProduct = queryNorm * doc.tfidfNorm;
     const tfidf = normProduct === 0 ? 0 : tfidfDots[idx]! / normProduct;
@@ -787,15 +821,15 @@ function searchIndex(
     // Boost: exact site name match
     if (siteHints.includes(doc.site)) {
       score += BOOST_SITE_EXACT;
-      signals.add("site:exact-or-alias");
+      signals.push("site:exact-or-alias");
     }
     if (sitePhraseHints.includes(doc.site)) {
       score += BOOST_SITE_PHRASE;
-      signals.add("site:phrase");
+      signals.push("site:phrase");
     }
     if (fuzzySiteHints.includes(doc.site)) {
       score += BOOST_SITE_FUZZY;
-      signals.add("site:unique-typo");
+      signals.push("site:unique-typo");
     }
 
     // Boost: expanded query term hits the site or command name. The site
@@ -807,22 +841,18 @@ function searchIndex(
       normalizedQuery.length > 0 && normalizedQuery === doc.normalizedCommand;
     if (wholeQueryMatchesCommand) {
       score += BOOST_CMD_EXACT;
-      signals.add("command:exact");
+      signals.push("command:exact");
     }
-    let commandTokenMatched = false;
-    for (const qt of queryTerms) {
-      if (qt === doc.site) score += BOOST_SITE_ALIAS;
-      if (
-        !wholeQueryMatchesCommand &&
-        !commandTokenMatched &&
-        qt === doc.command
-      ) {
-        score += BOOST_CMD_TOKEN;
-        commandTokenMatched = true;
-        signals.add("command:token");
-      }
-      if (rawTokens.length === 1 && doc.command.includes(qt) && qt.length > 2) {
-        score += BOOST_CMD_PARTIAL;
+    if (queryTermSet.has(doc.site)) score += BOOST_SITE_ALIAS;
+    if (!wholeQueryMatchesCommand && queryTermSet.has(doc.command)) {
+      score += BOOST_CMD_TOKEN;
+      signals.push("command:token");
+    }
+    if (rawTokens.length === 1) {
+      for (const qt of queryTerms) {
+        if (qt.length > 2 && doc.command.includes(qt)) {
+          score += BOOST_CMD_PARTIAL;
+        }
       }
     }
 
@@ -833,7 +863,7 @@ function searchIndex(
       hasPhrase(doc.normalizedDescription, normalizedQuery)
     ) {
       score += BOOST_DESCRIPTION_PHRASE;
-      signals.add("description:phrase");
+      signals.push("description:phrase");
     }
     // Boost: category match
     if (categoryHints.includes(docCategory)) {
@@ -846,21 +876,17 @@ function searchIndex(
       score >= 10
     ) {
       score += BOOST_OPERATION_FAMILY;
-      signals.add("operation:match");
+      signals.push("operation:match");
     }
     if (
       doc.personalization &&
       personalizationFamilies.includes(doc.personalization)
     ) {
       score += BOOST_PERSONALIZATION_FAMILY;
-      signals.add(`personalization:${doc.personalization}`);
+      signals.push(`personalization:${doc.personalization}`);
     }
 
-    const domainIntentScore = intentBoost(
-      doc,
-      queryTermSet,
-      effectiveTaskSiteHints,
-    );
+    const domainIntentScore = intentBoost(doc, intentBoostContext);
     const entityIntentScore = intentEntityCommandBoost(
       taskIntentFrame,
       doc.site,
@@ -868,10 +894,10 @@ function searchIndex(
       effectiveTaskSiteHints,
     );
     score += domainIntentScore + entityIntentScore;
-    if (domainIntentScore !== 0) signals.add("intent:domain");
-    if (entityIntentScore !== 0) signals.add("intent:entity");
+    if (domainIntentScore !== 0) signals.push("intent:domain");
+    if (entityIntentScore !== 0) signals.push("intent:entity");
     score += intentDecision.boost;
-    if (intentDecision.boost !== 0) signals.add("intent:workflow");
+    if (intentDecision.boost !== 0) signals.push("intent:workflow");
     if (feasibilityDecision?.compatibility === "unknown") {
       score -= 24 + feasibilityDecision.uncertain_by.length * 4;
     } else if (
@@ -880,7 +906,7 @@ function searchIndex(
       feasibilityDecision.contract?.operator === options.requirements.operator
     ) {
       score += 16;
-      signals.add("constraint:operator");
+      signals.push("constraint:operator");
     }
     if (categoryFilter && queryTerms.length === 0) score += BOOST_CATEGORY;
     const prior = appActionScorePrior(doc, queryTermSet);
@@ -899,7 +925,7 @@ function searchIndex(
         lexical_score: roundScore(lexicalScore),
         semantic_score: roundScore(semanticScore),
         prior,
-        signals: [...signals],
+        signals,
       },
     });
     scoreOrdinal += 1;
@@ -1055,5 +1081,6 @@ export function buildRequiredUsage(
 export function invalidateCache(): void {
   cachedIndex = null;
   cachedRegistryVersion = -1;
+  cachedDynamicIndex = null;
   invalidateMacosDynamicCache();
 }

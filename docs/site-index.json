@@ -1,7 +1,7 @@
 {
-  "generated": "2026-08-21T08:11:13.128Z",
+  "generated": "2026-10-10T15:20:29.200Z",
   "total_sites": 338,
-  "total_commands": 1891,
+  "total_commands": 1893,
   "sites": [
     {
       "site": "12306",
@@ -848,7 +848,8 @@
           "description": "Get Bilibili video metadata by BV ID or URL",
           "command": "unicli bilibili video",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup bilibili",
           "browser": false
         },
         {
@@ -8199,8 +8200,8 @@
           "name": "fetch",
           "description": "Fetch a public URL through Ollama Cloud web_fetch",
           "command": "unicli ollama-cloud fetch",
-          "auth": false,
-          "auth_requirement": "none",
+          "auth": true,
+          "auth_requirement": "required",
           "browser": false
         },
         {
@@ -8393,34 +8394,6 @@
           "name": "skills-list",
           "description": "List skills installed in the local OpenHarness (~/.openharness/skills)",
           "command": "unicli openharness skills-list",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
-        }
-      ]
-    },
-    {
-      "site": "openrouter",
-      "type": "web-api",
-      "domain": "openrouter.ai",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 2,
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "models",
-          "description": "List all available AI models on OpenRouter",
-          "command": "unicli openrouter models",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
-        },
-        {
-          "name": "search",
-          "description": "Search OpenRouter AI models",
-          "command": "unicli openrouter search",
           "auth": false,
           "auth_requirement": "none",
           "browser": false
@@ -8657,8 +8630,9 @@
           "name": "curated",
           "description": "Get Pexels curated photos",
           "command": "unicli pexels curated",
-          "auth": false,
-          "auth_requirement": "none",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup pexels",
           "browser": false
         },
         {
@@ -11773,25 +11747,6 @@
           "auth": false,
           "auth_requirement": "none",
           "browser": true
-        }
-      ]
-    },
-    {
-      "site": "web",
-      "type": "web-api",
-      "auth": false,
-      "strategy": "public",
-      "command_count": 1,
-      "personalized_commands": 0,
-      "personalization_families": [],
-      "commands": [
-        {
-          "name": "read",
-          "description": "Read any webpage and convert to Markdown",
-          "command": "unicli web read",
-          "auth": false,
-          "auth_requirement": "none",
-          "browser": false
         }
       ]
     },
@@ -18832,7 +18787,8 @@
           "description": "Search OpenReview papers by free-text query",
           "command": "unicli openreview search",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
@@ -18840,7 +18796,8 @@
           "description": "Show full metadata for a single OpenReview paper",
           "command": "unicli openreview paper",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
@@ -18848,7 +18805,8 @@
           "description": "Download an OpenReview paper PDF by forum id",
           "command": "unicli openreview download",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
@@ -18856,7 +18814,8 @@
           "description": "Download and extract text from an OpenReview paper PDF",
           "command": "unicli openreview read",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
@@ -18864,7 +18823,8 @@
           "description": "List OpenReview submissions by author profile id",
           "command": "unicli openreview author",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
@@ -18872,13 +18832,51 @@
           "description": "List papers at an OpenReview venue or invitation",
           "command": "unicli openreview venue",
           "auth": false,
-          "auth_requirement": "none",
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
           "browser": false
         },
         {
           "name": "reviews",
           "description": "Show paper, reviews, decisions, and comments for an OpenReview forum",
           "command": "unicli openreview reviews",
+          "auth": false,
+          "auth_requirement": "optional",
+          "auth_setup": "unicli auth setup openreview",
+          "browser": false
+        }
+      ]
+    },
+    {
+      "site": "openrouter",
+      "type": "web-api",
+      "domain": "openrouter.ai",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 3,
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "models",
+          "description": "List available AI models on OpenRouter",
+          "command": "unicli openrouter models",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
+        },
+        {
+          "name": "search",
+          "description": "Search OpenRouter AI models",
+          "command": "unicli openrouter search",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
+        },
+        {
+          "name": "model",
+          "description": "Get full metadata for an OpenRouter model or model alias",
+          "command": "unicli openrouter model",
           "auth": false,
           "auth_requirement": "none",
           "browser": false
@@ -19269,7 +19267,7 @@
       "type": "web-api",
       "auth": false,
       "strategy": "public",
-      "command_count": 2,
+      "command_count": 3,
       "personalized_commands": 0,
       "personalization_families": [],
       "commands": [
@@ -19277,6 +19275,15 @@
           "name": "search",
           "description": "Federate current records across registered retrieval providers without a domain-specific router",
           "command": "unicli retrieval search",
+          "auth": false,
+          "auth_requirement": "optional",
+          "auth_setup": "gh auth login",
+          "browser": false
+        },
+        {
+          "name": "acquire",
+          "description": "Search or open a URL, save structured source documents, and download a bounded set of resource links",
+          "command": "unicli retrieval acquire",
           "auth": false,
           "auth_requirement": "optional",
           "auth_setup": "gh auth login",
@@ -19719,6 +19726,25 @@
           "auth": false,
           "auth_requirement": "none",
           "browser": true
+        }
+      ]
+    },
+    {
+      "site": "web",
+      "type": "web-api",
+      "auth": false,
+      "strategy": "public",
+      "command_count": 1,
+      "personalized_commands": 0,
+      "personalization_families": [],
+      "commands": [
+        {
+          "name": "read",
+          "description": "Read any webpage and convert to Markdown",
+          "command": "unicli web read",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
         }
       ]
     },

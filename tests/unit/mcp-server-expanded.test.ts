@@ -98,15 +98,14 @@ describe("MCP server — expanded mode (--expanded)", () => {
   let listedTools: ListedTool[];
 
   beforeAll(async () => {
-    // `npx` → `npx.cmd` on Windows (the actual executable).
-    const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
-    proc = spawn(npxBin, ["tsx", SERVER_PATH, "--expanded"], {
-      stdio: ["pipe", "pipe", "pipe"],
-      cwd: join(__dirname, "..", ".."),
-      // See tests/unit/mcp-server.test.ts — Node rejects `.cmd` without
-      // shell on Windows (CVE-2024-27980).
-      shell: process.platform === "win32",
-    });
+    proc = spawn(
+      process.execPath,
+      ["--import", "tsx", SERVER_PATH, "--expanded"],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: join(__dirname, "..", ".."),
+      },
+    );
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(

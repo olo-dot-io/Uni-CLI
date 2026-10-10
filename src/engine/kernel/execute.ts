@@ -13,7 +13,11 @@
  * @since       2026-04-17
  */
 
-import { resolveCommand } from "../../registry.js";
+import {
+  commandAuthSetupCommand,
+  commandUsesBrowser,
+  resolveCommand,
+} from "../../registry.js";
 import type { ResolvedArgs } from "../args.js";
 import {
   authorizeKernelInvocation,
@@ -48,9 +52,18 @@ import {
 import { defaultEffectVerdict } from "../../core/effect-verdict.js";
 import {
   runWithCookieInvocationOverride,
+  refreshCookiesFromBrowser,
   type CookieInvocationOverride,
 } from "../cookies.js";
 import { assertCommandAvailable } from "../../core/command-availability.js";
+import {
+  credentialRecoveryEnabled,
+  withCredentialRecovery,
+} from "../request-credentials.js";
+import {
+  annotateAuthRetryFailure,
+  shouldRefreshAuthError,
+} from "../../output/auth-guidance.js";
 
 export { KernelLookupError };
 
@@ -68,6 +81,7 @@ export function buildInvocation(
     permissionProfile?: string;
     approved?: boolean;
     rememberApproval?: boolean;
+    authRetry?: boolean;
     signal?: AbortSignal;
     cookieInvocationOverride?: CookieInvocationOverride;
     parentInvocationId?: string;
@@ -95,6 +109,7 @@ export function buildInvocation(
     permissionProfile: options.permissionProfile,
     approved: options.approved,
     rememberApproval: options.rememberApproval,
+    authRetry: options.authRetry,
     cookieInvocationOverride: options.cookieInvocationOverride,
     signal: options.signal,
     trace_id: newULID(),
@@ -115,12 +130,13 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
 
   let result: InvocationResult;
   try {
-    result = inv.cookieInvocationOverride
-      ? await runWithCookieInvocationOverride(
-          inv.cookieInvocationOverride,
-          () => executeResolved(inv, ctx, startedAt, warnings),
-        )
-      : await executeResolved(inv, ctx, startedAt, warnings);
+    result = await withCredentialRecovery(inv.authRetry, () =>
+      inv.cookieInvocationOverride
+        ? runWithCookieInvocationOverride(inv.cookieInvocationOverride, () =>
+            executeResolved(inv, ctx, startedAt, warnings),
+          )
+        : executeResolved(inv, ctx, startedAt, warnings),
+    );
   } catch (error) {
     result = executionErrorResult(inv, ctx, startedAt, warnings, error).result;
   }
@@ -221,34 +237,81 @@ async function executeResolved(
 
   await rememberKernelApproval(inv, authorization.policy, warnings);
 
-  try {
-    inv.signal?.throwIfAborted();
-    if (!inv.command.pipeline && !inv.command.func) {
-      return malformedCommandResult(inv, ctx, startedAt, warnings).result;
+  let retryCredential: CookieInvocationOverride | undefined;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      inv.signal?.throwIfAborted();
+      if (!inv.command.pipeline && !inv.command.func) {
+        return malformedCommandResult(inv, ctx, startedAt, warnings).result;
+      }
+      const run = () =>
+        executeKernelCommand(
+          inv,
+          ctx,
+          authorization.policy.effect !== "read",
+          warnings,
+        );
+      const results = retryCredential
+        ? await runWithCookieInvocationOverride(retryCredential, run)
+        : await run();
+      if (authorization.policy.effect !== "read") {
+        const sentinel = mutationFailureSentinel(results);
+        if (sentinel) throw sentinel;
+      }
+      return successKernelResult(
+        inv,
+        ctx,
+        startedAt,
+        warnings,
+        results,
+        defaultEffectVerdict({
+          canMutate: authorization.policy.effect !== "read",
+          phase: "success",
+        }),
+      );
+    } catch (err) {
+      const result = executionErrorResult(
+        inv,
+        ctx,
+        startedAt,
+        warnings,
+        err,
+      ).result;
+      const domain = inv.command.domain ?? inv.adapter.domain;
+      const cookieConsumer = commandAuthSetupCommand(
+        inv.adapter,
+        inv.command,
+      )?.startsWith("unicli auth setup ");
+      if (
+        attempt > 0 ||
+        !credentialRecoveryEnabled() ||
+        inv.cookieInvocationOverride ||
+        (authorization.policy.effect !== "read" && inv.authRetry !== true) ||
+        result.error?.outcome_ambiguous ||
+        commandUsesBrowser(inv.adapter, inv.command) ||
+        !domain ||
+        !cookieConsumer ||
+        !shouldRefreshAuthError(result.error?.code)
+      )
+        return result;
+      inv.signal?.throwIfAborted();
+      const refresh = await refreshCookiesFromBrowser(
+        inv.adapter.name,
+        domain,
+        {
+          preferCdp:
+            inv.authRetry === true &&
+            result.error?.code === "challenge_required",
+          signal: inv.signal,
+        },
+      );
+      inv.signal?.throwIfAborted();
+      if (!refresh.ok) {
+        annotateAuthRetryFailure(result, refresh.suggestion, inv.adapter.name);
+        return result;
+      }
+      retryCredential = refresh.invocation_override;
     }
-    const results = await executeKernelCommand(
-      inv,
-      ctx,
-      authorization.policy.effect !== "read",
-      warnings,
-    );
-    if (authorization.policy.effect !== "read") {
-      const sentinel = mutationFailureSentinel(results);
-      if (sentinel) throw sentinel;
-    }
-    return successKernelResult(
-      inv,
-      ctx,
-      startedAt,
-      warnings,
-      results,
-      defaultEffectVerdict({
-        canMutate: authorization.policy.effect !== "read",
-        phase: "success",
-      }),
-    );
-  } catch (err) {
-    return executionErrorResult(inv, ctx, startedAt, warnings, err).result;
   }
 }
 

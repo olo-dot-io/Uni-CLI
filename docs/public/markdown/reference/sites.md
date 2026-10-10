@@ -23,7 +23,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1891 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1893 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -173,7 +173,6 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | opencode | bridge | 1 | 0 | no | unicli opencode version |
 | opencsg | web-api | 2 | 0 | no | unicli opencsg datasets<br>unicli opencsg models |
 | openharness | desktop | 2 | 0 | no | unicli openharness memory-read<br>unicli openharness skills-list |
-| openrouter | web-api | 2 | 0 | no | unicli openrouter models<br>unicli openrouter search |
 | packagist | web-api | 3 | 0 | no | unicli packagist info<br>unicli packagist search<br>unicli packagist package |
 | pandoc | desktop | 1 | 0 | no | unicli pandoc convert |
 | paperreview | web-api | 3 | 0 | no | unicli paperreview feedback<br>unicli paperreview review<br>unicli paperreview submit |
@@ -229,7 +228,6 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | v2ex | web-api | 12 | 2 | yes | unicli v2ex me<br>unicli v2ex notifications<br>unicli v2ex daily |
 | vercel | bridge | 1 | 0 | no | unicli vercel list |
 | vscode | desktop | 10 | 0 | no | unicli vscode extensions<br>unicli vscode install-ext<br>unicli vscode open |
-| web | web-api | 1 | 0 | no | unicli web read |
 | wechat-channels | web-api | 2 | 0 | yes | unicli wechat-channels hot<br>unicli wechat-channels search |
 | weibo | web-api | 12 | 4 | yes | unicli weibo feed<br>unicli weibo me<br>unicli weibo timeline |
 | weixin | browser | 6 | 0 | yes | unicli weixin article<br>unicli weixin download<br>unicli weixin hot |
@@ -342,6 +340,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | openalex | web-api | 3 | 0 | no | unicli openalex search<br>unicli openalex work<br>unicli openalex read |
 | openfda | web-api | 2 | 0 | no | unicli openfda drug-label<br>unicli openfda food-recall |
 | openreview | web-api | 8 | 0 | yes | unicli openreview conference<br>unicli openreview search<br>unicli openreview paper |
+| openrouter | web-api | 3 | 0 | no | unicli openrouter models<br>unicli openrouter search<br>unicli openrouter model |
 | osv | web-api | 2 | 0 | no | unicli osv query<br>unicli osv vulnerability |
 | pacmpl | web-api | 3 | 0 | no | unicli pacmpl search<br>unicli pacmpl venue<br>unicli pacmpl paper |
 | pmlr | web-api | 3 | 0 | no | unicli pmlr search<br>unicli pmlr paper<br>unicli pmlr read |
@@ -350,7 +349,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | qwen | web-api | 8 | 1 | yes | unicli qwen history<br>unicli qwen ask<br>unicli qwen read |
 | rednote | web-api | 7 | 2 | yes | unicli rednote feed<br>unicli rednote notifications<br>unicli rednote note |
 | rest-countries | web-api | 2 | 0 | no | unicli rest-countries country<br>unicli rest-countries region |
-| retrieval | web-api | 2 | 0 | no | unicli retrieval search<br>unicli retrieval sources |
+| retrieval | web-api | 3 | 0 | no | unicli retrieval search<br>unicli retrieval acquire<br>unicli retrieval sources |
 | rfc | web-api | 1 | 0 | no | unicli rfc rfc |
 | scholar-artifacts | web-api | 2 | 0 | no | unicli scholar-artifacts download-pdf<br>unicli scholar-artifacts read-pdf |
 | semantic-scholar | web-api | 6 | 0 | no | unicli semantic-scholar search<br>unicli semantic-scholar paper<br>unicli semantic-scholar read |
@@ -364,6 +363,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | usenix | web-api | 5 | 0 | no | unicli usenix conferences<br>unicli usenix venue<br>unicli usenix search |
 | vndb | web-api | 7 | 0 | no | unicli vndb search<br>unicli vndb vn<br>unicli vndb releases |
 | wanfang | web-api | 1 | 0 | no | unicli wanfang search |
+| web | web-api | 1 | 0 | no | unicli web read |
 | wikidata | web-api | 2 | 0 | no | unicli wikidata search<br>unicli wikidata entity |
 | wttr | web-api | 2 | 0 | no | unicli wttr current<br>unicli wttr forecast |
 | zlibrary | web-api | 2 | 0 | yes | unicli zlibrary search<br>unicli zlibrary info |

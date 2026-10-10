@@ -30,7 +30,7 @@ and the full PatentRecord schema.
 
 ---
 
-## Recipe 1 — Day-zero search with no API key
+## Recipe 1. Day-zero search with no API key
 
 **Intent.** A user just installed `@zenalexa/unicli` and wants patent hits
 for "neuromorphic computing" before configuring any office credentials. We
@@ -48,7 +48,7 @@ unicli patent search "neuromorphic computing" \
 
 **Expected stdout.** Fan-out hits both sources, reciprocal-rank fusion ranks
 the surviving rows, the meta-command writes a Markdown envelope to stdout.
-This is the _actual_ captured output (truncated to first 3 of 4 records):
+The following recorded sample shows the first 3 of 4 records.
 
 ```
 ---
@@ -93,19 +93,17 @@ attribute each hit.
 
 **Common errors.**
 
-- `PATENT_API_DEPRECATED` with HTTP 503 from `google-patents-web` — Google's
-  anti-bot gate has temporarily flagged your IP after a burst of automated
-  XHR requests. The 503 was observed live in this session after ~10 prior
-  requests in a few minutes. The meta-command transparently keeps results
-  from the second source; if you need Google specifically, wait a few
-  minutes between calls or run from a residential network.
-- `PATENT_NOT_FOUND` from both sources — your query may be too specific.
+- `PATENT_API_DEPRECATED` with HTTP 503 from `google-patents-web` indicates
+  that the source request failed. The meta-command retains results from
+  FreePatentsOnline. Read the source error before retrying; a source-side
+  verification page requires that source’s supported access flow.
+- `PATENT_NOT_FOUND` from both sources. Your query may be too specific.
   Drop quotes, broaden wording, or widen with `--sources all` once you have
   credentials configured.
 
 ---
 
-## Recipe 2 — Authenticated multi-source search
+## Recipe 2. Authenticated multi-source search
 
 **Intent.** You have free-tier API keys for USPTO Open Data Portal and EPO
 OPS. You want the higher-fidelity bibliographic records those offices
@@ -133,25 +131,25 @@ unicli patent search "lithium battery" \
 
 **Expected stdout.** A merged ranked list with `source_adapter` tagging
 each hit. When `USPTO_ODP_API_KEY` is unset the uspto rows are replaced
-with a per-source envelope entry; the meta-command keeps results from the
-other two sources rather than aborting.
+with a per-source envelope entry; the meta-command retains results from the
+other two sources and reports the source failure.
 
 **Common errors.**
 
-- `PATENT_AUTH_REQUIRED` (exit 77) — a key in `--sources` was not set.
+- `PATENT_AUTH_REQUIRED` (exit 77). A key in `--sources` was not set.
   Check `unicli patent doctor` for which adapters report
   `health: skipped` because of missing credentials, then export the env
   vars listed in [patent-research.md § Setup](./patent-research.md#setup).
-- `PATENT_RATE_LIMIT` (exit 75, `retryable: true`) — USPTO ODP enforces a
+- `PATENT_RATE_LIMIT` (exit 75, `retryable: true`). USPTO ODP enforces a
   60-call/minute window; the envelope's `retryable` field is `true` so
   agent loops should back off and retry.
 
 ---
 
-## Recipe 3 — Cross-jurisdiction family resolution
+## Recipe 3. Cross-jurisdiction family resolution
 
 **Intent.** You have an EP publication number and want every sibling in the
-DOCDB / INPADOC family — i.e. the same invention re-filed in other
+DOCDB / INPADOC family, representing the same invention re-filed in other
 jurisdictions.
 
 **Required env.** `EPO_OPS_CLIENT_ID` and `EPO_OPS_CLIENT_SECRET` are
@@ -164,7 +162,7 @@ unicli patent family EP3716153A1
 ```
 
 **Expected stdout.** The EPO Espacenet broker returns the simple family
-members for the input publication number — one row per jurisdiction.
+members for the input publication number, one row per jurisdiction.
 
 ```
 ---
@@ -187,15 +185,15 @@ surface: web
 
 **Common errors.**
 
-- `PATENT_INVALID_NUMBER` (exit 65) — the input did not carry a recognised
+- `PATENT_INVALID_NUMBER` (exit 65). The input did not carry a recognised
   two-letter country prefix. Family resolution needs a CC-prefixed number.
-- `PATENT_FAMILY_BROKER_DOWN` — EPO OPS returned an error AND the
+- `PATENT_FAMILY_BROKER_DOWN`. EPO OPS returned an error AND the
   home-office fallback also failed. Retry later or check
   `unicli patent doctor`.
 
 ---
 
-## Recipe 4 — AI-driven prior art
+## Recipe 4. AI-driven prior art
 
 **Intent.** You have a draft abstract and want a ranked list of prior art
 across multiple offices. The `prior-art` command fans out to PQAI (semantic
@@ -220,25 +218,25 @@ unicli patent prior-art \
   --top 20
 ```
 
-**Expected stdout.** A ranked deduped list. PQAI rows lead because semantic
-retrieval correlates with the query phrasing; BigQuery rows surface CPC-
-adjacent hits; EPO rows surface citation chains the keyword indices missed.
+**Expected stdout.** A ranked, deduplicated list from the available sources.
+Reciprocal-rank fusion combines each source’s ranking. Inspect
+`source_adapter` on each record to identify its origin.
 
 **Common errors.**
 
-- `PATENT_AUTH_REQUIRED` from `pqai` — the PQAI tier is paid; if you only
+- `PATENT_AUTH_REQUIRED` from `pqai`. The PQAI tier is paid; if you only
   want a free-tier sweep, run with `--sources epo,google-patents-bq`.
-- `PATENT_RATE_LIMIT` from `google-patents-bq` — BigQuery sandbox is 10 GB
+- `PATENT_RATE_LIMIT` from `google-patents-bq`. BigQuery sandbox is 10 GB
   / month; a heavy abstract scan can exhaust it. Switch to a billed
   project or fall back to keyword search on `google-patents-web`.
 
 ---
 
-## Recipe 5 — Health-check before a long-running batch
+## Recipe 5. Health-check before a long-running batch
 
 **Intent.** Before kicking off a batch job that walks 10K publication
 numbers, confirm every adapter you plan to use reports healthy. `doctor`
-returns an envelope row per adapter so an agent can grep for `health:
+returns an envelope row per adapter so an agent can grep for `health.
 ok` and short-circuit when a source is degraded.
 
 **Required env.** None for the probe itself; per-adapter env is what
@@ -250,9 +248,9 @@ controls whether each adapter reports `health: ok` versus `skipped`.
 unicli patent doctor
 ```
 
-**Expected stdout.** One row per registered patent adapter (today 20:
-the 18 originals plus the two keyless web adapters introduced here).
-This is the _actual_ captured prefix from this session:
+**Expected stdout.** One row per registered patent adapter. The recorded sample contains 20
+adapters, including the two keyless web sources.
+The following recorded sample shows the output prefix.
 
 ```
 ---
@@ -285,35 +283,30 @@ surface: web
 
 **How to interpret.**
 
-- `health: skipped` — the adapter does not expose a `health` probe yet, so
-  doctor only verified its registry presence. Treat as "available, not
-  load-tested."
-- `health: ok` — the adapter's `health` command returned successfully
-  against the live upstream. Safe to include in a batch.
-- `health: error` — adapter failed its own probe. Read the `detail`
+- `health: skipped`. The adapter has no `health` probe. Doctor checked its registry
+  presence. Run a source command to verify live access.
+- `health: ok`. The adapter's `health` command returned successfully
+  against the live upstream. This checks the probe operation; a batch can
+  encounter its own credentials, quotas, and input limits.
+- `health: error`. The adapter failed its own probe. Read the `detail`
   field; the most common cause is an unset credential env var, and the
   fix is the env-var name listed in `detail.suggestion`.
 
 **Common errors.**
 
-- All adapters report `health: skipped` — that is the current shape of
-  the vertical, not an error. Health probes ship per-adapter as part of
-  ongoing work; the `doctor` command will surface real `ok` / `error`
-  results as adapters add `health` capabilities.
+- Adapters without a `health` capability report `health: skipped`. Run a source
+  command to verify live access. The `doctor` command reports `ok` or `error`
+  for adapters with health probes.
 
 ---
 
-## Appendix — Why two keyless adapters
+## Appendix. Why two keyless adapters
 
-We ship two keyless web adapters rather than one because their failure
-modes are largely independent. `google-patents-web` covers a richer
-relevance ranking and includes WO / EP / JP / CN family hints in the
-response, but trips Google's anti-bot gate after sustained automated use
-(returning HTTP 503 to `python-requests`-style traffic). `freepatentsonline-
-web` is slower and older but applies no rate gate that we have observed in
-this session; it works as the reliable fallback when Google is hot. Run
-both in parallel and let the meta-command's reciprocal-rank fusion choose
-the survivors.
+The two keyless adapters query different public sources. Google Patents can
+return WO, EP, JP, and CN family hints. FreePatentsOnline contributes its own
+records. Running both lets the meta-command retain one source’s results when
+the other fails, then combine the available rankings through reciprocal-rank
+fusion. Source failures remain visible in the response.
 
 For deeper context on the structured error envelope shape and how to
 write a self-repairing agent loop against it, read

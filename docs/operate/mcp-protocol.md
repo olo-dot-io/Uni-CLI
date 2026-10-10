@@ -1,6 +1,6 @@
 # MCP Protocol Eras
 
-Uni-CLI serves two MCP protocol eras from one handler:
+Uni-CLI serves two MCP protocol eras from one handler.
 
 | Era    | Revision     | Request identity                                                  | Lifecycle                                            | Async work                                                                           |
 | ------ | ------------ | ----------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
@@ -13,7 +13,7 @@ request continues through the established compatibility path.
 
 ## Modern request contract
 
-Every modern request includes:
+Every modern request includes.
 
 ```json
 {
@@ -39,10 +39,10 @@ the standard `nextCursor`; clients pass it back as `cursor` until absent. The
 `unicli_list` meta-tool defaults to 200 commands, accepts `limit` from 1 to
 256, and returns `next_cursor` with stable `total_sites`, `total_commands`, and
 `returned_commands` fields. Cursors are opaque and list-specific. Malformed,
-foreign-list, and out-of-range cursors fail explicitly rather than restarting
-at page zero.
+foreign-list, and out-of-range cursors return an explicit error. Restart the
+listing with an omitted cursor when a fresh first page is needed.
 
-Modern Streamable HTTP additionally validates:
+Modern Streamable HTTP additionally validates.
 
 - `MCP-Protocol-Version` against request `_meta`;
 - `Mcp-Method` against the JSON-RPC method;
@@ -64,7 +64,7 @@ that import that constant or initialize normally keep their behavior.
 ## Modern Tasks extension
 
 `server/discover` advertises `io.modelcontextprotocol/tasks`. A client enables
-it independently on each request:
+it independently on each request.
 
 ```json
 {
@@ -93,7 +93,7 @@ both call the same capture primitive.
 The creation result is a flat `resultType: "task"` object. The record is
 atomically persisted before that handle is returned. `tasks/get` is a pure
 lookup and includes the terminal tool result or JSON-RPC error. A tool result
-with `isError: true` is still a completed task because it is a valid tool-level
+with `isError: true` is a completed task because it is a valid tool-level
 result. `tasks/update` accepts responses to outstanding mid-flight input
 requests. `tasks/cancel` acknowledges cancellation intent immediately and does
 not claim that cooperative execution has already stopped.
@@ -110,8 +110,8 @@ The modern extension never exposes the legacy `{task: ...}` wrapper,
 
 ## Principal isolation and capacity
 
-Authenticated task and session ownership uses the verified OAuth principal,
-not caller-provided metadata. Unauthenticated durable task ids remain
+Authenticated task and session ownership uses the verified OAuth principal
+and excludes caller-provided metadata. Unauthenticated durable task ids remain
 high-entropy bearer handles. Active modern tasks are admitted atomically up to
 32 per principal and 200 for the server. Streamable HTTP sessions are limited
 to 25 per principal and 100 globally. Completion and cancellation release task
@@ -120,14 +120,12 @@ capacity; session expiry or removal releases session capacity.
 Principal exhaustion returns JSON-RPC `-32603` with HTTP `429` for session
 admission and does not prevent another principal from using its share. Global
 session exhaustion returns HTTP `503`. The two levels are checked separately,
-so one client cannot monopolize the server while the global ceiling still
-protects the process. Concurrent boundary tests create work at each exact
+preserving each principal’s share and bounding process-wide admission. Concurrent boundary tests create work at each exact
 limit, verify cross-principal admission, and then verify release.
 
 ## Subscription streams
 
-Modern `subscriptions/listen` is a real long-lived request rather than a
-one-shot response. Stdio writes notifications on the shared output stream and
+Modern `subscriptions/listen` stays open to deliver notifications. Stdio writes notifications on the shared output stream and
 tags every one with the listen request id. Streamable HTTP keeps that POST's SSE
 response open, disables proxy buffering, emits periodic comment keep-alives,
 and serializes writes with backpressure.
@@ -139,8 +137,7 @@ currently static, so their list-change filters are omitted. The Tasks
 extension adds `taskIds`; accepted ids are restricted to tasks visible to the
 same bearer handle or OAuth principal. Every `notifications/tasks` message
 contains the complete detailed task state. A task-to-subscription inverted
-index makes delivery proportional to matching subscribers rather than every
-open stream.
+index limits delivery work to matching subscribers.
 
 Closing an HTTP stream or cancelling the stdio request removes the
 subscription without a stale final response. Server shutdown sends the
