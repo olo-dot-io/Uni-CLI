@@ -8,16 +8,22 @@
 
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { posix, win32 } from "node:path";
+import { dirname, posix, resolve, win32 } from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
+const BUNDLED_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+);
 
 export type SidecarName = "unicli-uia" | "unicli-atspi";
 
 export interface ResolvedSidecarBinary {
   command: string;
-  source: "env" | "package" | "user" | "path";
+  source: "env" | "bundled" | "package" | "user" | "path";
   packageName?: string;
 }
 
@@ -28,6 +34,7 @@ interface ResolveSidecarOptions {
   exists?: (path: string) => boolean;
   requireResolve?: (id: string) => string;
   homeDir?: string;
+  bundledRoot?: string;
 }
 
 export function resolveSidecarBinary(
@@ -47,6 +54,16 @@ export function resolveSidecarBinary(
   }
 
   if (packageName) {
+    const bundledCommand = joinPathForPlatform(
+      platform,
+      opts.bundledRoot ?? BUNDLED_ROOT,
+      "packages",
+      "sidecars",
+      packageName.slice("@zenalexa/".length),
+      executableName(name, platform),
+    );
+    if (exists(bundledCommand))
+      return { command: bundledCommand, source: "bundled", packageName };
     const command = resolvePackageCommand(
       name,
       platform,

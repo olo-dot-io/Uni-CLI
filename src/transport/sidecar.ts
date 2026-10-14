@@ -27,6 +27,8 @@ export interface SidecarCallOptions {
   cancellationDelivery?: CancellationDelivery;
   timeoutMs?: number;
   validate?(value: unknown): void;
+  /** Native input was dispatched; the final response still owns verification. */
+  onDispatchAck?(): void;
 }
 
 export interface SidecarClient {
@@ -74,6 +76,7 @@ interface SidecarResponse<T = unknown> {
   ok: boolean;
   data?: T;
   error?: SidecarError;
+  progress?: "dispatch_ack";
 }
 
 type PendingCallState = "queued" | "active" | "cancelling" | "settled";
@@ -86,6 +89,8 @@ interface PendingCall {
   cancellationDelivery: CancellationDelivery;
   timeoutMs: number;
   validate?: (value: unknown) => void;
+  onDispatchAck?: () => void;
+  dispatchAcknowledged: boolean;
   frameDispatched: boolean;
   abortListener?: () => void;
   deadline?: ReturnType<typeof setTimeout>;
@@ -203,6 +208,8 @@ export class StdioSidecarClient implements SidecarClient {
         cancellationDelivery: options.cancellationDelivery ?? "contained",
         timeoutMs,
         validate: options.validate,
+        onDispatchAck: options.onDispatchAck,
+        dispatchAcknowledged: false,
         frameDispatched: false,
         state: "queued",
         resolve: (value) => resolve(value as T),
@@ -339,6 +346,15 @@ export class StdioSidecarClient implements SidecarClient {
     }
 
     if (generation.initializing) {
+      if (response.progress !== undefined) {
+        void this.retireGeneration(
+          generation,
+          new SidecarProtocolError(
+            "sidecar initialization cannot acknowledge a mutation",
+          ),
+        );
+        return;
+      }
       this.handleInitializationResponse(generation, response);
       return;
     }
@@ -363,6 +379,27 @@ export class StdioSidecarClient implements SidecarClient {
       return;
     }
 
+    if (response.progress === "dispatch_ack") {
+      if (
+        call.cancellationDelivery !== "outcome-ambiguous" ||
+        call.dispatchAcknowledged
+      ) {
+        void this.retireGeneration(
+          generation,
+          new SidecarProtocolError(
+            "unexpected sidecar dispatch acknowledgement",
+          ),
+        );
+        return;
+      }
+      call.dispatchAcknowledged = true;
+      try {
+        call.onDispatchAck?.();
+      } catch (error) {
+        void this.retireGeneration(generation, error);
+      }
+      return;
+    }
     if (response.ok && call.validate) {
       try {
         call.validate(response.data);
@@ -636,7 +673,14 @@ function parseSidecarResponse(line: string): SidecarResponse {
   if (!isRecord(value)) {
     throw new SidecarProtocolError("sidecar response must be an object");
   }
-  const allowedKeys = new Set(["id", "kind", "ok", "data", "error"]);
+  const allowedKeys = new Set([
+    "id",
+    "kind",
+    "ok",
+    "data",
+    "error",
+    "progress",
+  ]);
   if (Object.keys(value).some((key) => !allowedKeys.has(key))) {
     throw new SidecarProtocolError("sidecar response contained unknown fields");
   }
@@ -663,6 +707,12 @@ function parseSidecarResponse(line: string): SidecarResponse {
         "failed sidecar response requires one structured error and no data",
       );
     }
+  }
+  if (
+    "progress" in value &&
+    (value.progress !== "dispatch_ack" || value.ok !== true || "data" in value)
+  ) {
+    throw new SidecarProtocolError("invalid sidecar progress response");
   }
   return value as unknown as SidecarResponse;
 }

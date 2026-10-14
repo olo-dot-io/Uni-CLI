@@ -6,6 +6,107 @@ import { join } from "node:path";
 import { StdioSidecarClient } from "../../../src/transport/sidecar.js";
 
 describe("StdioSidecarClient", () => {
+  it("keeps dispatch acknowledgement distinct from final verification", async () => {
+    const client = new StdioSidecarClient(process.execPath, [
+      "-e",
+      `
+      require("node:readline").createInterface({ input: process.stdin }).on("line", line => {
+        const req = JSON.parse(line);
+        process.stdout.write(JSON.stringify({ id: req.id, kind: req.kind, ok: true, progress: "dispatch_ack" }) + "\\n");
+        process.stdout.write(JSON.stringify({ id: req.id, kind: req.kind, ok: true, data: { status: "confirmed" } }) + "\\n");
+      });
+    `,
+    ]);
+    const observed: string[] = [];
+    try {
+      const result = await client.call<{ status: string }>(
+        "paste",
+        {},
+        {
+          cancellationDelivery: "outcome-ambiguous",
+          onDispatchAck: () => observed.push("dispatched"),
+        },
+      );
+      observed.push(result.status);
+      expect(observed).toEqual(["dispatched", "confirmed"]);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("contains cancellation after acknowledgement and never replays the mutation", async () => {
+    const client = new StdioSidecarClient(process.execPath, [
+      "-e",
+      `
+      require("node:readline").createInterface({ input: process.stdin }).on("line", line => {
+        const req = JSON.parse(line);
+        if (req.kind === "paste") {
+          process.stdout.write(JSON.stringify({ id: req.id, kind: req.kind, ok: true, progress: "dispatch_ack" }) + "\\n");
+        } else {
+          process.stdout.write(JSON.stringify({ id: req.id, kind: req.kind, ok: true, data: { fresh: true } }) + "\\n");
+        }
+      });
+    `,
+    ]);
+    const controller = new AbortController();
+    const reason = new Error("cancel after native dispatch");
+    let acknowledgements = 0;
+    try {
+      await expect(
+        client.call(
+          "paste",
+          {},
+          {
+            signal: controller.signal,
+            cancellationDelivery: "outcome-ambiguous",
+            onDispatchAck() {
+              acknowledgements++;
+              controller.abort(reason);
+            },
+          },
+        ),
+      ).rejects.toMatchObject({
+        name: "OperationOutcomeAmbiguousError",
+        cancellationReason: reason,
+      });
+      await expect(client.call("capture", {})).resolves.toEqual({
+        fresh: true,
+      });
+      expect(acknowledgements).toBe(1);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("rejects a dispatch acknowledgement for a different active request", async () => {
+    const client = new StdioSidecarClient(process.execPath, [
+      "-e",
+      `
+      require("node:readline").createInterface({ input: process.stdin }).on("line", line => {
+        const req = JSON.parse(line);
+        process.stdout.write(JSON.stringify({ id: req.id + 1, kind: req.kind, ok: true, progress: "dispatch_ack" }) + "\\n");
+      });
+    `,
+    ]);
+    let acknowledgements = 0;
+    try {
+      await expect(
+        client.call(
+          "paste",
+          {},
+          {
+            cancellationDelivery: "outcome-ambiguous",
+            onDispatchAck() {
+              acknowledgements++;
+            },
+          },
+        ),
+      ).rejects.toMatchObject({ outcome_ambiguous: true });
+      expect(acknowledgements).toBe(0);
+    } finally {
+      await client.close();
+    }
+  });
   it("kills and awaits an active sidecar before cancellation returns", async () => {
     const directory = mkdtempSync(join(tmpdir(), "unicli-sidecar-cancel-"));
     const markerPath = join(directory, "late-mutation.txt");

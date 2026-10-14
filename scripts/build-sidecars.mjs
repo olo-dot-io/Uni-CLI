@@ -72,6 +72,7 @@ for (const entry of selected) {
   if (!skipBuild) {
     run("cargo", [
       "build",
+      "--locked",
       "--target",
       entry.target,
       "--profile",
