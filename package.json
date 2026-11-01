@@ -285,7 +285,7 @@
   "devDependencies": {
     "@ai-sdk/openai-compatible": "^3.0.67",
     "@changesets/cli": "^3.0.3",
-    "@chenglou/pretext": "0.0.9",
+    "@chenglou/pretext": "1.0.0",
     "@types/chrome": "^0.3.5",
     "@types/html-to-text": "^9.0.4",
     "@types/node": "^26.6.5",
@@ -297,14 +297,14 @@
     "ai": "^7.0.137",
     "esbuild": "^0.28.2",
     "lefthook": "^2.2.1",
-    "lenis": "1.3.26",
+    "lenis": "1.3.27",
     "markdown-it-mathjax": "npm:markdown-it-mathjax3@5.2.0",
     "oxlint": "^1.87.0",
     "prettier": "3.9.10",
     "shell-quote": "^1.12.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitepress": "2.0.0-alpha.20",
+    "vitepress": "2.0.0-alpha.21",
     "vitest": "^5.0.3"
   },
   "allowScripts": {
