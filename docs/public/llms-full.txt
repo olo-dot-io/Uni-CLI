@@ -3134,7 +3134,7 @@ intent
   → repair or next action
 ```
 
-The same operation can be discovered from the CLI, MCP, ACP, generated agent assets, and the documentation catalog.
+The same operation can be discovered from the CLI, MCP, ACP, generated agent assets, and the documentation catalog. `architecture tree` and `architecture audit` inspect the nine executable control stages (`intent`, `select`, `govern`, `act`, `observe`, `diagnose`, `repair-or-reroute`, `deliver`, and `expose`). `unicli search` and `unicli do` rank catalog operations. `unicli do` remains plan-only so the caller selects and runs the next command explicitly.
 
 ## Catalog
 
@@ -3155,7 +3155,7 @@ Exact site ids and maintained aliases resolve through hash indexes. Multi-word n
 
 The bilingual inverted index combines BM25 and TF-IDF. Entity, workflow, operation-family, and feasibility signals refine the lexical candidate set. Hard capability requirements remove incompatible commands before bounded top-k selection. Every result includes `ranking.lexical_score`, `ranking.semantic_score`, `ranking.prior`, and named `ranking.signals` so an agent can inspect the selection basis.
 
-Host-discovered macOS commands reuse the index derived from the current inventory snapshot. Inventory refresh, configuration changes, and explicit invalidation update the registry, affected compiled command keys, and derived index together. User-authored commands retain priority over host inventory in both runtime and manifest discovery. Resident CLI consumers and MCP share the inventory owner.
+Host-discovered macOS commands reuse the index derived from the current inventory snapshot. Inventory refresh, configuration changes, and explicit invalidation update the registry, affected compiled command keys, and derived index together. User-authored commands retain priority over host inventory in both runtime and manifest discovery. Resident CLI consumers and MCP share the inventory owner. Hardware and algorithm vocabulary resolves the unified `ai` commands directly during discovery.
 
 ## Evidence retrieval
 
@@ -3163,7 +3163,17 @@ Host-discovered macOS commands reuse the index derived from the current inventor
 
 Reciprocal rank fusion counts the best rank for each distinct source and canonical result. Repeated rows from one source contribute once. The requested relevance or timestamp ordering is applied before bounded top-k selection. Equal ordering keys retain their first-seen order. Partial failures remain attached to usable results. An all-source failure retains provider causes and retry routes; successful sources with no matches produce `empty_result`.
 
-The evidence reader follows redirects and records the original and final URLs. HTML cleanup selects one semantic content root for both Markdown and plain text. Turndown owns Markdown rendering, and `html-to-text` owns plain-text rendering so literal punctuation and code survive conversion. The evidence envelope owns output truncation and link resolution.
+The evidence reader follows redirects and records the original and final URLs. HTML cleanup selects one semantic content root for both Markdown and plain text. Turndown owns Markdown rendering, and `html-to-text` owns plain-text rendering so literal punctuation and code survive conversion. The evidence envelope owns output truncation and link resolution. Binary responses, PDFs, and anti-bot challenge responses fail closed or route through a declared artifact reader such as `scholar-artifacts.read-pdf`. GitHub issue and pull-request URLs route to the structured `gh.issue-thread` and `gh.pr-thread` readers.
+
+AI primary-source intelligence combines three registry-backed layers in `src/commands/ai.ts`, `src/commands/ai-landscape.ts`, and `src/commands/ai-content.ts`. The first layer is a maintained primary-source directory for laboratories, hardware vendors, model hubs, runtimes, research venues, benchmarks, and embodied or world-model projects, exposed without network I/O by `ai landscape`. The second layer defines practitioner role profiles (`ai profiles`) that map daily concerns to source refs and query scopes. The third layer runs `ai search`, `ai pulse`, and `ai read` across compatible native adapters, including direct `modelscope`, `opencsg`, and `bluesky` APIs alongside `openreview`, `openalex`, `crossref`, `acl-anthology`, social, video, and community commands. Every invocation reads current upstream state and retains provider timestamps, provenance, partial failures, and authentication state. Authenticated sources remain opt-in (`--include-auth`). Exact vendor or entity queries select matched maintainer domains before profile fallback. Hosted papers, models, and datasets retain platform provenance under `hosted-artifact` and `hosting_platform`. Paper results set `next_read` to `unicli scholar read`.
+
+### Scholarly routing
+
+- `scholar search` runs each source through its queryable search command (`findScholarQueryableSearchCommand` in `src/commands/scholar.ts`), so the arXiv source uses `arxiv search` and its rows match the query.
+- `--year` takes one year or an inclusive range such as `2024-2026` (`src/adapters/_shared/year-range.ts`). The arXiv, Crossref, OpenAlex, PubMed and Semantic Scholar searches apply the range in their own APIs. DBLP applies a single year.
+- An empty answer is a definite miss (`*_NOT_FOUND`, exit 66) only when every source answered. When a source failed and no rows came back, the envelope code is `SCHOLAR_SOURCES_UNAVAILABLE` with each source's state in `details.sources`, exit 75 when the failure is retryable and 69 otherwise (`exitScholarEmpty`).
+- arXiv matches word stems, so `arxiv search` keeps every row the API returned and ranks exact term and phrase matches first. `--sort` accepts `relevance`, `newest` (submission date) and `updated`.
+- OpenReview (`api2.openreview.net`) answers anonymous `POST /notes/search` requests. `GET /notes`, forum pages and PDFs answer only sessions holding a clearance cookie or a login. `openreview paper`, `venue` and `reviews` read notes through the search API first (by `ids`, by `venueid` or `invitation`, and by the reply group `<domain>/Submission<N>`) and use `GET /notes` as the second route (`readNotes` in `src/adapters/openreview/papers.ts`). Venue listings include rejected and withdrawn submissions with the decision in `venue`.
 
 ## Operation contract
 
@@ -3220,13 +3230,13 @@ The Browser Runtime Broker owns providers, profile partitions, agent sessions, t
 - foreground existing Chrome
 - configured remote provider
 
-State reads produce refs tied to a snapshot and target. Later actions resolve those refs through the same session.
+State reads produce refs tied to a snapshot and target. Later actions resolve those refs through the same session. Auto-start launches the broker from the compiled `runtime-broker-main.js` artifact in the installed distribution or repository build output (`src/browser/runtime-launch.ts`). Missing source-mode builds return a structured error with the `npm run build` recovery command.
 
 ## Desktop and visual runtime
 
 `compute` routes actions to available providers on macOS, Windows, Linux, Electron, or an attached visual driver. Snapshot responses describe the selected provider and return refs for follow-up actions. Health commands report the setup supported by the current host.
 
-Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/guide/browser-desktop#native-coordinate-driver) describes platform setup and observation lifetimes.
+Cua Driver owns native coordinate conversion and capture mapping. Uni-CLI forwards screenshot-pixel coordinates, capture identity, and the provider session recorded with the observation. Combined native capture binds the exact window identity across snapshot and screenshot (`src/compute/capture.ts`). Compute element refs persist in target-sharded atomic records under a recoverable file-store lock (`src/transport/refs.ts` and `src/runtime/recoverable-file-lock.ts`). Empty latest buckets publish tombstones so older refs remain retired. Driver idle cleanup owns the provider session lifetime. `unicli doctor compute --providers --install` uses the official installer for a missing driver and probes the installed contract again. The [compute guide](/guide/browser-desktop#native-coordinate-driver) describes platform setup and observation lifetimes.
 
 ## Result envelope
 
@@ -3263,7 +3273,14 @@ The upstream Agent proposes and edits the candidate. Uni-CLI owns execution evid
 
 ## Protocol projections
 
-The native CLI exposes the complete runtime. MCP offers compact, deferred, and expanded tool profiles. ACP and other generated surfaces project selected operations from the same catalog. `unicli mcp health` reports the exact MCP profile and tool counts on the installed version.
+The native CLI exposes the complete runtime. MCP offers compact, deferred, and expanded tool profiles. Fixed core commands can appear in MCP discovery and return `unsupported_surface` with their native CLI invocation when called through `unicli_run` (`src/mcp/handler.ts`). ACP and other generated surfaces project selected operations from the same catalog. `unicli mcp health` reports the exact MCP profile and tool counts on the installed version.
+
+## Design decisions
+
+Local diagnostics and release packaging enforce two additional runtime contracts.
+
+- Local diagnostic logs write bounded owner-only JSONL under `~/.unicli/logs/events/` and serialize reads, pruning, and appends with the shared recoverable file-store lock (`src/runtime/local-event-log.ts` and `src/runtime/recoverable-file-lock.ts`). Lock election uses hard-linked owner records, inode-checked dead-owner reclamation, and no-follow bounded reads. Process source identity (`src/runtime/source-identity.ts`) records the packaged `build-identity.json` artifact or verifies two agreeing worktree content passes before labeling a dirty digest.
+- Packed releases enforce production dependency closure in `scripts/release-truth-check.ts`. Every external package loaded through a literal non-test `src/` module specifier, including `import`, `export`, `import = require()`, dynamic `import()`, `createRequire`, and `require.resolve` aliases (such as `@xmldom/xmldom` in `pubmed` and `rxiv`), is declared in `package.json` `dependencies` or `optionalDependencies` with a non-dev `package-lock.json` entry. The checker uses TypeScript symbol binding to exclude lexical shadows, type-only imports, Node built-ins, relative modules, and package self-imports. It also rejects mutable loader reassignments, root manifest-to-lock mismatches, and unbundled Windows process-owner sidecars.
 
 ## Source map
 
