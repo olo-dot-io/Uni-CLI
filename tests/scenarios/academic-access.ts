@@ -17,6 +17,7 @@ for (const key of Object.keys(process.env)) {
 
 const failures: string[] = [];
 const requests: URL[] = [];
+const requestBodies: Array<Record<string, unknown>> = [];
 let revision = 1;
 let unavailable = true;
 let dblpChallenge = false;
@@ -92,6 +93,7 @@ const json = (body: unknown, cache?: string): Response =>
 globalThis.fetch = async (input, init) => {
   const url = new URL(String(input));
   requests.push(url);
+  requestBodies.push(init?.body ? JSON.parse(String(init.body)) : {});
   if (url.hostname === "openrouter.ai") {
     if (url.pathname.includes("/model/"))
       return json(
@@ -207,10 +209,18 @@ globalThis.fetch = async (input, init) => {
         '{"name":"TokenExpiredError","message":"Token has expired"}',
         { status: 401, headers: { "content-type": "application/json" } },
       );
-    if (url.pathname === "/notes/search")
+    if (url.pathname === "/notes/search") {
+      // the API's POST search: text search by `term`, notes by `ids`
+      const search = requestBodies.at(-1) ?? {};
+      if (Array.isArray(search.ids))
+        return json({
+          notes: [paper, legacyPaper].filter((note) =>
+            (search.ids as string[]).includes(note.id),
+          ),
+        });
       return json({
         notes:
-          url.searchParams.get("source") === "papers"
+          search.source === "forum"
             ? [paper, legacyPaper]
             : [
                 {
@@ -221,6 +231,7 @@ globalThis.fetch = async (input, init) => {
                 paper,
               ],
       });
+    }
     return json({ notes: [paper] });
   }
   throw new Error(`Unexpected scenario request ${url}`);
@@ -559,13 +570,13 @@ try {
     limit: 2,
     offset: 2,
   });
-  const searchUrl = requests.at(-1)!;
+  const searchBody = requestBodies.at(-1)!;
   if (
     requests.length !== reviewStart + 1 ||
-    searchUrl.searchParams.get("source") !== "papers" ||
-    searchUrl.searchParams.get("limit") !== "2" ||
-    searchUrl.searchParams.get("offset") !== "2" ||
-    searchUrl.searchParams.has("type")
+    searchBody.source !== "forum" ||
+    searchBody.limit !== 2 ||
+    searchBody.offset !== 2 ||
+    "type" in searchBody
   )
     failures.push("OpenReview search retained overfetching or forum hydration");
   if (
