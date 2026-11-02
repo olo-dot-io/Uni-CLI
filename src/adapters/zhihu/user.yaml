@@ -22,6 +22,8 @@ pipeline:
 
   - map:
       name: ${{ item.name || '' }}
+      url_token: ${{ item.url_token || '' }}
+      id: ${{ item.id || '' }}
       headline: ${{ item.headline || '' }}
       followers: ${{ item.follower_count || 0 }}
       following: ${{ item.following_count || 0 }}
@@ -29,7 +31,18 @@ pipeline:
       answers: ${{ item.answer_count || 0 }}
       articles: ${{ item.articles_count || 0 }}
 
-columns: [name, headline, followers, following, voteup, answers, articles]
+columns:
+  [
+    name,
+    url_token,
+    id,
+    headline,
+    followers,
+    following,
+    voteup,
+    answers,
+    articles,
+  ]
 
 # schema-v2 metadata — injected by `unicli migrate schema-v2`
 capabilities: ["http.fetch"]
