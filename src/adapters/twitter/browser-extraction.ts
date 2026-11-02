@@ -78,6 +78,29 @@ export interface TwitterTrendRow {
   url: string;
 }
 
+/** X removes articles that leave the viewport, so rows accumulate across scrolls until `limit` rows are collected or the timeline ends. */
+export async function collectTweets(
+  page: IPage,
+  limit: number,
+): Promise<TwitterTweetRow[]> {
+  const rows = new Map<string, TwitterTweetRow>();
+  // X loads the next page after the scroll settles; three scrolls in a row that add nothing end the timeline.
+  for (let idle = 0; rows.size < limit && idle < 3;) {
+    const before = rows.size;
+    const batch = await page.evaluate(buildTwitterTweetExtractionScript(limit));
+    for (const row of Array.isArray(batch)
+      ? (batch as TwitterTweetRow[])
+      : []) {
+      if (!rows.has(row.id)) rows.set(row.id, row);
+    }
+    idle = rows.size === before ? idle + 1 : 0;
+    if (rows.size < limit && idle < 3) {
+      await page.autoScroll({ maxScrolls: 1, delay: 1500 });
+    }
+  }
+  return [...rows.values()].slice(0, limit);
+}
+
 export async function browserSearchTweets(
   page: IPage,
   query: string,
@@ -88,14 +111,9 @@ export async function browserSearchTweets(
     `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`,
     "search",
   );
-  await page.autoScroll({ maxScrolls: 2, delay: 1000 });
+  await page.autoScroll({ maxScrolls: 1, delay: 1000 });
   await assertTwitterReadable(page, "search");
-
-  const raw = await page.evaluate(buildTwitterTweetExtractionScript(limit));
-
-  const rows = Array.isArray(raw)
-    ? (raw as TwitterTweetRow[]).slice(0, limit)
-    : [];
+  const rows = await collectTweets(page, limit);
   if (rows.length > 0) return rows;
   throw socialEmptyError(
     "twitter",

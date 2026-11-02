@@ -6,7 +6,7 @@
  * @breaks  X/Twitter DOM or URL-shape drift can make timeline rows empty or misidentify tweet authors.
  * @invariants User timeline commands normalize @handles and emit the standard tweet row shape.
  * @side-effects Navigates the browser to X/Twitter profile, list, and list-management pages.
- * @perf     Scrolls at most two viewport batches for read commands.
+ * @perf     Scrolls until the requested rows are collected or a scroll adds none.
  * @concurrency Browser session state is shared by the command runtime.
  * @test     src/adapters/twitter/lists-extra.test.ts
  * @stability stable
@@ -20,6 +20,7 @@ import { socialEmptyError } from "../../social/browser-errors.js";
 import { assertTwitterReadable, gotoTwitterPage } from "./browser-state.js";
 import {
   buildTwitterTweetExtractionScript,
+  collectTweets,
   TWEET_COLUMNS,
 } from "./browser-extraction.js";
 
@@ -46,13 +47,10 @@ export async function extractTweets(
   command: string,
 ): Promise<Record<string, unknown>[]> {
   await gotoTwitterPage(page, normalizeTwitterPageUrl(url), command);
-  await page.autoScroll({ maxScrolls: 2, delay: 1000 });
+  await page.autoScroll({ maxScrolls: 1, delay: 1000 });
   await assertTwitterReadable(page, command);
-  const rows = await page.evaluate(buildTwitterTweetExtractionScript(limit));
-  const parsedRows = Array.isArray(rows)
-    ? (rows as Record<string, unknown>[])
-    : [];
-  if (parsedRows.length > 0) return parsedRows;
+  const rows = await collectTweets(page, limit);
+  if (rows.length > 0) return rows as unknown as Record<string, unknown>[];
   throw socialEmptyError(
     "twitter",
     command,
