@@ -473,6 +473,7 @@ export class OpenReviewHttpClient {
     label: string,
     accept = "application/json",
     signal?: AbortSignal,
+    payload?: unknown,
   ): Promise<Response | undefined> {
     const url = /^https?:\/\//i.test(pathOrUrl)
       ? pathOrUrl
@@ -489,7 +490,17 @@ export class OpenReviewHttpClient {
       await scheduleRequest(this.rpm, this.sleep, signal);
       let response: Response;
       try {
-        response = await this.fetchWithDeadline(url, { headers }, signal);
+        response = await this.fetchWithDeadline(
+          url,
+          payload === undefined
+            ? { headers }
+            : {
+                method: "POST",
+                headers: { ...headers, "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              },
+          signal,
+        );
       } catch (error) {
         throwIfAborted(signal);
         if (attempt >= this.maxRetries) {
@@ -589,12 +600,14 @@ export class OpenReviewHttpClient {
     path: string,
     label: string,
     signal?: AbortSignal,
+    body?: unknown,
   ): Promise<T | undefined> {
     const response = await this.request(
       path,
       label,
       "application/json",
       signal,
+      body,
     );
     if (!response) return undefined;
     try {

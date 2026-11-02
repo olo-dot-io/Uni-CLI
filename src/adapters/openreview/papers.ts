@@ -54,6 +54,8 @@ interface OpenReviewNote {
   pdate?: unknown;
   invitations?: unknown;
   signatures?: unknown;
+  number?: unknown;
+  domain?: unknown;
   content?: OpenReviewContent;
 }
 
@@ -441,8 +443,10 @@ async function fetchOpenReview(
   path: string,
   label: string,
   signal?: AbortSignal,
+  body?: unknown,
 ): Promise<NotesEnvelope> {
-  const json = (await client.json<NotesEnvelope>(path, label, signal)) ?? {};
+  const json =
+    (await client.json<NotesEnvelope>(path, label, signal, body)) ?? {};
   const errors = Array.isArray(json.errors) ? json.errors : [];
   const error = stringField(json.error);
   if (errors.length > 0 || error) {
@@ -460,6 +464,58 @@ async function fetchOpenReview(
     );
   }
   return json;
+}
+
+/** Words nearly every note contains: /notes/search needs terms to enumerate a venue or a forum. */
+const ANY_TERMS = [
+  "the",
+  "a",
+  "an",
+  "and",
+  "of",
+  "to",
+  "in",
+  "we",
+  "i",
+  "for",
+  "this",
+  "paper",
+  "thank",
+  "accept",
+  "reject",
+  "authors",
+  "learning",
+  "model",
+];
+
+/**
+ * Notes through POST /notes/search, which answers without the browser challenge that gates GET /notes,
+ * then through GET `path`, which answers sessions holding a clearance cookie or a login.
+ */
+async function readNotes(
+  client: OpenReviewHttpClient,
+  search: Record<string, unknown>,
+  path: string,
+  label: string,
+  signal?: AbortSignal,
+): Promise<OpenReviewNote[]> {
+  const found = await fetchOpenReview(
+    client,
+    "/notes/search",
+    label,
+    signal,
+    search,
+  )
+    .then(notesFromEnvelope)
+    .catch((error: unknown) => error);
+  if (Array.isArray(found) && found.length > 0) return found;
+  try {
+    return notesFromEnvelope(
+      await fetchOpenReview(client, path, label, signal),
+    );
+  } catch (error) {
+    throw found instanceof Error ? found : error;
+  }
 }
 
 function notesFromEnvelope(json: NotesEnvelope): OpenReviewNote[] {
@@ -533,13 +589,12 @@ async function fetchOpenReviewPaperRow(
   id: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const notes = notesFromEnvelope(
-    await fetchOpenReview(
-      client,
-      `/notes?id=${encodeURIComponent(id)}`,
-      `openreview paper ${id}`,
-      signal,
-    ),
+  const notes = await readNotes(
+    client,
+    { ids: [id] },
+    `/notes?id=${encodeURIComponent(id)}`,
+    `openreview paper ${id}`,
+    signal,
   );
   if (notes.length === 0)
     throw openReviewEmptyResult(`No OpenReview paper found with id "${id}".`);
@@ -626,20 +681,13 @@ cli({
       throw openReviewInvalidInput("openreview search query cannot be empty.");
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 50);
     const offset = requireOpenReviewOffset(kwargs.offset);
-    const params = new URLSearchParams({
-      term: query,
-      source: "papers",
-      content: "all",
-      group: "all",
-      limit: String(limit),
-      offset: String(offset),
-    });
     const notes = notesFromEnvelope(
       await fetchOpenReview(
         new OpenReviewHttpClient(),
-        `/notes/search?${params.toString()}`,
+        "/notes/search",
         "openreview search",
         context.signal,
+        { term: query, source: "forum", limit, offset },
       ),
     );
     requireOpenReviewSearchMatches(notes, query);
@@ -1034,19 +1082,34 @@ cli({
     const limit = requireOpenReviewLimit(kwargs.limit, 25, 200);
     const offset = requireOpenReviewOffset(kwargs.offset);
     const client = new OpenReviewHttpClient();
+    const query = await resolveOpenReviewVenueQuery(
+      client,
+      venue,
+      context.signal,
+    );
     const params = new URLSearchParams({
-      ...(await resolveOpenReviewVenueQuery(client, venue, context.signal)),
+      ...query,
       sort: "cdate:desc",
       limit: String(limit),
       offset: String(offset),
     });
-    const notes = notesFromEnvelope(
-      await fetchOpenReview(
-        client,
-        `/notes?${params.toString()}`,
-        `openreview venue ${venue}`,
-        context.signal,
-      ),
+    const notes = await readNotes(
+      client,
+      {
+        terms: ANY_TERMS,
+        source: "forum",
+        ...Object.fromEntries(
+          Object.entries(query).map(([key, value]) => [
+            key.replace(/^content\./, ""),
+            value,
+          ]),
+        ),
+        limit,
+        offset,
+      },
+      `/notes?${params.toString()}`,
+      `openreview venue ${venue}`,
+      context.signal,
     );
     if (notes.length === 0)
       throw openReviewEmptyResult(
@@ -1127,26 +1190,26 @@ cli({
       );
     }
     const client = new OpenReviewHttpClient();
-    const rootNotes = notesFromEnvelope(
-      await fetchOpenReview(
-        client,
-        `/notes?id=${encodeURIComponent(forum)}`,
-        `openreview paper ${forum}`,
-        context.signal,
-      ),
+    const rootNotes = await readNotes(
+      client,
+      { ids: [forum] },
+      `/notes?id=${encodeURIComponent(forum)}`,
+      `openreview paper ${forum}`,
+      context.signal,
     );
     const root = rootNotes[0];
     if (!root)
       throw openReviewEmptyResult(
         `No OpenReview forum found with id "${forum}".`,
       );
-    const replies = notesFromEnvelope(
-      await fetchOpenReview(
-        client,
-        `/notes?forum=${encodeURIComponent(forum)}&details=replies&limit=1000`,
-        `openreview reviews ${forum}`,
-        context.signal,
-      ),
+    // the replies of submission N live in the group <domain>/Submission<N>
+    const group = `${stringField(root.domain)}/Submission${numberField(root.number) ?? ""}`;
+    const replies = await readNotes(
+      client,
+      { terms: ANY_TERMS, group, limit: 1000 },
+      `/notes?forum=${encodeURIComponent(forum)}&details=replies&limit=1000`,
+      `openreview reviews ${forum}`,
+      context.signal,
     );
     return mapReviewThreadRows(root, replies, forum, maxLength);
   },
