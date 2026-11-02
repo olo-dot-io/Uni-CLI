@@ -549,7 +549,13 @@ async function resolveOpenReviewVenueQuery(
   }
 
   if (!groupId) {
-    return { [raw.includes("/-/") ? "invitation" : "content.venue"]: raw };
+    if (raw.includes("/-/")) return { invitation: raw };
+    // A path without spaces is a venue id (`ICLR.cc/2027/Conference/Submission`); a phrase is a venue label.
+    return {
+      [raw.includes("/") && !/\s/.test(raw)
+        ? "content.venueid"
+        : "content.venue"]: raw,
+    };
   }
   const groupEnvelope = await client.json<GroupsEnvelope>(
     `/groups?id=${encodeURIComponent(groupId)}`,
