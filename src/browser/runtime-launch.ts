@@ -6,7 +6,7 @@
  * @breaks      BrowserRuntimeLaunchError when the compiled broker artifact is absent, the broker cannot become ready inside the caller budget, or its abandoned child cannot be contained; invalid/auth/protocol endpoints fail closed.
  * @invariants  Auto-start executes a compiled broker artifact from the installed dist tree or repository build output, never a development-only transpiler; one real in-flight child attempt is shared per runtime root while each caller retains an independent startup budget and operation timeout; readiness belongs to a candidate only when the broker status PID matches its command PID; a candidate exit is not a global failure because it can mean another process won the kernel lock; observing another winner contains the local candidate before returning; a short waiter cannot retire a launch used by a longer waiter; the last unsuccessful waiter removes and terminates the exact owned process tree before another spawn; provider processes remain lazy.
  * @side-effects May spawn and terminate one owned broker process tree and create its owner-only runtime endpoint files.
- * @perf        Existing brokers require one status IPC; cold start polls locally at 50 ms intervals.
+ * @perf        Existing brokers require one status IPC; an idle broker reporting another package version is retired and replaced; cold start polls locally at 50 ms intervals.
  * @concurrency In-process callers share one promise; cross-process races are resolved by the broker's exclusive lock and converge on one endpoint.
  * @test        tests/unit/browser-runtime-launch-lifecycle.test.ts, tests/integration/browser-runtime-autostart.test.ts, tests/integration/browser-native-host.test.ts
  * @stability   experimental
@@ -25,7 +25,9 @@ import {
   BrokerTransportError,
   BrowserRuntimeBrokerClient,
   browserBrokerPaths,
+  retireBrowserRuntimeBroker,
 } from "./runtime-transport.js";
+import { VERSION } from "../constants.js";
 import {
   spawnOwnedProcess,
   terminateOwnedProcess,
@@ -97,8 +99,18 @@ async function ensureBroker(
   });
   try {
     const status = await brokerStatus(client);
-    const spawned = await reconcileBrokerLaunch(runtimeKey, status.broker_pid);
-    return { client, status, spawned };
+    // An idle broker from another install loads modules that an upgrade may have removed.
+    if (
+      status.package_version === VERSION ||
+      status.sessions.sessions.length > 0
+    ) {
+      const spawned = await reconcileBrokerLaunch(
+        runtimeKey,
+        status.broker_pid,
+      );
+      return { client, status, spawned };
+    }
+    await retireBrowserRuntimeBroker({ runtimeRoot: options.runtimeRoot });
   } catch (error) {
     if (!isUnavailable(error)) throw error;
   }

@@ -2,6 +2,7 @@
  * Twitter bookmarks — fetch authenticated user's bookmarks via GraphQL.
  */
 
+import { TWEET_COLUMNS } from "./browser-extraction.js";
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
 import {
@@ -19,7 +20,7 @@ cli({
   description: "Get your bookmarked tweets",
   domain: "x.com",
   strategy: Strategy.COOKIE,
-  columns: ["id", "author", "text", "likes", "retweets", "views", "url"],
+  columns: TWEET_COLUMNS,
   func: async (_page, kwargs) => {
     const count = Math.min((kwargs.limit as number) ?? 20, 50);
 

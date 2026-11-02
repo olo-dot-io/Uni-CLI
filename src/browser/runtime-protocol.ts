@@ -376,6 +376,8 @@ export interface BrowserBrokerStatus {
   product: typeof BROWSER_BROKER_PRODUCT;
   protocol: typeof BROWSER_BROKER_PROTOCOL;
   version: typeof BROWSER_BROKER_PROTOCOL_VERSION;
+  /** Absent on brokers older than 1.4.2. */
+  package_version?: string;
   runtime_id: string;
   broker_pid: number;
   uptime_ms: number;

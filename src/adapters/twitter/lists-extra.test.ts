@@ -52,6 +52,7 @@ describe("twitter user timeline commands", () => {
         "id",
         "author",
         "text",
+        "created_at",
         "likes",
         "retweets",
         "views",

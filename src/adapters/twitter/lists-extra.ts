@@ -18,16 +18,12 @@ import type { IPage } from "../../types.js";
 import { clickFirst, intArg, js, str } from "../_shared/browser-tools.js";
 import { socialEmptyError } from "../../social/browser-errors.js";
 import { assertTwitterReadable, gotoTwitterPage } from "./browser-state.js";
+import {
+  buildTwitterTweetExtractionScript,
+  TWEET_COLUMNS,
+} from "./browser-extraction.js";
 
-const TWEET_COLUMNS = [
-  "id",
-  "author",
-  "text",
-  "likes",
-  "retweets",
-  "views",
-  "url",
-];
+export { buildTwitterTweetExtractionScript };
 
 function normalizeTwitterPageUrl(url: string): string {
   const parsed = new URL(url);
@@ -41,42 +37,6 @@ function normalizeTwitterPageUrl(url: string): string {
 
 function twitterUserTimelineUrl(user: string): string {
   return `https://x.com/${encodeURIComponent(user.replace(/^@/, ""))}`;
-}
-
-export function buildTwitterTweetExtractionScript(limit: number): string {
-  return `(() => {
-    const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
-    const rows = [];
-    const seen = new Set();
-    for (const article of document.querySelectorAll('article[data-testid="tweet"]')) {
-      const link = article.querySelector('a[href*="/status/"]');
-      const href = link?.getAttribute('href') || '';
-      const iStatusMatch = href.match(/^\\/i\\/status\\/(\\d+)/);
-      const userStatusMatch = href.match(/^\\/(?!i\\/status\\/)([^/?#]+)\\/status\\/(\\d+)/);
-      const id = iStatusMatch?.[1] || userStatusMatch?.[2] || '';
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      const fallbackAuthor = clean(article.querySelector('[data-testid="User-Name"]')?.textContent || '').split('@').pop() || 'unknown';
-      const author = userStatusMatch ? decodeURIComponent(userStatusMatch[1]) : fallbackAuthor;
-      const text = Array.from(article.querySelectorAll('[data-testid="tweetText"]'))
-        .map((el) => clean(el.textContent || ''))
-        .filter(Boolean)
-        .join('\\n');
-      const metric = (name) => clean(article.querySelector('[data-testid="' + name + '"]')?.textContent || '');
-      if (!text) continue;
-      rows.push({
-        id,
-        author,
-        text,
-        likes: metric('like'),
-        retweets: metric('retweet'),
-        views: clean(article.querySelector('a[href$="/analytics"]')?.textContent || ''),
-        url: 'https://x.com' + href.split('?')[0],
-      });
-      if (rows.length >= ${js(limit)}) break;
-    }
-    return rows;
-  })()`;
 }
 
 export async function extractTweets(

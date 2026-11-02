@@ -125,6 +125,12 @@ export function createBrowserInvocationScope(
       `Invocation context partition ${input.context.profile_partition_id} conflicts with ${profilePartitionId}`,
     );
   }
+  // The managed broker is a long-lived process, so the caller's profile selection travels in the scope.
+  const profileId =
+    input.profileId ??
+    (provider === "managed" && input.ephemeral !== true
+      ? process.env.UNICLI_BROWSER_PROFILE_ID?.trim() || undefined
+      : undefined);
   return Object.freeze({
     context: Object.freeze({ ...input.context }),
     provider,
@@ -132,8 +138,8 @@ export function createBrowserInvocationScope(
     profilePartitionId,
     isolated: input.isolated === true,
     ephemeral: input.ephemeral === true,
-    ...(input.profileId
-      ? { profileId: normalizeIdentity(input.profileId, "profile") }
+    ...(profileId
+      ? { profileId: normalizeIdentity(profileId, "profile") }
       : {}),
     ...(input.signal ? { signal: input.signal } : {}),
   });

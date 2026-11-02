@@ -290,9 +290,10 @@ interface TweetData {
   id: string;
   author: string;
   text: string;
+  created_at: string;
   likes: number;
   retweets: number;
-  views: string;
+  views: number;
   url: string;
 }
 
@@ -331,12 +332,14 @@ export function extractTweet(
   const retweetCount = (legacy?.retweet_count as number) ?? 0;
 
   const views = tweetResult.views as Record<string, unknown> | undefined;
-  const viewCount = (views?.count as string) ?? "0";
+  const viewCount = Number((views?.count as string) ?? 0);
+  const created = legacy?.created_at as string | undefined;
 
   return {
     id: restId,
     author: screenName,
     text: fullText,
+    created_at: created ? new Date(created).toISOString() : "",
     likes: favoriteCount,
     retweets: retweetCount,
     views: viewCount,

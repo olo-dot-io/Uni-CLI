@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { VERSION } from "../../../src/constants.js";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createBrowserInvocationContext } from "../../../src/browser/invocation-context.js";
@@ -1267,6 +1268,7 @@ function status(
     product: "unicli",
     protocol: "unicli-browser-runtime",
     version: BROWSER_BROKER_PROTOCOL_VERSION,
+    package_version: VERSION,
     runtime_id: runtimeId,
     broker_pid: process.pid,
     uptime_ms: 1,

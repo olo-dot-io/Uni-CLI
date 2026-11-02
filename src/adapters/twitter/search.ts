@@ -15,7 +15,7 @@
 
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
-import { browserSearchTweets } from "./browser-extraction.js";
+import { browserSearchTweets, TWEET_COLUMNS } from "./browser-extraction.js";
 import type { IPage } from "../../types.js";
 
 cli({
@@ -40,7 +40,7 @@ cli({
       description: "Number of tweets",
     },
   ],
-  columns: ["id", "author", "text", "likes", "retweets", "views", "url"],
+  columns: TWEET_COLUMNS,
   operation_effect: "read",
   execution_operator: "browser-protocol",
   retrieval: {

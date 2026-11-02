@@ -4,6 +4,7 @@
  * Requires the target user's numeric ID (use `unicli twitter profile <username>` to find it).
  */
 
+import { TWEET_COLUMNS } from "./browser-extraction.js";
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
 import {
@@ -29,7 +30,7 @@ cli({
       description: "User numeric ID",
     },
   ],
-  columns: ["id", "author", "text", "likes", "retweets", "views", "url"],
+  columns: TWEET_COLUMNS,
   func: async (_page, kwargs) => {
     const userId = String(kwargs.user_id);
     const count = Math.min((kwargs.limit as number) ?? 20, 50);

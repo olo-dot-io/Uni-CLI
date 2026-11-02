@@ -14,6 +14,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { VERSION } from "../constants.js";
 
 import {
   ChromeBrowserProvider,
@@ -158,6 +159,7 @@ export class BrowserRuntimeBroker {
       product: BROWSER_BROKER_PRODUCT,
       protocol: BROWSER_BROKER_PROTOCOL,
       version: BROWSER_BROKER_PROTOCOL_VERSION,
+      package_version: VERSION,
       runtime_id: this.runtimeId,
       broker_pid: process.pid,
       uptime_ms: this.now() - this.startedAtMs,

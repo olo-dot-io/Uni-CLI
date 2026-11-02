@@ -30,9 +30,10 @@ interface TweetRow {
   id: string;
   author: string;
   text: string;
+  created_at: string;
   likes: number;
   retweets: number;
-  views: string;
+  views: number;
   url: string;
 }
 
@@ -107,6 +108,7 @@ const THREAD_COLUMNS = [
   "parent_id",
   "author",
   "text",
+  "created_at",
   "likes",
   "retweets",
   "views",
