@@ -7,7 +7,7 @@
 - 栏目: 项目
 - 上级: 项目 (/zh/ARCHITECTURE)
 
-当前版本：v1.5.0 — Artemis · Chari。
+当前版本：v1.5.1 — Artemis · Chari。
 
 静态目录包含 <!-- STATS:site_count -->338<!-- /STATS --> 个站点。
 

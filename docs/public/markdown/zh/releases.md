@@ -15,6 +15,7 @@
 
 | 版本                | 日期       | 代号                          | 完整差异                                                                  |
 | ------------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------- |
+| [v1.5.1](#v151)     | 2026-11-02 | Artemis · Chari               | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.0...v1.5.1)     |
 | [v1.5.0](#v150)     | 2026-11-02 | Artemis · Chari               | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.1...v1.5.0)     |
 | [v1.4.1](#v141)     | 2026-11-02 | Artemis · Watkins             | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.0...v1.4.1)     |
 | [v1.4.0](#v140)     | 2026-11-02 | Artemis · Watkins             | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.3.0...v1.4.0)     |
@@ -84,6 +85,17 @@
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [比较](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                           |
+
+<a id="v151"></a>
+
+## v1.5.1 · 2026-11-02 · Artemis · Chari
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.5.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.5.1) · [与上一版本比较](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.0...v1.5.1)
+
+### Patch Changes
+
+- 949c55f: - A client that finds the broker shutting down waits for it to exit and starts a new one. Two clients that start together right after an upgrade no longer fail with `browser_broker_shutting_down` while the first retires the old broker.
+  - A command that fails before its first pipeline step (step `-1`) no longer prints a `[harden] [local-log]` warning: the local event log records steps from 0 and omits the step otherwise.
 
 <a id="v150"></a>
 
