@@ -11,6 +11,7 @@ import { format, detectFormat } from "../output/formatter.js";
 import { type OutputFormat } from "../types.js";
 import type { AgentContext } from "../output/envelope.js";
 import type { ManifestArg } from "./manifest.js";
+import { jsonSchemaType } from "../core/argument-type.js";
 
 export type Io = {
   stdout: (text: string) => void;
@@ -44,23 +45,6 @@ export function isOutputFormat(value: string): value is OutputFormat {
 
 export function isHelpToken(value: string): boolean {
   return value === "-h" || value === "--help" || value === "help";
-}
-
-export function jsonSchemaType(type: ManifestArg["type"]): string | string[] {
-  switch (type) {
-    case "str[]":
-      return "array";
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "str-or-int":
-      return ["string", "integer"];
-    case "bool":
-      return "boolean";
-    default:
-      return "string";
-  }
 }
 
 export function argsToJsonSchema(args: ManifestArg[]): Record<string, unknown> {

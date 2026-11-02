@@ -49,6 +49,7 @@ import type {
   CoreDiscoveryArg,
   CoreDiscoveryCommand,
 } from "../discovery/core-catalog.js";
+import { jsonSchemaType, type JsonSchemaType } from "./argument-type.js";
 
 export type CommandSafetyClass = "read" | "auth_read" | "write" | "destructive";
 
@@ -64,14 +65,7 @@ export interface CommandContractIdentity {
 }
 
 export interface CommandContractInputProperty {
-  type:
-    | "string"
-    | "array"
-    | "integer"
-    | "number"
-    | "boolean"
-    | ["number", "null"]
-    | ["string", "integer"];
+  type: JsonSchemaType;
   items?: { type: "string" };
   description?: string;
   default?: unknown;
@@ -246,26 +240,6 @@ export interface BuildManifestCommandContractInput {
 
 type CommandContractArg = AdapterArg | CoreDiscoveryArg;
 
-function jsonTypeForArg(
-  arg: CommandContractArg,
-): CommandContractInputProperty["type"] {
-  switch (arg.type) {
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "bool":
-      return "boolean";
-    case "str[]":
-      return "array";
-    case "str-or-int":
-      return ["string", "integer"];
-    case "str":
-    default:
-      return "string";
-  }
-}
-
 function buildInputSchema(
   args: readonly CommandContractArg[],
 ): CommandContractInputSchema {
@@ -274,7 +248,7 @@ function buildInputSchema(
 
   for (const arg of args) {
     const property: CommandContractInputProperty = {
-      type: jsonTypeForArg(arg),
+      type: jsonSchemaType(arg.type),
     };
     if (arg.type === "str[]") property.items = { type: "string" };
     if (arg.description !== undefined) property.description = arg.description;

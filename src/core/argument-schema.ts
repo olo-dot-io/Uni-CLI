@@ -14,6 +14,7 @@
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { jsonSchemaType } from "./argument-type.js";
 
 export interface ArgumentDefinition {
   readonly name: string;
@@ -81,23 +82,6 @@ function getAjv(): InstanceType<AjvCtor> {
   });
   addFormatsFn(ajvSingleton, { mode: "full" });
   return ajvSingleton;
-}
-
-function jsonSchemaType(type: ArgumentDefinition["type"]): string | string[] {
-  switch (type) {
-    case "str[]":
-      return "array";
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "str-or-int":
-      return ["string", "integer"];
-    case "bool":
-      return "boolean";
-    default:
-      return "string";
-  }
 }
 
 export function buildArgumentJsonSchema(

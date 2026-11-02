@@ -60,6 +60,7 @@ import type {
   OutputFormat,
   OutputSchema,
 } from "../types.js";
+import { jsonSchemaType } from "../core/argument-type.js";
 
 interface JsonSchemaProperty {
   type: string | string[];
@@ -93,24 +94,6 @@ export interface DescribeResult {
   payload: Record<string, unknown>;
   exit: number;
   error?: AgentError;
-}
-
-/** Map command-arg type tokens to JSON Schema `type` strings. */
-function jsonSchemaType(t: DescribeArg["type"]): string | string[] {
-  switch (t) {
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "bool":
-      return "boolean";
-    case "str[]":
-      return "array";
-    case "str-or-int":
-      return ["string", "integer"];
-    default:
-      return "string";
-  }
 }
 
 /** Build a JSON Schema draft-2020-12 document from adapter args. */

@@ -13,6 +13,7 @@
  */
 
 import type { AdapterCommand } from "../types.js";
+import { jsonSchemaType } from "../core/argument-type.js";
 
 // ── JSON Schema Types ───────────────────────────────────────────────────────
 
@@ -41,28 +42,6 @@ export interface JsonSchemaObject {
 
 // ── Type Mapping ────────────────────────────────────────────────────────────
 
-/**
- * Map adapter `arg.type` to JSON Schema primitive.
- * Defaults to "string" for unknown/missing — safer than failing the build.
- */
-export function jsonTypeFor(t: string | undefined): string | string[] {
-  switch (t) {
-    case "str[]":
-      return "array";
-    case "int":
-      return "integer";
-    case "float":
-      return "number";
-    case "str-or-int":
-      return ["string", "integer"];
-    case "bool":
-      return "boolean";
-    case "str":
-    default:
-      return "string";
-  }
-}
-
 // ── Schema Builders ─────────────────────────────────────────────────────────
 
 /**
@@ -82,7 +61,7 @@ export function buildInputSchema(cmd: AdapterCommand): JsonSchemaObject {
   for (const a of cmd.adapterArgs ?? []) {
     if (a.name === "limit") continue;
     const prop: JsonSchemaProperty = {
-      type: jsonTypeFor(a.type),
+      type: jsonSchemaType(a.type),
       description: a.description,
     };
     if (a.type === "str[]") prop.items = { type: "string" };

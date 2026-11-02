@@ -18,6 +18,7 @@ import {
   compileArgumentSchema,
   type CompiledArgumentSchema,
 } from "../core/argument-schema.js";
+import { jsonSchemaType } from "../core/argument-type.js";
 
 export type ComputeArgType =
   "str" | "str[]" | "int" | "float" | "str-or-int" | "bool";
@@ -1223,7 +1224,7 @@ export function buildComputeInputSchema(
   const required: string[] = [];
   for (const arg of args) {
     const property: ComputeJsonSchemaProperty = {
-      type: jsonTypeForComputeArg(arg.type),
+      type: jsonSchemaType(arg.type),
     };
     if (arg.type === "str[]") property.items = { type: "string" };
     if (arg.description !== undefined) property.description = arg.description;
@@ -1263,15 +1264,4 @@ export function readForeignComputeRefOwner(ref: string): string | undefined {
   }
   if (ref.includes(":") && !isComputeStableRefNamespace(ref)) return "unknown";
   return undefined;
-}
-
-function jsonTypeForComputeArg(
-  type: ComputeArgType | undefined,
-): string | string[] {
-  if (type === "str[]") return "array";
-  if (type === "str-or-int") return ["string", "integer"];
-  if (type === "int") return "integer";
-  if (type === "float") return "number";
-  if (type === "bool") return "boolean";
-  return "string";
 }
