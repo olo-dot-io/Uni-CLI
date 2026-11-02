@@ -53,7 +53,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.4.0 · Artemis · Watkins.
+Local release: v1.4.1 · Artemis · Watkins.
 
 ## Agent Index
 

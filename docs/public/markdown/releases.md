@@ -15,6 +15,7 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.4.1](#v141)     | 2026-11-02 | Artemis · Watkins             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.0...v1.4.1)     |
 | [v1.4.0](#v140)     | 2026-11-02 | Artemis · Watkins             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.3.0...v1.4.0)     |
 | [v1.3.0](#v130)     | 2026-10-10 | Artemis · Rubins              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.1...v1.3.0)     |
 | [v1.2.1](#v121)     | 2026-08-21 | Artemis · Wiseman             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.0...v1.2.1)     |
@@ -82,6 +83,17 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v141"></a>
+
+## v1.4.1 · 2026-11-02 · Artemis · Watkins
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.4.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.4.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.0...v1.4.1)
+
+### Patch Changes
+
+- be46a8c: Update the production dependencies fast-uri (3.1.9), re2js (2.9.1), undici (8.12.3 and 7.30.1) and zod (4.6.7) past their published security advisories.
+- Publish the 1.4.0 changes to npm. The v1.4.0 tag stopped at the release gate's production dependency audit, so 1.4.1 is the first npm release that carries them.
 
 <a id="v140"></a>
 

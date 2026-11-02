@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1] — 2026-11-02 — Artemis · Watkins
+
+### Patch Changes
+
+- be46a8c: Update the production dependencies fast-uri (3.1.9), re2js (2.9.1), undici (8.12.3 and 7.30.1) and zod (4.6.7) past their published security advisories.
+- Publish the 1.4.0 changes to npm. The v1.4.0 tag stopped at the release gate's production dependency audit, so 1.4.1 is the first npm release that carries them.
+
 ## [1.4.0] — 2026-11-02 — Artemis · Watkins
 
 ### Minor Changes
