@@ -26,6 +26,7 @@ import {
   scoreRetrievalCandidate,
   splitRetrievalDisjunction,
 } from "../../engine/retrieval-relevance.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 const ARXIV_BASE = "https://export.arxiv.org/api/query";
 const CATEGORY_RE = /^[a-z]+(?:-[a-z]+)*(?:\.[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)?$/;
@@ -216,10 +217,23 @@ function requireArxivSearchQuery(value: unknown): string {
   return query;
 }
 
-function requireArxivSort(value: unknown): "relevance" | "submittedDate" {
-  const sort = String(value ?? "relevance");
-  if (sort !== "relevance" && sort !== "submittedDate") {
-    throw new Error("arxiv sort must be relevance or submittedDate.");
+const ARXIV_SORTS = new Map([
+  ["relevance", "relevance"],
+  ["newest", "submittedDate"],
+  ["submitted", "submittedDate"],
+  ["submittedDate", "submittedDate"],
+  ["updated", "lastUpdatedDate"],
+  ["lastUpdatedDate", "lastUpdatedDate"],
+] as const);
+
+function requireArxivSort(
+  value: unknown,
+): "relevance" | "submittedDate" | "lastUpdatedDate" {
+  const sort = ARXIV_SORTS.get(String(value ?? "relevance") as never);
+  if (!sort) {
+    throw new Error(
+      `arxiv sort must be one of ${[...ARXIV_SORTS.keys()].join(", ")}.`,
+    );
   }
   return sort;
 }
@@ -270,8 +284,14 @@ export async function searchArxivPapers(
   const limit = requireArxivLimit(kwargs.limit, 10);
   const sort = requireArxivSort(kwargs.sort);
   const candidateLimit = Math.min(Math.max(limit * 3, 20), 50);
+  const years = parseYearRange(kwargs.year);
+  const dates = years
+    ? ` AND submittedDate:[${years.from}01010000 TO ${years.to}12312359]`
+    : "";
   const params = new URLSearchParams({
-    search_query: compileArxivSearchQuery(query),
+    search_query: dates
+      ? `(${compileArxivSearchQuery(query)})${dates}`
+      : compileArxivSearchQuery(query),
     max_results: String(candidateLimit),
     sortBy: sort,
     sortOrder: "descending",
@@ -282,62 +302,52 @@ export async function searchArxivPapers(
   const alternatives = splitRetrievalDisjunction(query);
   const analyses = alternatives.map(analyzeRetrievalQuery);
   const analysis = analyzeRetrievalQuery(query);
-  const isDisjunctive = alternatives.length > 1;
-  let relevant = entries
-    .map((entry, sourceIndex) => ({
-      entry,
-      sourceIndex,
-      relevance: scoreRetrievalAlternatives(
-        analyses,
-        {
-          title: entry.title,
-          summary: entry.abstract,
-          url: entry.url,
-        },
-        { requireAllTerms: true },
-      ),
-    }))
-    .filter(({ relevance }) => relevance.qualifies);
-  if (
-    !isDisjunctive &&
+  const fields = (entry: (typeof entries)[number]) => ({
+    title: entry.title,
+    summary: entry.abstract,
+    url: entry.url,
+  });
+  const phraseHit = (entry: (typeof entries)[number], phrases: string[]) =>
+    phrases.some(
+      (phrase) =>
+        scoreRetrievalCandidate(
+          { ...analysis, phrases: [phrase] },
+          fields(entry),
+          {
+            requireAllTerms: true,
+          },
+        ).qualifies,
+    );
+  const phraseLayers =
+    alternatives.length === 1 &&
     analysis.phrases.length === 0 &&
     analysis.terms.length > 1
-  ) {
-    const phraseLayers = [
-      [analysis.terms.join(" ")],
-      analysis.terms.slice(0, -1).map((term, index) => {
-        return `${term} ${analysis.terms[index + 1]}`;
-      }),
-    ];
-    for (const phrases of phraseLayers) {
-      const phraseMatches = relevant.filter(({ entry }) =>
-        phrases.some(
-          (phrase) =>
-            scoreRetrievalCandidate(
-              { ...analysis, phrases: [phrase] },
-              {
-                title: entry.title,
-                summary: entry.abstract,
-                url: entry.url,
-              },
-              { requireAllTerms: true },
-            ).qualifies,
-        ),
-      );
-      if (phraseMatches.length > 0) {
-        relevant = phraseMatches;
-        break;
-      }
-    }
-  }
-  if (sort === "relevance") {
-    relevant.sort(
-      (left, right) =>
-        right.relevance.score - left.relevance.score ||
-        left.sourceIndex - right.sourceIndex,
-    );
-  }
-  return searchRows(relevant.slice(0, limit).map(({ entry }) => entry));
+      ? [
+          [analysis.terms.join(" ")],
+          analysis.terms
+            .slice(0, -1)
+            .map((term, index) => `${term} ${analysis.terms[index + 1]}`),
+        ]
+      : [];
+  const layer =
+    phraseLayers.find((phrases) =>
+      entries.some((entry) => phraseHit(entry, phrases)),
+    ) ?? [];
+  // arXiv matches stems ("noise" finds "noisy"): rows without an exact term match rank last and stay in the answer.
+  const ranked = entries.map((entry, sourceIndex) => {
+    const relevance = scoreRetrievalAlternatives(analyses, fields(entry), {
+      requireAllTerms: true,
+    });
+    const tier = !relevance.qualifies ? 0 : phraseHit(entry, layer) ? 2 : 1;
+    return { entry, sourceIndex, score: relevance.score, tier };
+  });
+  ranked.sort(
+    (left, right) =>
+      right.tier - left.tier ||
+      (sort === "relevance" ? right.score - left.score : 0) ||
+      left.sourceIndex - right.sourceIndex,
+  );
+  return searchRows(ranked.slice(0, limit).map(({ entry }) => entry));
 }
 
 function arxivPdfUrl(id: string): string {
@@ -516,9 +526,10 @@ cli({
       name: "sort",
       type: "str",
       default: "relevance",
-      choices: ["relevance", "submittedDate"],
-      description: "Sort by relevance or newest submission",
+      choices: [...ARXIV_SORTS.keys()],
+      description: "relevance, newest (submission date) or updated",
     },
+    YEAR_RANGE_ARG,
   ],
   columns: ["title", "authors", "published", "id"],
   operation_effect: "read",

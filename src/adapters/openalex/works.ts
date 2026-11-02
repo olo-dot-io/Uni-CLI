@@ -15,6 +15,7 @@
 
 import { cli, Strategy } from "../../registry.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 const OPENALEX_BASE = "https://api.openalex.org";
 const OPENALEX_TIMEOUT_MS = 15_000;
@@ -401,6 +402,7 @@ cli({
       description: "Search text",
     },
     { name: "limit", type: "int", default: 20, description: "Max works" },
+    YEAR_RANGE_ARG,
   ],
   columns: [
     "rank",
@@ -427,8 +429,12 @@ cli({
   func: async (_page, kwargs) => {
     const query = requireOpenAlexString(kwargs.query, "query");
     const limit = requireOpenAlexLimit(kwargs.limit);
+    const years = parseYearRange(kwargs.year);
+    const filter = years
+      ? `&filter=from_publication_date:${years.from}-01-01,to_publication_date:${years.to}-12-31`
+      : "";
     const body = (await fetchOpenAlex(
-      `${OPENALEX_BASE}/works?search=${encodeURIComponent(query)}&per-page=${limit}&select=${SEARCH_SELECT}`,
+      `${OPENALEX_BASE}/works?search=${encodeURIComponent(query)}&per-page=${limit}&select=${SEARCH_SELECT}${filter}`,
       "openalex search",
     )) as { results?: OpenAlexWork[] };
     const rows = mapOpenAlexSearchRows(

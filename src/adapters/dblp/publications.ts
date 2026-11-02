@@ -20,6 +20,7 @@ import {
   fetchTextResource,
   type TextResource,
 } from "../../engine/steps/fetch-text.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 const DBLP_ORIGIN = "https://dblp.org";
 const DBLP_TIMEOUT_MS = 15_000;
@@ -501,6 +502,7 @@ cli({
       default: 0,
       description: "Pagination offset",
     },
+    YEAR_RANGE_ARG,
   ],
   columns: [
     "rank",
@@ -518,10 +520,16 @@ cli({
     const query = requireDblpQuery(kwargs.query);
     const limit = requireDblpLimit(kwargs.limit, 20, 100);
     const offset = requireDblpOffset(kwargs.offset);
+    const years = parseYearRange(kwargs.year);
+    // CompleteSearch filters one year (year:2026:); a range is checked by the caller
+    const q =
+      years?.from === years?.to && years
+        ? `${query} year:${years.from}:`
+        : query;
     let body: DblpSearchBody;
     try {
       body = await fetchDblpJson(
-        `/search/publ/api?q=${encodeURIComponent(query)}&format=json&h=${limit}&f=${offset}`,
+        `/search/publ/api?q=${encodeURIComponent(q)}&format=json&h=${limit}&f=${offset}`,
         "dblp search",
         context.signal,
       );

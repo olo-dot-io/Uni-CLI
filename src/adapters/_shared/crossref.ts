@@ -70,6 +70,8 @@ export interface CrossrefSearchOptions {
   publisher?: string;
   issn?: string;
   year?: number;
+  /** inclusive last year of a range that starts at `year` */
+  yearTo?: number;
   type?: string;
   issues?: string[];
   volumeIssues?: Array<{ volume: string; issue: string }>;
@@ -713,7 +715,7 @@ export async function searchCrossrefWorks(
   if (options.issn) filters.push(`issn:${options.issn}`);
   if (options.year !== undefined) {
     filters.push(`from-pub-date:${options.year}-01-01`);
-    filters.push(`until-pub-date:${options.year}-12-31`);
+    filters.push(`until-pub-date:${options.yearTo ?? options.year}-12-31`);
   }
   if (options.type) filters.push(`type:${options.type}`);
   if (filters.length > 0) params.set("filter", filters.join(","));
@@ -727,7 +729,10 @@ export async function searchCrossrefWorks(
     .map((item) => mapCrossrefItem(item, source))
     .filter(
       (record) =>
-        (options.year === undefined || record.year === options.year) &&
+        (options.year === undefined ||
+          (record.year !== undefined &&
+            record.year >= options.year &&
+            record.year <= (options.yearTo ?? options.year))) &&
         (options.issues === undefined ||
           (record.issue !== undefined &&
             options.issues.some(

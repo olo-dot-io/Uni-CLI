@@ -25,6 +25,7 @@ import {
   ccfCrossrefContainerQuery,
   resolveCcfConference,
 } from "../ccf/resolve.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 export { mapCrossrefItem, requireCrossrefDoi } from "../_shared/crossref.js";
 export type { CrossrefItem } from "../_shared/crossref.js";
@@ -57,6 +58,7 @@ cli({
   args: [
     { name: "query", type: "str", required: true, positional: true },
     { name: "limit", type: "int", default: 20, minimum: 1, maximum: 100 },
+    YEAR_RANGE_ARG,
   ],
   columns: ["id", "title", "authors", "year", "venue", "doi", "source_url"],
   operation_effect: "read",
@@ -73,7 +75,15 @@ cli({
     const query = requireCrossrefSearchQuery(kwargs.query);
     const limit = Number(kwargs.limit ?? 20);
     return requireCrossrefSearchRows(
-      await searchCrossrefWorks({ query, limit }, "crossref"),
+      await searchCrossrefWorks(
+        {
+          query,
+          limit,
+          year: parseYearRange(kwargs.year)?.from,
+          yearTo: parseYearRange(kwargs.year)?.to,
+        },
+        "crossref",
+      ),
       query,
     );
   },

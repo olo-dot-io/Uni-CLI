@@ -16,6 +16,7 @@
 import { cli, Strategy } from "../../registry.js";
 import type { ScholarlyWorkRecord } from "../../types/scholarly.js";
 import { readScholarPdf } from "../scholar-artifacts/pdf-read.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 const GRAPH_API = "https://api.semanticscholar.org/graph/v1";
 const RECOMMENDATIONS_API =
@@ -311,6 +312,7 @@ cli({
       minLength: 1,
     },
     { name: "limit", type: "int", default: 20, minimum: 1, maximum: 100 },
+    YEAR_RANGE_ARG,
   ],
   columns: [
     "id",
@@ -342,8 +344,10 @@ cli({
       100,
       "search limit",
     );
+    const years = parseYearRange(kwargs.year);
+    const year = years ? `&year=${years.from}-${years.to}` : "";
     const body = (await fetchS2(
-      `/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=${encodeURIComponent(FIELDS)}`,
+      `/paper/search?query=${encodeURIComponent(query)}&limit=${limit}&fields=${encodeURIComponent(FIELDS)}${year}`,
       "semantic-scholar search",
     )) as { data?: S2Paper[] };
     return rows(body.data);

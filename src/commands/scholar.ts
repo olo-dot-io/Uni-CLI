@@ -23,6 +23,10 @@ import {
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { makeCtx } from "../output/envelope.js";
+import {
+  parseYearRange,
+  type YearRange,
+} from "../adapters/_shared/year-range.js";
 import { detectFormat, format } from "../output/formatter.js";
 import { ExitCode, Strategy } from "../types.js";
 import type {
@@ -160,6 +164,12 @@ export function findScholarCommandByCapability(
   const matches = Object.entries(adapter.commands).filter(([, command]) =>
     (command.capabilities ?? []).includes(capability),
   );
+  // a search needs a command that takes the query (arxiv `search`, not the YAML `trending` that registers first)
+  const queryable =
+    capability === "scholar.search"
+      ? findScholarQueryableSearchCommand(adapter)
+      : undefined;
+  if (queryable) return queryable;
   if (
     capability === "scholar.pdf" ||
     capability === "scholar.code" ||
@@ -1553,21 +1563,24 @@ export function filterScholarSearchRecords(
   records: ScholarlyWorkRecord[],
   options: {
     query: string;
-    year?: number;
+    years?: YearRange;
     venue?: string;
     venueAlternatives?: readonly string[];
   },
 ): ScholarlyWorkRecord[] {
+  const { years } = options;
+  const dated = years
+    ? records.filter((record) => {
+        const year = record.conference_year ?? record.year;
+        return year !== undefined && year >= years.from && year <= years.to;
+      })
+    : records;
   const scoped = options.venue
-    ? filterScholarVenueRecords(records, {
-        year: options.year,
+    ? filterScholarVenueRecords(dated, {
         venue: options.venue,
         venueAlternatives: options.venueAlternatives,
       })
-    : filterScholarlyRecords(records, {
-        year: options.year,
-        requireWork: true,
-      });
+    : filterScholarlyRecords(dated, { requireWork: true });
   return filterSearchRelevance(scoped, options.query);
 }
 
@@ -1739,6 +1752,46 @@ function formatScholarOutcomeError(outcome: {
     : `${outcome.source}: ${code}`;
 }
 
+/** No rows: a definite miss only when every source answered; a failed source makes the empty answer an outage. */
+function exitScholarEmpty(
+  ctx: ReturnType<typeof makeCtx>,
+  fmt: OutputFormat,
+  outcomes: ReadonlyArray<{
+    source: string;
+    error?: { code: string; message: string; retryable?: boolean };
+  }>,
+  miss: { code: string; message: string; suggestion: string },
+): never {
+  const failed = outcomes.filter((outcome) => outcome.error);
+  const retryable = failed.some((outcome) =>
+    isRetryableScholarError(outcome.error),
+  );
+  ctx.error =
+    failed.length === 0
+      ? { ...miss, retryable: false }
+      : {
+          code: "SCHOLAR_SOURCES_UNAVAILABLE",
+          message: `${failed.length} of ${outcomes.length} sources failed and the others returned nothing: ${miss.message}`,
+          suggestion: `Per-source errors: ${failed.map(formatScholarOutcomeError).join("; ")}`,
+          retryable,
+          details: {
+            sources: outcomes.map((outcome) => ({
+              source: outcome.source,
+              state: outcome.error ? "failed" : "empty",
+              error: outcome.error?.code,
+            })),
+          },
+        };
+  console.error(format(null, undefined, fmt, ctx));
+  process.exit(
+    failed.length === 0
+      ? ExitCode.EMPTY_RESULT
+      : retryable
+        ? ExitCode.TEMP_FAILURE
+        : ExitCode.SERVICE_UNAVAILABLE,
+  );
+}
+
 function columns(detailed = false): string[] {
   return detailed
     ? [
@@ -1864,8 +1917,15 @@ async function runSearch(
     ? undefined
     : findCcfConferenceInText(query);
   const embeddedYear = query.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  const years =
+    parseYearRange(opts.year) ??
+    (embeddedYear
+      ? { from: Number(embeddedYear), to: Number(embeddedYear) }
+      : undefined);
+  // a single year as YYYY (int-typed sources coerce it) and a range as YYYY-YYYY
   const year =
-    yearOpt(opts.year) ?? (embeddedYear ? Number(embeddedYear) : undefined);
+    years &&
+    (years.from === years.to ? `${years.from}` : `${years.from}-${years.to}`);
   const venueResolution = opts.venue
     ? await resolveCcfVenue(opts.venue)
     : inferredConference
@@ -1885,33 +1945,39 @@ async function runSearch(
     ? inferredConferenceSearchTerms(query, inferredConference)
     : query;
   let corrections: string[] = [];
-  let outcomes = await Promise.all(
-    sources.map((source) =>
-      runAdapterCommand(
-        source,
-        "scholar.search",
-        {
-          query,
-          limit,
-          year,
-          venue,
-          conference: venue,
-        },
-        { signal, timeoutMs },
+  const searchAll = (text: string) =>
+    Promise.all(
+      sources.map((source) =>
+        runAdapterCommand(
+          source,
+          "scholar.search",
+          { query: text, limit, year, venue, conference: venue },
+          { signal, timeoutMs },
+        ),
       ),
-    ),
-  );
-  let fused = reciprocalRankFusion(
-    outcomes.map((outcome) =>
-      filterScholarSearchRecords(outcome.records, {
-        query: relevanceQuery,
-        year,
-        venue,
-        venueAlternatives,
-      }),
-    ),
-    { topN: limit },
-  );
+    );
+  const fuse = (outcomes: Awaited<ReturnType<typeof searchAll>>) =>
+    reciprocalRankFusion(
+      outcomes.map((outcome) =>
+        filterScholarSearchRecords(outcome.records, {
+          query: relevanceQuery,
+          years,
+          venue,
+          venueAlternatives,
+        }).map((record) =>
+          corrections.length > 0
+            ? {
+                ...record,
+                search_query: effectiveQuery,
+                query_corrections: corrections,
+              }
+            : record,
+        ),
+      ),
+      { topN: limit },
+    );
+  let outcomes = await searchAll(query);
+  let fused = fuse(outcomes);
   if (fused.length === 0 && !signal.aborted) {
     const corrected = await correctAcademicQuery(query);
     if (corrected.corrections.length > 0 && corrected.query !== query) {
@@ -1920,57 +1986,19 @@ async function runSearch(
         ? inferredConferenceSearchTerms(effectiveQuery, inferredConference)
         : effectiveQuery;
       corrections = corrected.corrections;
-      const correctedOutcomes = await Promise.all(
-        sources.map((source) =>
-          runAdapterCommand(
-            source,
-            "scholar.search",
-            {
-              query: effectiveQuery,
-              limit,
-              year,
-              venue,
-              conference: venue,
-            },
-            { signal, timeoutMs },
-          ),
-        ),
-      );
+      const correctedOutcomes = await searchAll(effectiveQuery);
+      fused = fuse(correctedOutcomes);
       outcomes = [...outcomes, ...correctedOutcomes];
-      fused = reciprocalRankFusion(
-        correctedOutcomes.map((outcome) =>
-          filterScholarSearchRecords(outcome.records, {
-            query: relevanceQuery,
-            year,
-            venue,
-            venueAlternatives,
-          }).map((record) => ({
-            ...record,
-            search_query: effectiveQuery,
-            query_corrections: corrections,
-          })),
-        ),
-        { topN: limit },
-      );
     }
   }
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (fused.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code: "SCHOLAR_NOT_FOUND",
       message: `no scholarly works returned for "${query}" across [${sources.join(", ")}]`,
-      suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Try --sources all or a more specific query.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+      suggestion: "Try --sources all or a more specific query.",
+    });
   }
   console.log(format(fused, columns(opts.detailed), fmt, ctx));
 }
@@ -2164,20 +2192,12 @@ async function runVenue(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (fused.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code: "SCHOLAR_NOT_FOUND",
       message: `no proceedings papers returned for "${requestedVenue}" across [${sources.join(", ")}]`,
       suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Try a full conference name, an exact year, or another source.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try a full conference name, an exact year, or another source.",
+    });
   }
   console.log(format(fused, columns(opts.detailed), fmt, ctx));
 }
@@ -2205,8 +2225,7 @@ async function runSingle(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (records.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code:
         capability === "scholar.pdf"
           ? "SCHOLAR_PDF_NOT_FOUND"
@@ -2216,15 +2235,8 @@ async function runSingle(
           ? `no source-backed scholarly PDF returned for "${ref}" across [${sourceList.join(", ")}]`
           : `no scholarly records returned for "${ref}" across [${sourceList.join(", ")}]`,
       suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Run `unicli scholar doctor` to inspect available scholarly sources.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Run `unicli scholar doctor` to inspect available scholarly sources.",
+    });
   }
   console.log(
     format(records, columnsForCapability(capability, opts.detailed), fmt, ctx),
@@ -2269,20 +2281,12 @@ async function runReviews(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (rows.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code: "SCHOLAR_REVIEWS_NOT_FOUND",
       message: `no scholarly review rows returned for "${ref}" across [${sourceList.join(", ")}]`,
       suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Use an OpenReview forum id or URL, or run `unicli scholar search <query> --sources openreview` before requesting reviews.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Use an OpenReview forum id or URL, or run `unicli scholar search <query> --sources openreview` before requesting reviews.",
+    });
   }
   console.log(format(rows, reviewColumns(opts.detailed), fmt, ctx));
 }
@@ -2446,21 +2450,13 @@ async function runResources(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (resourceRecords.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
     const label = capability === "scholar.code" ? "code" : "dataset/model";
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code: "SCHOLAR_RESOURCE_NOT_FOUND",
       message: `no scholarly ${label} resources returned for "${ref}" across [${sourceList.join(", ")}]`,
       suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Try --source hf for Hugging Face paper resources, or run `unicli scholar doctor` to inspect resource-capable sources.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try --source hf for Hugging Face paper resources, or run `unicli scholar doctor` to inspect resource-capable sources.",
+    });
   }
   console.log(
     format(resourceRecords, resourceColumns(opts.detailed), fmt, ctx),
@@ -5079,20 +5075,12 @@ async function runAwards(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (rows.length === 0) {
-    const errors = outcomes.filter((outcome) => outcome.error);
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, outcomes, {
       code: "SCHOLAR_AWARDS_NOT_FOUND",
       message: `no official award records returned for "${venue}"`,
       suggestion:
-        errors.length > 0
-          ? `Per-source errors: ${errors.map(formatScholarOutcomeError).join("; ")}`
-          : "Pass a supported conference acronym and year, such as CHI --year 2026.",
-      retryable: errors.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Pass a supported conference acronym and year, such as CHI --year 2026.",
+    });
   }
   console.log(format(rows, contextColumns(opts.detailed), fmt, ctx));
 }
@@ -5116,19 +5104,12 @@ async function runAvailability(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (row.record_found !== true) {
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, availability.outcomes, {
       code: "SCHOLAR_AVAILABILITY_NOT_FOUND",
       message: `no scholarly metadata, PDF, or resource evidence returned for "${ref}"`,
       suggestion:
-        Array.isArray(row.source_errors) && row.source_errors.length > 0
-          ? `Per-source errors: ${row.source_errors.join("; ")}`
-          : "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
-      retryable: availability.outcomes.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
+    });
   }
 
   console.log(format([row], availabilityColumns(opts.detailed), fmt, ctx));
@@ -5196,19 +5177,12 @@ async function runWorkflow(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (row.record_found !== true) {
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, availability.outcomes, {
       code: "SCHOLAR_WORKFLOW_NOT_FOUND",
       message: `no source-backed scholarly workflow evidence returned for "${ref}"`,
       suggestion:
-        Array.isArray(row.source_errors) && row.source_errors.length > 0
-          ? `Per-source errors: ${row.source_errors.join("; ")}`
-          : "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
-      retryable: availability.outcomes.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
+    });
   }
 
   console.log(
@@ -5240,19 +5214,12 @@ async function runEvidence(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (row.record_found !== true) {
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, availability.outcomes, {
       code: "SCHOLAR_EVIDENCE_NOT_FOUND",
       message: `no source-backed scholarly evidence returned for "${ref}"`,
       suggestion:
-        Array.isArray(row.source_errors) && row.source_errors.length > 0
-          ? `Per-source errors: ${row.source_errors.join("; ")}`
-          : "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
-      retryable: availability.outcomes.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try a DOI, arXiv id, PMID, OpenReview URL, or run `unicli scholar search` first.",
+    });
   }
 
   console.log(
@@ -5284,19 +5251,12 @@ async function runReproducibility(
   ctx.duration_ms = Date.now() - startedAt;
   ctx.surface = "web";
   if (row.record_found !== true) {
-    ctx.error = {
+    exitScholarEmpty(ctx, fmt, availability.outcomes, {
       code: "SCHOLAR_REPRODUCIBILITY_NOT_FOUND",
       message: `no source-backed scholarly reproducibility evidence returned for "${ref}"`,
       suggestion:
-        Array.isArray(row.source_errors) && row.source_errors.length > 0
-          ? `Per-source errors: ${row.source_errors.join("; ")}`
-          : "Try a DOI, arXiv id, OpenReview URL, or run `unicli scholar search` before requesting reproducibility resources.",
-      retryable: availability.outcomes.some((outcome) =>
-        isRetryableScholarError(outcome.error),
-      ),
-    };
-    console.error(format(null, undefined, fmt, ctx));
-    process.exit(ExitCode.EMPTY_RESULT);
+        "Try a DOI, arXiv id, OpenReview URL, or run `unicli scholar search` before requesting reproducibility resources.",
+    });
   }
 
   console.log(
@@ -5878,7 +5838,10 @@ export function registerScholarCommand(program: Command): void {
     .description("Fan-out scholarly paper search across first-source adapters")
     .option("--sources <csv>", "comma-separated source list, or `all`")
     .option("--venue <venue>", "require a matching conference or venue")
-    .option("--year <year>", "require an exact publication year")
+    .option(
+      "--year <year>",
+      "publication year or range, such as 2026 or 2024-2026",
+    )
     .option("--limit <n>", "maximum fused result count", "20")
     .option("--timeout <seconds>", "overall source deadline in seconds", "20")
     .option("-D, --detailed", "include richer metadata columns")

@@ -848,7 +848,7 @@ describe("unicli scholar — source discovery", () => {
 
     expect(
       findScholarCommandByCapability(adapter, "scholar.search")?.name,
-    ).toBe("latest");
+    ).toBe("search");
     expect(findScholarQueryableSearchCommand(adapter)?.name).toBe("search");
   });
 

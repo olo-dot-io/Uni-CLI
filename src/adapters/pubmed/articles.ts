@@ -13,6 +13,7 @@
 
 import { DOMParser, type Document, type Element } from "@xmldom/xmldom";
 import { cli, Strategy } from "../../registry.js";
+import { YEAR_RANGE_ARG, parseYearRange } from "../_shared/year-range.js";
 
 const EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
 const PUBMED_TIMEOUT_MS = 15_000;
@@ -595,6 +596,7 @@ cli({
       description: "Search query",
     },
     { name: "limit", type: "int", default: 20, description: "Max results" },
+    YEAR_RANGE_ARG,
   ],
   columns: SUMMARY_COLUMNS,
   operation_effect: "read",
@@ -609,8 +611,9 @@ cli({
   func: async (_page, kwargs) => {
     const query = requirePubMedText(kwargs.query, "query");
     const limit = requirePubMedLimit(kwargs.limit);
+    const years = parseYearRange(kwargs.year);
     const json = (await eutilsFetch("esearch", {
-      term: query,
+      term: years ? `(${query}) AND ${years.from}:${years.to}[dp]` : query,
       retmax: limit,
       sort: "",
     })) as {
