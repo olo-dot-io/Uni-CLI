@@ -1,6 +1,6 @@
 {
-  "source": "unicli@1.4.1",
-  "generated": "2026-11-02T15:45:38.908Z",
+  "source": "unicli@1.5.0",
+  "generated": "2026-11-02T17:36:50.352Z",
   "total_sites": 338,
   "total_commands": 1893,
   "adapters": [
@@ -29016,6 +29016,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29192,6 +29193,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29220,6 +29222,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29254,6 +29257,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29288,6 +29292,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29322,6 +29327,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29563,6 +29569,7 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29599,6 +29606,7 @@
             "parent_id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -29630,6 +29638,7 @@
             "parent_id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
@@ -34630,14 +34639,24 @@
           "auth_setup": "unicli auth setup zhihu",
           "strategy": "cookie",
           "browser": false,
-          "columns": ["rank", "title", "excerpt", "voteup", "comments"],
+          "columns": [
+            "rank",
+            "id",
+            "title",
+            "created_at",
+            "updated_at",
+            "excerpt",
+            "voteup",
+            "comments",
+            "url"
+          ],
           "args": [
             {
               "name": "id",
               "type": "str",
               "required": true,
               "positional": true,
-              "description": "User URL token"
+              "description": "User URL token (the `url_token` field of `zhihu user` and `zhihu search`)"
             },
             {
               "name": "limit",
@@ -34645,6 +34664,13 @@
               "required": false,
               "positional": false,
               "description": "Number of articles"
+            },
+            {
+              "name": "sort",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Newest first (created) or most upvoted first (voteups)"
             }
           ]
         },
@@ -35326,6 +35352,8 @@
           "browser": false,
           "columns": [
             "name",
+            "url_token",
+            "id",
             "headline",
             "followers",
             "following",

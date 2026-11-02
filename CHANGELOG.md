@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.5.0] — 2026-11-02 — Artemis · Chari
+
+### Minor Changes
+
+- f750dc1: Browser-backed reads pick up the session the caller selected, and X rows carry time and exact counts.
+
+  - `UNICLI_BROWSER_PROFILE_ID` now reaches TypeScript browser adapters such as `twitter` and `reddit`. The managed browser runs inside a long-lived broker, so the invocation scope carries the selected profile id to it.
+  - The broker reports its package version. A client retires an idle broker started by a different install and starts its own, so an upgrade no longer leaves a broker that imports deleted modules.
+  - `twitter search`, `tweets`, `user-tweets`, `user-timeline`, `list-tweets`, `thread`, `likes` and `bookmarks` share one row shape: `created_at` (ISO 8601) and integer `likes`, `retweets` and `views`. The browser path reads counts from accessibility labels, which hold exact integers in every interface language.
+
+- f78161f: `zhihu articles` lists a user's newest articles by default (`--sort created`; `--sort voteups` keeps the old order) and each row carries `id`, `created_at`, `updated_at` and `url`, with vote and comment counts filled in. `zhihu user` returns the `url_token` that `zhihu articles` takes, and accepts the hashed id that `zhihu search` returns.
+
+### Patch Changes
+
+- 0906921: X timelines and searches return the number of posts asked for. X removes posts that scroll out of view, so rows now accumulate across scrolls until the requested count is reached or three scrolls in a row add nothing. `twitter search` accepts up to 100 posts, the same bound as the timeline commands.
+
 ## [1.4.1] — 2026-11-02 — Artemis · Watkins
 
 ### Patch Changes
