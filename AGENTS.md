@@ -143,4 +143,4 @@ allowlist change requires a one-line `// REASON:` in the patterns array.
 
 ## Version
 
-1.3.0 — Artemis · Rubins
+1.4.0 — Artemis · Watkins

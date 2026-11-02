@@ -1,6 +1,6 @@
 {
-  "source": "unicli@1.3.0",
-  "generated": "2026-10-10T15:20:29.200Z",
+  "source": "unicli@1.4.0",
+  "generated": "2026-11-02T15:31:01.756Z",
   "total_sites": 338,
   "total_commands": 1893,
   "adapters": [
@@ -1073,7 +1073,14 @@
               "type": "str",
               "required": false,
               "positional": false,
-              "description": "Sort by relevance or newest submission"
+              "description": "relevance, newest (submission date) or updated"
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },
@@ -40280,6 +40287,13 @@
               "type": "int",
               "required": false,
               "positional": false
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },
@@ -41170,6 +41184,13 @@
               "required": false,
               "positional": false,
               "description": "Pagination offset"
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },
@@ -48872,6 +48893,13 @@
               "required": false,
               "positional": false,
               "description": "Max works"
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },
@@ -50083,6 +50111,13 @@
               "required": false,
               "positional": false,
               "description": "Max results"
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },
@@ -51350,6 +51385,13 @@
               "type": "int",
               "required": false,
               "positional": false
+            },
+            {
+              "name": "year",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "publication year or inclusive range, such as 2026 or 2024-2026"
             }
           ]
         },

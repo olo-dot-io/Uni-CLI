@@ -1,12 +1,12 @@
 {
-  "version": "1.3.0",
-  "codename": "Artemis · Rubins",
-  "date": "2026-10-10",
-  "status": "published",
+  "version": "1.4.0",
+  "codename": "Artemis · Watkins",
+  "date": "2026-11-02",
+  "status": "local",
   "npmPackage": "@zenalexa/unicli",
   "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli",
-  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.3.0",
-  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#130--2026-10-10--artemis--rubins",
+  "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.4.0",
+  "changelogUrl": "https://github.com/olo-dot-io/Uni-CLI/blob/main/CHANGELOG.md#140--2026-11-02--artemis--watkins",
   "highlights": {
     "root": [
       "Discover, download, and structure resources with `retrieval acquire`. Resume the same bounded acquisition from its `results.json` and reuse completed files.",

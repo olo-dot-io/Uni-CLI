@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.4.0] — 2026-11-02 — Artemis · Watkins
+
+### Minor Changes
+
+- 10f8a4c: Read OpenReview papers, venue listings and review threads through the API's `POST /notes/search`, which answers without a browser challenge. Sessions holding a clearance cookie or a login keep the `GET /notes` path as the second route. Venue listings include rejected and withdrawn submissions, with the decision in `venue`. `openreview search` sends a valid `source`.
+- e0e9f32: Search each scholarly source through its query command, so arXiv rows in `scholar search` come from `arxiv search` and match the query.
+
+  Push `--year` into each source's own API. `scholar search --year` and the arXiv, Crossref, OpenAlex, PubMed and Semantic Scholar searches accept one year or a range such as `2024-2026`; DBLP filters a single year.
+
+  Report `SCHOLAR_SOURCES_UNAVAILABLE` with each source's state when a source failed and no rows came back, exiting 75 when the failure is retryable. A `*_NOT_FOUND` code now means every source answered.
+
+  Keep arXiv rows that the API matched by word stem, ranking exact matches first. `arxiv search --sort` accepts `newest` and `updated`.
+
+### Patch Changes
+
+- ae4de8e: Send Cua Driver cursor motion values as numbers, matching the driver's published input schema, and remove the argument type that only served the former null reset.
+
 ## [1.3.0] — 2026-10-10 — Artemis · Rubins
 
 ### Minor Changes

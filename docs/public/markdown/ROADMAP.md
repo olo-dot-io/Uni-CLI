@@ -7,7 +7,7 @@
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.3.0 — Artemis · Rubins.
+Current release: v1.4.0 — Artemis · Watkins.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 

@@ -7,7 +7,7 @@
 - 栏目: 项目
 - 上级: 项目 (/zh/ARCHITECTURE)
 
-当前版本：v1.3.0 — Artemis · Rubins。
+当前版本：v1.4.0 — Artemis · Watkins。
 
 静态目录包含 <!-- STATS:site_count -->338<!-- /STATS --> 个站点。
 

@@ -106,7 +106,7 @@ Uni-CLI 负责接口运行时。模型、规划器、Agent 执行循环和沙箱
 - <!-- STATS:command_count -->1893<!-- /STATS --> 条注册命令
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> 个 adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> 个 pipeline actions
-- <!-- STATS:test_count -->10374<!-- /STATS --> 个测试
+- <!-- STATS:test_count -->10373<!-- /STATS --> 个测试
 
 固定核心命令和本机发现的命令会在运行时加入。
 
@@ -295,7 +295,7 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 全部已发布版本见[生成的版本记录](docs/zh/releases.md)。Agent 可以通过 `docs/public/release-history.json` 读取同一份结构化数据。
 
-<p align="center"><sub>v1.3.0 — Artemis · Rubins</sub></p>
+<p align="center"><sub>v1.4.0 — Artemis · Watkins</sub></p>
 
 ## License
 

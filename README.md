@@ -106,7 +106,7 @@ Static catalog
 - <!-- STATS:command_count -->1893<!-- /STATS --> registered commands
 - <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
-- <!-- STATS:test_count -->10374<!-- /STATS --> tests
+- <!-- STATS:test_count -->10373<!-- /STATS --> tests
 
 Fixed core and host-discovered commands join at runtime.
 
@@ -295,7 +295,7 @@ Requires Node.js 22.19 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for adap
 
 Browse every published version on the [generated release history](docs/releases.md). The same data is available to Agents through `docs/public/release-history.json`.
 
-<p align="center"><sub>v1.3.0 — Artemis · Rubins</sub></p>
+<p align="center"><sub>v1.4.0 — Artemis · Watkins</sub></p>
 
 ## License
 

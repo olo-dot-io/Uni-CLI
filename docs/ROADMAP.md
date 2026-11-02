@@ -5,7 +5,7 @@ description: Shipped foundations and the next engineering priorities for Uni-CLI
 
 # Roadmap
 
-Current release: v1.3.0 — Artemis · Rubins.
+Current release: v1.4.0 — Artemis · Watkins.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 

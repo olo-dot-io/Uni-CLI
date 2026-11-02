@@ -15,6 +15,7 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.4.0](#v140)     | 2026-11-02 | Artemis · Watkins             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.3.0...v1.4.0)     |
 | [v1.3.0](#v130)     | 2026-10-10 | Artemis · Rubins              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.1...v1.3.0)     |
 | [v1.2.1](#v121)     | 2026-08-21 | Artemis · Wiseman             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.2.0...v1.2.1)     |
 | [v1.2.0](#v120)     | 2026-08-11 | Artemis · Hansen              | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.1.1...v1.2.0)     |
@@ -81,6 +82,27 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v140"></a>
+
+## v1.4.0 · 2026-11-02 · Artemis · Watkins
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.4.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.4.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.3.0...v1.4.0)
+
+### Minor Changes
+
+- 10f8a4c: Read OpenReview papers, venue listings and review threads through the API's `POST /notes/search`, which answers without a browser challenge. Sessions holding a clearance cookie or a login keep the `GET /notes` path as the second route. Venue listings include rejected and withdrawn submissions, with the decision in `venue`. `openreview search` sends a valid `source`.
+- e0e9f32: Search each scholarly source through its query command, so arXiv rows in `scholar search` come from `arxiv search` and match the query.
+
+  Push `--year` into each source's own API. `scholar search --year` and the arXiv, Crossref, OpenAlex, PubMed and Semantic Scholar searches accept one year or a range such as `2024-2026`; DBLP filters a single year.
+
+  Report `SCHOLAR_SOURCES_UNAVAILABLE` with each source's state when a source failed and no rows came back, exiting 75 when the failure is retryable. A `*_NOT_FOUND` code now means every source answered.
+
+  Keep arXiv rows that the API matched by word stem, ranking exact matches first. `arxiv search --sort` accepts `newest` and `updated`.
+
+### Patch Changes
+
+- ae4de8e: Send Cua Driver cursor motion values as numbers, matching the driver's published input schema, and remove the argument type that only served the former null reset.
 
 <a id="v130"></a>
 
