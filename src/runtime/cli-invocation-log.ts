@@ -122,7 +122,8 @@ export function completeCliInvocation(exitCode: number): string | undefined {
           ? {
               error_type: invocation.errorType,
               retryable: invocation.retryable ?? false,
-              ...(invocation.errorStep !== undefined
+              ...(invocation.errorStep !== undefined &&
+              invocation.errorStep >= 0
                 ? { error_step: invocation.errorStep }
                 : {}),
               ...(invocation.outcomeAmbiguous

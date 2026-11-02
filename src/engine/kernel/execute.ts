@@ -172,7 +172,8 @@ export async function execute(inv: Invocation): Promise<InvocationResult> {
           ? {
               error_type: result.error.code,
               retryable: result.error.retryable ?? false,
-              ...(result.error.step !== undefined
+              // step -1 marks a failure before the first pipeline step; the log records steps from 0
+              ...(result.error.step !== undefined && result.error.step >= 0
                 ? { error_step: result.error.step }
                 : {}),
               ...(result.error.outcome_ambiguous

@@ -99,10 +99,12 @@ async function ensureBroker(
   });
   try {
     const status = await brokerStatus(client);
+    const running = status.lifecycle !== "shutting_down";
     // An idle broker from another install loads modules that an upgrade may have removed.
     if (
-      status.package_version === VERSION ||
-      status.sessions.sessions.length > 0
+      running &&
+      (status.package_version === VERSION ||
+        status.sessions.sessions.length > 0)
     ) {
       const spawned = await reconcileBrokerLaunch(
         runtimeKey,
@@ -110,7 +112,11 @@ async function ensureBroker(
       );
       return { client, status, spawned };
     }
-    await retireBrowserRuntimeBroker({ runtimeRoot: options.runtimeRoot });
+    if (running) {
+      await retireBrowserRuntimeBroker({ runtimeRoot: options.runtimeRoot });
+    }
+    // A broker that is shutting down still answers status; a new one can bind only after it exits.
+    await waitForBrokerExit(client, timeoutMs);
   } catch (error) {
     if (!isUnavailable(error)) throw error;
   }
@@ -137,6 +143,25 @@ async function ensureBroker(
   }
   if (!outcome.ok) throw outcome.error;
   return { client, ...outcome.value };
+}
+
+async function waitForBrokerExit(
+  client: BrowserRuntimeBrokerClient,
+  timeoutMs: number,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await brokerStatus(client);
+    } catch (error) {
+      if (isUnavailable(error)) return;
+      throw error;
+    }
+    await delay(STARTUP_POLL_MS);
+  }
+  throw new BrowserRuntimeLaunchError(
+    `Browser broker did not stop within ${String(timeoutMs)}ms`,
+  );
 }
 
 async function waitForBrokerReady(
