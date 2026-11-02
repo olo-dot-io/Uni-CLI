@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.2] — 2026-11-02 — Artemis · Chari
+
+### Patch Changes
+
+- 926b528: `openreview venue` reads a venue id such as `ICLR.cc/2027/Conference/Submission` or `ICLR.cc/2026/Conference/Rejected_Submission` through the anonymous search API. A path without spaces is treated as a venue id; before, it was sent as a venue label, matched nothing, and fell through to the challenged `GET /notes` route.
+
 ## [1.5.1] — 2026-11-02 — Artemis · Chari
 
 ### Patch Changes

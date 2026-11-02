@@ -295,7 +295,7 @@ npm run verify   # 完整 E2E 与 adapter coverage；发布前必须运行
 
 全部已发布版本见[生成的版本记录](docs/zh/releases.md)。Agent 可以通过 `docs/public/release-history.json` 读取同一份结构化数据。
 
-<p align="center"><sub>v1.5.1 — Artemis · Chari</sub></p>
+<p align="center"><sub>v1.5.2 — Artemis · Chari</sub></p>
 
 ## License
 

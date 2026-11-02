@@ -13,6 +13,7 @@ The machine-readable record is available as [`release-history.json`](./release-h
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.5.2](#v152)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.1...v1.5.2)     |
 | [v1.5.1](#v151)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.0...v1.5.1)     |
 | [v1.5.0](#v150)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.1...v1.5.0)     |
 | [v1.4.1](#v141)     | 2026-11-02 | Artemis · Watkins             | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.0...v1.4.1)     |
@@ -83,6 +84,16 @@ The machine-readable record is available as [`release-history.json`](./release-h
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v152"></a>
+
+## v1.5.2 · 2026-11-02 · Artemis · Chari
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.5.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.5.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.1...v1.5.2)
+
+### Patch Changes
+
+- 926b528: `openreview venue` reads a venue id such as `ICLR.cc/2027/Conference/Submission` or `ICLR.cc/2026/Conference/Rejected_Submission` through the anonymous search API. A path without spaces is treated as a venue id; before, it was sent as a venue label, matched nothing, and fell through to the challenged `GET /notes` route.
 
 <a id="v151"></a>
 

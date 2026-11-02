@@ -53,7 +53,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.5.1 · Artemis · Chari.
+Local release: v1.5.2 · Artemis · Chari.
 
 ## Agent Index
 
