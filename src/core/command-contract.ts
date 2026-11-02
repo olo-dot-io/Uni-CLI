@@ -258,8 +258,6 @@ function jsonTypeForArg(
       return "boolean";
     case "str[]":
       return "array";
-    case "nullable-float":
-      return ["number", "null"];
     case "str-or-int":
       return ["string", "integer"];
     case "str":

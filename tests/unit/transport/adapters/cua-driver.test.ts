@@ -232,7 +232,7 @@ describe("CuaDriverTransport", () => {
           upstream.get("set_agent_cursor_motion")!.input_schema.properties[
             field
           ]?.type,
-        ).toEqual(["number", "null"]);
+        ).toBe("number");
       }
     },
   );

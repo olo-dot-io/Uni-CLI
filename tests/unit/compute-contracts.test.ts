@@ -125,7 +125,7 @@ describe("compute coordinate contracts", () => {
     const motion = buildComputeInputSchema(
       getComputeCommandContract("agent-cursor-motion")?.args ?? [],
     );
-    expect(motion.properties.spring?.type).toEqual(["number", "null"]);
-    expect(motion.properties.turn_radius?.type).toEqual(["number", "null"]);
+    expect(motion.properties.spring?.type).toBe("number");
+    expect(motion.properties.turn_radius?.type).toBe("number");
   });
 });

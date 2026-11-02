@@ -163,14 +163,7 @@ export type SocialCapability =
 
 export interface AdapterArg {
   name: string;
-  type?:
-    | "str"
-    | "str[]"
-    | "int"
-    | "float"
-    | "nullable-float"
-    | "str-or-int"
-    | "bool";
+  type?: "str" | "str[]" | "int" | "float" | "str-or-int" | "bool";
   default?: unknown;
   required?: boolean;
   positional?: boolean;

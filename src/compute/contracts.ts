@@ -20,7 +20,7 @@ import {
 } from "../core/argument-schema.js";
 
 export type ComputeArgType =
-  "str" | "str[]" | "int" | "float" | "nullable-float" | "str-or-int" | "bool";
+  "str" | "str[]" | "int" | "float" | "str-or-int" | "bool";
 
 export interface ComputeCommandArg {
   readonly name: string;
@@ -887,9 +887,8 @@ export const COMPUTE_COMMAND_CONTRACTS: readonly ComputeCommandContract[] = [
         "turn_radius",
       ].map((name): ComputeCommandArg => ({
         name,
-        type: "nullable-float",
-        description:
-          "Optional presentation-only cursor motion value; null is also accepted by the driver call API.",
+        type: "float",
+        description: "Optional presentation-only cursor motion value.",
       })),
     ],
     description:
@@ -1270,7 +1269,6 @@ function jsonTypeForComputeArg(
   type: ComputeArgType | undefined,
 ): string | string[] {
   if (type === "str[]") return "array";
-  if (type === "nullable-float") return ["number", "null"];
   if (type === "str-or-int") return ["string", "integer"];
   if (type === "int") return "integer";
   if (type === "float") return "number";

@@ -367,41 +367,6 @@ describe("unicli compute", () => {
     expect(cap.getStderr()).toBe("");
   });
 
-  it("preserves agent-cursor motion null reset through the CLI channel", async () => {
-    dispatchMock.dispatchComputeRoute.mockResolvedValue(
-      ok({ provider: "cua-driver", session: "agent-run" }),
-    );
-    const cap = captureConsole();
-    try {
-      await newProgram().parseAsync(
-        [
-          "-f",
-          "json",
-          "compute",
-          "agent-cursor-motion",
-          "agent-run",
-          "--spring",
-          "null",
-          "--turn-radius",
-          "12.5",
-        ],
-        { from: "user" },
-      );
-    } finally {
-      cap.restore();
-    }
-
-    expect(dispatchMock.dispatchComputeRoute.mock.calls[0]?.[1]).toEqual({
-      kind: "compute_agent_cursor_motion",
-      params: {
-        session: "agent-run",
-        spring: null,
-        turn_radius: 12.5,
-      },
-    });
-    expect(cap.getStderr()).toBe("");
-  });
-
   it("surfaces transport cleanup failure instead of printing false success", async () => {
     dispatchMock.dispatchComputeRoute.mockResolvedValue(ok({ captured: true }));
     const closeSpy = vi

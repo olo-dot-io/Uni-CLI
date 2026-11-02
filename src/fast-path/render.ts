@@ -54,8 +54,6 @@ export function jsonSchemaType(type: ManifestArg["type"]): string | string[] {
       return "integer";
     case "float":
       return "number";
-    case "nullable-float":
-      return ["number", "null"];
     case "str-or-int":
       return ["string", "integer"];
     case "bool":
@@ -126,9 +124,6 @@ export function buildExample(args: ManifestArg[]): Record<string, unknown> {
         break;
       case "float":
         example[arg.name] = 0.5;
-        break;
-      case "nullable-float":
-        example[arg.name] = null;
         break;
       case "str-or-int":
         example[arg.name] = `<${arg.name}>`;

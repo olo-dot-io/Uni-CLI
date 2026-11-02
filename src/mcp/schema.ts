@@ -53,8 +53,6 @@ export function jsonTypeFor(t: string | undefined): string | string[] {
       return "integer";
     case "float":
       return "number";
-    case "nullable-float":
-      return ["number", "null"];
     case "str-or-int":
       return ["string", "integer"];
     case "bool":

@@ -106,8 +106,6 @@ function jsonSchemaType(t: DescribeArg["type"]): string | string[] {
       return "boolean";
     case "str[]":
       return "array";
-    case "nullable-float":
-      return ["number", "null"];
     case "str-or-int":
       return ["string", "integer"];
     default:
@@ -176,9 +174,6 @@ function buildExample(args: DescribeArg[]): Record<string, unknown> {
           break;
         case "str[]":
           example[a.name] = [];
-          break;
-        case "nullable-float":
-          example[a.name] = null;
           break;
         case "str-or-int":
           example[a.name] = `<${a.name}>`;

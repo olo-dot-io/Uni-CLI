@@ -17,14 +17,7 @@ import addFormats from "ajv-formats";
 
 export interface ArgumentDefinition {
   readonly name: string;
-  readonly type?:
-    | "str"
-    | "str[]"
-    | "int"
-    | "float"
-    | "nullable-float"
-    | "str-or-int"
-    | "bool";
+  readonly type?: "str" | "str[]" | "int" | "float" | "str-or-int" | "bool";
   readonly default?: unknown;
   readonly required?: boolean;
   readonly choices?: readonly string[];
@@ -98,8 +91,6 @@ function jsonSchemaType(type: ArgumentDefinition["type"]): string | string[] {
       return "integer";
     case "float":
       return "number";
-    case "nullable-float":
-      return ["number", "null"];
     case "str-or-int":
       return ["string", "integer"];
     case "bool":
@@ -179,7 +170,6 @@ export function buildArgumentExample(
         example[arg.name] = 10;
         break;
       case "float":
-      case "nullable-float":
         example[arg.name] = 0.5;
         break;
       case "bool":

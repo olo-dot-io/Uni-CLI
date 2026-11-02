@@ -809,7 +809,7 @@ export function registerComputeCommand(program: Command): void {
         turnRadius: "turn_radius",
       })) {
         if (opts[camel] === undefined) continue;
-        const value = readNullableFiniteNumber(opts[camel]);
+        const value = readFiniteNumber(opts[camel]);
         if (value === undefined) {
           print(
             program,
@@ -817,8 +817,8 @@ export function registerComputeCommand(program: Command): void {
             Date.now(),
             invalidOptionResult(
               "compute_agent_cursor_motion",
-              `${camel} must be a finite number or null`,
-              "pass a finite numeric cursor motion value, or null to reset it",
+              `${camel} must be a finite number`,
+              "pass a finite numeric cursor motion value",
               "compute.agent-cursor-motion.invalid_input",
             ),
           );
@@ -1652,11 +1652,6 @@ function readFiniteNumber(value: unknown): number | undefined {
   if (!/^-?(?:\d+\.?\d*|\.\d+)$/.test(text)) return undefined;
   const parsed = Number(text);
   return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function readNullableFiniteNumber(value: unknown): number | null | undefined {
-  if (value === null || value === "null" || value === "reset") return null;
-  return readFiniteNumber(value);
 }
 
 function readBooleanValue(value: unknown): boolean | undefined {
