@@ -1,8 +1,8 @@
 {
   "source": "unicli@1.6.2",
-  "generated": "2026-11-03T06:51:49.524Z",
+  "generated": "2026-11-03T08:34:28.918Z",
   "total_sites": 338,
-  "total_commands": 1895,
+  "total_commands": 1896,
   "adapters": [
     {
       "site": "12306",
@@ -33994,6 +33994,33 @@
               "required": false,
               "positional": false,
               "description": "Number of trending videos"
+            }
+          ]
+        },
+        {
+          "name": "channel-videos",
+          "description": "List a YouTube channel's recent uploads with exact publish times",
+          "when_to_use": "List a YouTube channel's recent uploads with exact publish times",
+          "command": "unicli youtube channel-videos",
+          "auth": false,
+          "auth_requirement": "none",
+          "strategy": "public",
+          "browser": false,
+          "columns": ["published", "title", "views", "id", "url"],
+          "args": [
+            {
+              "name": "channel",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "Channel id (UC...), @handle or channel URL"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Uploads to return, newest first"
             }
           ]
         },

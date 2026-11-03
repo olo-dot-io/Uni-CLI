@@ -35,7 +35,7 @@ apply the same scan manually to chat replies.
 
 <!-- BEGIN COUNTS -->
 
-> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1895<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
+> Static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1896<!-- /STATS --> registered commands; fixed core and host-discovered commands join at runtime. <!-- STATS:pipeline_step_count -->113<!-- /STATS --> built-in actions (<!-- STATS:pipeline_registered_step_count -->58<!-- /STATS --> registered + <!-- STATS:pipeline_transport_step_count -->55<!-- /STATS --> transport-native), BM25 bilingual search. `npm install -g @zenalexa/unicli`
 
 <!-- END COUNTS -->
 
@@ -47,7 +47,7 @@ apply the same scan manually to chat replies.
 
 **Chinese**: zhihu (37), xiaohongshu (23), bilibili (20), douyin (13), douban (12), v2ex (12), weibo (12), linux-do (11), +28 more (`unicli list`)
 
-**International**: twitter (54), instagram (29), reddit (24), tiktok (18), youtube (17), bluesky (16), nowcoder (16), discord-app (15), +86 more (`unicli list`)
+**International**: twitter (54), instagram (29), reddit (24), tiktok (18), youtube (18), bluesky (16), nowcoder (16), discord-app (15), +86 more (`unicli list`)
 
 **AI / ML**: chatgpt (18), antigravity (17), chatwise (17), notebooklm (15), claude (14), doubao-app (14), yollomi (12), deepseek (9), +17 more (`unicli list`)
 

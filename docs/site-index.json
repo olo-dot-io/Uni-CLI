@@ -1,7 +1,7 @@
 {
-  "generated": "2026-11-03T06:51:49.524Z",
+  "generated": "2026-11-03T08:34:28.918Z",
   "total_sites": 338,
-  "total_commands": 1895,
+  "total_commands": 1896,
   "sites": [
     {
       "site": "12306",
@@ -13053,7 +13053,7 @@
       "domain": "www.youtube.com",
       "auth": true,
       "strategy": "public",
-      "command_count": 17,
+      "command_count": 18,
       "personalized_commands": 4,
       "personalization_families": ["feed", "library"],
       "commands": [
@@ -13083,6 +13083,14 @@
           "auth_requirement": "required",
           "auth_setup": "unicli auth setup youtube",
           "browser": true
+        },
+        {
+          "name": "channel-videos",
+          "description": "List a YouTube channel's recent uploads with exact publish times",
+          "command": "unicli youtube channel-videos",
+          "auth": false,
+          "auth_requirement": "none",
+          "browser": false
         },
         {
           "name": "channel",
