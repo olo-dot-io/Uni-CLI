@@ -16,9 +16,11 @@ interface VideoItem {
 }
 
 interface UserVideosResponse {
-  data: {
-    list: {
-      vlist: VideoItem[];
+  code: number;
+  message?: string;
+  data?: {
+    list?: {
+      vlist?: VideoItem[];
     };
   };
 }
@@ -43,11 +45,13 @@ cli({
       description: "Number of videos",
     },
   ],
-  columns: ["title", "play", "likes", "created", "bvid"],
+  columns: ["title", "play", "likes", "created", "bvid", "url"],
   func: async (_page, kwargs) => {
     const mid = String(kwargs.mid);
     const limit = Number(kwargs.limit) || 20;
 
+    // The space search answers code -352 (risk control) unless the request carries the browser fingerprint
+    // fields the web client sends; empty fingerprints pass (checked 2026-11-03).
     const json = (await wbiFetch(
       "https://api.bilibili.com/x/space/wbi/arc/search",
       {
@@ -55,15 +59,31 @@ cli({
         pn: "1",
         ps: String(limit),
         order: "pubdate",
+        dm_img_list: "[]",
+        dm_img_str: "V2ViR0wgMS4wIChPcGVuR0wgRVMgMi4wIENocm9taXVtKQ",
+        dm_cover_img_str: "QU5HTEUgKEFwcGxlLCBBTkdMRSBNZXRhbCBSZW5kZXJlcik",
+        dm_img_inter: '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}',
       },
     )) as UserVideosResponse;
+    if (json.code !== 0 || !json.data?.list) {
+      throw Object.assign(
+        new Error(
+          `Bilibili space search answered code ${json.code}: ${json.message ?? ""}`,
+        ),
+        {
+          code: json.code === -352 ? "rate_limited" : "upstream_error",
+          retryable: json.code === -352,
+        },
+      );
+    }
 
     return (json.data.list.vlist ?? []).map((item) => ({
       title: item.title,
       play: item.play,
       likes: item.like,
-      created: item.created,
+      created: new Date(item.created * 1000).toISOString(),
       bvid: item.bvid,
+      url: `https://www.bilibili.com/video/${item.bvid}`,
     }));
   },
 });
