@@ -23,7 +23,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1893 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1895 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -221,7 +221,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | tiktok | web-api | 18 | 3 | yes | unicli tiktok following<br>unicli tiktok friends<br>unicli tiktok notifications |
 | toutiao | web-api | 3 | 0 | yes | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | twitch | web-api | 4 | 0 | yes | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | bridge | 52 | 9 | yes | unicli twitter mentions<br>unicli twitter native-me<br>unicli twitter bookmark-folders |
+| twitter | bridge | 54 | 9 | yes | unicli twitter mentions<br>unicli twitter native-me<br>unicli twitter bookmark-folders |
 | ukipo | web-api | 1 | 0 | no | unicli ukipo info |
 | unsplash | web-api | 2 | 0 | no | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | 0 | no | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |

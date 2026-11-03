@@ -19,7 +19,7 @@ unicli search "<意图>" --personalized
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：338 个站点，1893 条命令。
+这个目录来自适配器 manifest：338 个站点，1895 条命令。
 
 用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。
 
@@ -217,7 +217,7 @@ unicli search "<意图>" --personalized
 | tiktok | web-api | 18 | 3 | 是 | unicli tiktok following<br>unicli tiktok friends<br>unicli tiktok notifications |
 | toutiao | web-api | 3 | 0 | 是 | unicli toutiao hot<br>unicli toutiao search<br>unicli toutiao articles |
 | twitch | web-api | 4 | 0 | 是 | unicli twitch games<br>unicli twitch search<br>unicli twitch streams |
-| twitter | bridge | 52 | 9 | 是 | unicli twitter mentions<br>unicli twitter native-me<br>unicli twitter bookmark-folders |
+| twitter | bridge | 54 | 9 | 是 | unicli twitter mentions<br>unicli twitter native-me<br>unicli twitter bookmark-folders |
 | ukipo | web-api | 1 | 0 | 否 | unicli ukipo info |
 | unsplash | web-api | 2 | 0 | 否 | unicli unsplash random<br>unicli unsplash search |
 | uspto | web-api | 3 | 0 | 否 | unicli uspto get<br>unicli uspto legal-status<br>unicli uspto search |

@@ -1,8 +1,8 @@
 {
   "source": "unicli@1.5.2",
-  "generated": "2026-11-02T19:18:49.992Z",
+  "generated": "2026-11-03T04:52:46.570Z",
   "total_sites": 338,
-  "total_commands": 1893,
+  "total_commands": 1895,
   "adapters": [
     {
       "site": "12306",
@@ -29131,10 +29131,17 @@
           ],
           "args": [
             {
-              "name": "user_id",
+              "name": "user",
               "required": true,
               "positional": true,
-              "description": "User numeric ID"
+              "description": "Handle (name or @name) or numeric user ID"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of users"
             }
           ]
         },
@@ -29205,6 +29212,204 @@
               "required": true,
               "positional": true,
               "description": "User numeric ID"
+            }
+          ]
+        },
+        {
+          "name": "list-create",
+          "description": "Create a Twitter/X list",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-create",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["id", "name", "mode", "url"],
+          "args": [
+            {
+              "name": "name",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "List name"
+            },
+            {
+              "name": "private",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Create a private list"
+            },
+            {
+              "name": "description",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "List description"
+            }
+          ]
+        },
+        {
+          "name": "list-members",
+          "description": "List members of a Twitter/X list",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-members",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "strategy": "cookie",
+          "browser": false,
+          "columns": [
+            "id",
+            "name",
+            "screen_name",
+            "followers",
+            "following",
+            "description"
+          ],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "List id or https://x.com/i/lists/<id> URL"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of users"
+            }
+          ]
+        },
+        {
+          "name": "list-add",
+          "description": "Add users to a Twitter/X list, skipping users who are already members",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-add",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["user", "id", "status", "error"],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "List id or https://x.com/i/lists/<id> URL"
+            },
+            {
+              "name": "users",
+              "type": "str[]",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated handles (name or @name) or numeric user ids"
+            },
+            {
+              "name": "users-file",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "File with one handle or numeric user id per line"
+            },
+            {
+              "name": "delay",
+              "type": "float",
+              "required": false,
+              "positional": false,
+              "description": "Seconds between membership changes"
+            }
+          ]
+        },
+        {
+          "name": "list-remove",
+          "description": "Remove users from a Twitter/X list, skipping users who are not members",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-remove",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "strategy": "cookie",
+          "browser": false,
+          "columns": ["user", "id", "status", "error"],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "List id or https://x.com/i/lists/<id> URL"
+            },
+            {
+              "name": "users",
+              "type": "str[]",
+              "required": false,
+              "positional": false,
+              "description": "Comma-separated handles (name or @name) or numeric user ids"
+            },
+            {
+              "name": "users-file",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "File with one handle or numeric user id per line"
+            },
+            {
+              "name": "delay",
+              "type": "float",
+              "required": false,
+              "positional": false,
+              "description": "Seconds between membership changes"
+            }
+          ]
+        },
+        {
+          "name": "list-tweets",
+          "description": "Read tweets from a Twitter/X list timeline",
+          "when_to_use": "When you need to list items from twitter.",
+          "command": "unicli twitter list-tweets",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "strategy": "cookie",
+          "browser": false,
+          "columns": [
+            "id",
+            "author",
+            "text",
+            "created_at",
+            "likes",
+            "retweets",
+            "views",
+            "url"
+          ],
+          "args": [
+            {
+              "name": "list",
+              "type": "str",
+              "required": true,
+              "positional": true,
+              "description": "List id or https://x.com/i/lists/<id> URL"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Stop at the first post older than this ISO 8601 date or datetime"
             }
           ]
         },
@@ -29309,93 +29514,6 @@
               "name": "limit",
               "type": "int",
               "required": false,
-              "positional": false
-            }
-          ]
-        },
-        {
-          "name": "list-tweets",
-          "description": "Read tweets from a Twitter/X list timeline",
-          "when_to_use": "When you need to list items from twitter.",
-          "command": "unicli twitter list-tweets",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "strategy": "cookie",
-          "browser": true,
-          "columns": [
-            "id",
-            "author",
-            "text",
-            "created_at",
-            "likes",
-            "retweets",
-            "views",
-            "url"
-          ],
-          "args": [
-            {
-              "name": "list",
-              "type": "str",
-              "required": true,
-              "positional": true
-            },
-            {
-              "name": "limit",
-              "type": "int",
-              "required": false,
-              "positional": false
-            }
-          ]
-        },
-        {
-          "name": "list-add",
-          "description": "Add a Twitter/X user to a list from the browser UI",
-          "when_to_use": "When you need to list items from twitter.",
-          "command": "unicli twitter list-add",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "strategy": "cookie",
-          "browser": true,
-          "columns": ["ok", "selector", "url"],
-          "args": [
-            {
-              "name": "list",
-              "type": "str",
-              "required": true,
-              "positional": true
-            },
-            {
-              "name": "user",
-              "type": "str",
-              "required": true,
-              "positional": false
-            }
-          ]
-        },
-        {
-          "name": "list-remove",
-          "description": "Remove a Twitter/X user from a list from the browser UI",
-          "when_to_use": "When you need to list items from twitter.",
-          "command": "unicli twitter list-remove",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "strategy": "cookie",
-          "browser": true,
-          "columns": ["ok", "selector", "url"],
-          "args": [
-            {
-              "name": "list",
-              "type": "str",
-              "required": true,
-              "positional": true
-            },
-            {
-              "name": "user",
-              "type": "str",
-              "required": true,
               "positional": false
             }
           ]
@@ -29657,8 +29775,8 @@
         },
         {
           "name": "timeline",
-          "description": "Get home timeline (for-you feed)",
-          "when_to_use": "Get home timeline (for-you feed)",
+          "description": "Get home timeline (For You feed, or the chronological Following feed with --following)",
+          "when_to_use": "Get home timeline (For You feed, or the chronological Following feed with --following)",
           "command": "unicli twitter timeline",
           "auth": true,
           "auth_requirement": "required",
@@ -29670,10 +29788,34 @@
             "id",
             "author",
             "text",
+            "created_at",
             "likes",
             "retweets",
             "views",
             "url"
+          ],
+          "args": [
+            {
+              "name": "following",
+              "type": "bool",
+              "required": false,
+              "positional": false,
+              "description": "Read the chronological Following feed"
+            },
+            {
+              "name": "limit",
+              "type": "int",
+              "required": false,
+              "positional": false,
+              "description": "Number of posts"
+            },
+            {
+              "name": "since",
+              "type": "str",
+              "required": false,
+              "positional": false,
+              "description": "Keep posts at or after this ISO 8601 date or datetime; the Following feed stops at the first older post"
+            }
           ]
         },
         {

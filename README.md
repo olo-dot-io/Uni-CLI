@@ -103,8 +103,8 @@ Uni-CLI supplies the interface runtime. The model, planner, agent loop, and sand
 Static catalog
 
 - <!-- STATS:site_count -->338<!-- /STATS --> sites
-- <!-- STATS:command_count -->1893<!-- /STATS --> registered commands
-- <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters
+- <!-- STATS:command_count -->1895<!-- /STATS --> registered commands
+- <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters
 - <!-- STATS:pipeline_step_count -->113<!-- /STATS --> pipeline actions
 - <!-- STATS:test_count -->10373<!-- /STATS --> tests
 
@@ -114,7 +114,7 @@ Fixed core and host-discovered commands join at runtime.
 <!-- prettier-ignore -->
 | Surface | Sites | Operations | Examples |
 | --- | ---: | ---: | --- |
-| social | 33 | 396 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
+| social | 33 | 398 | [twitter](https://olo-dot-io.github.io/Uni-CLI/reference/sites#twitter), [zhihu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#zhihu), [instagram](https://olo-dot-io.github.io/Uni-CLI/reference/sites#instagram), [reddit](https://olo-dot-io.github.io/Uni-CLI/reference/sites#reddit) |
 | video | 8 | 75 | [tiktok](https://olo-dot-io.github.io/Uni-CLI/reference/sites#tiktok), [youtube](https://olo-dot-io.github.io/Uni-CLI/reference/sites#youtube), [bilibili](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bilibili), [douyin](https://olo-dot-io.github.io/Uni-CLI/reference/sites#douyin) |
 | news | 11 | 45 | [hackernews](https://olo-dot-io.github.io/Uni-CLI/reference/sites#hackernews), [bloomberg](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bloomberg), [bbc](https://olo-dot-io.github.io/Uni-CLI/reference/sites#bbc), [36kr](https://olo-dot-io.github.io/Uni-CLI/reference/sites#36kr) |
 | finance | 10 | 67 | [eastmoney](https://olo-dot-io.github.io/Uni-CLI/reference/sites#eastmoney), [xueqiu](https://olo-dot-io.github.io/Uni-CLI/reference/sites#xueqiu), [binance](https://olo-dot-io.github.io/Uni-CLI/reference/sites#binance), [coingecko](https://olo-dot-io.github.io/Uni-CLI/reference/sites#coingecko) |

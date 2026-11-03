@@ -10,6 +10,8 @@ import {
   formatCookieHeader,
 } from "../../engine/cookies.js";
 import { USER_AGENT } from "../../constants.js";
+import { setTimeout as sleep } from "node:timers/promises";
+import { resolveOperation } from "./operations.js";
 
 // Public bearer token — same for all Twitter web clients, not a secret
 const BEARER_TOKEN =
@@ -21,6 +23,7 @@ function throwTwitterApiError(
   label: string,
   status: number,
   preview: string,
+  headers?: Headers,
 ): never {
   const err = new Error(
     `Twitter API error: HTTP ${status} on ${label}\n${preview.slice(0, 200)}`,
@@ -29,6 +32,7 @@ function throwTwitterApiError(
     suggestion?: string;
     retryable?: boolean;
     alternatives?: string[];
+    rateLimitResetMs?: number;
   };
   err.code =
     status === 401 || status === 403
@@ -41,6 +45,8 @@ function throwTwitterApiError(
             ? "upstream_error"
             : "api_error";
   err.retryable = status === 429 || status >= 500;
+  const reset = Number(headers?.get("x-rate-limit-reset"));
+  if (status === 429 && reset > 0) err.rateLimitResetMs = reset * 1000;
   err.suggestion =
     status === 404
       ? "Twitter/X changed or removed this web API operation. Run `unicli repair twitter <command>` or use a browser-backed command while the GraphQL operation is refreshed."
@@ -54,6 +60,24 @@ function throwTwitterApiError(
     "unicli browser open https://x.com",
   ];
   throw err;
+}
+
+export function invalidTwitterInput(
+  message: string,
+  suggestion: string,
+): Error {
+  return Object.assign(new Error(message), {
+    code: "invalid_input",
+    retryable: false,
+    suggestion,
+  });
+}
+
+/** Reads a nested JSON object field, giving `{}` for anything that is not an object. */
+export function obj(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 /** Standard Twitter GraphQL feature flags */
@@ -83,20 +107,28 @@ export const FEATURES: Record<string, boolean> = {
   responsive_web_enhance_cards_enabled: false,
 };
 
+// Ids resolved or features learned in this process, so later pages skip the failed first attempt.
+const resolvedQueryIds = new Map<string, string>();
+const learnedFeatures = new Map<string, Record<string, boolean>>();
+const MAX_FEATURE_RETRIES = 2;
+
+/** Feature names from X's 400 answer "The following features cannot be null: a, b". */
+function missingFeatures(body: string): string[] {
+  const names = /features cannot be null:\s*([\w\s,]+)/.exec(body)?.[1] ?? "";
+  return names.split(/[\s,]+/).filter(Boolean);
+}
+
 /**
- * Make an authenticated GraphQL GET request to the Twitter API.
- *
- * @param endpoint - GraphQL operation name (e.g. "SearchTimeline")
- * @param queryId - GraphQL query ID (e.g. "nK1dw4oV3k4w5TdtcAdSww")
- * @param variables - GraphQL variables object
- * @param features - GraphQL feature flags (defaults to FEATURES)
- * @returns Parsed JSON response
+ * Authenticated GraphQL request. An empty `queryId` or an HTTP 404 resolves the
+ * current id from the web client (`resolveOperation`) and retries once; a 400
+ * naming missing features retries with those features set to true.
  */
-export async function twitterFetch(
+async function graphqlRequest(
+  method: "GET" | "POST",
   endpoint: string,
   queryId: string,
   variables: Record<string, unknown>,
-  features: Record<string, boolean> = FEATURES,
+  features: Record<string, boolean>,
 ): Promise<unknown> {
   const cookies = await loadCookiesWithCDP("twitter", "x.com");
   if (!cookies) {
@@ -113,31 +145,97 @@ export async function twitterFetch(
     );
   }
 
-  const params = new URLSearchParams({
-    variables: JSON.stringify(variables),
-    features: JSON.stringify(features),
-  });
-
-  const url = `${GRAPHQL_BASE}/${queryId}/${endpoint}?${params.toString()}`;
-
-  const resp = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${BEARER_TOKEN}`,
-      "X-Csrf-Token": ct0,
-      "X-Twitter-Auth-Type": "OAuth2Session",
-      "X-Twitter-Active-User": "yes",
-      "User-Agent": USER_AGENT,
-      Cookie: formatCookieHeader(cookies),
-    },
-  });
-
-  if (!resp.ok) {
-    const preview = await resp.text().catch(() => "");
-    throwTwitterApiError(endpoint, resp.status, preview);
+  let id = resolvedQueryIds.get(endpoint) ?? queryId;
+  let resolved = false;
+  if (!id) {
+    id = await resolveOperation(endpoint);
+    resolved = true;
+    resolvedQueryIds.set(endpoint, id);
   }
+  let featureSet = { ...features, ...learnedFeatures.get(endpoint) };
 
-  return resp.json();
+  for (let featureRetries = 0; ;) {
+    const query =
+      method === "GET"
+        ? `?${new URLSearchParams({
+            variables: JSON.stringify(variables),
+            features: JSON.stringify(featureSet),
+          }).toString()}`
+        : "";
+    const resp = await fetch(`${GRAPHQL_BASE}/${id}/${endpoint}${query}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${BEARER_TOKEN}`,
+        "X-Csrf-Token": ct0,
+        "X-Twitter-Auth-Type": "OAuth2Session",
+        "X-Twitter-Active-User": "yes",
+        "User-Agent": USER_AGENT,
+        ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+        Cookie: formatCookieHeader(cookies),
+      },
+      ...(method === "POST"
+        ? {
+            body: JSON.stringify({
+              variables,
+              features: featureSet,
+              queryId: id,
+            }),
+          }
+        : {}),
+    });
+    if (resp.ok) return resp.json();
+
+    const preview = await resp.text().catch(() => "");
+    // X answers 404 for a retired query id before running the operation, so the retry repeats no side effect.
+    if (resp.status === 404 && !resolved) {
+      resolved = true;
+      let current: string;
+      try {
+        current = await resolveOperation(endpoint);
+      } catch (error) {
+        throwTwitterApiError(
+          endpoint,
+          404,
+          `${preview}\noperation lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      if (current !== id) {
+        id = current;
+        resolvedQueryIds.set(endpoint, id);
+        continue;
+      }
+    }
+    const missing = resp.status === 400 ? missingFeatures(preview) : [];
+    if (missing.length > 0 && featureRetries < MAX_FEATURE_RETRIES) {
+      featureRetries += 1;
+      const added = Object.fromEntries(missing.map((name) => [name, true]));
+      learnedFeatures.set(endpoint, {
+        ...learnedFeatures.get(endpoint),
+        ...added,
+      });
+      featureSet = { ...featureSet, ...added };
+      continue;
+    }
+    throwTwitterApiError(endpoint, resp.status, preview, resp.headers);
+  }
+}
+
+/**
+ * Make an authenticated GraphQL GET request to the Twitter API.
+ *
+ * @param endpoint - GraphQL operation name (e.g. "SearchTimeline")
+ * @param queryId - GraphQL query ID, or "" to resolve the current one
+ * @param variables - GraphQL variables object
+ * @param features - GraphQL feature flags (defaults to FEATURES)
+ * @returns Parsed JSON response
+ */
+export async function twitterFetch(
+  endpoint: string,
+  queryId: string,
+  variables: Record<string, unknown>,
+  features: Record<string, boolean> = FEATURES,
+): Promise<unknown> {
+  return graphqlRequest("GET", endpoint, queryId, variables, features);
 }
 
 /**
@@ -149,43 +247,7 @@ export async function twitterPostFetch(
   variables: Record<string, unknown>,
   features: Record<string, boolean> = FEATURES,
 ): Promise<unknown> {
-  const cookies = await loadCookiesWithCDP("twitter", "x.com");
-  if (!cookies) {
-    throw new Error(
-      'No cookies found for "twitter". Run: unicli auth setup twitter',
-    );
-  }
-
-  const ct0 = cookies.ct0;
-  if (!ct0) {
-    throw new Error(
-      "Missing ct0 cookie (CSRF token). " +
-        "Ensure ~/.unicli/cookies/twitter.json contains ct0 and auth_token.",
-    );
-  }
-
-  const url = `${GRAPHQL_BASE}/${queryId}/${endpoint}`;
-
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${BEARER_TOKEN}`,
-      "X-Csrf-Token": ct0,
-      "X-Twitter-Auth-Type": "OAuth2Session",
-      "X-Twitter-Active-User": "yes",
-      "User-Agent": USER_AGENT,
-      "Content-Type": "application/json",
-      Cookie: formatCookieHeader(cookies),
-    },
-    body: JSON.stringify({ variables, features, queryId }),
-  });
-
-  if (!resp.ok) {
-    const preview = await resp.text().catch(() => "");
-    throwTwitterApiError(endpoint, resp.status, preview);
-  }
-
-  return resp.json();
+  return graphqlRequest("POST", endpoint, queryId, variables, features);
 }
 
 /**
@@ -320,11 +382,12 @@ export function extractTweet(
   const restId = tweetResult.rest_id as string | undefined;
   if (!restId) return null;
 
-  const core = tweetResult.core as Record<string, unknown> | undefined;
-  const userResults = core?.user_results as Record<string, unknown> | undefined;
-  const userResult = userResults?.result as Record<string, unknown> | undefined;
-  const userLegacy = userResult?.legacy as Record<string, unknown> | undefined;
-  const screenName = (userLegacy?.screen_name as string) ?? "unknown";
+  // X moved screen_name from user.legacy to user.core in 2026.
+  const userResult = obj(obj(obj(tweetResult.core).user_results).result);
+  const screenName =
+    (obj(userResult.core).screen_name as string | undefined) ??
+    (obj(userResult.legacy).screen_name as string | undefined) ??
+    "unknown";
 
   const legacy = tweetResult.legacy as Record<string, unknown> | undefined;
   const fullText = (legacy?.full_text as string) ?? "";
@@ -347,6 +410,39 @@ export function extractTweet(
   };
 }
 
+function itemTweet(itemContent: unknown): TweetData | null {
+  const item = obj(itemContent);
+  if (item.itemType !== "TimelineTweet" || item.promotedMetadata) return null;
+  const result = obj(item.tweet_results).result;
+  return result ? extractTweet(obj(result)) : null;
+}
+
+/**
+ * Tweets of each `TimelineAddEntries` entry, promoted posts excluded. A
+ * conversation module yields its thread, which can include older parents.
+ */
+function entryTweets(instructions: unknown[]): TweetData[][] {
+  const entries: TweetData[][] = [];
+  for (const instruction of instructions) {
+    const inst = obj(instruction);
+    if (inst.type !== "TimelineAddEntries") continue;
+    for (const entry of (inst.entries as unknown[]) ?? []) {
+      const content = obj(obj(entry).content);
+      const items =
+        content.entryType === "TimelineTimelineModule"
+          ? ((content.items as unknown[]) ?? []).map(
+              (item) => obj(obj(item).item).itemContent,
+            )
+          : [content.itemContent];
+      const tweets = items
+        .map(itemTweet)
+        .filter((tweet): tweet is TweetData => tweet !== null);
+      if (tweets.length > 0) entries.push(tweets);
+    }
+  }
+  return entries;
+}
+
 /**
  * Extract tweets from timeline instructions (common pattern for search, home, bookmarks).
  *
@@ -355,66 +451,7 @@ export function extractTweet(
 export function extractTweetsFromInstructions(
   instructions: unknown[],
 ): TweetData[] {
-  const tweets: TweetData[] = [];
-
-  for (const instruction of instructions) {
-    const inst = instruction as Record<string, unknown>;
-    const type = inst.type as string | undefined;
-
-    // Handle TimelineAddEntries
-    if (type === "TimelineAddEntries") {
-      const entries = (inst.entries as unknown[]) ?? [];
-      for (const entry of entries) {
-        const e = entry as Record<string, unknown>;
-        const content = e.content as Record<string, unknown> | undefined;
-        if (!content) continue;
-
-        const entryType = content.entryType as string | undefined;
-
-        if (entryType === "TimelineTimelineItem") {
-          const itemContent = content.itemContent as
-            Record<string, unknown> | undefined;
-          if (
-            itemContent &&
-            (itemContent.itemType as string) === "TimelineTweet"
-          ) {
-            const tweetResults = itemContent.tweet_results as
-              Record<string, unknown> | undefined;
-            if (tweetResults?.result) {
-              const tweet = extractTweet(
-                tweetResults.result as Record<string, unknown>,
-              );
-              if (tweet) tweets.push(tweet);
-            }
-          }
-        } else if (entryType === "TimelineTimelineModule") {
-          // Module entries (e.g. conversations) contain nested items
-          const items = (content.items as unknown[]) ?? [];
-          for (const item of items) {
-            const i = item as Record<string, unknown>;
-            const itemObj = i.item as Record<string, unknown> | undefined;
-            const itemContent = itemObj?.itemContent as
-              Record<string, unknown> | undefined;
-            if (
-              itemContent &&
-              (itemContent.itemType as string) === "TimelineTweet"
-            ) {
-              const tweetResults = itemContent.tweet_results as
-                Record<string, unknown> | undefined;
-              if (tweetResults?.result) {
-                const tweet = extractTweet(
-                  tweetResults.result as Record<string, unknown>,
-                );
-                if (tweet) tweets.push(tweet);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return tweets;
+  return entryTweets(instructions).flat();
 }
 
 interface UserData {
@@ -426,6 +463,15 @@ interface UserData {
   description: string;
 }
 
+export const USER_COLUMNS = [
+  "id",
+  "name",
+  "screen_name",
+  "followers",
+  "following",
+  "description",
+];
+
 /**
  * Extract user entries from timeline instructions (followers/following endpoints).
  */
@@ -435,43 +481,205 @@ export function extractUsersFromInstructions(
   const users: UserData[] = [];
 
   for (const instruction of instructions) {
-    const inst = instruction as Record<string, unknown>;
-    const type = inst.type as string | undefined;
+    const inst = obj(instruction);
+    if (inst.type !== "TimelineAddEntries") continue;
+    for (const entry of (inst.entries as unknown[]) ?? []) {
+      const itemContent = obj(obj(obj(entry).content).itemContent);
+      if (itemContent.itemType !== "TimelineUser") continue;
+      const result = obj(obj(itemContent.user_results).result);
+      if (typeof result.rest_id !== "string") continue;
 
-    if (type === "TimelineAddEntries") {
-      const entries = (inst.entries as unknown[]) ?? [];
-      for (const entry of entries) {
-        const e = entry as Record<string, unknown>;
-        const content = e.content as Record<string, unknown> | undefined;
-        if (!content) continue;
-
-        const itemContent = content.itemContent as
-          Record<string, unknown> | undefined;
-        if (!itemContent) continue;
-
-        const itemType = itemContent.itemType as string | undefined;
-        if (itemType !== "TimelineUser") continue;
-
-        const userResults = itemContent.user_results as
-          Record<string, unknown> | undefined;
-        const result = userResults?.result as
-          Record<string, unknown> | undefined;
-        if (!result) continue;
-
-        const legacy = result.legacy as Record<string, unknown> | undefined;
-        if (!legacy) continue;
-
-        users.push({
-          id: (result.rest_id as string) ?? "",
-          name: (legacy.name as string) ?? "",
-          screen_name: (legacy.screen_name as string) ?? "",
-          followers: (legacy.followers_count as number) ?? 0,
-          following: (legacy.friends_count as number) ?? 0,
-          description: (legacy.description as string) ?? "",
-        });
-      }
+      // X moved names, counts and bio out of user.legacy in 2026; legacy covers older shapes.
+      const core = obj(result.core);
+      const counts = obj(result.relationship_counts);
+      const legacy = obj(result.legacy);
+      users.push({
+        id: result.rest_id,
+        name: String(core.name ?? legacy.name ?? ""),
+        screen_name: String(core.screen_name ?? legacy.screen_name ?? ""),
+        followers: Number(counts.followers ?? legacy.followers_count ?? 0),
+        following: Number(counts.following ?? legacy.friends_count ?? 0),
+        description: String(
+          obj(result.profile_bio).description ?? legacy.description ?? "",
+        ),
+      });
     }
   }
 
   return users;
+}
+
+function bottomCursor(instructions: unknown[]): string | undefined {
+  for (const instruction of instructions) {
+    const inst = obj(instruction);
+    const entries = Array.isArray(inst.entries)
+      ? inst.entries
+      : inst.entry
+        ? [inst.entry]
+        : [];
+    for (const entry of entries) {
+      const content = obj(obj(entry).content);
+      if (content.cursorType === "Bottom" && typeof content.value === "string")
+        return content.value;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Instructions of each page of a cursor-paginated GraphQL timeline found at
+ * `path` in the response. Ends when X returns no new bottom cursor.
+ */
+export async function* timelinePages(
+  endpoint: string,
+  queryId: string,
+  variables: Record<string, unknown>,
+  path: string[],
+): AsyncGenerator<unknown[]> {
+  let cursor: string | undefined;
+  for (;;) {
+    const data = await twitterFetch(
+      endpoint,
+      queryId,
+      cursor === undefined ? variables : { ...variables, cursor },
+    );
+    const instructions = path.reduce<unknown>(
+      (node, key) => obj(node)[key],
+      data,
+    );
+    if (!Array.isArray(instructions)) {
+      const message = obj(
+        (obj(data).errors as unknown[] | undefined)?.[0],
+      ).message;
+      if (typeof message === "string") {
+        throwTwitterApiError(endpoint, 200, message);
+      }
+      return;
+    }
+    yield instructions;
+    const next = bottomCursor(instructions);
+    if (!next || next === cursor) return;
+    cursor = next;
+  }
+}
+
+/** Users across pages until `limit` rows or a page adds none. */
+export async function collectTimelineUsers(
+  pages: AsyncIterable<unknown[]>,
+  limit: number,
+): Promise<UserData[]> {
+  const users = new Map<string, UserData>();
+  for await (const instructions of pages) {
+    const before = users.size;
+    for (const user of extractUsersFromInstructions(instructions)) {
+      if (!users.has(user.id)) users.set(user.id, user);
+    }
+    if (users.size >= limit || users.size === before) break;
+  }
+  return [...users.values()].slice(0, limit);
+}
+
+/**
+ * Tweets across pages until `limit` rows or a page adds none. With `since`
+ * (epoch ms), rows posted earlier are dropped, and `stopAtSince` ends a
+ * newest-first timeline at the first entry whose newest post is older.
+ */
+export async function collectTimelineTweets(
+  pages: AsyncIterable<unknown[]>,
+  options: { limit: number; since?: number; stopAtSince: boolean },
+): Promise<TweetData[]> {
+  const { limit, since, stopAtSince } = options;
+  const postedAt = (tweet: TweetData) => Date.parse(tweet.created_at);
+  const tweets = new Map<string, TweetData>();
+  const seen = new Set<string>();
+  for await (const instructions of pages) {
+    let fresh = 0;
+    let pastSince = false;
+    for (const entry of entryTweets(instructions)) {
+      if (
+        since !== undefined &&
+        stopAtSince &&
+        Math.max(...entry.map(postedAt)) < since
+      ) {
+        pastSince = true;
+      }
+      for (const tweet of entry) {
+        if (seen.has(tweet.id)) continue;
+        seen.add(tweet.id);
+        fresh += 1;
+        if (since === undefined || postedAt(tweet) >= since) {
+          tweets.set(tweet.id, tweet);
+        }
+      }
+    }
+    if (tweets.size >= limit || pastSince || fresh === 0) break;
+  }
+  return [...tweets.values()].slice(0, limit);
+}
+
+/** Epoch ms of an ISO 8601 `--since` date or datetime; a bare date is UTC midnight. */
+export function sinceArg(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const time = Date.parse(String(value));
+  if (Number.isNaN(time)) {
+    throw invalidTwitterInput(
+      `--since must be an ISO 8601 date or datetime, got "${String(value)}"`,
+      "Pass a value such as 2026-11-01 or 2026-11-01T08:00:00Z.",
+    );
+  }
+  return time;
+}
+
+const USER_BY_SCREEN_NAME_QUERY_ID = "AMIBMjtxEEATh4z8V9GtRg";
+
+/** Numeric id of a handle, or null when X has no such account. */
+export async function lookupUserId(screenName: string): Promise<string | null> {
+  const data = await twitterFetch(
+    "UserByScreenName",
+    USER_BY_SCREEN_NAME_QUERY_ID,
+    { screen_name: screenName.replace(/^@/, "") },
+  );
+  const result = obj(obj(obj(data).data).user).result;
+  return obj(result).__typename === "User" &&
+    typeof obj(result).rest_id === "string"
+    ? (obj(result).rest_id as string)
+    : null;
+}
+
+/** Numeric id for a handle (`name` or `@name`) or a numeric id. */
+export async function userIdArg(value: unknown): Promise<string> {
+  const user = String(value ?? "").trim();
+  if (/^\d+$/.test(user)) return user;
+  const id = user ? await lookupUserId(user) : null;
+  if (id) return id;
+  throw Object.assign(
+    new Error(`Twitter/X has no account @${user.replace(/^@/, "")}`),
+    {
+      code: "not_found",
+      retryable: false,
+      suggestion: "Check the handle, or pass the numeric user id.",
+    },
+  );
+}
+
+const MAX_RATE_LIMIT_WAIT_MS = 15 * 60_000;
+
+/** Runs `call`; after a 429 whose window resets within 15 minutes, waits for the reset and runs it once more. */
+export async function withRateLimitWait<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    const { code, rateLimitResetMs } = error as {
+      code?: string;
+      rateLimitResetMs?: number;
+    };
+    const wait =
+      rateLimitResetMs === undefined
+        ? Number.NaN
+        : rateLimitResetMs - Date.now();
+    if (code !== "rate_limited" || !(wait <= MAX_RATE_LIMIT_WAIT_MS))
+      throw error;
+    await sleep(Math.max(wait, 0) + 1000);
+    return call();
+  }
 }

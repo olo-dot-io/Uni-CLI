@@ -37,7 +37,7 @@ unicli hackernews top --limit 5 -f json
 ## Coverage
 
 - Static adapter sites: 338
-- Registered adapter operations: 1893
+- Registered adapter operations: 1895
 - Built-in actions: 113 (58 registered + 55 transport-native)
 - Tests: 10373
 

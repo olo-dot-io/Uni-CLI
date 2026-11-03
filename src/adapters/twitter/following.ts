@@ -1,16 +1,18 @@
 /**
- * Twitter following — fetch users that a user follows via GraphQL.
+ * Twitter following — users that a user follows via GraphQL, paginated to `--limit`.
  */
 
 import { cli } from "../../registry.js";
 import { Strategy } from "../../types.js";
+import { intArg } from "../_shared/browser-tools.js";
 import {
-  twitterFetch,
-  FEATURES,
-  extractUsersFromInstructions,
+  collectTimelineUsers,
+  timelinePages,
+  USER_COLUMNS,
+  userIdArg,
 } from "./client.js";
 
-const QUERY_ID = "IWP6Zt14sARO29lJT35bBw";
+const QUERY_ID = "QPaR5ONQTW_KyiEXQCHP4g";
 const ENDPOINT = "Following";
 
 cli({
@@ -21,46 +23,25 @@ cli({
   strategy: Strategy.COOKIE,
   args: [
     {
-      name: "user_id",
+      name: "user",
       required: true,
       positional: true,
-      description: "User numeric ID",
+      description: "Handle (name or @name) or numeric user ID",
     },
+    { name: "limit", type: "int", default: 20, description: "Number of users" },
   ],
-  columns: [
-    "id",
-    "name",
-    "screen_name",
-    "followers",
-    "following",
-    "description",
-  ],
+  columns: USER_COLUMNS,
   func: async (_page, kwargs) => {
-    const userId = String(kwargs.user_id);
-    const count = Math.min((kwargs.limit as number) ?? 20, 50);
-
-    const variables = {
-      userId,
-      count,
-      includePromotedContent: false,
-    };
-
-    const data = (await twitterFetch(
+    const userId = await userIdArg(kwargs.user);
+    const pages = timelinePages(
       ENDPOINT,
       QUERY_ID,
-      variables,
-      FEATURES,
-    )) as Record<string, unknown>;
-
-    // Navigate: data.user.result.timeline.timeline.instructions
-    const root = data.data as Record<string, unknown> | undefined;
-    const user = root?.user as Record<string, unknown> | undefined;
-    const result = user?.result as Record<string, unknown> | undefined;
-    const timelineObj = result?.timeline as Record<string, unknown> | undefined;
-    const timeline = timelineObj?.timeline as
-      Record<string, unknown> | undefined;
-    const instructions = (timeline?.instructions as unknown[]) ?? [];
-
-    return extractUsersFromInstructions(instructions);
+      { userId, count: 100, includePromotedContent: false },
+      ["data", "user", "result", "timeline", "timeline", "instructions"],
+    );
+    return collectTimelineUsers(
+      pages,
+      intArg(kwargs.limit, 20, Number.POSITIVE_INFINITY),
+    );
   },
 });

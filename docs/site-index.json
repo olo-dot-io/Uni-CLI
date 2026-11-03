@@ -1,7 +1,7 @@
 {
-  "generated": "2026-11-02T19:18:49.992Z",
+  "generated": "2026-11-03T04:52:46.570Z",
   "total_sites": 338,
-  "total_commands": 1893,
+  "total_commands": 1895,
   "sites": [
     {
       "site": "12306",
@@ -10955,7 +10955,7 @@
       "domain": "x.com",
       "auth": true,
       "strategy": "cookie",
-      "command_count": 52,
+      "command_count": 54,
       "personalized_commands": 9,
       "personalization_families": [
         "activity",
@@ -11234,6 +11234,51 @@
           "personalization": "library"
         },
         {
+          "name": "list-create",
+          "description": "Create a Twitter/X list",
+          "command": "unicli twitter list-create",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "browser": false
+        },
+        {
+          "name": "list-members",
+          "description": "List members of a Twitter/X list",
+          "command": "unicli twitter list-members",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "browser": false
+        },
+        {
+          "name": "list-add",
+          "description": "Add users to a Twitter/X list, skipping users who are already members",
+          "command": "unicli twitter list-add",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "browser": false
+        },
+        {
+          "name": "list-remove",
+          "description": "Remove users from a Twitter/X list, skipping users who are not members",
+          "command": "unicli twitter list-remove",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "browser": false
+        },
+        {
+          "name": "list-tweets",
+          "description": "Read tweets from a Twitter/X list timeline",
+          "command": "unicli twitter list-tweets",
+          "auth": true,
+          "auth_requirement": "required",
+          "auth_setup": "unicli auth setup twitter",
+          "browser": false
+        },
+        {
           "name": "tweets",
           "description": "Read recent tweets from a Twitter/X user profile",
           "command": "unicli twitter tweets",
@@ -11255,33 +11300,6 @@
           "name": "user-timeline",
           "description": "Read a Twitter/X user's tweet timeline",
           "command": "unicli twitter user-timeline",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "browser": true
-        },
-        {
-          "name": "list-tweets",
-          "description": "Read tweets from a Twitter/X list timeline",
-          "command": "unicli twitter list-tweets",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "browser": true
-        },
-        {
-          "name": "list-add",
-          "description": "Add a Twitter/X user to a list from the browser UI",
-          "command": "unicli twitter list-add",
-          "auth": true,
-          "auth_requirement": "required",
-          "auth_setup": "unicli auth setup twitter",
-          "browser": true
-        },
-        {
-          "name": "list-remove",
-          "description": "Remove a Twitter/X user from a list from the browser UI",
-          "command": "unicli twitter list-remove",
           "auth": true,
           "auth_requirement": "required",
           "auth_setup": "unicli auth setup twitter",
@@ -11371,7 +11389,7 @@
         },
         {
           "name": "timeline",
-          "description": "Get home timeline (for-you feed)",
+          "description": "Get home timeline (For You feed, or the chronological Following feed with --following)",
           "command": "unicli twitter timeline",
           "auth": true,
           "auth_requirement": "required",

@@ -124,7 +124,7 @@ args:
     default: relevance
 ```
 
-Supported types are `str`, `str[]`, `int`, `float`, `nullable-float`, `str-or-int`, and `bool`.
+Supported types are `str`, `str[]`, `int`, `float`, `nullable-float`, `str-or-int`, and `bool`. On the command line a `bool` argument is a flag, so `--private` alone means true and `--private false` sets it to false.
 
 String arguments can use `minLength`, `maxLength`, `pattern`, and standard formats such as `uri`, `uuid`, `date`, `date-time`, `email`, `hostname`, `ipv4`, `ipv6`, and `regex`. Uni-CLI kinds add validation for `path`, `adapter-ref`, `selector`, `shell-safe`, and `id`.
 

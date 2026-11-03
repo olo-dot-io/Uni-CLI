@@ -148,13 +148,14 @@ export function registerAdapterDispatch(program: Command): void {
       for (const arg of adapterArgs) {
         if (!arg.positional && !registeredOpts.has(arg.name)) {
           const canonicalName = arg.name.replaceAll("_", "-");
-          const flag = `--${canonicalName} <value>`;
+          // A bare boolean flag (`--private`) means true; `--private false` still parses.
+          const value = arg.type === "bool" ? "[value]" : "<value>";
           const desc = arg.description ?? "";
           registeredOpts.add(arg.name);
-          subCmd.option(flag, desc);
+          subCmd.option(`--${canonicalName} ${value}`, desc);
           if (canonicalName !== arg.name) {
             subCmd.addOption(
-              new Option(`--${arg.name} <value>`, desc).hideHelp(),
+              new Option(`--${arg.name} ${value}`, desc).hideHelp(),
             );
           }
         }

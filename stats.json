@@ -1,9 +1,9 @@
 {
   "adapter_count_yaml": 1006,
-  "adapter_count_ts": 261,
-  "adapter_count_total": 1267,
+  "adapter_count_ts": 262,
+  "adapter_count_total": 1268,
   "site_count": 338,
-  "command_count": 1893,
+  "command_count": 1895,
   "test_count": 10373,
   "pipeline_step_count": 113,
   "pipeline_registered_step_count": 58,
@@ -11,5 +11,5 @@
   "transport_count": 3,
   "app_transport_count": 8,
   "category_count": 19,
-  "built_at": "2026-11-02"
+  "built_at": "2026-11-03"
 }

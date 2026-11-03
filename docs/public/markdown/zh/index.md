@@ -37,7 +37,7 @@ unicli hackernews top --limit 5 -f json
 ## 覆盖范围
 
 - 静态 adapter 站点：338
-- 已注册 adapter 操作：1893
+- 已注册 adapter 操作：1895
 - Built-in action：113（58 registered + 55 transport-native）
 - 测试：10373
 

@@ -9,7 +9,7 @@ Current release: v1.5.2 — Artemis · Chari.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1893<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1895<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 

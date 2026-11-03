@@ -2,7 +2,7 @@
 
 > Current version: v1.5.2 — Artemis · Chari.
 >
-> Current static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1893<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1267<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1006<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->261<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10373<!-- /STATS --> tests.
+> Current static adapter catalog: <!-- STATS:site_count -->338<!-- /STATS --> sites, <!-- STATS:command_count -->1895<!-- /STATS --> registered commands, <!-- STATS:adapter_count_total -->1268<!-- /STATS --> adapters (<!-- STATS:adapter_count_yaml -->1006<!-- /STATS --> YAML + <!-- STATS:adapter_count_ts -->262<!-- /STATS --> TS). Fixed core and host-discovered commands join at runtime. <!-- STATS:test_count -->10373<!-- /STATS --> tests.
 
 This file keeps docs and user-facing copy consistent. Public pages should expose
 install, command, output, and repair facts with the fewest words needed.

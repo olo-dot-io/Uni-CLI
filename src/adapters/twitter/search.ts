@@ -6,7 +6,7 @@
  * @breaks      Missing login state or X GraphQL drift surfaces as an authentication or adapter error.
  * @invariants  This authenticated source is discoverable but never part of unauthenticated AI defaults.
  * @side-effects Reads the user's X session without mutating posts or account state.
- * @perf        Scrolls until the requested posts (at most 100) are collected or a scroll adds none.
+ * @perf        Scrolls until the requested posts are collected or three scrolls in a row add none.
  * @concurrency One browser page per invocation.
  * @test        Twitter browser search tests and tests/unit/commands/ai.test.ts
  * @stability   experimental
@@ -53,7 +53,7 @@ cli({
   capabilities: ["cdp-browser.navigate", "cdp-browser.evaluate"],
   func: async (page, kwargs) => {
     const query = kwargs.query as string;
-    const count = intArg(kwargs.limit, 20, 100);
+    const count = intArg(kwargs.limit, 20, Number.POSITIVE_INFINITY);
     return browserSearchTweets(page as IPage, query, count);
   },
 });
