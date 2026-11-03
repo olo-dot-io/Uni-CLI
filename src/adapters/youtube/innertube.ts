@@ -8,6 +8,7 @@
 import { USER_AGENT } from "../../constants.js";
 
 const INNERTUBE_API_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+const INNERTUBE_TIMEOUT_MS = 20_000;
 const INNERTUBE_CLIENT = {
   clientName: "WEB",
   clientVersion: "2.20240101.00.00",
@@ -30,6 +31,7 @@ export async function innertubeFetch(
       context: { client: INNERTUBE_CLIENT },
       ...body,
     }),
+    signal: AbortSignal.timeout(INNERTUBE_TIMEOUT_MS),
   });
   if (!resp.ok) throw new Error(`YouTube API error: ${resp.status}`);
   return resp.json();
