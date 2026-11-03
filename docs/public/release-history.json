@@ -1,9 +1,26 @@
 {
   "schema_version": "1",
   "package": "@zenalexa/unicli",
-  "current": "1.6.1",
+  "current": "1.6.2",
   "generated_from": "CHANGELOG.md",
   "releases": [
+    {
+      "version": "1.6.2",
+      "date": "2026-11-03",
+      "codename": "Artemis · Meir",
+      "releaseUrl": "https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.6.2",
+      "npmUrl": "https://www.npmjs.com/package/@zenalexa/unicli/v/1.6.2",
+      "sections": [
+        {
+          "title": "Patch Changes",
+          "entries": [
+            "3b81b0a: `bilibili user-videos` lists a creator's videos again. Bilibili's space search answered code -352 (risk control) to requests without the browser fingerprint fields its web client sends; the command now sends empty fingerprint fields, raises the API's code and message when it answers with an error, and returns `created` as ISO 8601 with each video's `url`."
+          ]
+        }
+      ],
+      "markdown": "### Patch Changes\n\n- 3b81b0a: `bilibili user-videos` lists a creator's videos again. Bilibili's space search answered code -352 (risk control) to requests without the browser fingerprint fields its web client sends; the command now sends empty fingerprint fields, raises the API's code and message when it answers with an error, and returns `created` as ISO 8601 with each video's `url`.",
+      "compareUrl": "https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.1...v1.6.2"
+    },
     {
       "version": "1.6.1",
       "date": "2026-11-03",

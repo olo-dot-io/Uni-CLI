@@ -53,7 +53,7 @@ unicli hackernews top --limit 5 -f json
 
 ## 当前版本
 
-本地版本：v1.6.1 · Artemis · Meir。
+本地版本：v1.6.2 · Artemis · Meir。
 
 ## Agent 索引
 

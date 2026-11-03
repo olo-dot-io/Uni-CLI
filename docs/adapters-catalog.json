@@ -1,6 +1,6 @@
 {
-  "source": "unicli@1.6.1",
-  "generated": "2026-11-03T06:18:17.435Z",
+  "source": "unicli@1.6.2",
+  "generated": "2026-11-03T06:51:49.524Z",
   "total_sites": 338,
   "total_commands": 1895,
   "adapters": [
@@ -2440,7 +2440,7 @@
           "auth_setup": "unicli auth setup bilibili",
           "strategy": "cookie",
           "browser": false,
-          "columns": ["title", "play", "likes", "created", "bvid"],
+          "columns": ["title", "play", "likes", "created", "bvid", "url"],
           "args": [
             {
               "name": "mid",

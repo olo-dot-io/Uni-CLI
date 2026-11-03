@@ -13,6 +13,7 @@ The machine-readable record is available as [`release-history.json`](./release-h
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.6.2](#v162)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.1...v1.6.2)     |
 | [v1.6.1](#v161)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.0...v1.6.1)     |
 | [v1.6.0](#v160)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.2...v1.6.0)     |
 | [v1.5.2](#v152)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.1...v1.5.2)     |
@@ -86,6 +87,16 @@ The machine-readable record is available as [`release-history.json`](./release-h
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v162"></a>
+
+## v1.6.2 · 2026-11-03 · Artemis · Meir
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.6.2) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.6.2) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.1...v1.6.2)
+
+### Patch Changes
+
+- 3b81b0a: `bilibili user-videos` lists a creator's videos again. Bilibili's space search answered code -352 (risk control) to requests without the browser fingerprint fields its web client sends; the command now sends empty fingerprint fields, raises the API's code and message when it answers with an error, and returns `created` as ISO 8601 with each video's `url`.
 
 <a id="v161"></a>
 
