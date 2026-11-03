@@ -1676,10 +1676,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "Foundation-model research and releases",
     description:
       "Model architecture, pre/post-training, reasoning, multimodality, model cards, weights, APIs, and lab releases.",
-    pulseQueries: [
-      "large language model reasoning multimodal",
-      "foundation model post-training",
-    ],
+    pulseQueries: ["large language model", "multimodal model", "post-training"],
     keywords: [
       "llm",
       "language model",
@@ -1703,10 +1700,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "LLM training systems",
     description:
       "Data, scaling laws, distributed parallelism, optimizers, checkpointing, kernels, failures, cost, and reproducibility.",
-    pulseQueries: [
-      "LLM training distributed parallelism",
-      "pretraining post-training optimizer checkpoint",
-    ],
+    pulseQueries: ["LLM training", "distributed training", "pretraining"],
     keywords: [
       "training",
       "pretraining",
@@ -1729,7 +1723,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "LLM inference and serving",
     description:
       "Latency, throughput, KV cache, batching, quantization, kernels, scheduling, distributed serving, compatibility, and incidents.",
-    pulseQueries: ["LLM inference serving", "KV cache quantization GPU kernel"],
+    pulseQueries: ["LLM inference", "KV cache", "GPU kernel"],
     keywords: [
       "inference",
       "serving",
@@ -1755,10 +1749,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "World models and generative environments",
     description:
       "Video prediction/generation, 3D/4D state, physics, interactive environments, spatial intelligence, planning, datasets, and benchmarks.",
-    pulseQueries: [
-      "world model video prediction",
-      "interactive generative environment spatial intelligence",
-    ],
+    pulseQueries: ["world model", "video generation", "spatial intelligence"],
     keywords: [
       "world model",
       "video prediction",
@@ -1784,10 +1775,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "Embodied AI and robotics",
     description:
       "Vision-language-action policies, robot learning, simulation, manipulation, navigation, autonomous driving, datasets, and deployment.",
-    pulseQueries: [
-      "embodied AI robotics VLA",
-      "robot learning simulation manipulation",
-    ],
+    pulseQueries: ["embodied AI", "robot learning", "vision-language-action"],
     keywords: [
       "embodied ai",
       "robotics",
@@ -1811,10 +1799,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "AI hardware and compilers",
     description:
       "Accelerators, drivers, SDKs, compilers, kernels, memory/interconnect, compatibility, benchmarks, firmware, and security advisories.",
-    pulseQueries: [
-      "AI accelerator GPU NPU release",
-      "CUDA ROCm CANN compiler driver",
-    ],
+    pulseQueries: ["AI accelerator", "CUDA", "ROCm"],
     keywords: [
       "accelerator",
       "gpu",
@@ -1852,10 +1837,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "AI agents and tool systems",
     description:
       "Tool use, coding agents, retrieval, memory, protocols, orchestration, evaluation, safety, and production reliability.",
-    pulseQueries: [
-      "AI agent tool use memory",
-      "coding agent RAG MCP evaluation",
-    ],
+    pulseQueries: ["AI agent", "coding agent", "MCP"],
     keywords: [
       "agent",
       "tool use",
@@ -1879,10 +1861,7 @@ export const AI_ROLE_PROFILES: readonly AiRoleProfile[] = [
     name: "Evaluation, safety, and security",
     description:
       "Benchmarks, leaderboards, red teaming, robustness, interpretability, incidents, advisories, governance, and model-system cards.",
-    pulseQueries: [
-      "LLM evaluation benchmark safety",
-      "AI security red teaming robustness",
-    ],
+    pulseQueries: ["LLM evaluation", "AI safety", "red teaming"],
     keywords: [
       "evaluation",
       "benchmark",

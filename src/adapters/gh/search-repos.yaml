@@ -181,6 +181,8 @@ retrieval:
   arguments:
     query: query
     limit: limit
+    sort: sort
+    order: order
     owner: owner
     language: language
 capabilities: ["subprocess.exec", "auth.executable.gh"]

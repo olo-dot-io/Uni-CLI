@@ -133,6 +133,7 @@ export class AiCommandFailure extends Error {
 }
 
 const AI_SOURCE_CONCURRENCY = 6;
+const UNSCOPED_PULSE_REFS = new Set(["gh.search-issues", "gh.search-prs"]);
 const AI_SOURCE_TIMEOUT_MS = 20_000;
 
 export const AI_RETRIEVAL_CAPABILITIES = [
@@ -430,14 +431,33 @@ function searchQueryForSource(
   return scoped.trim().replace(/\s+/g, " ");
 }
 
-function sourceSort(source: AiSourceCommand, mode: string): string {
-  if (mode === "latest") {
+/** The source bounds a --since window itself: GitHub and docs through query qualifiers, others through a since argument. */
+function boundsWindow(source: AiSourceCommand): boolean {
+  return (
+    source.site === "gh" ||
+    source.kind === "docs" ||
+    Boolean(source.metadata.arguments?.since)
+  );
+}
+
+/**
+ * Newest first answers `--sort latest`, and fills a --since window on a source that cannot bound it. A source that
+ * bounds the window ranks inside it by relevance or engagement, so a window asks what mattered in it rather than
+ * what changed last.
+ */
+function sourceSort(
+  source: AiSourceCommand,
+  mode: string,
+  since?: string,
+): string {
+  if (mode === "latest" || (since && !boundsWindow(source))) {
     if (source.site === "hackernews") return "date";
     if (source.site === "arxiv") return "submittedDate";
     if (source.site === "stackoverflow") return "activity";
     if (source.site === "lobsters") return "newest";
     if (source.site === "bluesky") return "latest";
     if (source.site === "opencsg") return "recently_update";
+    if (source.site === "gh") return "updated";
   }
   if (source.site === "hackernews" || source.site === "arxiv") {
     return "relevance";
@@ -445,7 +465,10 @@ function sourceSort(source: AiSourceCommand, mode: string): string {
   if (source.site === "stackoverflow" || source.site === "lobsters") {
     return "relevance";
   }
-  if (source.site === "gh") return "updated";
+  if (source.site === "gh") {
+    if (source.kind === "repository") return since ? "stars" : "best-match";
+    return since ? "reactions" : "updated";
+  }
   if (source.site === "bluesky") return "top";
   if (source.site === "opencsg") return "trending";
   return "lastModified";
@@ -499,7 +522,7 @@ function prepareAiRetrievalRequest(
         query: sourceQuery,
         repository: opts.repo,
         limit: perSourceLimit,
-        sort: sourceSort(source, opts.sort ?? "relevance"),
+        sort: sourceSort(source, opts.sort ?? "relevance", opts.since),
         order: "desc",
         since: opts.since ? `${opts.since}T00:00:00.000Z` : undefined,
       },
@@ -865,8 +888,12 @@ export async function pulseAiContent(
     throw invalidSearchInput("pulse query cannot be empty.");
   }
   const requestedSources = parseCsv(opts.sources);
+  // A pulse asks what is new in the field; unscoped issue and pull-request search answers what changed in any
+  // repository, so those lanes join a pulse only when --sources names them.
   const baseSources =
-    requestedSources.length > 0 ? requestedSources : profile.sourceRefs;
+    requestedSources.length > 0
+      ? requestedSources
+      : profile.sourceRefs.filter((ref) => !UNSCOPED_PULSE_REFS.has(ref));
   const sourceRefs = [
     ...new Set([
       ...baseSources,
@@ -879,7 +906,7 @@ export async function pulseAiContent(
       const rows = await searchAiContent(query, {
         profile: profile.id,
         sources: sourceRefs.join(","),
-        sort: "latest",
+        sort: since ? "relevance" : "latest",
         since,
         limit: Math.min(Math.max(limit * 2, 20), 100),
         signal: opts.signal,
@@ -922,11 +949,13 @@ export async function pulseAiContent(
     outcomes.map((outcome) => outcome.rows),
     outcomes.reduce((count, outcome) => count + outcome.rows.length, 0),
   );
+  // A window already bounds recency, so its pulse is ordered by the fused rank across lanes; without one, newest first.
   rows.sort((left, right) => {
+    const byRank = (right.rrf_score ?? 0) - (left.rrf_score ?? 0);
     const byTime =
       (timestampMillis(right) ?? Number.NEGATIVE_INFINITY) -
       (timestampMillis(left) ?? Number.NEGATIVE_INFINITY);
-    return byTime || (right.rrf_score ?? 0) - (left.rrf_score ?? 0);
+    return since ? byRank || byTime : byTime || byRank;
   });
   if (new Set(rows.map((row) => row.source_adapter)).size > 1) {
     const perSourceLimit = Math.max(2, Math.ceil(limit / 2));
@@ -976,7 +1005,7 @@ export async function pulseAiContent(
     ...row,
     source_errors: index === 0 ? errors : undefined,
     partial_failure_count: errors.length,
-    freshness_mode: "latest",
+    freshness_mode: since ? "relevance" : "latest",
     source_timestamp: row.updated_at || row.published_at,
     freshness_verifiable: timestampMillis(row) !== undefined,
     next_read: nextReadCommand(row),
