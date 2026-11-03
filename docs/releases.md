@@ -13,6 +13,7 @@ The machine-readable record is available as [`release-history.json`](./release-h
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.6.1](#v161)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.0...v1.6.1)     |
 | [v1.6.0](#v160)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.2...v1.6.0)     |
 | [v1.5.2](#v152)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.1...v1.5.2)     |
 | [v1.5.1](#v151)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.0...v1.5.1)     |
@@ -85,6 +86,18 @@ The machine-readable record is available as [`release-history.json`](./release-h
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v161"></a>
+
+## v1.6.1 · 2026-11-03 · Artemis · Meir
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.6.1) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.6.1) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.6.0...v1.6.1)
+
+### Patch Changes
+
+- 5a33ae3: A command's envelope reaches a pipe whole. The CLI exited right after writing, and a pipe holds about 64 KiB before
+  Node buffers the rest, so an agent reading a larger result through a pipe got JSON cut at 65536 bytes. Dispatch now
+  exits once stdout or stderr has handed the envelope to the OS (`exitAfterWrite` in `src/fast-path/render.ts`).
 
 <a id="v160"></a>
 

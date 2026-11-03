@@ -7,7 +7,7 @@
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.6.0 — Artemis · Meir.
+Current release: v1.6.1 — Artemis · Meir.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
