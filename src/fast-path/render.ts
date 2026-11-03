@@ -23,6 +23,21 @@ export const DEFAULT_IO: Io = {
   stderr: (text) => process.stderr.write(`${text}\n`),
 };
 
+/**
+ * Write `text` and exit once the stream has handed it to the OS. A pipe on macOS and Linux takes about 64 KiB
+ * before Node buffers the rest, and process.exit drops what is buffered, so a reader of a larger envelope
+ * through a pipe would get it cut at 65536 bytes.
+ */
+export function exitAfterWrite(
+  stream: NodeJS.WriteStream,
+  text: string,
+  code: number,
+): Promise<never> {
+  return new Promise<never>(() => {
+    stream.write(text, () => process.exit(code));
+  });
+}
+
 export function emitStderrAndExit(io: Io, text: string, code: number): void {
   if (io === DEFAULT_IO) {
     writeSync(process.stderr.fd, `${text}\n`);

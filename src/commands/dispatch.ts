@@ -34,6 +34,7 @@ import { commandStrategy, getAllAdapters } from "../registry.js";
 import { resolveArgs } from "../engine/args.js";
 import { buildInvocation, execute } from "../engine/kernel/execute.js";
 import { executeWithRunRecording } from "../engine/session/run-loop.js";
+import { exitAfterWrite } from "../fast-path/render.js";
 import {
   InvalidPermissionProfileError,
   resolveOperationAdapterPath,
@@ -371,10 +372,11 @@ export function registerAdapterDispatch(program: Command): void {
         }
 
         if (result.error) {
-          process.stderr.write(
+          await exitAfterWrite(
+            process.stderr,
             format([], cmd.columns, fmt, result.envelope) + "\n",
+            result.exitCode,
           );
-          process.exit(result.exitCode);
         }
 
         // Output-side projection (v0.213.3 P3). Applied BEFORE format() so
@@ -426,8 +428,7 @@ export function registerAdapterDispatch(program: Command): void {
           finalExit = ExitCode.EMPTY_RESULT;
         }
 
-        console.log(rendered);
-        process.exit(finalExit);
+        await exitAfterWrite(process.stdout, rendered + "\n", finalExit);
       });
     }
   }
