@@ -458,6 +458,7 @@ function sourceSort(
     if (source.site === "bluesky") return "latest";
     if (source.site === "opencsg") return "recently_update";
     if (source.site === "gh") return "updated";
+    if (source.site === "reddit") return "new";
   }
   if (source.site === "hackernews" || source.site === "arxiv") {
     return "relevance";
@@ -471,6 +472,7 @@ function sourceSort(
   }
   if (source.site === "bluesky") return "top";
   if (source.site === "opencsg") return "trending";
+  if (source.site === "reddit") return "relevance";
   return "lastModified";
 }
 

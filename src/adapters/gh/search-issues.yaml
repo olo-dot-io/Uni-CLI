@@ -195,8 +195,6 @@ retrieval:
   arguments:
     query: query
     limit: limit
-    sort: sort
-    order: order
     repository: repo
     owner: owner
     author: author
