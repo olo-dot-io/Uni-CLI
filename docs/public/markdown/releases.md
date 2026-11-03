@@ -15,6 +15,7 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 
 | Version             | Date       | Codename                      | Full diff                                                                    |
 | ------------------- | ---------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| [v1.6.0](#v160)     | 2026-11-03 | Artemis · Meir                | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.2...v1.6.0)     |
 | [v1.5.2](#v152)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.1...v1.5.2)     |
 | [v1.5.1](#v151)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.0...v1.5.1)     |
 | [v1.5.0](#v150)     | 2026-11-02 | Artemis · Chari               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v1.4.1...v1.5.0)     |
@@ -86,6 +87,22 @@ The machine-readable record is available as [`release-history.json`](/release-hi
 | [v0.201.0](#v02010) |            | Vostok · Chaika II            | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.200.0...v0.201.0) |
 | [v0.200.0](#v02000) |            | Vostok · Chaika               | [Compare](https://github.com/olo-dot-io/Uni-CLI/compare/v0.100.1...v0.200.0) |
 | [v0.100.1](#v01001) |            | Sputnik · Kedr                |                                                                              |
+
+<a id="v160"></a>
+
+## v1.6.0 · 2026-11-03 · Artemis · Meir
+
+[GitHub Release](https://github.com/olo-dot-io/Uni-CLI/releases/tag/v1.6.0) · [npm](https://www.npmjs.com/package/@zenalexa/unicli/v/1.6.0) · [Compare with previous](https://github.com/olo-dot-io/Uni-CLI/compare/v1.5.2...v1.6.0)
+
+### Minor Changes
+
+- 0d45f7c: Twitter/X GraphQL commands resolve the current query id from the signed-in web client when the adapter's id is empty or X answers 404, retry once, and cache every id found for the current main bundle in `~/.unicli/cache/twitter-graphql-operations.json`. A 400 that lists missing features is retried with those features set to true. GraphQL rows read authors, names, counts and bios from the 2026 `user.core`, `user.relationship_counts` and `user.profile_bio` fields, and promoted posts are skipped.
+
+  New commands `twitter list-create &lt;name&gt; [--private] [--description &lt;text&gt;]` and `twitter list-members &lt;list&gt;`. `twitter list-add` and `list-remove` now use GraphQL, take `--users a,@b,123` or `--users-file &lt;path&gt;`, read the current members first, change only users whose membership differs at a `--delay` pace (1.5 s by default), wait out a 429, and report `added`, `removed`, `already`, `not-found` or `failed` per user. They replace the browser-UI versions and their single `--user` argument.
+
+  `twitter list-tweets` reads `ListLatestTweetsTimeline` and `twitter timeline --following` reads the chronological `HomeLatestTimeline`. Both page with the bottom cursor and accept `--since &lt;ISO date or datetime&gt;`, which ends paging at the first older post. Plain `twitter timeline` keeps the For You feed and now pages too. `twitter following` takes `user` (a handle or a numeric id) in place of `user_id` and pages to `--limit`. `--limit` on the list, timeline and search commands has no fixed maximum, and the defaults stay at 20.
+
+  A bare boolean flag such as `--private` or `--following` now means true, and `--flag false` sets false.
 
 <a id="v152"></a>
 

@@ -72,7 +72,7 @@ These totals come from the current static adapter catalog. Core commands and hos
 
 ## Current Version
 
-Local release: v1.5.2 · Artemis · Chari.
+Local release: v1.6.0 · Artemis · Meir.
 
 ## Agent Index
 
@@ -3118,7 +3118,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ARCHITECTURE.md
 - Section: Project
 
-Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.5.2. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
+Uni-CLI is a local command runtime for operating real software. This page describes the runtime in v1.6.0. Its main abstraction is an operation with a name, arguments, target, effect, execution operator, and result contract.
 
 ## Runtime flow
 
@@ -3542,7 +3542,7 @@ Markdown: https://olo-dot-io.github.io/Uni-CLI/markdown/ROADMAP.md
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.5.2 — Artemis · Chari.
+Current release: v1.6.0 — Artemis · Meir.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
@@ -3635,7 +3635,7 @@ Any agent that can start a process can use the CLI. Uni-CLI also provides MCP an
 
 ## What does the catalog contain?
 
-v1.5.2 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
+v1.6.0 ships <span><!-- STATS:site_count -->338<!-- /STATS --></span> sites in the static adapter catalog.
 
 The same catalog contains <span><!-- STATS:command_count -->1895<!-- /STATS --></span> registered commands. Core commands and host-discovered tools join at runtime. Browse the [operation catalog](/reference/sites) or run `unicli list`.
 
