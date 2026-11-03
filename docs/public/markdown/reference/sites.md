@@ -23,7 +23,7 @@ unicli search "<intent>" --personalized
 
 ## Generated Site Catalog
 
-This catalog is generated from the adapter manifest: 338 sites, 1895 commands.
+This catalog is generated from the adapter manifest: 338 sites, 1896 commands.
 
 Run `unicli list --personalized` for every current-user operation, or add `--personalized` to an intent search.
 
@@ -247,7 +247,7 @@ Run `unicli list --personalized` for every current-user operation, or add `--per
 | yandere | web-api | 4 | 0 | no | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | 0 | no | unicli ycombinator launches |
 | yollomi | web-api | 12 | 0 | yes | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
-| youtube | web-api | 17 | 4 | yes | unicli youtube feed<br>unicli youtube history<br>unicli youtube watch-later |
+| youtube | web-api | 18 | 4 | yes | unicli youtube feed<br>unicli youtube history<br>unicli youtube watch-later |
 | yt-dlp | bridge | 5 | 0 | no | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | 1 | yes | unicli yuanbao history<br>unicli yuanbao ask<br>unicli yuanbao new |
 | zhihu | web-api | 37 | 11 | yes | unicli zhihu collections<br>unicli zhihu feed<br>unicli zhihu following |

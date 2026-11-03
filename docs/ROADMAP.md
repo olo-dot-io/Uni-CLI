@@ -5,7 +5,7 @@ description: Shipped foundations and the next engineering priorities for Uni-CLI
 
 # Roadmap
 
-Current release: v1.6.2 — Artemis · Meir.
+Current release: v1.7.0 — Artemis · Moghbeli.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 

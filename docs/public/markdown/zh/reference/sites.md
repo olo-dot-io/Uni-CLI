@@ -19,7 +19,7 @@ unicli search "<意图>" --personalized
 
 ## 生成的站点目录
 
-这个目录来自适配器 manifest：338 个站点，1895 条命令。
+这个目录来自适配器 manifest：338 个站点，1896 条命令。
 
 用 `unicli list --personalized` 查看全部个人内容操作，也可以在意图搜索后加 `--personalized`。
 
@@ -243,7 +243,7 @@ unicli search "<意图>" --personalized
 | yandere | web-api | 4 | 0 | 否 | unicli yandere detail<br>unicli yandere download<br>unicli yandere search |
 | ycombinator | web-api | 1 | 0 | 否 | unicli ycombinator launches |
 | yollomi | web-api | 12 | 0 | 是 | unicli yollomi background<br>unicli yollomi edit<br>unicli yollomi face-swap |
-| youtube | web-api | 17 | 4 | 是 | unicli youtube feed<br>unicli youtube history<br>unicli youtube watch-later |
+| youtube | web-api | 18 | 4 | 是 | unicli youtube feed<br>unicli youtube history<br>unicli youtube watch-later |
 | yt-dlp | bridge | 5 | 0 | 否 | unicli yt-dlp download<br>unicli yt-dlp extract-audio<br>unicli yt-dlp info |
 | yuanbao | web-api | 8 | 1 | 是 | unicli yuanbao history<br>unicli yuanbao ask<br>unicli yuanbao new |
 | zhihu | web-api | 37 | 11 | 是 | unicli zhihu collections<br>unicli zhihu feed<br>unicli zhihu following |

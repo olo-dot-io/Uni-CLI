@@ -7,11 +7,11 @@
 - Section: Project
 - Parent: Project (/ARCHITECTURE)
 
-Current release: v1.6.2 — Artemis · Meir.
+Current release: v1.7.0 — Artemis · Moghbeli.
 
 The static catalog contains <!-- STATS:site_count -->338<!-- /STATS --> sites.
 
-It contains <!-- STATS:command_count -->1895<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
+It contains <!-- STATS:command_count -->1896<!-- /STATS --> registered commands. The runtime also adds core and host-discovered commands.
 
 ## Shipped
 

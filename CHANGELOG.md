@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0] — 2026-11-03 — Artemis · Moghbeli
+
+### Minor Changes
+
+- dc5e719: `youtube channel-videos <UC id | @handle | channel URL>` lists a channel's recent uploads newest first, with `published` as an exact ISO 8601 time from the player microformat, plus `title`, `views`, `id` and `url`. It resolves a handle through InnerTube `navigation/resolve_url` and pages the Videos tab past 30 uploads. Feed readers can follow channels again, now that the channel RSS answers HTTP 404.
+
+### Patch Changes
+
+- 97bc24c: `ai pulse` ranks what mattered in its window. Sources that bound a `--since` window themselves (GitHub through qualifiers, docs, Bluesky) rank inside it by relevance or engagement, with repositories by stars and pull requests by reactions. Sources that cannot bound a window read newest first inside it, so `ai search --since` now asks Hacker News, Stack Overflow, Lobsters, OpenCSG and Hugging Face for their newest items and fills the window from them, and `ai search --sort latest` sorts GitHub repositories by their last update. Reddit receives `new` or `relevance`, sort values its search accepts, so the authenticated Reddit lane of `ai pulse --include-auth` runs again. The pulse orders rows by their fused rank across query lanes, with time as the tie-break, and `--window all` stays newest-first. Unscoped GitHub issue and pull-request search leaves the default pulse lanes and joins only when `--sources` names it. Role profiles pulse on short field phrases, such as `AI agent`, `coding agent` and `MCP`, that paper, model-hub and community sources match. `gh search-repos` and `search-prs` take the retrieval sort and order; `search-issues` keeps its hybrid ranking, which ignores a sort.
+
 ## [1.6.2] — 2026-11-03 — Artemis · Meir
 
 ### Patch Changes

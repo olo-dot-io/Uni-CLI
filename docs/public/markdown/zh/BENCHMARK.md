@@ -26,7 +26,7 @@ BENCH_FIXTURES_ONLY=1 npm run bench
 ## 当前目录
 
 - <span><!-- STATS:site_count -->338<!-- /STATS --></span> 个静态 adapter site
-- <span><!-- STATS:command_count -->1895<!-- /STATS --></span> 条注册 adapter command
+- <span><!-- STATS:command_count -->1896<!-- /STATS --></span> 条注册 adapter command
 - <span><!-- STATS:adapter_count_yaml -->1006<!-- /STATS --></span> 个 schema-v2 YAML adapter
 - <span><!-- STATS:pipeline_step_count -->113<!-- /STATS --></span> 个 built-in action
 - <span><!-- STATS:test_count -->10373<!-- /STATS --></span> 个 test
